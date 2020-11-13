@@ -1,8 +1,8 @@
 import NIO
 
 class MQTTTestServerHandler: ChannelInboundHandler {
-    public typealias InboundIn = ByteBuffer
-    public typealias OutboundOut = ByteBuffer
+    public typealias InboundIn = MQTTOutboundMessage
+    public typealias OutboundOut = MQTTInboundMessage
 
     public func channelRead(context: ChannelHandlerContext, data: NIOAny) {
         // As we are not really interested getting notified on success or failure we just pass nil as promise to

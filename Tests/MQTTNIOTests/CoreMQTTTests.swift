@@ -33,7 +33,7 @@ final class CoreMQTTTests: XCTestCase {
         )
         var byteBuffer = ByteBufferAllocator().buffer(capacity: 1024)
         try MQTTSerializer.writePublish(publishInfo: publish, packetId: 456, to: &byteBuffer)
-        let packet = try MQTTSerializer.getIncomingPacket(from: &byteBuffer)
+        let packet = try MQTTSerializer.readIncomingPacket(from: &byteBuffer)
         let publish2 = try MQTTSerializer.readPublish(from: packet)
         XCTAssertEqual(publish.topicName, publish2.publishInfo.topicName)
         XCTAssertEqual(publish.payload.getString(at: publish.payload.readerIndex, length: 10), publish2.publishInfo.payload.getString(at: publish2.publishInfo.payload.readerIndex, length: 10))
@@ -46,7 +46,7 @@ final class CoreMQTTTests: XCTestCase {
         ]
         var byteBuffer = ByteBufferAllocator().buffer(capacity: 1024)
         try MQTTSerializer.writeSubscribe(subscribeInfos: subscriptions, packetId: 456, to: &byteBuffer)
-        let packet = try MQTTSerializer.getIncomingPacket(from: &byteBuffer)
+        let packet = try MQTTSerializer.readIncomingPacket(from: &byteBuffer)
         XCTAssertEqual(packet.remainingData.readableBytes, 29)
     }
 }
