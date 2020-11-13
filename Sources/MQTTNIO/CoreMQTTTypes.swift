@@ -158,12 +158,12 @@ public struct MQTTPublishInfo
 public struct MQTTSubscribeInfo
 {
     /// Quality of Service for subscription.
-    public let qos: MQTTQoS_t
+    public let qos: MQTTQoS
 
     /// Topic filter to subscribe to.
     public let topicFilter: String
 
-    public init(qos: MQTTQoS_t, topicFilter: String) {
+    public init(qos: MQTTQoS, topicFilter: String) {
         self.qos = qos
         self.topicFilter = topicFilter
     }
@@ -171,7 +171,7 @@ public struct MQTTSubscribeInfo
     func withUnsafeType<T>(_ body: (MQTTSubscribeInfo_t) throws -> T) rethrows -> T {
         return try topicFilter.withCString { topicFilterChars in
             let coreType = MQTTSubscribeInfo_t(
-                qos: self.qos,
+                qos: MQTTQoS_t(self.qos.rawValue),
                 pTopicFilter: topicFilterChars,
                 topicFilterLength: UInt16(topicFilter.utf8.count)
             )
@@ -232,7 +232,7 @@ extension Array where Element == MQTTSubscribeInfo {
             for i in 0..<count {
                 let topicPtr: UnsafePointer<CChar>? = basePtr + offsets[i]
                 let topicFilterLength = self[i].topicFilter.count
-                let qos = self[i].qos
+                let qos = MQTTQoS_t(self[i].qos.rawValue)
                 infos.append(MQTTSubscribeInfo_t(qos: qos, pTopicFilter: topicPtr, topicFilterLength: UInt16(topicFilterLength)))
             }
             return try body(infos)

@@ -151,15 +151,10 @@ enum MQTTSerializer {
             guard rt == MQTTSuccess else { throw MQTTError(status: rt) }
 
             // Topic string
-            guard let topicNameBytes = UnsafeMutableRawPointer(mutating: publishInfoCoreType.pTopicName) else { throw MQTTError(status: .MQTTNoMemory) }
-            guard let topicName = String(
-                bytesNoCopy: topicNameBytes,
-                length: Int(publishInfoCoreType.topicNameLength),
-                encoding: .utf8,
-                freeWhenDone: false
-            ) else {
-                throw MQTTError(status: .MQTTBadParameter)
-            }
+            let topicName = String(
+                decoding: UnsafeRawBufferPointer(start: publishInfoCoreType.pTopicName, count: Int(publishInfoCoreType.topicNameLength)),
+                as: Unicode.UTF8.self
+            )
             // Payload
             guard let remainingDataPtr = UnsafeRawPointer(packetInfo.pRemainingData) else { throw MQTTError(status: .MQTTNoMemory) }
             let offset = publishInfoCoreType.pPayload - remainingDataPtr
