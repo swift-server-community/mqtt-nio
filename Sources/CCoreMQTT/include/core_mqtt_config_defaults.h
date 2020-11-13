@@ -188,4 +188,9 @@
     #define LogDebug( message )
 #endif
 
+static inline uint8_t* CCoreMQTT_voidPtr_to_UInt8Ptr(void* in) {
+    return (uint8_t *)in;
+}
+
+
 #endif /* ifndef CORE_MQTT_CONFIG_DEFAULTS_H_ */

@@ -1,6 +1,6 @@
 import NIO
 
-class EchoServerHandler: ChannelInboundHandler {
+class MQTTTestServerHandler: ChannelInboundHandler {
     public typealias InboundIn = ByteBuffer
     public typealias OutboundOut = ByteBuffer
 
@@ -40,7 +40,7 @@ class EchoServer {
             .childChannelInitializer { channel in
                 // Ensure we don't read faster than we can write by adding the BackPressureHandler into the pipeline.
                 channel.pipeline.addHandler(BackPressureHandler()).flatMap { v in
-                    channel.pipeline.addHandler(EchoServerHandler())
+                    channel.pipeline.addHandler(MQTTTestServerHandler())
                 }
             }
 

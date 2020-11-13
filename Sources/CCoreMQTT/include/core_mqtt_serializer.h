@@ -59,6 +59,7 @@
 /* Include config defaults header to get default values of configs not
  * defined in core_mqtt_config.h file. */
 #include "core_mqtt_config_defaults.h"
+#include "transport_interface.h"
 
 /* MQTT packet types. */
 
@@ -1178,9 +1179,9 @@ MQTTStatus_t MQTT_DeserializeAck( const MQTTPacketInfo_t * pIncomingPacket,
  * @endcode
  */
 /* @[declare_mqtt_getincomingpackettypeandlength] */
-/*MQTTStatus_t MQTT_GetIncomingPacketTypeAndLength( TransportRecv_t readFunc,
+MQTTStatus_t MQTT_GetIncomingPacketTypeAndLength( TransportRecv_t readFunc,
                                                   NetworkContext_t * pNetworkContext,
-                                                  MQTTPacketInfo_t * pIncomingPacket );*/
+                                                  MQTTPacketInfo_t * pIncomingPacket );
 /* @[declare_mqtt_getincomingpackettypeandlength] */
 
 #endif /* ifndef CORE_MQTT_SERIALIZER_H */

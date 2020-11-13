@@ -1,6 +1,6 @@
 import NIO
 
-class EchoClientHandler: ChannelDuplexHandler {
+class MQTTClientHandler: ChannelDuplexHandler {
     public typealias OutboundIn = String
     public typealias OutboundOut = ByteBuffer
     public typealias InboundIn = ByteBuffer
@@ -31,7 +31,7 @@ class EchoClientHandler: ChannelDuplexHandler {
     }
 }
 
-class EchoClient {
+class MQTTClient {
     let eventLoopGroup: EventLoopGroup
 
     init() throws {
@@ -46,7 +46,7 @@ class EchoClient {
             // Enable SO_REUSEADDR.
             .channelOption(ChannelOptions.socketOption(.so_reuseaddr), value: 1)
             .channelInitializer { channel in
-                channel.pipeline.addHandlers([EchoClientHandler(), taskHandler])
+                channel.pipeline.addHandlers([MQTTClientHandler(), taskHandler])
             }
             .connect(host: "localhost", port: 8001)
             .flatMap { channel in

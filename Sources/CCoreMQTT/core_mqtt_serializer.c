@@ -705,7 +705,7 @@ static void serializePublishCommon( const MQTTPublishInfo_t * pPublishInfo,
     assert( ( ( size_t ) ( pIndex - pFixedBuffer->pBuffer ) ) <= pFixedBuffer->size );
 }
 
-/*static size_t getRemainingLength( TransportRecv_t recvFunc,
+static size_t getRemainingLength( TransportRecv_t recvFunc,
                                   NetworkContext_t * pNetworkContext )
 {
     size_t remainingLength = 0, multiplier = 1, bytesDecoded = 0, expectedSize = 0;
@@ -713,10 +713,10 @@ static void serializePublishCommon( const MQTTPublishInfo_t * pPublishInfo,
     int32_t bytesReceived = 0;
 
     /* This algorithm is copied from the MQTT v3.1.1 spec. */
-/*    do
+    do
     {
         if( multiplier > 2097152U ) /* 128 ^ 3 */
-/*        {
+        {
             remainingLength = MQTT_REMAINING_LENGTH_INVALID;
         }
         else
@@ -742,7 +742,7 @@ static void serializePublishCommon( const MQTTPublishInfo_t * pPublishInfo,
     } while( ( encodedByte & 0x80U ) != 0U );
 
     /* Check that the decoded remaining length conforms to the MQTT specification. */
-/*    if( remainingLength != MQTT_REMAINING_LENGTH_INVALID )
+    if( remainingLength != MQTT_REMAINING_LENGTH_INVALID )
     {
         expectedSize = remainingLengthEncodedSize( remainingLength );
 
@@ -753,7 +753,7 @@ static void serializePublishCommon( const MQTTPublishInfo_t * pPublishInfo,
     }
 
     return remainingLength;
-}*/
+}
 
 /*-----------------------------------------------------------*/
 
@@ -2338,7 +2338,7 @@ MQTTStatus_t MQTT_DeserializeAck( const MQTTPacketInfo_t * pIncomingPacket,
 
 /*-----------------------------------------------------------*/
 
-/*MQTTStatus_t MQTT_GetIncomingPacketTypeAndLength( TransportRecv_t readFunc,
+MQTTStatus_t MQTT_GetIncomingPacketTypeAndLength( TransportRecv_t readFunc,
                                                   NetworkContext_t * pNetworkContext,
                                                   MQTTPacketInfo_t * pIncomingPacket )
 {
@@ -2353,7 +2353,7 @@ MQTTStatus_t MQTT_DeserializeAck( const MQTTPacketInfo_t * pIncomingPacket,
     else
     {
         /* Read a single byte. */
-/*        bytesReceived = readFunc( pNetworkContext,
+        bytesReceived = readFunc( pNetworkContext,
                                   &( pIncomingPacket->type ),
                                   1U );
     }
@@ -2361,7 +2361,7 @@ MQTTStatus_t MQTT_DeserializeAck( const MQTTPacketInfo_t * pIncomingPacket,
     if( bytesReceived == 1 )
     {
         /* Check validity. */
-/*        if( incomingPacketValid( pIncomingPacket->type ) == true )
+        if( incomingPacketValid( pIncomingPacket->type ) == true )
         {
             pIncomingPacket->remainingLength = getRemainingLength( readFunc,
                                                                    pNetworkContext );
@@ -2386,7 +2386,7 @@ MQTTStatus_t MQTT_DeserializeAck( const MQTTPacketInfo_t * pIncomingPacket,
 
     /* If the input packet was valid, then any other number of bytes received is
      * a failure. */
-/*    else if( status != MQTTBadParameter )
+    else if( status != MQTTBadParameter )
     {
         LogError( ( "A single byte was not read from the transport: "
                     "transportStatus=%d.",
@@ -2396,9 +2396,9 @@ MQTTStatus_t MQTT_DeserializeAck( const MQTTPacketInfo_t * pIncomingPacket,
     else
     {
         /* Empty else MISRA 15.7 */
-/*    }
+    }
 
     return status;
-}*/
+}
 
 /*-----------------------------------------------------------*/

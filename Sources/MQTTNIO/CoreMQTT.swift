@@ -1,81 +1,212 @@
 import CCoreMQTT
+import Foundation
 import NIO
 
-struct MQTTConnectInfo {
-    /// Whether to establish a new, clean session or resume a previous session.
-    let cleanSession: Bool
+enum MQTTSerializer {
+    struct MQTTError: Swift.Error {
+        let status: MQTTStatus
 
-    /// MQTT keep alive period.
-    let keepAliveSeconds: UInt16
+        init(status: MQTTStatus_t) {
+            self.status = MQTTStatus(rawValue: status.rawValue)!
+        }
+        init(status: MQTTStatus) {
+            self.status = status
+        }
+    }
 
-    /// MQTT client identifier. Must be unique per client.
-    let clientIdentifier: String
+    enum Error: Swift.Error {
+        case incompletePacket
+    }
 
-    /// MQTT user name. Set to """ if not used.
-    let userName: String
+    static func writeConnect(connectInfo: MQTTConnectInfo, willInfo: MQTTPublishInfo?, to byteBuffer: inout ByteBuffer) throws {
+        var remainingLength: Int = 0
+        var packetSize: Int = 0
+        try connectInfo.withUnsafeType { connectInfo in
+            if let willInfo = willInfo {
+                try willInfo.withUnsafeType { publishInfo in
+                    var connectInfo = connectInfo
+                    var publishInfo = publishInfo
+                    let rt = MQTT_GetConnectPacketSize(&connectInfo, &publishInfo, &remainingLength, &packetSize)
+                    guard rt == MQTTSuccess else { throw MQTTError(status: rt) }
 
-    /// MQTT password. Set to "" if not used.
-    let password: String
+                    _ = try byteBuffer.writeWithUnsafeMutableType(minimumWritableBytes: packetSize) { fixedBuffer in
+                        var connectInfo = connectInfo
+                        var publishInfo = publishInfo
+                        var fixedBuffer = fixedBuffer
+                        let rt = MQTT_SerializeConnect(&connectInfo, &publishInfo, remainingLength, &fixedBuffer)
+                        guard rt == MQTTSuccess else { throw MQTTError(status: rt) }
+                        return packetSize
+                    }
+                }
+            } else {
+                var connectInfo = connectInfo
+                let rt = MQTT_GetConnectPacketSize(&connectInfo, nil, &remainingLength, &packetSize)
+                guard rt == MQTTSuccess else { throw MQTTError(status: rt) }
 
-    func withCoreType<T>(_ body: (MQTTConnectInfo_t) throws -> T) rethrows -> T {
-        return try clientIdentifier.withCString { clientIdentifierChars in
-            try userName.withCString { userNameChars in
-                try password.withCString { passwordChars in
-                    let coreType = MQTTConnectInfo_t(
-                        cleanSession: self.cleanSession,
-                        keepAliveSeconds: self.keepAliveSeconds,
-                        pClientIdentifier: clientIdentifierChars,
-                        clientIdentifierLength: UInt16(clientIdentifier.utf8.count),
-                        pUserName: self.userName.count > 0 ? userNameChars : nil,
-                        userNameLength: UInt16(self.userName.utf8.count),
-                        pPassword: self.password.count > 0 ? passwordChars : nil,
-                        passwordLength: UInt16(self.password.utf8.count)
-                    )
-                    return try body(coreType)
+                _ = try byteBuffer.writeWithUnsafeMutableType(minimumWritableBytes: packetSize) { fixedBuffer in
+                    var connectInfo = connectInfo
+                    var fixedBuffer = fixedBuffer
+                    let rt = MQTT_SerializeConnect(&connectInfo, nil, remainingLength, &fixedBuffer)
+                    guard rt == MQTTSuccess else { throw MQTTError(status: rt) }
+                    return packetSize
                 }
             }
         }
     }
-}
 
-struct MQTTPublishInfo
-{
-    /// Quality of Service for message.
-    let qos: MQTTQoS_t
+    static func writePublish(publishInfo: MQTTPublishInfo, packetId: UInt16, to byteBuffer: inout ByteBuffer) throws {
+        var remainingLength: Int = 0
+        var packetSize: Int = 0
+        try publishInfo.withUnsafeType { publishInfo in
+            var publishInfo = publishInfo
+            let rt = MQTT_GetPublishPacketSize(&publishInfo, &remainingLength, &packetSize)
+            guard rt == MQTTSuccess else { throw MQTTError(status: rt) }
 
-    /// Whether this is a retained message.
-    let retain: Bool
-
-    /// Whether this is a duplicate publish message.
-    let dup: Bool
-
-    /// Topic name on which the message is published.
-    let topicName: String
-
-    /// Message payload.
-    let payload: ByteBuffer
-}
-
-struct MQTTSubscribeInfo
-{
-    /// Quality of Service for subscription.
-    let qos: MQTTQoS_t
-
-    /// Topic filter to subscribe to.
-    let topicFilter: String
-
-    func withCoreType<T>(_ body: (MQTTSubscribeInfo_t) throws -> T) rethrows -> T {
-        return try topicFilter.withCString { topicFilterChars in
-            let coreType = MQTTSubscribeInfo_t(
-                qos: self.qos,
-                pTopicFilter: topicFilterChars,
-                topicFilterLength: UInt16(topicFilter.utf8.count)
-            )
-            return try body(coreType)
+            _ = try byteBuffer.writeWithUnsafeMutableType(minimumWritableBytes: packetSize) { fixedBuffer in
+                var publishInfo = publishInfo
+                var fixedBuffer = fixedBuffer
+                let rt = MQTT_SerializePublish(&publishInfo, packetId, remainingLength, &fixedBuffer)
+                guard rt == MQTTSuccess else { throw MQTTError(status: rt) }
+                return packetSize
+            }
         }
+    }
+
+    static func writeSubscribe(subscribeInfos: [MQTTSubscribeInfo], packetId: UInt16, to byteBuffer: inout ByteBuffer) throws {
+        var remainingLength: Int = 0
+        var packetSize: Int = 0
+        try subscribeInfos.withUnsafeType { subscribeInfos in
+            let rt = MQTT_GetSubscribePacketSize(subscribeInfos, subscribeInfos.count, &remainingLength, &packetSize)
+            guard rt == MQTTSuccess else { throw MQTTError(status: rt) }
+
+            try byteBuffer.writeWithUnsafeMutableType(minimumWritableBytes: packetSize) { fixedBuffer in
+                var fixedBuffer = fixedBuffer
+                let rt = MQTT_SerializeSubscribe(subscribeInfos, subscribeInfos.count, packetId, remainingLength, &fixedBuffer)
+                guard rt == MQTTSuccess else { throw MQTTError(status: rt) }
+                return packetSize
+            }
+        }
+    }
+
+    static func writeUnsubscribe(subscribeInfos: [MQTTSubscribeInfo], packetId: UInt16, to byteBuffer: inout ByteBuffer) throws {
+        var remainingLength: Int = 0
+        var packetSize: Int = 0
+        try subscribeInfos.withUnsafeType { subscribeInfos in
+            let rt = MQTT_GetUnsubscribePacketSize(subscribeInfos, subscribeInfos.count, &remainingLength, &packetSize)
+            guard rt == MQTTSuccess else { throw MQTTError(status: rt) }
+
+            try byteBuffer.writeWithUnsafeMutableType(minimumWritableBytes: packetSize) { fixedBuffer in
+                var fixedBuffer = fixedBuffer
+                let rt = MQTT_SerializeUnsubscribe(subscribeInfos, subscribeInfos.count, packetId, remainingLength, &fixedBuffer)
+                guard rt == MQTTSuccess else { throw MQTTError(status: rt) }
+                return packetSize
+            }
+        }
+    }
+
+    static func writeAck(packetType: MQTTPacketType, packetId: UInt16, to byteBuffer: inout ByteBuffer) throws {
+        let mqttPublishAckPacketSize = 4
+
+        try byteBuffer.writeWithUnsafeMutableType(minimumWritableBytes: mqttPublishAckPacketSize) { fixedBuffer in
+            var fixedBuffer = fixedBuffer
+            let rt = MQTT_SerializeAck(&fixedBuffer, packetType.rawValue, packetId)
+            guard rt == MQTTSuccess else { throw MQTTError(status: rt) }
+            return mqttPublishAckPacketSize
+        }
+    }
+
+    static func writeDisconnect(to byteBuffer: inout ByteBuffer) throws {
+        var packetSize: Int = 0
+        let rt = MQTT_GetDisconnectPacketSize(&packetSize)
+        guard rt == MQTTSuccess else { throw MQTTError(status: rt) }
+
+        try byteBuffer.writeWithUnsafeMutableType(minimumWritableBytes: packetSize) { fixedBuffer in
+            var fixedBuffer = fixedBuffer
+            let rt = MQTT_SerializeDisconnect(&fixedBuffer)
+            guard rt == MQTTSuccess else { throw MQTTError(status: rt) }
+            return packetSize
+        }
+    }
+
+    static func writePingreq(to byteBuffer: inout ByteBuffer) throws {
+        var packetSize: Int = 0
+        let rt = MQTT_GetPingreqPacketSize(&packetSize)
+        guard rt == MQTTSuccess else { throw MQTTError(status: rt) }
+
+        try byteBuffer.writeWithUnsafeMutableType(minimumWritableBytes: packetSize) { fixedBuffer in
+            var fixedBuffer = fixedBuffer
+            let rt = MQTT_SerializePingreq(&fixedBuffer)
+            guard rt == MQTTSuccess else { throw MQTTError(status: rt) }
+            return packetSize
+        }
+    }
+
+    static func readPublish(from packet: MQTTPacketInfo) throws -> (packetId: UInt16, publishInfo: MQTTPublishInfo) {
+        var packetId: UInt16 = 0
+
+        let publishInfo: MQTTPublishInfo = try packet.withUnsafeType { packetInfo in
+            var packetInfo = packetInfo
+            var publishInfoCoreType = MQTTPublishInfo_t()
+            let rt = MQTT_DeserializePublish(&packetInfo, &packetId, &publishInfoCoreType)
+            guard rt == MQTTSuccess else { throw MQTTError(status: rt) }
+
+            // Topic string
+            guard let topicNameBytes = UnsafeMutableRawPointer(mutating: publishInfoCoreType.pTopicName) else { throw MQTTError(status: .MQTTNoMemory) }
+            guard let topicName = String(
+                bytesNoCopy: topicNameBytes,
+                length: Int(publishInfoCoreType.topicNameLength),
+                encoding: .utf8,
+                freeWhenDone: false
+            ) else {
+                throw MQTTError(status: .MQTTBadParameter)
+            }
+            // Payload
+            guard let remainingDataPtr = UnsafeRawPointer(packetInfo.pRemainingData) else { throw MQTTError(status: .MQTTNoMemory) }
+            let offset = publishInfoCoreType.pPayload - remainingDataPtr
+            guard let payload = packet.remainingData.getSlice(at: offset, length: publishInfoCoreType.payloadLength) else { throw MQTTError(status: .MQTTNoMemory) }
+            
+            return MQTTPublishInfo(
+                qos: MQTTQoS(rawValue: publishInfoCoreType.qos.rawValue)!,
+                retain: publishInfoCoreType.retain,
+                dup: publishInfoCoreType.dup,
+                topicName: topicName,
+                payload: payload
+            )
+        }
+        return (packetId: packetId, publishInfo: publishInfo)
+    }
+
+    static func readAck(from packet: MQTTPacketInfo) throws -> (packetId: UInt16, sessionPresent: Bool) {
+        var packetId: UInt16 = 0
+        var sessionPresent: Bool = false
+        let rt = packet.withUnsafeType { packetInfo -> MQTTStatus_t in
+            var packetInfo = packetInfo
+            return MQTT_DeserializeAck(&packetInfo, &packetId, &sessionPresent)
+        }
+        guard rt == MQTTSuccess else { throw MQTTError(status: rt) }
+        return (packetId: packetId, sessionPresent: sessionPresent)
+    }
+
+    static func getIncomingPacket(from byteBuffer: inout ByteBuffer) throws -> MQTTPacketInfo {
+        guard let byte: UInt8 = byteBuffer.readInteger() else { throw Error.incompletePacket }
+        guard let type = MQTTPacketType(rawValue: byte) else { throw MQTTError(status: MQTTBadParameter)}
+        let length = try readLength(from: &byteBuffer)
+        guard let bytes = byteBuffer.readSlice(length: length) else { throw Error.incompletePacket }
+        return MQTTPacketInfo(type: type, remainingData: bytes)
     }
 }
 
-func serializeConnect(connectInfo: MQTTConnectInfo, publishInfo: MQTTPublishInfo, to byteBuffer: inout ByteBuffer) throws {
-    
+extension MQTTSerializer {
+    static func readLength(from byteBuffer: inout ByteBuffer) throws -> Int {
+        var length = 0
+        repeat {
+            guard let byte: UInt8 = byteBuffer.readInteger() else { throw Error.incompletePacket }
+            length += Int(byte) & 0x7f
+            if byte & 0x80 == 0 {
+                break
+            }
+            length <<= 7
+        } while(true)
+        return length
+    }
 }
