@@ -1,8 +1,10 @@
 import NIO
 import NIOConcurrencyHelpers
+import NIOSSL
 
-class MQTTClient {
+public class MQTTClient {
     enum Error: Swift.Error {
+        case alreadyConnected
         case failedToConnect
         case noConnection
         case unexpectedMessage
@@ -10,27 +12,30 @@ class MQTTClient {
     let eventLoopGroup: EventLoopGroup
     let host: String
     let port: Int
+    let publishCallback: (MQTTPublishInfo) -> ()
+    let ssl: Bool
     var channel: Channel?
     static let globalPacketId = NIOAtomic<UInt16>.makeAtomic(value: 1)
 
-    init(host: String, port: Int) throws {
+    public init(host: String, port: Int? = nil, ssl: Bool = false, tlsConfiguration: TLSConfiguration? = TLSConfiguration.forClient(), publishCallback: @escaping (MQTTPublishInfo) -> () = { _ in }) throws {
         self.host = host
-        self.port = port
+        self.ssl = ssl
+        if let port = port {
+            self.port = port
+        } else {
+            if ssl {
+                self.port = 8883
+            } else {
+                self.port = 1883
+            }
+        }
+        self.publishCallback = publishCallback
         self.channel = nil
         self.eventLoopGroup = MultiThreadedEventLoopGroup(numberOfThreads: 1)
     }
 
-    func createBootstrap() -> EventLoopFuture<Channel> {
-        ClientBootstrap(group: eventLoopGroup)
-            // Enable SO_REUSEADDR.
-            .channelOption(ChannelOptions.socketOption(.so_reuseaddr), value: 1)
-            .channelInitializer { channel in
-                channel.pipeline.addHandlers([MQTTEncodeHandler(), ByteToMessageHandler(ByteToMQTTMessageDecoder())])
-            }
-            .connect(host: self.host, port: self.port)
-    }
-    
-    func connect(info: MQTTConnectInfo, will: MQTTPublishInfo? = nil) -> EventLoopFuture<Void> {
+    public func connect(info: MQTTConnectInfo, will: MQTTPublishInfo? = nil) -> EventLoopFuture<Void> {
+        guard self.channel == nil else { return eventLoopGroup.next().makeFailedFuture(Error.alreadyConnected) }
         return createBootstrap()
             .flatMap { channel -> EventLoopFuture<MQTTInboundMessage> in
                 self.channel = channel
@@ -42,7 +47,7 @@ class MQTTClient {
             .map { _ in }
     }
 
-    func publish(info: MQTTPublishInfo) -> EventLoopFuture<Void> {
+    public func publish(info: MQTTPublishInfo) -> EventLoopFuture<Void> {
         let packetId = Self.globalPacketId.add(1)
         return sendMessage(MQTTPublishMessage(publish: info, packetId: packetId)) { message in
             guard message.packetId == packetId else { return false }
@@ -65,7 +70,7 @@ class MQTTClient {
         }
     }
 
-    func subscribe(infos: [MQTTSubscribeInfo]) -> EventLoopFuture<Void> {
+    public func subscribe(infos: [MQTTSubscribeInfo]) -> EventLoopFuture<Void> {
         let packetId = Self.globalPacketId.add(1)
         return sendMessage(MQTTSubscribeMessage(subscriptions: infos, packetId: packetId)) { message in
             guard message.packetId == packetId else { return false }
@@ -75,7 +80,17 @@ class MQTTClient {
         .map { _ in }
     }
 
-    func pingreq() -> EventLoopFuture<Void> {
+    public func unsubscribe(infos: [MQTTSubscribeInfo]) -> EventLoopFuture<Void> {
+        let packetId = Self.globalPacketId.add(1)
+        return sendMessage(MQTTUnsubscribeMessage(subscriptions: infos, packetId: packetId)) { message in
+            guard message.packetId == packetId else { return false }
+            guard message.type == .UNSUBACK else { throw Error.unexpectedMessage }
+            return true
+        }
+        .map { _ in }
+    }
+
+    public func pingreq() -> EventLoopFuture<Void> {
         return sendMessage(MQTTPingreqMessage()) { message in
             guard message.type == .PINGRESP else { return false }
             return true
@@ -83,8 +98,45 @@ class MQTTClient {
         .map { _ in }
     }
     
-    func disconnect() -> EventLoopFuture<Void> {
-        return sendMessageNoWait(MQTTDisconnectMessage())
+    public func disconnect() -> EventLoopFuture<Void> {
+        let disconnect: EventLoopFuture<Void> = sendMessageNoWait(MQTTDisconnectMessage())
+            .flatMap {
+                let future = self.channel!.close()
+                self.channel = nil
+                return future
+            }
+        return disconnect
+    }
+}
+
+extension MQTTClient {
+    func getSSLHandler() -> [ChannelHandler] {
+        if ssl {
+            do {
+                let tlsConfiguration = TLSConfiguration.forClient()
+                let sslContext = try NIOSSLContext(configuration: tlsConfiguration)
+                let tlsHandler = try NIOSSLClientHandler(context: sslContext, serverHostname: host)
+                return [tlsHandler]
+            } catch {
+                return []
+            }
+        } else {
+            return []
+        }
+    }
+    
+    func createBootstrap() -> EventLoopFuture<Channel> {
+        
+        ClientBootstrap(group: eventLoopGroup)
+            // Enable SO_REUSEADDR.
+            .channelOption(ChannelOptions.socketOption(.so_reuseaddr), value: 1)
+            .channelInitializer { channel in
+                channel.pipeline.addHandlers(self.getSSLHandler() + [
+                    MQTTEncodeHandler(),
+                    ByteToMessageHandler(ByteToMQTTMessageDecoder(client: self))
+                ])
+            }
+            .connect(host: self.host, port: self.port)
     }
     
     func sendMessage(_ message: MQTTOutboundMessage, checkInbound: @escaping (MQTTInboundMessage) throws -> Bool) -> EventLoopFuture<MQTTInboundMessage> {
@@ -111,4 +163,5 @@ class MQTTClient {
         try channel?.close().wait()
         try eventLoopGroup.syncShutdownGracefully()
     }
+
 }

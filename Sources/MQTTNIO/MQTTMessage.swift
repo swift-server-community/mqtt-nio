@@ -76,6 +76,12 @@ struct MQTTPingreqMessage: MQTTOutboundMessage {
     }
 }
 
+struct MQTTPingrespMessage: MQTTInboundMessage {
+    var type: MQTTPacketType { .PINGRESP }
+    var description: String { "PINGRESP" }
+    var packetId: UInt16 { 0 }
+}
+
 struct MQTTDisconnectMessage: MQTTOutboundMessage {
     var type: MQTTPacketType { .DISCONNECT }
     var description: String { "DISCONNECT" }
