@@ -48,7 +48,7 @@ struct ByteToMQTTMessageDecoder: ByteToMessageDecoder {
             case .PINGRESP:
                 message = MQTTPingrespMessage()
             default:
-                fatalError()
+                throw MQTTClient.Error.decodeError
             }
             print("\(client.clientIdentifier) In: \(message)")
             context.fireChannelRead(wrapInboundOut(message))

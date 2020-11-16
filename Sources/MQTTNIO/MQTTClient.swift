@@ -8,6 +8,7 @@ public class MQTTClient {
         case failedToConnect
         case noConnection
         case unexpectedMessage
+        case decodeError
     }
     let eventLoopGroup: EventLoopGroup
     let host: String
@@ -40,7 +41,6 @@ public class MQTTClient {
         guard self.channel == nil else { return eventLoopGroup.next().makeFailedFuture(Error.alreadyConnected) }
         return createBootstrap()
             .flatMap { channel -> EventLoopFuture<MQTTInboundMessage> in
-                self.channel = channel
                 self.clientIdentifier = info.clientIdentifier
                 return self.sendMessage(MQTTConnectMessage(connect: info, will: nil)) { message in
                     guard message.type == .CONNACK else { throw Error.failedToConnect }
@@ -146,6 +146,13 @@ extension MQTTClient {
                 ])
             }
             .connect(host: self.host, port: self.port)
+            .map { channel in
+                self.channel = channel
+                channel.closeFuture.whenComplete { _ in
+                    self.channel = nil
+                }
+                return channel
+            }
     }
     
     func sendMessage(_ message: MQTTOutboundMessage, checkInbound: @escaping (MQTTInboundMessage) throws -> Bool) -> EventLoopFuture<MQTTInboundMessage> {

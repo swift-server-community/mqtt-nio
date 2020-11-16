@@ -61,7 +61,15 @@ final class MQTTNIOTests: XCTestCase {
         try client.publish(info: publish).wait()
         try client.syncShutdownGracefully()
     }
-    
+
+    func testMQTTPingreq() throws {
+        let client = try MQTTClient(host: "mqtt.eclipse.org", port: 1883)
+        try connect(to: client, identifier: "soto_publisher")
+        try client.pingreq().wait()
+        try client.disconnect().wait()
+        try client.syncShutdownGracefully()
+    }
+
     func testMQTTPublishToClient() throws {
         var publishReceived: [MQTTPublishInfo] = []
         let publish = MQTTPublishInfo(
