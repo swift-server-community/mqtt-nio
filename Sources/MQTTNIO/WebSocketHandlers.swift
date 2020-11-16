@@ -94,7 +94,7 @@ final class WebSocketPingPongHandler: ChannelDuplexHandler {
     func write(context: ChannelHandlerContext, data: NIOAny, promise: EventLoopPromise<Void>?) {
         let buffer = unwrapOutboundIn(data)
         let frame = WebSocketFrame(fin: true, opcode: .binary, data: buffer)
-        context.write(wrapOutboundOut(frame), promise: nil)
+        context.write(wrapOutboundOut(frame), promise: promise)
     }
 
     public func channelRead(context: ChannelHandlerContext, data: NIOAny) {
