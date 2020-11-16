@@ -162,6 +162,7 @@ extension MQTTClient {
         ClientBootstrap(group: eventLoopGroup)
             // Enable SO_REUSEADDR.
             .channelOption(ChannelOptions.socketOption(.so_reuseaddr), value: 1)
+            .channelOption(ChannelOptions.socket(IPPROTO_TCP, TCP_NODELAY), value: 1)
             .channelInitializer { channel in
                 channel.pipeline.addHandlers(self.getSSLHandler() + [
                     MQTTEncodeHandler(client: self),

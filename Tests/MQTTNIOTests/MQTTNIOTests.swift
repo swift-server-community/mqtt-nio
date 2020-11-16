@@ -76,7 +76,7 @@ final class MQTTNIOTests: XCTestCase {
             qos: .atLeastOnce,
             retain: false,
             dup: false,
-            topicName: "testing",
+            topicName: "testing-noretain",
             payload: ByteBufferAllocator().buffer(string: "This is the Test payload")
         )
         let client = try MQTTClient(host: "mqtt.eclipse.org", port: 1883, eventLoopGroupProvider: .createNew)
@@ -91,7 +91,7 @@ final class MQTTNIOTests: XCTestCase {
             }
         }
         try connect(to: client2, identifier: "soto_client")
-        try client2.subscribe(infos: [.init(qos: .atLeastOnce, topicFilter: "testing")]).wait()
+        try client2.subscribe(infos: [.init(qos: .atLeastOnce, topicFilter: "testing-noretain")]).wait()
         try client.publish(info: publish).wait()
         Thread.sleep(forTimeInterval: 2)
         try client.publish(info: publish).wait()
