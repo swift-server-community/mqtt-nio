@@ -184,10 +184,12 @@ enum MQTTSerializer {
 
     static func readIncomingPacket(from byteBuffer: inout ByteBuffer) throws -> MQTTPacketInfo {
         guard let byte: UInt8 = byteBuffer.readInteger() else { throw Error.incompletePacket }
-        guard let type = MQTTPacketType(rawValue: byte & 0xf0) else { print("Bad parameter \(byte)"); throw MQTTError(status: MQTTBadParameter)}
+        guard let type = MQTTPacketType(rawValue: byte) ?? MQTTPacketType(rawValue: byte & 0xf0) else {
+            throw MQTTError(status: MQTTBadParameter)
+        }
         let length = try readLength(from: &byteBuffer)
         guard let bytes = byteBuffer.readSlice(length: length) else { throw Error.incompletePacket }
-        return MQTTPacketInfo(type: type, remainingData: bytes)
+        return MQTTPacketInfo(type: type, flags: byte & 0xf, remainingData: bytes)
     }
 }
 

@@ -186,6 +186,9 @@ public struct MQTTPacketInfo
     /// Type of incoming MQTT packet.
     public let type: MQTTPacketType
 
+    /// packet flags
+    public let flags: UInt8
+
     /// Remaining serialized data in the MQTT packet.
     public let remainingData: ByteBuffer
 
@@ -193,7 +196,7 @@ public struct MQTTPacketInfo
         var remainingData = self.remainingData
         return try remainingData.withUnsafeMutableReadableBytes { remainingBytes in
             let coreType = MQTTPacketInfo_t(
-                type: type.rawValue,
+                type: type.rawValue | flags,
                 pRemainingData: CCoreMQTT_voidPtr_to_UInt8Ptr(remainingBytes.baseAddress),
                 remainingLength: self.remainingData.readableBytes
             )

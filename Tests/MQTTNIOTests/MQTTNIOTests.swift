@@ -8,7 +8,7 @@ final class MQTTNIOTests: XCTestCase {
     func connect(to client: MQTTClient, identifier: String) throws {
         let connect = MQTTConnectInfo(
             cleanSession: true,
-            keepAliveSeconds: 10,
+            keepAliveSeconds: 30,
             clientIdentifier: identifier,
             userName: "",
             password: ""
@@ -66,23 +66,23 @@ final class MQTTNIOTests: XCTestCase {
         var publishReceived: [MQTTPublishInfo] = []
         let publish = MQTTPublishInfo(
             qos: .atLeastOnce,
-            retain: true,
+            retain: false,
             dup: false,
-            topicName: "sys",
-            payload: ByteBufferAllocator().buffer(string: "Test payload")
+            topicName: "testing",
+            payload: ByteBufferAllocator().buffer(string: "This is the Test payload")
         )
         let client = try MQTTClient(host: "mqtt.eclipse.org", port: 1883)
         try connect(to: client, identifier: "soto_publisher")
         let client2 = try MQTTClient(host: "mqtt.eclipse.org", port: 1883) { publish in
+            print(publish)
             publishReceived.append(publish)
         }
         try connect(to: client2, identifier: "soto_client")
-        try client2.subscribe(infos: [.init(qos: .atLeastOnce, topicFilter: "sys")]).wait()
-        try client.publish(info: publish).wait()
-        Thread.sleep(forTimeInterval: 1)
+        try client2.subscribe(infos: [.init(qos: .atLeastOnce, topicFilter: "testing")]).wait()
+        Thread.sleep(forTimeInterval: 5)
         try client.publish(info: publish).wait()
         Thread.sleep(forTimeInterval: 5)
-        XCTAssertEqual(publishReceived.count, 2)
+        XCTAssertEqual(publishReceived.count, 1)
         try client.disconnect().wait()
         try client.syncShutdownGracefully()
         try client2.disconnect().wait()

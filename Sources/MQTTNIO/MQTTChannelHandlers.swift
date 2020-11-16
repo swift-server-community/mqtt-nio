@@ -36,8 +36,9 @@ struct ByteToMQTTMessageDecoder: ByteToMessageDecoder {
             case .PUBLISH:
                 let publish = try MQTTSerializer.readPublish(from: packet)
                 let publishMessage = MQTTPublishMessage(publish: publish.publishInfo, packetId: publish.packetId)
+                print("\(client.clientIdentifier) In: \(publishMessage)")
                 self.publish(publishMessage)
-                message = publishMessage
+                return .continue
             case .CONNACK:
                 let connack = try MQTTSerializer.readAck(from: packet)
                 message = MQTTConnAckMessage(packetId: connack.packetId, sessionPresent: connack.sessionPresent)
