@@ -15,6 +15,8 @@ public class MQTTClient {
     let publishCallback: (MQTTPublishInfo) -> ()
     let ssl: Bool
     var channel: Channel?
+    var clientIdentifier = ""
+
     static let globalPacketId = NIOAtomic<UInt16>.makeAtomic(value: 1)
 
     public init(host: String, port: Int? = nil, ssl: Bool = false, tlsConfiguration: TLSConfiguration? = TLSConfiguration.forClient(), publishCallback: @escaping (MQTTPublishInfo) -> () = { _ in }) throws {
@@ -39,6 +41,7 @@ public class MQTTClient {
         return createBootstrap()
             .flatMap { channel -> EventLoopFuture<MQTTInboundMessage> in
                 self.channel = channel
+                self.clientIdentifier = info.clientIdentifier
                 return self.sendMessage(MQTTConnectMessage(connect: info, will: nil)) { message in
                     guard message.type == .CONNACK else { throw Error.failedToConnect }
                     return true
@@ -107,6 +110,11 @@ public class MQTTClient {
             }
         return disconnect
     }
+
+    public func read() throws {
+        guard let channel = self.channel else { throw Error.noConnection }
+        return channel.read()
+    }
 }
 
 extension MQTTClient {
@@ -130,9 +138,10 @@ extension MQTTClient {
         ClientBootstrap(group: eventLoopGroup)
             // Enable SO_REUSEADDR.
             .channelOption(ChannelOptions.socketOption(.so_reuseaddr), value: 1)
+            .channelOption(ChannelOptions.autoRead, value: true)
             .channelInitializer { channel in
                 channel.pipeline.addHandlers(self.getSSLHandler() + [
-                    MQTTEncodeHandler(),
+                    MQTTEncodeHandler(client: self),
                     ByteToMessageHandler(ByteToMQTTMessageDecoder(client: self))
                 ])
             }

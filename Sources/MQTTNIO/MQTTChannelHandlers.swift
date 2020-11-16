@@ -4,9 +4,15 @@ class MQTTEncodeHandler: ChannelOutboundHandler {
     public typealias OutboundIn = MQTTOutboundMessage
     public typealias OutboundOut = ByteBuffer
 
+    let client: MQTTClient
+
+    init(client: MQTTClient) {
+        self.client = client
+    }
+
     func write(context: ChannelHandlerContext, data: NIOAny, promise: EventLoopPromise<Void>?) {
         let message = unwrapOutboundIn(data)
-        print("Out: \(message)")
+        print("\(client.clientIdentifier) Out: \(message)")
         var bb = ByteBufferAllocator().buffer(capacity: 0)
         try! message.serialize(to: &bb)
         context.write(wrapOutboundOut(bb), promise: promise)
@@ -30,9 +36,8 @@ struct ByteToMQTTMessageDecoder: ByteToMessageDecoder {
             case .PUBLISH:
                 let publish = try MQTTSerializer.readPublish(from: packet)
                 let publishMessage = MQTTPublishMessage(publish: publish.publishInfo, packetId: publish.packetId)
-                print("In: \(publishMessage)")
                 self.publish(publishMessage)
-                return .continue
+                message = publishMessage
             case .CONNACK:
                 let connack = try MQTTSerializer.readAck(from: packet)
                 message = MQTTConnAckMessage(packetId: connack.packetId, sessionPresent: connack.sessionPresent)
@@ -44,7 +49,7 @@ struct ByteToMQTTMessageDecoder: ByteToMessageDecoder {
             default:
                 fatalError()
             }
-            print("In: \(message)")
+            print("\(client.clientIdentifier) In: \(message)")
             context.fireChannelRead(wrapInboundOut(message))
         } catch MQTTSerializer.Error.incompletePacket {
             return .needMoreData

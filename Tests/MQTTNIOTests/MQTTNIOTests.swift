@@ -8,7 +8,7 @@ final class MQTTNIOTests: XCTestCase {
     func connect(to client: MQTTClient, identifier: String) throws {
         let connect = MQTTConnectInfo(
             cleanSession: true,
-            keepAliveSeconds: 160,
+            keepAliveSeconds: 10,
             clientIdentifier: identifier,
             userName: "",
             password: ""
@@ -77,13 +77,14 @@ final class MQTTNIOTests: XCTestCase {
             publishReceived.append(publish)
         }
         try connect(to: client2, identifier: "soto_client")
-        try client.publish(info: publish).wait()
         try client2.subscribe(infos: [.init(qos: .atLeastOnce, topicFilter: "sys")]).wait()
+        try client.publish(info: publish).wait()
+        Thread.sleep(forTimeInterval: 1)
+        try client.publish(info: publish).wait()
+        Thread.sleep(forTimeInterval: 5)
+        XCTAssertEqual(publishReceived.count, 2)
         try client.disconnect().wait()
         try client.syncShutdownGracefully()
-        try client2.pingreq().wait()
-        Thread.sleep(forTimeInterval: 160)
-        XCTAssertEqual(publishReceived.count, 1)
         try client2.disconnect().wait()
         try client2.syncShutdownGracefully()
     }
