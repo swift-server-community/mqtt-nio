@@ -15,9 +15,15 @@ final class MQTTNIOTests: XCTestCase {
         )
         try client.connect(info: connect).wait()
     }
-    
+
+    func testBootstrap() throws {
+        let client = try MQTTClient(host: "test.mosquitto.org", port: 8080, eventLoopGroupProvider: .createNew)
+        let bootstrap = try client.createBootstrap().wait()
+        try client.syncShutdownGracefully()
+    }
+
     func testConnect() throws {
-        let client = try MQTTClient(host: "mqtt.eclipse.org", port: 1883, eventLoopGroupProvider: .createNew)
+        let client = try MQTTClient(host: "test.mosquitto.org", port: 8080, eventLoopGroupProvider: .createNew)
         try connect(to: client, identifier: "connect")
         try client.disconnect().wait()
         try client.syncShutdownGracefully()
