@@ -11,16 +11,24 @@ public class MQTTClient {
         case decodeError
     }
     let eventLoopGroup: EventLoopGroup
+    let eventLoopGroupProvider: NIOEventLoopGroupProvider
     let host: String
     let port: Int
-    let publishCallback: (MQTTPublishInfo) -> ()
+    let publishCallback: (Result<MQTTPublishInfo, Swift.Error>) -> ()
     let ssl: Bool
     var channel: Channel?
     var clientIdentifier = ""
 
     static let globalPacketId = NIOAtomic<UInt16>.makeAtomic(value: 1)
 
-    public init(host: String, port: Int? = nil, ssl: Bool = false, tlsConfiguration: TLSConfiguration? = TLSConfiguration.forClient(), publishCallback: @escaping (MQTTPublishInfo) -> () = { _ in }) throws {
+    public init(
+        host: String,
+        port: Int? = nil,
+        ssl: Bool = false,
+        tlsConfiguration: TLSConfiguration? = TLSConfiguration.forClient(),
+        eventLoopGroupProvider: NIOEventLoopGroupProvider,
+        publishCallback: @escaping (Result<MQTTPublishInfo, Swift.Error>) -> () = { _ in }
+    ) throws {
         self.host = host
         self.ssl = ssl
         if let port = port {
@@ -34,7 +42,23 @@ public class MQTTClient {
         }
         self.publishCallback = publishCallback
         self.channel = nil
-        self.eventLoopGroup = MultiThreadedEventLoopGroup(numberOfThreads: 1)
+        self.eventLoopGroupProvider = eventLoopGroupProvider
+        switch eventLoopGroupProvider {
+        case .createNew:
+            self.eventLoopGroup = MultiThreadedEventLoopGroup(numberOfThreads: 1)
+        case.shared(let elg):
+            self.eventLoopGroup = elg
+        }
+    }
+
+    public func syncShutdownGracefully() throws {
+        try channel?.close().wait()
+        switch self.eventLoopGroupProvider {
+        case .createNew:
+            try eventLoopGroup.syncShutdownGracefully()
+        case .shared:
+            break
+        }
     }
 
     public func connect(info: MQTTConnectInfo, will: MQTTPublishInfo? = nil) -> EventLoopFuture<Void> {
@@ -174,10 +198,4 @@ extension MQTTClient {
         guard let channel = self.channel else { return eventLoopGroup.next().makeFailedFuture(Error.noConnection) }
         return channel.writeAndFlush(message)
     }
-    
-    func syncShutdownGracefully() throws {
-        try channel?.close().wait()
-        try eventLoopGroup.syncShutdownGracefully()
-    }
-
 }

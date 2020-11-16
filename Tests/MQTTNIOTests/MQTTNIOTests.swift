@@ -17,7 +17,7 @@ final class MQTTNIOTests: XCTestCase {
     }
     
     func testConnect() throws {
-        let client = try MQTTClient(host: "mqtt.eclipse.org", port: 1883)
+        let client = try MQTTClient(host: "mqtt.eclipse.org", port: 1883, eventLoopGroupProvider: .createNew)
         try connect(to: client, identifier: "connect")
         try client.disconnect().wait()
         try client.syncShutdownGracefully()
@@ -25,7 +25,7 @@ final class MQTTNIOTests: XCTestCase {
 
     func testSSLConnect() throws {
         let tlsConfiguration = TLSConfiguration.forClient()
-        let client = try MQTTClient(host: "mqtt.eclipse.org", port: 8883, ssl: true, tlsConfiguration: tlsConfiguration)
+        let client = try MQTTClient(host: "mqtt.eclipse.org", port: 8883, ssl: true, tlsConfiguration: tlsConfiguration, eventLoopGroupProvider: .createNew)
         try connect(to: client, identifier: "connect")
         try client.disconnect().wait()
         try client.syncShutdownGracefully()
@@ -40,7 +40,7 @@ final class MQTTNIOTests: XCTestCase {
             payload: ByteBufferAllocator().buffer(string: "Test payload")
         )
         
-        let client = try MQTTClient(host: "mqtt.eclipse.org", port: 1883)
+        let client = try MQTTClient(host: "mqtt.eclipse.org", port: 1883, eventLoopGroupProvider: .createNew)
         try connect(to: client, identifier: "publisher")
         try client.publish(info: publish).wait()
         try client.disconnect().wait()
@@ -56,14 +56,14 @@ final class MQTTNIOTests: XCTestCase {
             payload: ByteBufferAllocator().buffer(string: "Test payload")
         )
         
-        let client = try MQTTClient(host: "mqtt.eclipse.org", port: 1883)
+        let client = try MQTTClient(host: "mqtt.eclipse.org", port: 1883, eventLoopGroupProvider: .createNew)
         try connect(to: client, identifier: "soto_publisher")
         try client.publish(info: publish).wait()
         try client.syncShutdownGracefully()
     }
 
     func testMQTTPingreq() throws {
-        let client = try MQTTClient(host: "mqtt.eclipse.org", port: 1883)
+        let client = try MQTTClient(host: "mqtt.eclipse.org", port: 1883, eventLoopGroupProvider: .createNew)
         try connect(to: client, identifier: "soto_publisher")
         try client.pingreq().wait()
         try client.disconnect().wait()
@@ -79,11 +79,16 @@ final class MQTTNIOTests: XCTestCase {
             topicName: "testing",
             payload: ByteBufferAllocator().buffer(string: "This is the Test payload")
         )
-        let client = try MQTTClient(host: "mqtt.eclipse.org", port: 1883)
+        let client = try MQTTClient(host: "mqtt.eclipse.org", port: 1883, eventLoopGroupProvider: .createNew)
         try connect(to: client, identifier: "soto_publisher")
-        let client2 = try MQTTClient(host: "mqtt.eclipse.org", port: 1883) { publish in
-            print(publish)
-            publishReceived.append(publish)
+        let client2 = try MQTTClient(host: "mqtt.eclipse.org", port: 1883, eventLoopGroupProvider: .createNew) { result in
+            switch result {
+            case .success(let publish):
+                print(publish)
+                publishReceived.append(publish)
+            case .failure(let error):
+                print(error)
+            }
         }
         try connect(to: client2, identifier: "soto_client")
         try client2.subscribe(infos: [.init(qos: .atLeastOnce, topicFilter: "testing")]).wait()
