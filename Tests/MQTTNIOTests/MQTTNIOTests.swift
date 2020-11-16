@@ -17,7 +17,7 @@ final class MQTTNIOTests: XCTestCase {
     }
     
     func testConnect() throws {
-        let client = try MQTTClient(host: "test.mosquitto.org", port: 1883)
+        let client = try MQTTClient(host: "mqtt.eclipse.org", port: 1883)
         try connect(to: client, identifier: "connect")
         try client.disconnect().wait()
         try client.syncShutdownGracefully()
@@ -40,7 +40,7 @@ final class MQTTNIOTests: XCTestCase {
             payload: ByteBufferAllocator().buffer(string: "Test payload")
         )
         
-        let client = try MQTTClient(host: "test.mosquitto.org", port: 1883)
+        let client = try MQTTClient(host: "mqtt.eclipse.org", port: 1883)
         try connect(to: client, identifier: "publisher")
         try client.publish(info: publish).wait()
         try client.disconnect().wait()
@@ -56,7 +56,7 @@ final class MQTTNIOTests: XCTestCase {
             payload: ByteBufferAllocator().buffer(string: "Test payload")
         )
         
-        let client = try MQTTClient(host: "test.mosquitto.org", port: 1883)
+        let client = try MQTTClient(host: "mqtt.eclipse.org", port: 1883)
         try connect(to: client, identifier: "soto_publisher")
         try client.publish(info: publish).wait()
         try client.syncShutdownGracefully()
@@ -79,7 +79,6 @@ final class MQTTNIOTests: XCTestCase {
         }
         try connect(to: client2, identifier: "soto_client")
         try client2.subscribe(infos: [.init(qos: .atLeastOnce, topicFilter: "testing")]).wait()
-        Thread.sleep(forTimeInterval: 5)
         try client.publish(info: publish).wait()
         Thread.sleep(forTimeInterval: 5)
         XCTAssertEqual(publishReceived.count, 1)
