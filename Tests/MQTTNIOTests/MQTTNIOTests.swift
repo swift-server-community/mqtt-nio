@@ -8,7 +8,7 @@ final class MQTTNIOTests: XCTestCase {
     func connect(to client: MQTTClient, identifier: String) throws {
         let connect = MQTTConnectInfo(
             cleanSession: true,
-            keepAliveSeconds: 30,
+            keepAliveSeconds: 15,
             clientIdentifier: identifier,
             userName: "",
             password: ""
@@ -66,6 +66,15 @@ final class MQTTNIOTests: XCTestCase {
         let client = try MQTTClient(host: "mqtt.eclipse.org", port: 1883, eventLoopGroupProvider: .createNew)
         try connect(to: client, identifier: "soto_publisher")
         try client.pingreq().wait()
+        try client.disconnect().wait()
+        try client.syncShutdownGracefully()
+    }
+
+    func testMQTTSubscribe() throws {
+        let client = try MQTTClient(host: "mqtt.eclipse.org", port: 1883, eventLoopGroupProvider: .createNew)
+        try connect(to: client, identifier: "soto_client")
+        try client.subscribe(infos: [.init(qos: .atLeastOnce, topicFilter: "iphone")]).wait()
+        Thread.sleep(forTimeInterval: 30)
         try client.disconnect().wait()
         try client.syncShutdownGracefully()
     }

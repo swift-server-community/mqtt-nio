@@ -63,7 +63,8 @@ public class MQTTClient {
 
     public func connect(info: MQTTConnectInfo, will: MQTTPublishInfo? = nil) -> EventLoopFuture<Void> {
         guard self.channel == nil else { return eventLoopGroup.next().makeFailedFuture(Error.alreadyConnected) }
-        return createBootstrap()
+        let timeout = TimeAmount.seconds(max(Int64(info.keepAliveSeconds - 5), 5))
+        return createBootstrap(pingreqTimeout: timeout)
             .flatMap { channel -> EventLoopFuture<MQTTInboundMessage> in
                 self.clientIdentifier = info.clientIdentifier
                 return self.sendMessage(MQTTConnectMessage(connect: info, will: nil)) { message in
@@ -157,7 +158,7 @@ extension MQTTClient {
         }
     }
     
-    func createBootstrap() -> EventLoopFuture<Channel> {
+    func createBootstrap(pingreqTimeout: TimeAmount) -> EventLoopFuture<Channel> {
         
         ClientBootstrap(group: eventLoopGroup)
             // Enable SO_REUSEADDR.
@@ -165,6 +166,7 @@ extension MQTTClient {
             .channelOption(ChannelOptions.socket(IPPROTO_TCP, TCP_NODELAY), value: 1)
             .channelInitializer { channel in
                 channel.pipeline.addHandlers(self.getSSLHandler() + [
+                    PingreqHandler(client: self, timeout: pingreqTimeout),
                     MQTTEncodeHandler(client: self),
                     ByteToMessageHandler(ByteToMQTTMessageDecoder(client: self))
                 ])
