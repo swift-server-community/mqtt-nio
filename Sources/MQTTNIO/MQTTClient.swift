@@ -76,6 +76,11 @@ public class MQTTClient {
     }
 
     public func publish(info: MQTTPublishInfo) -> EventLoopFuture<Void> {
+        if info.qos == .atMostOnce {
+            // don't send a packet id if QOS is at most once. (MQTT-2.3.1-5)
+            return sendMessageNoWait(MQTTPublishMessage(publish: info, packetId: 0))
+        }
+
         let packetId = Self.globalPacketId.add(1)
         return sendMessage(MQTTPublishMessage(publish: info, packetId: packetId)) { message in
             guard message.packetId == packetId else { return false }
