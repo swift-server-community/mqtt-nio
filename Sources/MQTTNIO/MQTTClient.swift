@@ -1,6 +1,10 @@
+#if canImport(Network)
+import Network
+#endif
 import NIO
 import NIOConcurrencyHelpers
 import NIOSSL
+import NIOTransportServices
 
 public class MQTTClient {
     enum Error: Swift.Error {
@@ -15,7 +19,7 @@ public class MQTTClient {
     let host: String
     let port: Int
     let publishCallback: (Result<MQTTPublishInfo, Swift.Error>) -> ()
-    let ssl: Bool
+    let tlsConfiguration: TLSConfiguration?
     var channel: Channel?
     var clientIdentifier = ""
 
@@ -24,28 +28,35 @@ public class MQTTClient {
     public init(
         host: String,
         port: Int? = nil,
-        ssl: Bool = false,
-        tlsConfiguration: TLSConfiguration? = TLSConfiguration.forClient(),
+        tlsConfiguration: TLSConfiguration? = nil,
         eventLoopGroupProvider: NIOEventLoopGroupProvider,
         publishCallback: @escaping (Result<MQTTPublishInfo, Swift.Error>) -> () = { _ in }
     ) throws {
         self.host = host
-        self.ssl = ssl
         if let port = port {
             self.port = port
         } else {
-            if ssl {
+            if tlsConfiguration != nil {
                 self.port = 8883
             } else {
                 self.port = 1883
             }
         }
+        self.tlsConfiguration = tlsConfiguration
         self.publishCallback = publishCallback
         self.channel = nil
         self.eventLoopGroupProvider = eventLoopGroupProvider
         switch eventLoopGroupProvider {
         case .createNew:
-            self.eventLoopGroup = MultiThreadedEventLoopGroup(numberOfThreads: 1)
+            #if canImport(Network)
+                if #available(OSX 10.14, iOS 12.0, tvOS 12.0, watchOS 6.0, *) {
+                    self.eventLoopGroup = NIOTSEventLoopGroup()
+                } else {
+                    self.eventLoopGroup = MultiThreadedEventLoopGroup(numberOfThreads: 1)
+                }
+            #else
+                self.eventLoopGroup = MultiThreadedEventLoopGroup(numberOfThreads: 1)
+            #endif
         case.shared(let elg):
             self.eventLoopGroup = elg
         }
@@ -67,6 +78,7 @@ public class MQTTClient {
         return createBootstrap(pingreqTimeout: timeout)
             .flatMap { channel -> EventLoopFuture<MQTTInboundMessage> in
                 self.clientIdentifier = info.clientIdentifier
+                print(channel.pipeline)
                 return self.sendMessage(MQTTConnectMessage(connect: info, will: nil)) { message in
                     guard message.type == .CONNACK else { throw Error.failedToConnect }
                     return true
@@ -148,44 +160,68 @@ public class MQTTClient {
 }
 
 extension MQTTClient {
-    func getSSLHandler() -> [ChannelHandler] {
-        if ssl {
-            do {
-                let tlsConfiguration = TLSConfiguration.forClient()
-                let sslContext = try NIOSSLContext(configuration: tlsConfiguration)
-                let tlsHandler = try NIOSSLClientHandler(context: sslContext, serverHostname: host)
-                return [tlsHandler]
-            } catch {
-                return []
-            }
+
+    func getBootstrap(_ eventLoopGroup: EventLoopGroup) throws -> NIOClientTCPBootstrap {
+        var bootstrap: NIOClientTCPBootstrap
+        #if canImport(Network)
+        // if eventLoop is compatible with NIOTransportServices create a NIOTSConnectionBootstrap
+        if #available(OSX 10.14, iOS 12.0, tvOS 12.0, watchOS 6.0, *),
+           let tsBootstrap = NIOTSConnectionBootstrap(validatingGroup: eventLoopGroup) {
+            // create NIOClientTCPBootstrap with NIOTS TLS provider
+            //let tlsConfiguration = self.tlsConfiguration ?? TLSConfiguration.forClient()
+            let parameters = NWProtocolTLS.Options()//tlsConfiguration.getNWProtocolTLSOptions()
+            let tlsProvider = NIOTSClientTLSProvider(tlsOptions: parameters)
+            bootstrap = NIOClientTCPBootstrap(tsBootstrap, tls: tlsProvider)
+        } else if let clientBootstrap = ClientBootstrap(validatingGroup: eventLoopGroup) {
+            let tlsConfiguration = self.tlsConfiguration ?? TLSConfiguration.forClient()
+            let sslContext = try NIOSSLContext(configuration: tlsConfiguration)
+            let tlsProvider = try NIOSSLClientTLSProvider<ClientBootstrap>(context: sslContext, serverHostname: host)
+            bootstrap = NIOClientTCPBootstrap(clientBootstrap, tls: tlsProvider)
         } else {
-            return []
+            preconditionFailure("Cannot create bootstrap for the supplied EventLoop")
+        }
+        #else
+        if let clientBootstrap = ClientBootstrap(validatingGroup: eventLoopGroup) {
+            let tlsConfiguration = self.tlsConfiguration ?? TLSConfiguration.forClient()
+            let sslContext = try NIOSSLContext(configuration: tlsConfiguration)
+            let tlsProvider = try NIOSSLClientTLSProvider<ClientBootstrap>(context: sslContext, serverHostname: host)
+            bootstrap = NIOClientTCPBootstrap(clientBootstrap, tls: tlsProvider)
+        } else {
+            preconditionFailure("Cannot create bootstrap for the supplied EventLoop")
+        }
+        #endif
+        if tlsConfiguration != nil {
+            return bootstrap.enableTLS()
+        }
+        return bootstrap
+    }
+
+    func createBootstrap(pingreqTimeout: TimeAmount) -> EventLoopFuture<Channel> {
+        do {
+            let bootstrap = try getBootstrap(self.eventLoopGroup)
+            return bootstrap
+                .channelOption(ChannelOptions.socketOption(.so_reuseaddr), value: 1)
+                .channelOption(ChannelOptions.socket(IPPROTO_TCP, TCP_NODELAY), value: 1)
+                .channelInitializer { channel in
+                    channel.pipeline.addHandlers([
+                        PingreqHandler(client: self, timeout: pingreqTimeout),
+                        MQTTEncodeHandler(client: self),
+                        ByteToMessageHandler(ByteToMQTTMessageDecoder(client: self))
+                    ])
+                }
+                .connect(host: self.host, port: self.port)
+                .map { channel in
+                    self.channel = channel
+                    channel.closeFuture.whenComplete { _ in
+                        self.channel = nil
+                    }
+                    return channel
+                }
+        } catch {
+            return self.eventLoopGroup.next().makeFailedFuture(error)
         }
     }
-    
-    func createBootstrap(pingreqTimeout: TimeAmount) -> EventLoopFuture<Channel> {
-        
-        ClientBootstrap(group: eventLoopGroup)
-            // Enable SO_REUSEADDR.
-            .channelOption(ChannelOptions.socketOption(.so_reuseaddr), value: 1)
-            .channelOption(ChannelOptions.socket(IPPROTO_TCP, TCP_NODELAY), value: 1)
-            .channelInitializer { channel in
-                channel.pipeline.addHandlers(self.getSSLHandler() + [
-                    PingreqHandler(client: self, timeout: pingreqTimeout),
-                    MQTTEncodeHandler(client: self),
-                    ByteToMessageHandler(ByteToMQTTMessageDecoder(client: self))
-                ])
-            }
-            .connect(host: self.host, port: self.port)
-            .map { channel in
-                self.channel = channel
-                channel.closeFuture.whenComplete { _ in
-                    self.channel = nil
-                }
-                return channel
-            }
-    }
-    
+
     func sendMessage(_ message: MQTTOutboundMessage, checkInbound: @escaping (MQTTInboundMessage) throws -> Bool) -> EventLoopFuture<MQTTInboundMessage> {
         guard let channel = self.channel else { return eventLoopGroup.next().makeFailedFuture(Error.noConnection) }
         let task = MQTTTask(on: eventLoopGroup.next(), checkInbound: checkInbound)
