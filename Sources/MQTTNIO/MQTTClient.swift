@@ -16,6 +16,7 @@ public class MQTTClient {
         case noConnection
         case unexpectedMessage
         case decodeError
+        case websocketUpgradeFailed
     }
     let eventLoopGroup: EventLoopGroup
     let eventLoopGroupProvider: NIOEventLoopGroupProvider
@@ -219,15 +220,15 @@ extension MQTTClient {
                 .channelOption(ChannelOptions.socketOption(.so_reuseaddr), value: 1)
                 .channelOption(ChannelOptions.socket(IPPROTO_TCP, TCP_NODELAY), value: 1)
                 .channelInitializer { channel in
+                    // are we using websockets
                     if self.configuration.useWebsockets {
-                        return self.setupChannelForWebsockets(channel: channel) {
-                            let future = channel.pipeline.addHandlers([
+                        // prepare for websockets and on upgrade add handlers
+                        return self.setupChannelForWebsockets(channel: channel, upgradePromise: promise) {
+                            return channel.pipeline.addHandlers([
                                 PingreqHandler(client: self, timeout: pingreqTimeout),
                                 MQTTEncodeHandler(client: self),
                                 ByteToMessageHandler(ByteToMQTTMessageDecoder(client: self))
                             ])
-                            future.cascade(to: promise)
-                            return future
                         }
                     } else {
                         return channel.pipeline.addHandlers([
@@ -256,18 +257,24 @@ extension MQTTClient {
         return promise.futureResult
     }
 
-    func setupChannelForWebsockets(channel: Channel, afterHandlerAdded: @escaping () -> EventLoopFuture<Void>) -> EventLoopFuture<Void> {
-        let httpHandler = HTTPInitialRequestHandler(host: self.host)
+    func setupChannelForWebsockets(
+        channel: Channel,
+        upgradePromise promise: EventLoopPromise<Void>,
+        afterHandlerAdded: @escaping () -> EventLoopFuture<Void>
+    ) -> EventLoopFuture<Void> {
+        let httpHandler = HTTPInitialRequestHandler(host: self.host, upgradePromise: promise)
         let requestKey = (0..<16).map { _ in UInt8.random(in: .min ..< .max)}
         let websocketUpgrader = NIOWebSocketClientUpgrader(
             requestKey: Data(requestKey).base64EncodedString()) { channel, req in
-                return channel.pipeline.addHandler(WebSocketPingPongHandler())
-                    .flatMap { _ in
-                        afterHandlerAdded()
-                    }
-                    .map { _ in
-                        print(self.channel!.pipeline)
-                    }
+            let future = channel.pipeline.addHandler(WebSocketPingPongHandler())
+                .flatMap { _ in
+                    afterHandlerAdded()
+                }
+                .map { _ in
+                    print(self.channel!.pipeline)
+                }
+            future.cascade(to: promise)
+            return future
         }
 
         let config: NIOHTTPClientUpgradeConfiguration = (
