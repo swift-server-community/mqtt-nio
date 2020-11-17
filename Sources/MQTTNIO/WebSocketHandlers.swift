@@ -100,6 +100,7 @@ final class WebSocketPingPongHandler: ChannelDuplexHandler {
     public func channelRead(context: ChannelHandlerContext, data: NIOAny) {
         let frame = self.unwrapInboundIn(data)
 
+        print(frame)
         switch frame.opcode {
         case .pong:
             self.pong(context: context, frame: frame)

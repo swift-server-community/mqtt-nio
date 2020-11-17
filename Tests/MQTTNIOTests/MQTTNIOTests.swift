@@ -17,13 +17,14 @@ final class MQTTNIOTests: XCTestCase {
     }
 
     func testBootstrap() throws {
-        let client = try MQTTClient(host: "test.mosquitto.org", port: 8080, eventLoopGroupProvider: .createNew)
-        let bootstrap = try client.createBootstrap().wait()
+        let client = try MQTTClient(host: "test.mosquitto.org", port: 8080, eventLoopGroupProvider: .createNew, configuration: .init(useWebsockets: true))
+        _ = try client.createBootstrap(pingreqTimeout: .seconds(10)).wait()
+        Thread.sleep(forTimeInterval: 15)
         try client.syncShutdownGracefully()
     }
 
-    func testConnect() throws {
-        let client = try MQTTClient(host: "test.mosquitto.org", port: 8080, eventLoopGroupProvider: .createNew)
+    func testWebsocketConnect() throws {
+        let client = try MQTTClient(host: "test.mosquitto.org", port: 8080, eventLoopGroupProvider: .createNew, configuration: .init(useWebsockets: true))
         try connect(to: client, identifier: "connect")
         try client.disconnect().wait()
         try client.syncShutdownGracefully()
@@ -128,7 +129,7 @@ final class MQTTNIOTests: XCTestCase {
         Thread.sleep(forTimeInterval: 2)
         try client.publish(info: publish).wait()
         Thread.sleep(forTimeInterval: 2)
-        XCTAssertEqual(publishReceived.count, 2)
+        XCTAssertEqual(publishReceived.count, 30)
         try client.disconnect().wait()
         try client.syncShutdownGracefully()
         try client2.disconnect().wait()
