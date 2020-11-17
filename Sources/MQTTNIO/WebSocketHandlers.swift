@@ -11,14 +11,14 @@ final class HTTPInitialRequestHandler: ChannelInboundHandler, RemovableChannelHa
     public typealias OutboundOut = HTTPClientRequestPart
 
     let host: String
+    let upgradePromise: EventLoopPromise<Void>
 
-    init(host: String) {
+    init(host: String, upgradePromise: EventLoopPromise<Void>) {
         self.host = host
+        self.upgradePromise = upgradePromise
     }
     
     public func channelActive(context: ChannelHandlerContext) {
-        print("Client connected to \(context.remoteAddress!)")
-
         // We are connected. It's time to send the message to the server to initialize the upgrade dance.
         var headers = HTTPHeaders()
         headers.add(name: "Content-Type", value: "text/plain; charset=utf-8")
@@ -31,10 +31,7 @@ final class HTTPInitialRequestHandler: ChannelInboundHandler, RemovableChannelHa
                                           headers: headers)
 
         context.write(self.wrapOutboundOut(.head(requestHead)), promise: nil)
-
-        let body = HTTPClientRequestPart.body(.byteBuffer(ByteBuffer()))
-        context.write(self.wrapOutboundOut(body), promise: nil)
-
+        context.write(self.wrapOutboundOut(.body(.byteBuffer(ByteBuffer()))), promise: nil)
         context.writeAndFlush(self.wrapOutboundOut(.end(nil)), promise: nil)
     }
 
@@ -42,16 +39,12 @@ final class HTTPInitialRequestHandler: ChannelInboundHandler, RemovableChannelHa
 
         let clientResponse = self.unwrapInboundIn(data)
 
-        print("Upgrade failed")
-
         switch clientResponse {
-        case .head(let responseHead):
-            print("Received status: \(responseHead.status)")
-        case .body(let byteBuffer):
-            let string = String(buffer: byteBuffer)
-            print("Received: '\(string)' back from the server.")
+        case .head:
+            self.upgradePromise.fail(MQTTClient.Error.websocketUpgradeFailed)
+        case .body:
+            break
         case .end:
-            print("Closing channel.")
             context.close(promise: nil)
         }
     }
@@ -61,8 +54,7 @@ final class HTTPInitialRequestHandler: ChannelInboundHandler, RemovableChannelHa
     }
 
     public func errorCaught(context: ChannelHandlerContext, error: Error) {
-        print("error: ", error)
-
+        self.upgradePromise.fail(error)
         // As we are not really interested getting notified on success or failure
         // we just pass nil as promise to reduce allocations.
         context.close(promise: nil)
