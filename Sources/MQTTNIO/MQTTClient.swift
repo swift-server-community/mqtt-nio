@@ -3,8 +3,10 @@ import Network
 #endif
 import NIO
 import NIOConcurrencyHelpers
+import NIOHTTP1
 import NIOSSL
 import NIOTransportServices
+import NIOWebSocket
 
 public class MQTTClient {
     enum Error: Swift.Error {
@@ -142,7 +144,7 @@ public class MQTTClient {
         }
         .map { _ in }
     }
-    
+
     public func disconnect() -> EventLoopFuture<Void> {
         let disconnect: EventLoopFuture<Void> = sendMessageNoWait(MQTTDisconnectMessage())
             .flatMap {
@@ -203,11 +205,34 @@ extension MQTTClient {
                 .channelOption(ChannelOptions.socketOption(.so_reuseaddr), value: 1)
                 .channelOption(ChannelOptions.socket(IPPROTO_TCP, TCP_NODELAY), value: 1)
                 .channelInitializer { channel in
-                    channel.pipeline.addHandlers([
-                        PingreqHandler(client: self, timeout: pingreqTimeout),
-                        MQTTEncodeHandler(client: self),
-                        ByteToMessageHandler(ByteToMQTTMessageDecoder(client: self))
-                    ])
+                    let httpHandler = HTTPInitialRequestHandler(host: self.host)
+
+                    let websocketUpgrader = NIOWebSocketClientUpgrader(
+                        requestKey: "OfS0wDaT5NoxF2gqm7Zj2YtetzM=") { channel, req in
+                        let future: EventLoopFuture<Void> = channel.pipeline.addHandler(WebSocketPingPongHandler())
+                            .flatMap { _ in
+                                channel.pipeline.addHandlers(self.getSSLHandler() + [
+                                    PingreqHandler(client: self, timeout: pingreqTimeout),
+                                    MQTTEncodeHandler(client: self),
+                                    ByteToMessageHandler(ByteToMQTTMessageDecoder(client: self))
+                                ])
+                            }
+                            .map { _ in
+                                print(self.channel!.pipeline)
+                            }
+                        future.cascade(to: promise)
+                        return future
+                    }
+
+                    let config: NIOHTTPClientUpgradeConfiguration = (
+                        upgraders: [ websocketUpgrader ],
+                        completionHandler: { _ in
+                            channel.pipeline.removeHandler(httpHandler, promise: nil)
+                    })
+
+                    return channel.pipeline.addHTTPClientHandlers(withClientUpgrade: config).flatMap {
+                        channel.pipeline.addHandler(httpHandler)
+                    }
                 }
                 .connect(host: self.host, port: self.port)
                 .map { channel in
