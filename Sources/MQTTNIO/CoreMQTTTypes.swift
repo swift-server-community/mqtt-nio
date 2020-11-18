@@ -2,25 +2,39 @@ import CCoreMQTT
 import NIO
 
 public enum MQTTQoS: UInt32 {
+    /// fire and forget
     case atMostOnce = 0
+    /// wait for PUBACK, if you don't receive it after a period of time retry sending
     case atLeastOnce = 1
+    /// wait for PUBREC, send PUBREL and then wait for PUBCOMP
     case exactlyOnce = 2
 
     var coreType: MQTTQoS_t { .init(rawValue: self.rawValue) }
 }
 
 public enum MQTTStatus: UInt32 {
-    case MQTTSuccess = 0     /**< Function completed successfully. */
-    case MQTTBadParameter    /**< At least one parameter was invalid. */
-    case MQTTNoMemory        /**< A provided buffer was too small. */
-    case MQTTSendFailed      /**< The transport send function failed. */
-    case MQTTRecvFailed      /**< The transport receive function failed. */
-    case MQTTBadResponse     /**< An invalid packet was received from the server. */
-    case MQTTServerRefused   /**< The server refused a CONNECT or SUBSCRIBE. */
-    case MQTTNoDataAvailable /**< No data available from the transport interface. */
-    case MQTTIllegalState    /**< An illegal state in the state record. */
-    case MQTTStateCollision  /**< A collision with an existing state record entry. */
-    case MQTTKeepAliveTimeout /**< Timeout while waiting for PINGRESP. */
+    /// Function completed successfully
+    case MQTTSuccess = 0
+    /// At least one parameter was invalid
+    case MQTTBadParameter
+    /// A provided buffer was too small.
+    case MQTTNoMemory
+    /// The transport send function failed
+    case MQTTSendFailed
+    /// The transport receive function failed
+    case MQTTRecvFailed
+    /// An invalid packet was received from the server.
+    case MQTTBadResponse
+    /// The server refused a CONNECT or SUBSCRIBE
+    case MQTTServerRefused
+    /// No data available from the transport interface
+    case MQTTNoDataAvailable
+    /// An illegal state in the state record
+    case MQTTIllegalState
+    /// A collision with an existing state record entry
+    case MQTTStateCollision
+    /// Timeout while waiting for PINGRESP
+    case MQTTKeepAliveTimeout
 }
 
 public enum MQTTPacketType: UInt8 {
