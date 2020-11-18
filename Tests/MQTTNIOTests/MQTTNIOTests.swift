@@ -5,6 +5,34 @@ import NIOSSL
 
 final class MQTTNIOTests: XCTestCase {
 
+    // downloaded from http://test.mosquitto.org/
+    let mosquittoCertificate = """
+    -----BEGIN CERTIFICATE-----
+    MIIEAzCCAuugAwIBAgIUBY1hlCGvdj4NhBXkZ/uLUZNILAwwDQYJKoZIhvcNAQEL
+    BQAwgZAxCzAJBgNVBAYTAkdCMRcwFQYDVQQIDA5Vbml0ZWQgS2luZ2RvbTEOMAwG
+    A1UEBwwFRGVyYnkxEjAQBgNVBAoMCU1vc3F1aXR0bzELMAkGA1UECwwCQ0ExFjAU
+    BgNVBAMMDW1vc3F1aXR0by5vcmcxHzAdBgkqhkiG9w0BCQEWEHJvZ2VyQGF0Y2hv
+    by5vcmcwHhcNMjAwNjA5MTEwNjM5WhcNMzAwNjA3MTEwNjM5WjCBkDELMAkGA1UE
+    BhMCR0IxFzAVBgNVBAgMDlVuaXRlZCBLaW5nZG9tMQ4wDAYDVQQHDAVEZXJieTES
+    MBAGA1UECgwJTW9zcXVpdHRvMQswCQYDVQQLDAJDQTEWMBQGA1UEAwwNbW9zcXVp
+    dHRvLm9yZzEfMB0GCSqGSIb3DQEJARYQcm9nZXJAYXRjaG9vLm9yZzCCASIwDQYJ
+    KoZIhvcNAQEBBQADggEPADCCAQoCggEBAME0HKmIzfTOwkKLT3THHe+ObdizamPg
+    UZmD64Tf3zJdNeYGYn4CEXbyP6fy3tWc8S2boW6dzrH8SdFf9uo320GJA9B7U1FW
+    Te3xda/Lm3JFfaHjkWw7jBwcauQZjpGINHapHRlpiCZsquAthOgxW9SgDgYlGzEA
+    s06pkEFiMw+qDfLo/sxFKB6vQlFekMeCymjLCbNwPJyqyhFmPWwio/PDMruBTzPH
+    3cioBnrJWKXc3OjXdLGFJOfj7pP0j/dr2LH72eSvv3PQQFl90CZPFhrCUcRHSSxo
+    E6yjGOdnz7f6PveLIB574kQORwt8ePn0yidrTC1ictikED3nHYhMUOUCAwEAAaNT
+    MFEwHQYDVR0OBBYEFPVV6xBUFPiGKDyo5V3+Hbh4N9YSMB8GA1UdIwQYMBaAFPVV
+    6xBUFPiGKDyo5V3+Hbh4N9YSMA8GA1UdEwEB/wQFMAMBAf8wDQYJKoZIhvcNAQEL
+    BQADggEBAGa9kS21N70ThM6/Hj9D7mbVxKLBjVWe2TPsGfbl3rEDfZ+OKRZ2j6AC
+    6r7jb4TZO3dzF2p6dgbrlU71Y/4K0TdzIjRj3cQ3KSm41JvUQ0hZ/c04iGDg/xWf
+    +pp58nfPAYwuerruPNWmlStWAXf0UTqRtg4hQDWBuUFDJTuWuuBvEXudz74eh/wK
+    sMwfu1HFvjy5Z0iMDU8PUDepjVolOCue9ashlS4EB5IECdSR2TItnAIiIwimx839
+    LdUdRudafMu5T5Xma182OC0/u/xRlEm+tvKGGmfFcN0piqVl8OrSPBgIlb+1IKJE
+    m/XriWr/Cq4h/JfB7NTsezVslgkBaoU=
+    -----END CERTIFICATE-----
+    """
+    
     func createClient(cb: @escaping (Result<MQTTPublishInfo, Swift.Error>) -> () = { _ in }) -> MQTTClient {
         MQTTClient(host: "mqtt.eclipse.org", port: 1883, eventLoopGroupProvider: .createNew, publishCallback: cb)
     }
@@ -17,10 +45,14 @@ final class MQTTNIOTests: XCTestCase {
             publishCallback: cb
         )
     }
-    func createSSLClient(cb: @escaping (Result<MQTTPublishInfo, Swift.Error>) -> () = { _ in }) -> MQTTClient {
-        let tlsConfiguration: TLSConfiguration? = nil //TLSConfiguration.forClient(certificateChain: certificate.map {.certificate($0)}, privateKey: .privateKey(privateKey))
+    func createSSLClient(cb: @escaping (Result<MQTTPublishInfo, Swift.Error>) -> () = { _ in }) throws -> MQTTClient {
+        let rootCertificate = try NIOSSLCertificate.fromPEMBytes([UInt8](mosquittoCertificate.utf8))
+        //let key = try NIOSSLPrivateKey(bytes: [UInt8](macbookProKey.utf8), format: .pem)
+        let tlsConfiguration: TLSConfiguration? = TLSConfiguration.forClient(
+            trustRoots: .certificates(rootCertificate)
+        )
         return MQTTClient(
-            host: "broker.emqx.io",
+            host: "test.mosquitto.org",
             eventLoopGroupProvider: .createNew,
             configuration: .init(useSSL: true, tlsConfiguration: tlsConfiguration),
             publishCallback: cb
@@ -54,7 +86,7 @@ final class MQTTNIOTests: XCTestCase {
     }
 
     func testSSLConnect() throws {
-        let client = createSSLClient()
+        let client = try createSSLClient()
         try connect(to: client, identifier: "connect")
         try client.pingreq().wait()
         try client.disconnect().wait()
