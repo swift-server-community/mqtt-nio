@@ -4,7 +4,7 @@ import NIOHTTP1
 // The HTTP handler to be used to initiate the request.
 // This initial request will be adapted by the WebSocket upgrader to contain the upgrade header parameters.
 // Channel read will only be called if the upgrade fails.
-final class HTTPInitialRequestHandler: ChannelInboundHandler, RemovableChannelHandler {
+final class WebSocketInitialRequestHandler: ChannelInboundHandler, RemovableChannelHandler {
     public typealias InboundIn = HTTPClientResponsePart
     public typealias OutboundOut = HTTPClientRequestPart
 
@@ -47,10 +47,6 @@ final class HTTPInitialRequestHandler: ChannelInboundHandler, RemovableChannelHa
         case .end:
             context.close(promise: nil)
         }
-    }
-
-    public func handlerRemoved(context: ChannelHandlerContext) {
-        print("HTTP handler removed.")
     }
 
     public func errorCaught(context: ChannelHandlerContext, error: Error) {

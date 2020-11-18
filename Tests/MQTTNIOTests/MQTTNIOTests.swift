@@ -5,9 +5,26 @@ import NIOSSL
 
 final class MQTTNIOTests: XCTestCase {
 
-    func createClient() -> MQTTClient { MQTTClient(host: "mqtt.eclipse.org", port: 1883, eventLoopGroupProvider: .createNew) }
-    func createWebSocketClient() -> MQTTClient { MQTTClient(host: "broker.hivemq.com", port: 8000, eventLoopGroupProvider: .createNew, configuration: .init(useWebSockets: true, webSocketURLPath: "/mqtt")) }
-    func createSSLClient() -> MQTTClient { return MQTTClient(host: "mqtt.eclipse.org", eventLoopGroupProvider: .createNew, configuration: .init(useSSL: true)) }
+    func createClient(cb: @escaping (Result<MQTTPublishInfo, Swift.Error>) -> () = { _ in }) -> MQTTClient {
+        MQTTClient(host: "mqtt.eclipse.org", port: 1883, eventLoopGroupProvider: .createNew, publishCallback: cb)
+    }
+    func createWebSocketClient(cb: @escaping (Result<MQTTPublishInfo, Swift.Error>) -> () = { _ in }) -> MQTTClient {
+        MQTTClient(
+            host: "broker.hivemq.com",
+            port: 8000,
+            eventLoopGroupProvider: .createNew,
+            configuration: .init(disablePingreq: true, useWebSockets: true, webSocketURLPath: "/mqtt"),
+            publishCallback: cb
+        )
+    }
+    func createSSLClient(cb: @escaping (Result<MQTTPublishInfo, Swift.Error>) -> () = { _ in }) -> MQTTClient {
+        return MQTTClient(
+            host: "mqtt.eclipse.org",
+            eventLoopGroupProvider: .createNew,
+            configuration: .init(useSSL: true),
+            publishCallback: cb
+        )
+    }
 
     func connect(to client: MQTTClient, identifier: String) throws {
         let connect = MQTTConnectInfo(
@@ -31,6 +48,7 @@ final class MQTTNIOTests: XCTestCase {
         let client = createWebSocketClient()
         defer { XCTAssertNoThrow(try client.syncShutdownGracefully())}
         try connect(to: client, identifier: "connect")
+        Thread.sleep(forTimeInterval: 30)
         try client.disconnect().wait()
     }
 
@@ -114,10 +132,10 @@ final class MQTTNIOTests: XCTestCase {
             topicName: "testing-noretain",
             payload: ByteBufferAllocator().buffer(string: "This is the Test payload")
         )
-        let client = self.createClient()
+        let client = self.createWebSocketClient()
         defer { XCTAssertNoThrow(try client.syncShutdownGracefully())}
         try connect(to: client, identifier: "soto_publisher")
-        let client2 = MQTTClient(host: "mqtt.eclipse.org", port: 1883, eventLoopGroupProvider: .createNew) { result in
+        let client2 = self.createWebSocketClient() { result in
             switch result {
             case .success(let publish):
                 print(publish)
