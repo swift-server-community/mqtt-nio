@@ -1,46 +1,37 @@
 import NIO
 import NIOWebSocket
 
+/// WebSocket channel handler. Sends WebSocket frames, receives and combines frames.
+/// Code inspired from vapor/websocket-kit https://github.com/vapor/websocket-kit
+/// and the WebSocket sample from swift-nio
+/// https://github.com/apple/swift-nio/tree/main/Sources/NIOWebSocketClient
+///
+/// The WebSocket ping/pong is implemented but not used as the MQTT client already implements
+/// PINGREQ messages
 final class WebSocketHandler: ChannelDuplexHandler {
     typealias OutboundIn = ByteBuffer
     typealias OutboundOut = WebSocketFrame
     typealias InboundIn = WebSocketFrame
     typealias InboundOut = ByteBuffer
 
-    let testFrameData: String = "Hello World"
+    static let pingData: String = "MQTTClient"
+
     var webSocketFrameSequence: WebSocketFrameSequence?
+    var waitingOnPong: Bool = false
+    var pingInterval: TimeAmount? = nil
 
-    // This is being hit, channel active won't be called as it is already added.
-    public func handlerAdded(context: ChannelHandlerContext) {
-        print("WebSocket handler added.")
-        self.pingTestFrameData(context: context)
-    }
-
-    public func handlerRemoved(context: ChannelHandlerContext) {
-        print("WebSocket handler removed.")
-    }
-
-    func channelActive(context: ChannelHandlerContext) {
-        pingTestFrameData(context: context)
-        context.fireChannelActive()
-    }
-
+    /// Write bytebuffer as WebSocket frame
     func write(context: ChannelHandlerContext, data: NIOAny, promise: EventLoopPromise<Void>?) {
         guard context.channel.isActive else { return }
 
-        var buffer = unwrapOutboundIn(data)
-        let maskKey = WebSocketMaskingKey((0..<4).map { _ in UInt8.random(in: 1 ..< 255) })
-        /*if let maskKey = maskKey {
-            buffer.webSocketMask(maskKey)
-        }*/
-        let frame = WebSocketFrame(fin: true, opcode: .binary, maskKey: maskKey, data: buffer)
-        context.writeAndFlush(wrapOutboundOut(frame), promise: promise)
+        let buffer = unwrapOutboundIn(data)
+        send(context: context, buffer: buffer, opcode: .binary, fin: true, promise: promise)
     }
 
-    public func channelRead(context: ChannelHandlerContext, data: NIOAny) {
+    /// Read WebSocket frame
+    func channelRead(context: ChannelHandlerContext, data: NIOAny) {
         let frame = self.unwrapInboundIn(data)
 
-        print(frame)
         switch frame.opcode {
         case .pong:
             self.pong(context: context, frame: frame)
@@ -88,19 +79,7 @@ final class WebSocketHandler: ChannelDuplexHandler {
         }
     }
 
-    private func receivedClose(context: ChannelHandlerContext, frame: WebSocketFrame) {
-        // Handle a received close frame. We're just going to close.
-        print("Received Close instruction from server")
-        context.close(promise: nil)
-    }
-
-    private func pingTestFrameData(context: ChannelHandlerContext) {
-        /*_ = context.eventLoop.scheduleTask(in: .seconds(5)) {
-            let buffer = context.channel.allocator.buffer(string: self.testFrameData)
-            self.send(context: context, buffer: buffer, opcode: .ping)
-        }*/
-    }
-
+    /// Send web socket frame to server
     private func send(
         context: ChannelHandlerContext,
         buffer: ByteBuffer,
@@ -109,19 +88,49 @@ final class WebSocketHandler: ChannelDuplexHandler {
         promise: EventLoopPromise<Void>? = nil
     ) {
         let maskKey = makeMaskKey()
-        let frame = WebSocketFrame(fin: true, opcode: .text, maskKey: maskKey, data: buffer)
+        let frame = WebSocketFrame(fin: fin, opcode: opcode, maskKey: maskKey, data: buffer)
         context.writeAndFlush(wrapOutboundOut(frame), promise: promise)
     }
 
-    private func pong(context: ChannelHandlerContext, frame: WebSocketFrame) {
-        var frameData = frame.unmaskedData
-        if let frameDataString = frameData.readString(length: self.testFrameData.count) {
-            print("Pong: Received: \(frameDataString)")
+    /// Send ping and setup task to check for pong and send new ping
+    private func sendPingAndWait(context: ChannelHandlerContext) {
+        guard context.channel.isActive, let pingInterval = pingInterval else {
+            return
+        }
+        if waitingOnPong {
+            // We never received a pong from our last ping, so the connection has timed out
+            let promise = context.eventLoop.makePromise(of: Void.self)
+            self.close(context: context, code: .unknown(1006), promise: promise)
+            promise.futureResult.whenComplete { _ in
+                // Usually, closing a WebSocket is done by sending the close frame and waiting
+                // for the peer to respond with their close frame. We are in a timeout situation,
+                // so the other side likely will never send the close frame. We just close the
+                // channel ourselves.
+                context.channel.close(mode: .all, promise: nil)
+            }
+
+        } else {
+            let buffer = context.channel.allocator.buffer(string: Self.pingData)
+            self.send(context: context, buffer: buffer, opcode: .ping)
+            _ = context.eventLoop.scheduleTask(in: pingInterval) {
+                self.sendPingAndWait(context: context)
+            }
         }
     }
 
+    /// Respond to pong from server. Verify contents of pong and clear waitingOnPong flag
+    private func pong(context: ChannelHandlerContext, frame: WebSocketFrame) {
+        var frameData = frame.unmaskedData
+        guard let frameDataString = frameData.readString(length: Self.pingData.count),
+              frameDataString == Self.pingData else {
+            self.close(context: context, code: .goingAway, promise: nil)
+            return
+        }
+        self.waitingOnPong = false
+    }
+
+    /// Respond to ping from server
     private func ping(context: ChannelHandlerContext, frame: WebSocketFrame) {
-        print("Ping")
         if frame.fin {
             self.send(context: context, buffer: frame.unmaskedData, opcode: .pong, fin: true, promise: nil)
         } else {
@@ -129,11 +138,18 @@ final class WebSocketHandler: ChannelDuplexHandler {
         }
     }
 
+    private func receivedClose(context: ChannelHandlerContext, frame: WebSocketFrame) {
+         // Handle a received close frame. We're just going to close.
+         context.close(promise: nil)
+     }
+
+    /// Make mask key to be used in WebSocket frame
     func makeMaskKey() -> WebSocketMaskingKey? {
         let bytes: [UInt8] = (0...3).map { _ in UInt8.random(in: 1...255) }
         return WebSocketMaskingKey(bytes)
     }
 
+    /// Close websocket connection
     public func close(context: ChannelHandlerContext, code: WebSocketErrorCode = .goingAway, promise: EventLoopPromise<Void>?) {
         let codeAsInt = UInt16(webSocketErrorCode: code)
         let codeToSend: WebSocketErrorCode
@@ -150,22 +166,26 @@ final class WebSocketHandler: ChannelDuplexHandler {
         self.send(context: context, buffer: buffer, opcode: .connectionClose, fin: true, promise: promise)
     }
 
-    private func closeOnError(context: ChannelHandlerContext) {
-        // We have hit an error, we want to close. We do that by sending a close frame and then
-        // shutting down the write side of the connection. The server will respond with a close of its own.
-        var data = context.channel.allocator.buffer(capacity: 2)
-        data.write(webSocketErrorCode: .protocolError)
-        let frame = WebSocketFrame(fin: true, opcode: .connectionClose, data: data)
-        context.write(self.wrapOutboundOut(frame)).whenComplete { (_: Result<Void, Error>) in
-            context.close(mode: .output, promise: nil)
-        }
-    }
-
     func channelInactive(context: ChannelHandlerContext) {
+        close(context: context, code: .unknown(1006), promise: nil)
 
         // We always forward the error on to let others see it.
         context.fireChannelInactive()
     }
+
+    func errorCaught(context: ChannelHandlerContext, error: Error) {
+        let errorCode: WebSocketErrorCode
+        if let error = error as? NIOWebSocketError {
+            errorCode = WebSocketErrorCode(error)
+        } else {
+            errorCode = .unexpectedServerError
+        }
+        close(context: context, code: errorCode, promise: nil)
+
+        // We always forward the error on to let others see it.
+        context.fireErrorCaught(error)
+    }
+
 }
 
 struct WebSocketFrameSequence {
@@ -186,3 +206,16 @@ struct WebSocketFrameSequence {
         }
     }
 }
+
+extension WebSocketErrorCode {
+    init(_ error: NIOWebSocketError) {
+        switch error {
+        case .invalidFrameLength:
+            self = .messageTooLarge
+        case .fragmentedControlFrame,
+             .multiByteControlFrameLength:
+            self = .protocolError
+        }
+    }
+}
+

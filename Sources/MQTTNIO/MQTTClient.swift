@@ -33,7 +33,7 @@ public class MQTTClient {
     /// Configuration for MQTTClient
     public struct Configuration {
         public init(
-            disablePingreq: Bool = true,
+            disablePingreq: Bool = false,
             useSSL: Bool = false,
             useWebSockets: Bool = false,
             tlsConfiguration: TLSConfiguration = TLSConfiguration.forClient(),
@@ -274,7 +274,7 @@ extension MQTTClient {
         upgradePromise promise: EventLoopPromise<Void>,
         afterHandlerAdded: @escaping () -> EventLoopFuture<Void>
     ) -> EventLoopFuture<Void> {
-        let httpHandler = HTTPInitialRequestHandler(
+        let httpHandler = WebSocketInitialRequestHandler(
             host: self.host,
             urlPath: configuration.webSocketURLPath ?? "/",
             upgradePromise: promise
