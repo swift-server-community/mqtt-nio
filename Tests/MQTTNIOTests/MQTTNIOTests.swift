@@ -5,6 +5,10 @@ import NIOSSL
 
 final class MQTTNIOTests: XCTestCase {
 
+    func createClient() -> MQTTClient { MQTTClient(host: "mqtt.eclipse.org", port: 1883, eventLoopGroupProvider: .createNew) }
+    func createWebSocketClient() -> MQTTClient { MQTTClient(host: "broker.hivemq.com", port: 8000, eventLoopGroupProvider: .createNew, configuration: .init(useWebSockets: true, webSocketURLPath: "/mqtt")) }
+    func createSSLClient() -> MQTTClient { return MQTTClient(host: "mqtt.eclipse.org", eventLoopGroupProvider: .createNew, configuration: .init(useSSL: true)) }
+
     func connect(to client: MQTTClient, identifier: String) throws {
         let connect = MQTTConnectInfo(
             cleanSession: true,
@@ -17,25 +21,24 @@ final class MQTTNIOTests: XCTestCase {
     }
 
     func testBootstrap() throws {
-        let client = try MQTTClient(host: "test.mosquitto.org", port: 8080, eventLoopGroupProvider: .createNew, configuration: .init(useWebsockets: true))
+        let client = self.createClient()
+        defer { XCTAssertNoThrow(try client.syncShutdownGracefully())}
         _ = try client.createBootstrap(pingreqTimeout: .seconds(10)).wait()
         Thread.sleep(forTimeInterval: 15)
-        try client.syncShutdownGracefully()
     }
 
     func testWebsocketConnect() throws {
-        let client = try MQTTClient(host: "test.mosquitto.org", port: 8080, eventLoopGroupProvider: .createNew, configuration: .init(useWebsockets: true))
+        let client = createWebSocketClient()
+        defer { XCTAssertNoThrow(try client.syncShutdownGracefully())}
         try connect(to: client, identifier: "connect")
         try client.disconnect().wait()
-        try client.syncShutdownGracefully()
     }
 
     func testSSLConnect() throws {
-        let eventLoopGroup = MultiThreadedEventLoopGroup(numberOfThreads: 1)
-        let client = try MQTTClient(host: "mqtt.eclipse.org", eventLoopGroupProvider: .shared(eventLoopGroup))
+        let client = createSSLClient()
+        defer { XCTAssertNoThrow(try client.syncShutdownGracefully())}
         try connect(to: client, identifier: "connect")
         try client.disconnect().wait()
-        try client.syncShutdownGracefully()
     }
 
     func testMQTTPublishQoS0() throws {
@@ -47,15 +50,14 @@ final class MQTTNIOTests: XCTestCase {
             payload: ByteBufferAllocator().buffer(string: "Test payload")
         )
 
-        let client = try MQTTClient(host: "mqtt.eclipse.org", port: 1883, eventLoopGroupProvider: .createNew)
+        let client = self.createClient()
+        defer { XCTAssertNoThrow(try client.syncShutdownGracefully())}
         try connect(to: client, identifier: "publisher")
         try client.publish(info: publish).wait()
         try client.disconnect().wait()
-        try client.syncShutdownGracefully()
     }
 
     func testMQTTPublishQoS1() throws {
-        let eventLoopGroup = MultiThreadedEventLoopGroup(numberOfThreads: 1)
         let publish = MQTTPublishInfo(
             qos: .atLeastOnce,
             retain: true,
@@ -64,11 +66,11 @@ final class MQTTNIOTests: XCTestCase {
             payload: ByteBufferAllocator().buffer(string: "Test payload")
         )
 
-        let client = try MQTTClient(host: "mqtt.eclipse.org", port: 1883, eventLoopGroupProvider: .shared(eventLoopGroup))
+        let client = self.createClient()
+        defer { XCTAssertNoThrow(try client.syncShutdownGracefully())}
         try connect(to: client, identifier: "publisher")
         try client.publish(info: publish).wait()
         try client.disconnect().wait()
-        try client.syncShutdownGracefully()
     }
 
     func testMQTTPublishQoS2() throws {
@@ -80,27 +82,27 @@ final class MQTTNIOTests: XCTestCase {
             payload: ByteBufferAllocator().buffer(string: "Test payload")
         )
         
-        let client = try MQTTClient(host: "mqtt.eclipse.org", port: 1883, eventLoopGroupProvider: .createNew)
+        let client = self.createClient()
+        defer { XCTAssertNoThrow(try client.syncShutdownGracefully())}
         try connect(to: client, identifier: "soto_publisher")
         try client.publish(info: publish).wait()
-        try client.syncShutdownGracefully()
     }
 
     func testMQTTPingreq() throws {
-        let client = try MQTTClient(host: "mqtt.eclipse.org", port: 1883, eventLoopGroupProvider: .createNew)
+        let client = self.createClient()
+        defer { XCTAssertNoThrow(try client.syncShutdownGracefully())}
         try connect(to: client, identifier: "soto_publisher")
         try client.pingreq().wait()
         try client.disconnect().wait()
-        try client.syncShutdownGracefully()
     }
 
     func testMQTTSubscribe() throws {
-        let client = try MQTTClient(host: "mqtt.eclipse.org", port: 1883, eventLoopGroupProvider: .createNew)
+        let client = self.createClient()
+        defer { XCTAssertNoThrow(try client.syncShutdownGracefully())}
         try connect(to: client, identifier: "soto_client")
         try client.subscribe(infos: [.init(qos: .atLeastOnce, topicFilter: "iphone")]).wait()
-        Thread.sleep(forTimeInterval: 30)
+        Thread.sleep(forTimeInterval: 15)
         try client.disconnect().wait()
-        try client.syncShutdownGracefully()
     }
 
     func testMQTTPublishToClient() throws {
@@ -112,9 +114,10 @@ final class MQTTNIOTests: XCTestCase {
             topicName: "testing-noretain",
             payload: ByteBufferAllocator().buffer(string: "This is the Test payload")
         )
-        let client = try MQTTClient(host: "mqtt.eclipse.org", port: 1883, eventLoopGroupProvider: .createNew)
+        let client = self.createClient()
+        defer { XCTAssertNoThrow(try client.syncShutdownGracefully())}
         try connect(to: client, identifier: "soto_publisher")
-        let client2 = try MQTTClient(host: "mqtt.eclipse.org", port: 1883, eventLoopGroupProvider: .createNew) { result in
+        let client2 = MQTTClient(host: "mqtt.eclipse.org", port: 1883, eventLoopGroupProvider: .createNew) { result in
             switch result {
             case .success(let publish):
                 print(publish)
@@ -123,16 +126,15 @@ final class MQTTNIOTests: XCTestCase {
                 print(error)
             }
         }
+        defer { XCTAssertNoThrow(try client2.syncShutdownGracefully())}
         try connect(to: client2, identifier: "soto_client")
         try client2.subscribe(infos: [.init(qos: .atLeastOnce, topicFilter: "testing-noretain")]).wait()
         try client.publish(info: publish).wait()
         Thread.sleep(forTimeInterval: 2)
         try client.publish(info: publish).wait()
         Thread.sleep(forTimeInterval: 2)
-        XCTAssertEqual(publishReceived.count, 30)
+        XCTAssertEqual(publishReceived.count, 2)
         try client.disconnect().wait()
-        try client.syncShutdownGracefully()
         try client2.disconnect().wait()
-        try client2.syncShutdownGracefully()
     }
 }

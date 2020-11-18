@@ -1,6 +1,6 @@
 import NIO
 
-class MQTTEncodeHandler: ChannelOutboundHandler {
+final class MQTTEncodeHandler: ChannelOutboundHandler {
     public typealias OutboundIn = MQTTOutboundMessage
     public typealias OutboundOut = ByteBuffer
 
@@ -30,6 +30,7 @@ struct ByteToMQTTMessageDecoder: ByteToMessageDecoder {
 
     mutating func decode(context: ChannelHandlerContext, buffer: inout ByteBuffer) throws -> DecodingState {
         do {
+            //print(buffer.readableBytesView.map {String(format: "0x%02x", $0)})
             let packet = try MQTTSerializer.readIncomingPacket(from: &buffer)
             let message: MQTTInboundMessage
             switch packet.type {
@@ -91,7 +92,7 @@ struct ByteToMQTTMessageDecoder: ByteToMessageDecoder {
 }
 
 /// Channel handler for sending PINGREQ messages to keep connect alive
-class PingreqHandler: ChannelDuplexHandler {
+final class PingreqHandler: ChannelDuplexHandler {
     typealias OutboundIn = MQTTOutboundMessage
     typealias OutboundOut = MQTTOutboundMessage
     typealias InboundIn = MQTTInboundMessage
@@ -120,7 +121,9 @@ class PingreqHandler: ChannelDuplexHandler {
     }
 
     public func channelActive(context: ChannelHandlerContext) {
-        scheduleTask(context)
+        if self.task == nil {
+            scheduleTask(context)
+        }
         context.fireChannelActive()
     }
 
