@@ -1,77 +1,14 @@
 import NIO
-import NIOHTTP1
 import NIOWebSocket
 
-// The HTTP handler to be used to initiate the request.
-// This initial request will be adapted by the WebSocket upgrader to contain the upgrade header parameters.
-// Channel read will only be called if the upgrade fails.
-
-final class HTTPInitialRequestHandler: ChannelInboundHandler, RemovableChannelHandler {
-    public typealias InboundIn = HTTPClientResponsePart
-    public typealias OutboundOut = HTTPClientRequestPart
-
-    let host: String
-    let upgradePromise: EventLoopPromise<Void>
-
-    init(host: String, upgradePromise: EventLoopPromise<Void>) {
-        self.host = host
-        self.upgradePromise = upgradePromise
-    }
-    
-    public func channelActive(context: ChannelHandlerContext) {
-        // We are connected. It's time to send the message to the server to initialize the upgrade dance.
-        var headers = HTTPHeaders()
-        headers.add(name: "Content-Type", value: "text/plain; charset=utf-8")
-        headers.add(name: "Content-Length", value: "\(0)")
-        headers.add(name: "host", value: host)
-
-        let requestHead = HTTPRequestHead(version: HTTPVersion(major: 1, minor: 1),
-                                          method: .GET,
-                                          uri: "/",
-                                          headers: headers)
-
-        context.write(self.wrapOutboundOut(.head(requestHead)), promise: nil)
-        context.write(self.wrapOutboundOut(.body(.byteBuffer(ByteBuffer()))), promise: nil)
-        context.writeAndFlush(self.wrapOutboundOut(.end(nil)), promise: nil)
-    }
-
-    public func channelRead(context: ChannelHandlerContext, data: NIOAny) {
-
-        let clientResponse = self.unwrapInboundIn(data)
-
-        switch clientResponse {
-        case .head:
-            self.upgradePromise.fail(MQTTClient.Error.websocketUpgradeFailed)
-        case .body:
-            break
-        case .end:
-            context.close(promise: nil)
-        }
-    }
-
-    public func handlerRemoved(context: ChannelHandlerContext) {
-        print("HTTP handler removed.")
-    }
-
-    public func errorCaught(context: ChannelHandlerContext, error: Error) {
-        self.upgradePromise.fail(error)
-        // As we are not really interested getting notified on success or failure
-        // we just pass nil as promise to reduce allocations.
-        context.close(promise: nil)
-    }
-}
-
-// The web socket handler to be used once the upgrade has occurred.
-// One added, it sends a ping-pong round trip with "Hello World" data.
-// It also listens for any text frames from the server and prints them.
-
-final class WebSocketPingPongHandler: ChannelDuplexHandler {
+final class WebSocketHandler: ChannelDuplexHandler {
     typealias OutboundIn = ByteBuffer
     typealias OutboundOut = WebSocketFrame
     typealias InboundIn = WebSocketFrame
     typealias InboundOut = ByteBuffer
 
     let testFrameData: String = "Hello World"
+    var webSocketFrameSequence: WebSocketFrameSequence?
 
     // This is being hit, channel active won't be called as it is already added.
     public func handlerAdded(context: ChannelHandlerContext) {
@@ -83,10 +20,21 @@ final class WebSocketPingPongHandler: ChannelDuplexHandler {
         print("WebSocket handler removed.")
     }
 
+    func channelActive(context: ChannelHandlerContext) {
+        pingTestFrameData(context: context)
+        context.fireChannelActive()
+    }
+
     func write(context: ChannelHandlerContext, data: NIOAny, promise: EventLoopPromise<Void>?) {
-        let buffer = unwrapOutboundIn(data)
-        let frame = WebSocketFrame(fin: true, opcode: .binary, data: buffer)
-        context.write(wrapOutboundOut(frame), promise: promise)
+        guard context.channel.isActive else { return }
+
+        var buffer = unwrapOutboundIn(data)
+        let maskKey = WebSocketMaskingKey((0..<4).map { _ in UInt8.random(in: 1 ..< 255) })
+        /*if let maskKey = maskKey {
+            buffer.webSocketMask(maskKey)
+        }*/
+        let frame = WebSocketFrame(fin: true, opcode: .binary, maskKey: maskKey, data: buffer)
+        context.writeAndFlush(wrapOutboundOut(frame), promise: promise)
     }
 
     public func channelRead(context: ChannelHandlerContext, data: NIOAny) {
@@ -96,22 +44,48 @@ final class WebSocketPingPongHandler: ChannelDuplexHandler {
         switch frame.opcode {
         case .pong:
             self.pong(context: context, frame: frame)
+        case .ping:
+            self.ping(context: context, frame: frame)
         case .text:
-            var data = frame.unmaskedData
-            let text = data.readString(length: data.readableBytes) ?? ""
-            print("Websocket: Received \(text)")
+            if var frameSeq = self.webSocketFrameSequence {
+                frameSeq.append(frame)
+                self.webSocketFrameSequence = frameSeq
+            } else {
+                var frameSeq = WebSocketFrameSequence(type: .text)
+                frameSeq.append(frame)
+                self.webSocketFrameSequence = frameSeq
+            }
+        case .binary:
+            if var frameSeq = self.webSocketFrameSequence {
+                frameSeq.append(frame)
+                self.webSocketFrameSequence = frameSeq
+            } else {
+                var frameSeq = WebSocketFrameSequence(type: .binary)
+                frameSeq.append(frame)
+                self.webSocketFrameSequence = frameSeq
+            }
+        case .continuation:
+            if var frameSeq = self.webSocketFrameSequence {
+                frameSeq.append(frame)
+                self.webSocketFrameSequence = frameSeq
+            } else {
+                self.close(context: context, code: .protocolError, promise: nil)
+            }
         case .connectionClose:
             self.receivedClose(context: context, frame: frame)
-        case .binary, .continuation, .ping:
-            context.fireChannelRead(wrapInboundOut(frame.unmaskedData))
-        default:
-            // Unknown frames are errors.
-            self.closeOnError(context: context)
-        }
-    }
 
-    public func channelReadComplete(context: ChannelHandlerContext) {
-        context.flush()
+        default:
+            break
+        }
+
+        if let frameSeq = self.webSocketFrameSequence, frame.fin {
+            switch frameSeq.type {
+            case .binary, .text:
+                context.fireChannelRead(wrapInboundOut(frameSeq.buffer))
+            default: break
+            }
+            self.webSocketFrameSequence = nil
+        }
     }
 
     private func receivedClose(context: ChannelHandlerContext, frame: WebSocketFrame) {
@@ -121,16 +95,59 @@ final class WebSocketPingPongHandler: ChannelDuplexHandler {
     }
 
     private func pingTestFrameData(context: ChannelHandlerContext) {
-        let buffer = context.channel.allocator.buffer(string: self.testFrameData)
-        let frame = WebSocketFrame(fin: true, opcode: .ping, data: buffer)
-        context.write(self.wrapOutboundOut(frame), promise: nil)
+        /*_ = context.eventLoop.scheduleTask(in: .seconds(5)) {
+            let buffer = context.channel.allocator.buffer(string: self.testFrameData)
+            self.send(context: context, buffer: buffer, opcode: .ping)
+        }*/
+    }
+
+    private func send(
+        context: ChannelHandlerContext,
+        buffer: ByteBuffer,
+        opcode: WebSocketOpcode,
+        fin: Bool = true,
+        promise: EventLoopPromise<Void>? = nil
+    ) {
+        let maskKey = makeMaskKey()
+        let frame = WebSocketFrame(fin: true, opcode: .text, maskKey: maskKey, data: buffer)
+        context.writeAndFlush(wrapOutboundOut(frame), promise: promise)
     }
 
     private func pong(context: ChannelHandlerContext, frame: WebSocketFrame) {
-        var frameData = frame.data
+        var frameData = frame.unmaskedData
         if let frameDataString = frameData.readString(length: self.testFrameData.count) {
-            print("Websocket: Received: \(frameDataString)")
+            print("Pong: Received: \(frameDataString)")
         }
+    }
+
+    private func ping(context: ChannelHandlerContext, frame: WebSocketFrame) {
+        print("Ping")
+        if frame.fin {
+            self.send(context: context, buffer: frame.unmaskedData, opcode: .pong, fin: true, promise: nil)
+        } else {
+            self.close(context: context, code: .protocolError, promise: nil)
+        }
+    }
+
+    func makeMaskKey() -> WebSocketMaskingKey? {
+        let bytes: [UInt8] = (0...3).map { _ in UInt8.random(in: 1...255) }
+        return WebSocketMaskingKey(bytes)
+    }
+
+    public func close(context: ChannelHandlerContext, code: WebSocketErrorCode = .goingAway, promise: EventLoopPromise<Void>?) {
+        let codeAsInt = UInt16(webSocketErrorCode: code)
+        let codeToSend: WebSocketErrorCode
+        if codeAsInt == 1005 || codeAsInt == 1006 {
+            /// Code 1005 and 1006 are used to report errors to the application, but must never be sent over
+            /// the wire (per https://tools.ietf.org/html/rfc6455#section-7.4)
+            codeToSend = .normalClosure
+        } else {
+            codeToSend = code
+        }
+
+        var buffer = context.channel.allocator.buffer(capacity: 2)
+        buffer.write(webSocketErrorCode: codeToSend)
+        self.send(context: context, buffer: buffer, opcode: .connectionClose, fin: true, promise: promise)
     }
 
     private func closeOnError(context: ChannelHandlerContext) {
@@ -143,5 +160,29 @@ final class WebSocketPingPongHandler: ChannelDuplexHandler {
             context.close(mode: .output, promise: nil)
         }
     }
+
+    func channelInactive(context: ChannelHandlerContext) {
+
+        // We always forward the error on to let others see it.
+        context.fireChannelInactive()
+    }
 }
 
+struct WebSocketFrameSequence {
+    var buffer: ByteBuffer
+    var type: WebSocketOpcode
+
+    init(type: WebSocketOpcode) {
+        self.buffer = ByteBufferAllocator().buffer(capacity: 0)
+        self.type = type
+    }
+
+    mutating func append(_ frame: WebSocketFrame) {
+        var data = frame.unmaskedData
+        switch type {
+        case .binary, .text:
+            self.buffer.writeBuffer(&data)
+        default: break
+        }
+    }
+}

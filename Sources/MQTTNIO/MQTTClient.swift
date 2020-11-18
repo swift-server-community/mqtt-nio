@@ -30,16 +30,27 @@ public class MQTTClient {
 
     static let globalPacketId = NIOAtomic<UInt16>.makeAtomic(value: 1)
 
+    /// Configuration for MQTTClient
     public struct Configuration {
-        public init(useSSL: Bool = false, useWebsockets: Bool = false, tlsConfiguration: TLSConfiguration = TLSConfiguration.forClient()) {
+        public init(
+            disablePingreq: Bool = true,
+            useSSL: Bool = false,
+            useWebSockets: Bool = false,
+            tlsConfiguration: TLSConfiguration = TLSConfiguration.forClient(),
+            webSocketURLPath: String? = nil)
+        {
+            self.disablePingreq = disablePingreq
             self.useSSL = useSSL
-            self.useWebsockets = useWebsockets
+            self.useWebSockets = useWebSockets
             self.tlsConfiguration = tlsConfiguration
+            self.webSocketURLPath = webSocketURLPath
         }
 
+        let disablePingreq: Bool
         let useSSL: Bool
-        let useWebsockets: Bool
+        let useWebSockets: Bool
         let tlsConfiguration: TLSConfiguration
+        let webSocketURLPath: String?
     }
 
     public init(
@@ -48,7 +59,7 @@ public class MQTTClient {
         eventLoopGroupProvider: NIOEventLoopGroupProvider,
         configuration: Configuration = Configuration(),
         publishCallback: @escaping (Result<MQTTPublishInfo, Swift.Error>) -> () = { _ in }
-    ) throws {
+    ) {
         self.host = host
         if let port = port {
             self.port = port
@@ -66,7 +77,7 @@ public class MQTTClient {
         switch eventLoopGroupProvider {
         case .createNew:
             #if canImport(Network)
-                if #available(OSX 10.14, iOS 12.0, tvOS 12.0, watchOS 6.0, *) {
+            if #available(OSX 10.14, iOS 12.0, tvOS 12.0, watchOS 6.0, *), !configuration.useSSL {
                     self.eventLoopGroup = NIOTSEventLoopGroup()
                 } else {
                     self.eventLoopGroup = MultiThreadedEventLoopGroup(numberOfThreads: 1)
@@ -215,27 +226,28 @@ extension MQTTClient {
     func createBootstrap(pingreqTimeout: TimeAmount) -> EventLoopFuture<Void> {
         let promise = self.eventLoopGroup.next().makePromise(of: Void.self)
         do {
+            // Work out what handlers to add
+            var handlers: [ChannelHandler] = [
+                MQTTEncodeHandler(client: self),
+                ByteToMessageHandler(ByteToMQTTMessageDecoder(client: self))
+            ]
+            if !configuration.disablePingreq {
+                handlers = [PingreqHandler(client: self, timeout: pingreqTimeout)] + handlers
+            }
+            // get bootstrap based off what eventloop we are running on
             let bootstrap = try getBootstrap(self.eventLoopGroup)
             bootstrap
                 .channelOption(ChannelOptions.socketOption(.so_reuseaddr), value: 1)
                 .channelOption(ChannelOptions.socket(IPPROTO_TCP, TCP_NODELAY), value: 1)
                 .channelInitializer { channel in
                     // are we using websockets
-                    if self.configuration.useWebsockets {
+                    if self.configuration.useWebSockets {
                         // prepare for websockets and on upgrade add handlers
                         return self.setupChannelForWebsockets(channel: channel, upgradePromise: promise) {
-                            return channel.pipeline.addHandlers([
-                                PingreqHandler(client: self, timeout: pingreqTimeout),
-                                MQTTEncodeHandler(client: self),
-                                ByteToMessageHandler(ByteToMQTTMessageDecoder(client: self))
-                            ])
+                            return channel.pipeline.addHandlers(handlers)
                         }
                     } else {
-                        return channel.pipeline.addHandlers([
-                            PingreqHandler(client: self, timeout: pingreqTimeout),
-                            MQTTEncodeHandler(client: self),
-                            ByteToMessageHandler(ByteToMQTTMessageDecoder(client: self))
-                        ])
+                        return channel.pipeline.addHandlers(handlers)
                     }
                 }
                 .connect(host: self.host, port: self.port)
@@ -246,7 +258,7 @@ extension MQTTClient {
                     }
                 }
                 .map {
-                    if !self.configuration.useWebsockets {
+                    if !self.configuration.useWebSockets {
                         promise.succeed(())
                     }
                 }
@@ -262,11 +274,15 @@ extension MQTTClient {
         upgradePromise promise: EventLoopPromise<Void>,
         afterHandlerAdded: @escaping () -> EventLoopFuture<Void>
     ) -> EventLoopFuture<Void> {
-        let httpHandler = HTTPInitialRequestHandler(host: self.host, upgradePromise: promise)
+        let httpHandler = HTTPInitialRequestHandler(
+            host: self.host,
+            urlPath: configuration.webSocketURLPath ?? "/",
+            upgradePromise: promise
+        )
         let requestKey = (0..<16).map { _ in UInt8.random(in: .min ..< .max)}
         let websocketUpgrader = NIOWebSocketClientUpgrader(
             requestKey: Data(requestKey).base64EncodedString()) { channel, req in
-            let future = channel.pipeline.addHandler(WebSocketPingPongHandler())
+            let future = channel.pipeline.addHandler(WebSocketHandler())
                 .flatMap { _ in
                     afterHandlerAdded()
                 }
