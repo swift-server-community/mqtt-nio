@@ -13,15 +13,19 @@ final class MQTTNIOTests: XCTestCase {
             host: "broker.hivemq.com",
             port: 8000,
             eventLoopGroupProvider: .createNew,
-            configuration: .init(disablePingreq: true, useWebSockets: true, webSocketURLPath: "/mqtt"),
+            configuration: .init(useWebSockets: true, webSocketURLPath: "/mqtt"),
             publishCallback: cb
         )
     }
     func createSSLClient(cb: @escaping (Result<MQTTPublishInfo, Swift.Error>) -> () = { _ in }) -> MQTTClient {
+        //let certificate = try! NIOSSLCertificate.fromPEMBytes([UInt8](pem.utf8))
+        //let privateKey = try! NIOSSLPrivateKey(bytes: [UInt8](key.utf8), format: .pem)
+        let tlsConfiguration = TLSConfiguration.forClient(/*certificateChain: certificate.map {.certificate($0)}, privateKey: .privateKey(privateKey)*/)
         return MQTTClient(
-            host: "mqtt.eclipse.org",
+            host: "test.mosquitto.org",
+            port: 8884,
             eventLoopGroupProvider: .createNew,
-            configuration: .init(useSSL: true),
+            configuration: .init(useSSL: true, useWebSockets: true, tlsConfiguration: tlsConfiguration),
             publishCallback: cb
         )
     }
@@ -39,24 +43,25 @@ final class MQTTNIOTests: XCTestCase {
 
     func testBootstrap() throws {
         let client = self.createClient()
-        defer { XCTAssertNoThrow(try client.syncShutdownGracefully())}
         _ = try client.createBootstrap(pingreqTimeout: .seconds(10)).wait()
-        Thread.sleep(forTimeInterval: 15)
+        Thread.sleep(forTimeInterval: 10)
+        try client.syncShutdownGracefully()
     }
 
     func testWebsocketConnect() throws {
         let client = createWebSocketClient()
-        defer { XCTAssertNoThrow(try client.syncShutdownGracefully())}
         try connect(to: client, identifier: "connect")
-        Thread.sleep(forTimeInterval: 30)
+        Thread.sleep(forTimeInterval: 15)
+        try client.pingreq().wait()
         try client.disconnect().wait()
+        try client.syncShutdownGracefully()
     }
 
     func testSSLConnect() throws {
         let client = createSSLClient()
-        defer { XCTAssertNoThrow(try client.syncShutdownGracefully())}
         try connect(to: client, identifier: "connect")
         try client.disconnect().wait()
+        try client.syncShutdownGracefully()
     }
 
     func testMQTTPublishQoS0() throws {
@@ -69,10 +74,10 @@ final class MQTTNIOTests: XCTestCase {
         )
 
         let client = self.createClient()
-        defer { XCTAssertNoThrow(try client.syncShutdownGracefully())}
         try connect(to: client, identifier: "publisher")
         try client.publish(info: publish).wait()
         try client.disconnect().wait()
+        try client.syncShutdownGracefully()
     }
 
     func testMQTTPublishQoS1() throws {
@@ -85,10 +90,10 @@ final class MQTTNIOTests: XCTestCase {
         )
 
         let client = self.createClient()
-        defer { XCTAssertNoThrow(try client.syncShutdownGracefully())}
         try connect(to: client, identifier: "publisher")
         try client.publish(info: publish).wait()
         try client.disconnect().wait()
+        try client.syncShutdownGracefully()
     }
 
     func testMQTTPublishQoS2() throws {
@@ -101,26 +106,27 @@ final class MQTTNIOTests: XCTestCase {
         )
         
         let client = self.createClient()
-        defer { XCTAssertNoThrow(try client.syncShutdownGracefully())}
         try connect(to: client, identifier: "soto_publisher")
         try client.publish(info: publish).wait()
+        try client.disconnect().wait()
+        try client.syncShutdownGracefully()
     }
 
     func testMQTTPingreq() throws {
         let client = self.createClient()
-        defer { XCTAssertNoThrow(try client.syncShutdownGracefully())}
         try connect(to: client, identifier: "soto_publisher")
         try client.pingreq().wait()
         try client.disconnect().wait()
+        try client.syncShutdownGracefully()
     }
 
     func testMQTTSubscribe() throws {
         let client = self.createClient()
-        defer { XCTAssertNoThrow(try client.syncShutdownGracefully())}
         try connect(to: client, identifier: "soto_client")
         try client.subscribe(infos: [.init(qos: .atLeastOnce, topicFilter: "iphone")]).wait()
         Thread.sleep(forTimeInterval: 15)
         try client.disconnect().wait()
+        try client.syncShutdownGracefully()
     }
 
     func testMQTTPublishToClient() throws {
@@ -133,7 +139,6 @@ final class MQTTNIOTests: XCTestCase {
             payload: ByteBufferAllocator().buffer(string: "This is the Test payload")
         )
         let client = self.createWebSocketClient()
-        defer { XCTAssertNoThrow(try client.syncShutdownGracefully())}
         try connect(to: client, identifier: "soto_publisher")
         let client2 = self.createWebSocketClient() { result in
             switch result {
@@ -144,7 +149,6 @@ final class MQTTNIOTests: XCTestCase {
                 print(error)
             }
         }
-        defer { XCTAssertNoThrow(try client2.syncShutdownGracefully())}
         try connect(to: client2, identifier: "soto_client")
         try client2.subscribe(infos: [.init(qos: .atLeastOnce, topicFilter: "testing-noretain")]).wait()
         try client.publish(info: publish).wait()
@@ -154,5 +158,7 @@ final class MQTTNIOTests: XCTestCase {
         XCTAssertEqual(publishReceived.count, 2)
         try client.disconnect().wait()
         try client2.disconnect().wait()
+        try client.syncShutdownGracefully()
+        try client2.syncShutdownGracefully()
     }
 }

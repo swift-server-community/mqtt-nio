@@ -274,20 +274,19 @@ extension MQTTClient {
         upgradePromise promise: EventLoopPromise<Void>,
         afterHandlerAdded: @escaping () -> EventLoopFuture<Void>
     ) -> EventLoopFuture<Void> {
+        // initial HTTP request handler, before upgrade
         let httpHandler = WebSocketInitialRequestHandler(
             host: self.host,
             urlPath: configuration.webSocketURLPath ?? "/",
             upgradePromise: promise
         )
+        // create random key for request key
         let requestKey = (0..<16).map { _ in UInt8.random(in: .min ..< .max)}
         let websocketUpgrader = NIOWebSocketClientUpgrader(
             requestKey: Data(requestKey).base64EncodedString()) { channel, req in
             let future = channel.pipeline.addHandler(WebSocketHandler())
                 .flatMap { _ in
                     afterHandlerAdded()
-                }
-                .map { _ in
-                    print(self.channel!.pipeline)
                 }
             future.cascade(to: promise)
             return future
@@ -299,6 +298,7 @@ extension MQTTClient {
                 channel.pipeline.removeHandler(httpHandler, promise: nil)
         })
 
+        // add HTTP handler with web socket upgrade
         return channel.pipeline.addHTTPClientHandlers(withClientUpgrade: config).flatMap {
             channel.pipeline.addHandler(httpHandler)
         }
