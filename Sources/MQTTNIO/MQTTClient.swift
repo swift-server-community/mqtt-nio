@@ -9,6 +9,7 @@ import NIOSSL
 import NIOTransportServices
 import NIOWebSocket
 
+/// Swift NIO MQTT Client
 public class MQTTClient {
     /// MQTTClient errors
     enum Error: Swift.Error {
@@ -27,13 +28,17 @@ public class MQTTClient {
     let host: String
     /// Port to connect to
     let port: Int
+    /// Called whenever a publish event occurs
     let publishCallback: (Result<MQTTPublishInfo, Swift.Error>) -> ()
+    /// Client configuration
     let configuration: Configuration
 
+    /// Channel client is running on
     var channel: Channel?
+    /// Identifier for client (extracted from connect info)
     var clientIdentifier = ""
 
-    static let globalPacketId = NIOAtomic<UInt16>.makeAtomic(value: 1)
+    private static let globalPacketId = NIOAtomic<UInt16>.makeAtomic(value: 1)
 
     /// Configuration for MQTTClient
     public struct Configuration {
@@ -58,6 +63,13 @@ public class MQTTClient {
         let webSocketURLPath: String?
     }
 
+    /// Create MQTT client
+    /// - Parameters:
+    ///   - host: host name
+    ///   - port: port to connect on
+    ///   - eventLoopGroupProvider: EventLoopGroup to run on
+    ///   - configuration: Configuration of client
+    ///   - publishCallback: called whenever there is a publish event
     public init(
         host: String,
         port: Int? = nil,
@@ -100,6 +112,7 @@ public class MQTTClient {
         }
     }
 
+    /// Close down client. Must be called before the client is destroyed
     public func syncShutdownGracefully() throws {
         try channel?.close().wait()
         switch self.eventLoopGroupProvider {
@@ -110,6 +123,11 @@ public class MQTTClient {
         }
     }
 
+    /// Connect to MQTT server
+    /// - Parameters:
+    ///   - info: Connection info
+    ///   - will: Publish message to be posted as soon as connection is made
+    /// - Returns: Future waiting for connect to fiinsh
     public func connect(info: MQTTConnectInfo, will: MQTTPublishInfo? = nil) -> EventLoopFuture<Void> {
         guard self.channel == nil else { return eventLoopGroup.next().makeFailedFuture(Error.alreadyConnected) }
         let timeout = TimeAmount.seconds(max(Int64(info.keepAliveSeconds - 5), 5))
@@ -124,6 +142,11 @@ public class MQTTClient {
             .map { _ in }
     }
 
+    /// Publish message to topic
+    /// - Parameter info: Publish info
+    /// - Returns: Future waiting for publish to complete. Depending on QoS setting the future will complete
+    ///     when message is sent, when PUBACK is received or when PUBREC and following PUBCOMP are
+    ///     received
     public func publish(info: MQTTPublishInfo) -> EventLoopFuture<Void> {
         if info.qos == .atMostOnce {
             // don't send a packet id if QOS is at most once. (MQTT-2.3.1-5)
@@ -152,6 +175,9 @@ public class MQTTClient {
         }
     }
 
+    /// Subscribe to topic
+    /// - Parameter infos: Subscription infos
+    /// - Returns: Future waiting for subscribe to complete. Will wait for SUBACK message from server
     public func subscribe(infos: [MQTTSubscribeInfo]) -> EventLoopFuture<Void> {
         let packetId = Self.globalPacketId.add(1)
         return sendMessage(MQTTSubscribeMessage(subscriptions: infos, packetId: packetId)) { message in
@@ -162,6 +188,9 @@ public class MQTTClient {
         .map { _ in }
     }
 
+    /// Unsubscribe from topic
+    /// - Parameter infos: Subscription infos
+    /// - Returns: Future waiting for unsubscribe to complete. Will wait for UNSUBACK message from server
     public func unsubscribe(infos: [MQTTSubscribeInfo]) -> EventLoopFuture<Void> {
         let packetId = Self.globalPacketId.add(1)
         return sendMessage(MQTTUnsubscribeMessage(subscriptions: infos, packetId: packetId)) { message in
@@ -172,6 +201,14 @@ public class MQTTClient {
         .map { _ in }
     }
 
+    /// Ping the server to test if it is still alive and to tell it you are alive.
+    ///
+    /// You shouldn't need to call this as the `MQTTClient` automatically sends PINGREQ messages to the server to ensure
+    /// the connection is still live. If you initialize the client with the configuration `disablePingReq: true` then these
+    /// are disabled and it is up to you to send the PINGREQ messages yourself
+    ///
+    /// - Parameter infos: Subscription infos
+    /// - Returns: Future waiting for unsubscribe to complete. Will wait for UNSUBACK message from server
     public func pingreq() -> EventLoopFuture<Void> {
         return sendMessage(MQTTPingreqMessage()) { message in
             guard message.type == .PINGRESP else { return false }
@@ -180,6 +217,8 @@ public class MQTTClient {
         .map { _ in }
     }
 
+    /// Disconnect from server
+    /// - Returns: Future waiting on disconnect message to be sent
     public func disconnect() -> EventLoopFuture<Void> {
         let disconnect: EventLoopFuture<Void> = sendMessageNoWait(MQTTDisconnectMessage())
             .flatMap {
@@ -188,11 +227,6 @@ public class MQTTClient {
                 return future
             }
         return disconnect
-    }
-
-    public func read() throws {
-        guard let channel = self.channel else { throw Error.noConnection }
-        return channel.read()
     }
 }
 
