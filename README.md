@@ -1,6 +1,6 @@
 # MQTT NIO 
 
-A Swift NIO MQTT Client. 
+A Swift NIO MQTT 3.1.1 Client. 
 
 ## Usage
 
