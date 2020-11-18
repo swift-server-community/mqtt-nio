@@ -1,4 +1,5 @@
 import Foundation
+import Logging
 #if canImport(Network)
 import Network
 #endif
@@ -29,6 +30,8 @@ public class MQTTClient {
     let host: String
     /// Port to connect to
     let port: Int
+    /// logger
+    let logger: Logger
     /// Client configuration
     let configuration: Configuration
     /// Called whenever a publish event occurs
@@ -40,6 +43,8 @@ public class MQTTClient {
     var clientIdentifier = ""
 
     private static let globalPacketId = NIOAtomic<UInt16>.makeAtomic(value: 1)
+    /// default logger that logs nothing
+    private static let loggingDisabled = Logger(label: "MQTT-do-not-log", factory: { _ in SwiftLogNoOpLogHandler() })
 
     /// Configuration for MQTTClient
     public struct Configuration {
@@ -88,6 +93,7 @@ public class MQTTClient {
         host: String,
         port: Int? = nil,
         eventLoopGroupProvider: NIOEventLoopGroupProvider,
+        logger: Logger? = nil,
         configuration: Configuration = Configuration(),
         publishCallback: @escaping (Result<MQTTPublishInfo, Swift.Error>) -> () = { _ in }
     ) {
@@ -109,6 +115,7 @@ public class MQTTClient {
         self.configuration = configuration
         self.publishCallback = publishCallback
         self.channel = nil
+        self.logger = logger ?? Self.loggingDisabled
         self.eventLoopGroupProvider = eventLoopGroupProvider
         switch eventLoopGroupProvider {
         case .createNew:

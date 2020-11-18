@@ -13,7 +13,7 @@ final class MQTTEncodeHandler: ChannelOutboundHandler {
 
     func write(context: ChannelHandlerContext, data: NIOAny, promise: EventLoopPromise<Void>?) {
         let message = unwrapOutboundIn(data)
-        print("\(client.clientIdentifier) Out: \(message)")
+        client.logger.debug("MQTT Out", metadata: ["mqtt_client": .string(client.clientIdentifier), "mqtt_message": .string("\(message)")])
         var bb = context.channel.allocator.buffer(capacity: 0)
         try! message.serialize(to: &bb)
         context.write(wrapOutboundOut(bb), promise: promise)
@@ -39,7 +39,7 @@ struct ByteToMQTTMessageDecoder: ByteToMessageDecoder {
                 do {
                     let publish = try MQTTSerializer.readPublish(from: packet)
                     let publishMessage = MQTTPublishMessage(publish: publish.publishInfo, packetId: publish.packetId)
-                    print("\(client.clientIdentifier) In: \(publishMessage)")
+                    client.logger.debug("MQTT In", metadata: ["mqtt_client": .string(client.clientIdentifier), "mqtt_message": .string("\(publishMessage)")])
                     self.publish(publishMessage)
                 } catch MQTTSerializer.Error.incompletePacket {
                     return .needMoreData
@@ -58,7 +58,7 @@ struct ByteToMQTTMessageDecoder: ByteToMessageDecoder {
             default:
                 throw MQTTClient.Error.decodeError
             }
-            print("\(client.clientIdentifier) In: \(message)")
+            client.logger.debug("MQTT In", metadata: ["mqtt_client": .string(client.clientIdentifier), "mqtt_message": .string("\(message)")])
             context.fireChannelRead(wrapInboundOut(message))
         } catch MQTTSerializer.Error.incompletePacket {
             return .needMoreData

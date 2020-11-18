@@ -1,10 +1,17 @@
 import XCTest
+import Logging
 import NIO
 import NIOHTTP1
 import NIOSSL
 @testable import MQTTNIO
 
 final class MQTTNIOTests: XCTestCase {
+
+    let logger: Logger = {
+        var logger = Logger(label: "MQTTTests")
+        logger.logLevel = .trace
+        return logger
+    }()
 
     // downloaded from http://test.mosquitto.org/
     let mosquittoCertificate = """
@@ -35,13 +42,20 @@ final class MQTTNIOTests: XCTestCase {
     """
 
     func createClient(cb: @escaping (Result<MQTTPublishInfo, Swift.Error>) -> () = { _ in }) -> MQTTClient {
-        MQTTClient(host: "test.mosquitto.org", port: 1883, eventLoopGroupProvider: .createNew, publishCallback: cb)
+        MQTTClient(
+            host: "test.mosquitto.org",
+            port: 1883,
+            eventLoopGroupProvider: .createNew,
+            logger: self.logger,
+            publishCallback: cb
+        )
     }
     func createWebSocketClient(cb: @escaping (Result<MQTTPublishInfo, Swift.Error>) -> () = { _ in }) -> MQTTClient {
         MQTTClient(
             host: "test.mosquitto.org",
             port: 8080,
             eventLoopGroupProvider: .createNew,
+            logger: self.logger,
             configuration: .init(useWebSockets: true, webSocketURLPath: "/mqtt"),
             publishCallback: cb
         )
@@ -55,6 +69,7 @@ final class MQTTNIOTests: XCTestCase {
             host: "test.mosquitto.org",
             port: 8883,
             eventLoopGroupProvider: .createNew,
+            logger: self.logger,
             configuration: .init(useSSL: true, tlsConfiguration: tlsConfiguration),
             publishCallback: cb
         )
