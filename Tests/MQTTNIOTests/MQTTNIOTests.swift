@@ -140,10 +140,12 @@ final class MQTTNIOTests: XCTestCase {
         let client2 = self.createWebSocketClient() { result in
             switch result {
             case .success(let publish):
-                print(publish)
+                var buffer = publish.payload
+                let string = buffer.readString(length: buffer.readableBytes)
+                XCTAssertEqual(string, "This is the Test payload")
                 publishReceived.append(publish)
             case .failure(let error):
-                print(error)
+                XCTFail("\(error)")
             }
         }
         try connect(to: client2, identifier: "soto_client")
