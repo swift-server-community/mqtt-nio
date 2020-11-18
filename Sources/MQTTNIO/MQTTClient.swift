@@ -19,6 +19,7 @@ public class MQTTClient {
         case unexpectedMessage
         case decodeError
         case websocketUpgradeFailed
+        case timeout
     }
     /// EventLoopGroup used by MQTTCllent
     let eventLoopGroup: EventLoopGroup
@@ -28,10 +29,10 @@ public class MQTTClient {
     let host: String
     /// Port to connect to
     let port: Int
-    /// Called whenever a publish event occurs
-    let publishCallback: (Result<MQTTPublishInfo, Swift.Error>) -> ()
     /// Client configuration
     let configuration: Configuration
+    /// Called whenever a publish event occurs
+    let publishCallback: (Result<MQTTPublishInfo, Swift.Error>) -> ()
 
     /// Channel client is running on
     var channel: Channel?
@@ -44,22 +45,35 @@ public class MQTTClient {
     public struct Configuration {
         public init(
             disablePingreq: Bool = false,
+            pingreqInterval: TimeAmount? = nil,
+            timeout: TimeAmount? = nil,
             useSSL: Bool = false,
             useWebSockets: Bool = false,
             tlsConfiguration: TLSConfiguration? = nil,
-            webSocketURLPath: String? = nil)
-        {
+            webSocketURLPath: String? = nil
+        ) {
             self.disablePingreq = disablePingreq
+            self.pingreqInterval = pingreqInterval
+            self.timeout = timeout
             self.useSSL = useSSL
             self.useWebSockets = useWebSockets
             self.tlsConfiguration = tlsConfiguration
             self.webSocketURLPath = webSocketURLPath
         }
 
+        /// disable the sending of pingreq messages
         let disablePingreq: Bool
+        /// override internal between each pingreq message
+        let pingreqInterval: TimeAmount?
+        /// timeout for server response
+        let timeout: TimeAmount?
+        /// use encrypted connection to server
         let useSSL: Bool
+        /// use a websocket connection to server
         let useWebSockets: Bool
+        /// TLS configuration
         let tlsConfiguration: TLSConfiguration?
+        /// URL Path for web socket. Defaults to "/"
         let webSocketURLPath: String?
     }
 
@@ -130,8 +144,10 @@ public class MQTTClient {
     /// - Returns: Future waiting for connect to fiinsh
     public func connect(info: MQTTConnectInfo, will: MQTTPublishInfo? = nil) -> EventLoopFuture<Void> {
         guard self.channel == nil else { return eventLoopGroup.next().makeFailedFuture(Error.alreadyConnected) }
-        let timeout = TimeAmount.seconds(max(Int64(info.keepAliveSeconds - 5), 5))
-        return createBootstrap(pingreqTimeout: timeout)
+        // work out pingreq interval
+        let pingreqInterval = configuration.pingreqInterval ?? TimeAmount.seconds(max(Int64(info.keepAliveSeconds - 5), 5))
+
+        return createBootstrap(pingreqInterval: pingreqInterval)
             .flatMap { _ -> EventLoopFuture<MQTTInboundMessage> in
                 self.clientIdentifier = info.clientIdentifier
                 return self.sendMessage(MQTTConnectMessage(connect: info, will: nil)) { message in
@@ -267,7 +283,7 @@ extension MQTTClient {
         return bootstrap
     }
 
-    func createBootstrap(pingreqTimeout: TimeAmount) -> EventLoopFuture<Void> {
+    func createBootstrap(pingreqInterval: TimeAmount) -> EventLoopFuture<Void> {
         let promise = self.eventLoopGroup.next().makePromise(of: Void.self)
         do {
             // Work out what handlers to add
@@ -276,7 +292,7 @@ extension MQTTClient {
                 ByteToMessageHandler(ByteToMQTTMessageDecoder(client: self))
             ]
             if !configuration.disablePingreq {
-                handlers = [PingreqHandler(client: self, timeout: pingreqTimeout)] + handlers
+                handlers = [PingreqHandler(client: self, timeout: pingreqInterval)] + handlers
             }
             // get bootstrap based off what eventloop we are running on
             let bootstrap = try getBootstrap(self.eventLoopGroup)
@@ -351,7 +367,7 @@ extension MQTTClient {
 
     func sendMessage(_ message: MQTTOutboundMessage, checkInbound: @escaping (MQTTInboundMessage) throws -> Bool) -> EventLoopFuture<MQTTInboundMessage> {
         guard let channel = self.channel else { return eventLoopGroup.next().makeFailedFuture(Error.noConnection) }
-        let task = MQTTTask(on: eventLoopGroup.next(), checkInbound: checkInbound)
+        let task = MQTTTask(on: eventLoopGroup.next(), timeout: configuration.timeout, checkInbound: checkInbound)
         let taskHandler = MQTTTaskHandler(task: task, channel: channel)
 
         channel.pipeline.addHandler(taskHandler)

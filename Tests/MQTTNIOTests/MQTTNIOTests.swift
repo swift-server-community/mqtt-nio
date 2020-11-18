@@ -71,13 +71,6 @@ final class MQTTNIOTests: XCTestCase {
         try client.connect(info: connect).wait()
     }
 
-    func testBootstrap() throws {
-        let client = self.createClient()
-        _ = try client.createBootstrap(pingreqTimeout: .seconds(10)).wait()
-        Thread.sleep(forTimeInterval: 10)
-        try client.syncShutdownGracefully()
-    }
-
     func testWebsocketConnect() throws {
         let client = createWebSocketClient()
         try connect(to: client, identifier: "connect")

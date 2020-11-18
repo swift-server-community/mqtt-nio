@@ -2,21 +2,30 @@
 import NIO
 
 class MQTTTask {
-    let eventLoop: EventLoop
     let promise: EventLoopPromise<MQTTInboundMessage>
     let checkInbound: (MQTTInboundMessage) throws -> Bool
+    let timeoutTask: Scheduled<Void>?
     
-    init(on eventLoop: EventLoop, checkInbound: @escaping (MQTTInboundMessage) throws -> Bool) {
-        self.eventLoop = eventLoop
+    init(on eventLoop: EventLoop, timeout: TimeAmount?, checkInbound: @escaping (MQTTInboundMessage) throws -> Bool) {
         self.checkInbound = checkInbound
-        self.promise = self.eventLoop.makePromise(of: MQTTInboundMessage.self)
+        let promise = eventLoop.makePromise(of: MQTTInboundMessage.self)
+        self.promise = promise
+        if let timeout = timeout {
+            self.timeoutTask = eventLoop.scheduleTask(in: timeout) {
+                promise.fail(MQTTClient.Error.timeout)
+            }
+        } else {
+            self.timeoutTask = nil
+        }
     }
     
     func succeed(_ response: MQTTInboundMessage) {
+        timeoutTask?.cancel()
         promise.succeed(response)
     }
     
     func fail(_ error: Error) {
+        timeoutTask?.cancel()
         promise.fail(error)
     }
 }
