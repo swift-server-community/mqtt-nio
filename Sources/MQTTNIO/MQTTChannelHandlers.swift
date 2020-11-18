@@ -30,7 +30,6 @@ struct ByteToMQTTMessageDecoder: ByteToMessageDecoder {
 
     mutating func decode(context: ChannelHandlerContext, buffer: inout ByteBuffer) throws -> DecodingState {
         do {
-            //print(buffer.readableBytesView.map {String(format: "0x%02x", $0)})
             let packet = try MQTTSerializer.readIncomingPacket(from: &buffer)
             let message: MQTTInboundMessage
             switch packet.type {

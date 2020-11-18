@@ -1,5 +1,6 @@
 import XCTest
 import NIO
+import NIOHTTP1
 import NIOSSL
 @testable import MQTTNIO
 
@@ -32,14 +33,14 @@ final class MQTTNIOTests: XCTestCase {
     m/XriWr/Cq4h/JfB7NTsezVslgkBaoU=
     -----END CERTIFICATE-----
     """
-    
+
     func createClient(cb: @escaping (Result<MQTTPublishInfo, Swift.Error>) -> () = { _ in }) -> MQTTClient {
-        MQTTClient(host: "mqtt.eclipse.org", port: 1883, eventLoopGroupProvider: .createNew, publishCallback: cb)
+        MQTTClient(host: "test.mosquitto.org", port: 1883, eventLoopGroupProvider: .createNew, publishCallback: cb)
     }
     func createWebSocketClient(cb: @escaping (Result<MQTTPublishInfo, Swift.Error>) -> () = { _ in }) -> MQTTClient {
         MQTTClient(
-            host: "broker.hivemq.com",
-            port: 8000,
+            host: "test.mosquitto.org",
+            port: 8080,
             eventLoopGroupProvider: .createNew,
             configuration: .init(useWebSockets: true, webSocketURLPath: "/mqtt"),
             publishCallback: cb
@@ -47,12 +48,12 @@ final class MQTTNIOTests: XCTestCase {
     }
     func createSSLClient(cb: @escaping (Result<MQTTPublishInfo, Swift.Error>) -> () = { _ in }) throws -> MQTTClient {
         let rootCertificate = try NIOSSLCertificate.fromPEMBytes([UInt8](mosquittoCertificate.utf8))
-        //let key = try NIOSSLPrivateKey(bytes: [UInt8](macbookProKey.utf8), format: .pem)
         let tlsConfiguration: TLSConfiguration? = TLSConfiguration.forClient(
             trustRoots: .certificates(rootCertificate)
         )
         return MQTTClient(
             host: "test.mosquitto.org",
+            port: 8883,
             eventLoopGroupProvider: .createNew,
             configuration: .init(useSSL: true, tlsConfiguration: tlsConfiguration),
             publishCallback: cb

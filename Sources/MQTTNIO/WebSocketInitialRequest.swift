@@ -24,6 +24,7 @@ final class WebSocketInitialRequestHandler: ChannelInboundHandler, RemovableChan
         headers.add(name: "Content-Type", value: "text/plain; charset=utf-8")
         headers.add(name: "Content-Length", value: "\(0)")
         headers.add(name: "host", value: host)
+        headers.add(name: "Sec-WebSocket-Protocol", value: "mqttv3.1")
 
         let requestHead = HTTPRequestHead(version: HTTPVersion(major: 1, minor: 1),
                                           method: .GET,
