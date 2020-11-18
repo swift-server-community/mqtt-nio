@@ -139,9 +139,10 @@ final class WebSocketHandler: ChannelDuplexHandler {
     }
 
     private func receivedClose(context: ChannelHandlerContext, frame: WebSocketFrame) {
-         // Handle a received close frame. We're just going to close.
-         context.close(promise: nil)
-     }
+        // Handle a received close frame. We're just going to close.
+        self.isClosed = true
+        context.close(promise: nil)
+    }
 
     /// Make mask key to be used in WebSocket frame
     func makeMaskKey() -> WebSocketMaskingKey? {
@@ -151,6 +152,12 @@ final class WebSocketHandler: ChannelDuplexHandler {
 
     /// Close websocket connection
     public func close(context: ChannelHandlerContext, code: WebSocketErrorCode = .goingAway, promise: EventLoopPromise<Void>?) {
+        guard isClosed == false else {
+            promise?.succeed(())
+            return
+        }
+        self.isClosed = true
+        
         let codeAsInt = UInt16(webSocketErrorCode: code)
         let codeToSend: WebSocketErrorCode
         if codeAsInt == 1005 || codeAsInt == 1006 {
@@ -186,6 +193,7 @@ final class WebSocketHandler: ChannelDuplexHandler {
         context.fireErrorCaught(error)
     }
 
+    private var isClosed: Bool = false
 }
 
 struct WebSocketFrameSequence {
