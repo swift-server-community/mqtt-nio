@@ -10,6 +10,7 @@ import NIOTransportServices
 import NIOWebSocket
 
 public class MQTTClient {
+    /// MQTTClient errors
     enum Error: Swift.Error {
         case alreadyConnected
         case failedToConnect
@@ -18,9 +19,13 @@ public class MQTTClient {
         case decodeError
         case websocketUpgradeFailed
     }
+    /// EventLoopGroup used by MQTTCllent
     let eventLoopGroup: EventLoopGroup
+    /// How was EventLoopGroup provided to the client
     let eventLoopGroupProvider: NIOEventLoopGroupProvider
+    /// Host name of server to connect to
     let host: String
+    /// Port to connect to
     let port: Int
     let publishCallback: (Result<MQTTPublishInfo, Swift.Error>) -> ()
     let configuration: Configuration
@@ -36,7 +41,7 @@ public class MQTTClient {
             disablePingreq: Bool = false,
             useSSL: Bool = false,
             useWebSockets: Bool = false,
-            tlsConfiguration: TLSConfiguration = TLSConfiguration.forClient(),
+            tlsConfiguration: TLSConfiguration? = nil,
             webSocketURLPath: String? = nil)
         {
             self.disablePingreq = disablePingreq
@@ -49,7 +54,7 @@ public class MQTTClient {
         let disablePingreq: Bool
         let useSSL: Bool
         let useWebSockets: Bool
-        let tlsConfiguration: TLSConfiguration
+        let tlsConfiguration: TLSConfiguration?
         let webSocketURLPath: String?
     }
 
@@ -64,10 +69,15 @@ public class MQTTClient {
         if let port = port {
             self.port = port
         } else {
-            if configuration.useSSL {
-                self.port = 8883
-            } else {
+            switch (configuration.useSSL, configuration.useWebSockets){
+            case (false, false):
                 self.port = 1883
+            case (true, false):
+                self.port = 8883
+            case (false, true):
+                self.port = 80
+            case (true, true):
+                self.port = 443
             }
         }
         self.configuration = configuration
@@ -77,7 +87,7 @@ public class MQTTClient {
         switch eventLoopGroupProvider {
         case .createNew:
             #if canImport(Network)
-            if #available(OSX 10.14, iOS 12.0, tvOS 12.0, watchOS 6.0, *), !configuration.useSSL {
+            if #available(OSX 10.14, iOS 12.0, tvOS 12.0, watchOS 6.0, *), configuration.tlsConfiguration == nil {
                     self.eventLoopGroup = NIOTSEventLoopGroup()
                 } else {
                     self.eventLoopGroup = MultiThreadedEventLoopGroup(numberOfThreads: 1)
@@ -200,7 +210,7 @@ extension MQTTClient {
             let tlsProvider = NIOTSClientTLSProvider(tlsOptions: parameters)
             bootstrap = NIOClientTCPBootstrap(tsBootstrap, tls: tlsProvider)
         } else if let clientBootstrap = ClientBootstrap(validatingGroup: eventLoopGroup) {
-            let tlsConfiguration = self.configuration.tlsConfiguration
+            let tlsConfiguration = self.configuration.tlsConfiguration ?? TLSConfiguration.forClient()
             let sslContext = try NIOSSLContext(configuration: tlsConfiguration)
             let tlsProvider = try NIOSSLClientTLSProvider<ClientBootstrap>(context: sslContext, serverHostname: host)
             bootstrap = NIOClientTCPBootstrap(clientBootstrap, tls: tlsProvider)

@@ -18,14 +18,11 @@ final class MQTTNIOTests: XCTestCase {
         )
     }
     func createSSLClient(cb: @escaping (Result<MQTTPublishInfo, Swift.Error>) -> () = { _ in }) -> MQTTClient {
-        //let certificate = try! NIOSSLCertificate.fromPEMBytes([UInt8](pem.utf8))
-        //let privateKey = try! NIOSSLPrivateKey(bytes: [UInt8](key.utf8), format: .pem)
-        let tlsConfiguration = TLSConfiguration.forClient(/*certificateChain: certificate.map {.certificate($0)}, privateKey: .privateKey(privateKey)*/)
+        let tlsConfiguration: TLSConfiguration? = nil //TLSConfiguration.forClient(certificateChain: certificate.map {.certificate($0)}, privateKey: .privateKey(privateKey))
         return MQTTClient(
-            host: "test.mosquitto.org",
-            port: 8884,
+            host: "broker.emqx.io",
             eventLoopGroupProvider: .createNew,
-            configuration: .init(useSSL: true, useWebSockets: true, tlsConfiguration: tlsConfiguration),
+            configuration: .init(useSSL: true, tlsConfiguration: tlsConfiguration),
             publishCallback: cb
         )
     }
@@ -51,7 +48,6 @@ final class MQTTNIOTests: XCTestCase {
     func testWebsocketConnect() throws {
         let client = createWebSocketClient()
         try connect(to: client, identifier: "connect")
-        Thread.sleep(forTimeInterval: 15)
         try client.pingreq().wait()
         try client.disconnect().wait()
         try client.syncShutdownGracefully()
@@ -60,6 +56,7 @@ final class MQTTNIOTests: XCTestCase {
     func testSSLConnect() throws {
         let client = createSSLClient()
         try connect(to: client, identifier: "connect")
+        try client.pingreq().wait()
         try client.disconnect().wait()
         try client.syncShutdownGracefully()
     }
