@@ -5,10 +5,8 @@ import Network
 #endif
 import NIO
 import NIOConcurrencyHelpers
-import NIOHTTP1
 import NIOSSL
 import NIOTransportServices
-import NIOWebSocket
 
 /// Swift NIO MQTT Client
 public class MQTTClient {
@@ -31,16 +29,14 @@ public class MQTTClient {
     /// Port to connect to
     let port: Int
     /// logger
-    let logger: Logger
+    var logger: Logger
     /// Client configuration
     let configuration: Configuration
     /// Called whenever a publish event occurs
     let publishCallback: (Result<MQTTPublishInfo, Swift.Error>) -> ()
 
-    /// Channel client is running on
-    var channel: Channel?
-    /// Identifier for client (extracted from connect info)
-    var clientIdentifier = ""
+    /// Connection client is using
+    var connection: MQTTConnection?
 
     private static let globalPacketId = NIOAtomic<UInt16>.makeAtomic(value: 1)
     /// default logger that logs nothing
@@ -49,16 +45,16 @@ public class MQTTClient {
     /// Configuration for MQTTClient
     public struct Configuration {
         public init(
-            disablePingreq: Bool = false,
-            pingreqInterval: TimeAmount? = nil,
+            disablePing: Bool = false,
+            pingInterval: TimeAmount? = nil,
             timeout: TimeAmount? = nil,
             useSSL: Bool = false,
             useWebSockets: Bool = false,
             tlsConfiguration: TLSConfiguration? = nil,
             webSocketURLPath: String? = nil
         ) {
-            self.disablePingreq = disablePingreq
-            self.pingreqInterval = pingreqInterval
+            self.disablePing = disablePing
+            self.pingInterval = pingInterval
             self.timeout = timeout
             self.useSSL = useSSL
             self.useWebSockets = useWebSockets
@@ -67,9 +63,9 @@ public class MQTTClient {
         }
 
         /// disable the sending of pingreq messages
-        let disablePingreq: Bool
-        /// override internal between each pingreq message
-        let pingreqInterval: TimeAmount?
+        let disablePing: Bool
+        /// override interval between each pingreq message
+        let pingInterval: TimeAmount?
         /// timeout for server response
         let timeout: TimeAmount?
         /// use encrypted connection to server
@@ -114,7 +110,7 @@ public class MQTTClient {
         }
         self.configuration = configuration
         self.publishCallback = publishCallback
-        self.channel = nil
+        self.connection = nil
         self.logger = logger ?? Self.loggingDisabled
         self.eventLoopGroupProvider = eventLoopGroupProvider
         switch eventLoopGroupProvider {
@@ -135,7 +131,7 @@ public class MQTTClient {
 
     /// Close down client. Must be called before the client is destroyed
     public func syncShutdownGracefully() throws {
-        try channel?.close().wait()
+        try connection?.close().wait()
         switch self.eventLoopGroupProvider {
         case .createNew:
             try eventLoopGroup.syncShutdownGracefully()
@@ -150,14 +146,19 @@ public class MQTTClient {
     ///   - will: Publish message to be posted as soon as connection is made
     /// - Returns: Future waiting for connect to fiinsh
     public func connect(info: MQTTConnectInfo, will: MQTTPublishInfo? = nil) -> EventLoopFuture<Void> {
-        guard self.channel == nil else { return eventLoopGroup.next().makeFailedFuture(Error.alreadyConnected) }
+        guard self.connection == nil else { return eventLoopGroup.next().makeFailedFuture(Error.alreadyConnected) }
         // work out pingreq interval
-        let pingreqInterval = configuration.pingreqInterval ?? TimeAmount.seconds(max(Int64(info.keepAliveSeconds - 5), 5))
+        let pingInterval = configuration.pingInterval ?? TimeAmount.seconds(max(Int64(info.keepAliveSeconds - 5), 5))
 
-        return createBootstrap(pingreqInterval: pingreqInterval)
-            .flatMap { _ -> EventLoopFuture<MQTTInboundMessage> in
-                self.clientIdentifier = info.clientIdentifier
-                return self.sendMessage(MQTTConnectMessage(connect: info, will: nil)) { message in
+        return MQTTConnection.create(client: self, pingInterval: pingInterval)
+            .flatMap { connection -> EventLoopFuture<MQTTInboundMessage> in
+                self.connection = connection
+                connection.closeFuture.whenComplete { _ in
+                    self.connection = nil
+                }
+                // attach client identifier to logger
+                self.logger = self.logger.attachingClientIdentifier(info.clientIdentifier)
+                return connection.sendMessage(MQTTConnectMessage(connect: info, will: nil)) { message in
                     guard message.type == .CONNACK else { throw Error.failedToConnect }
                     return true
                 }
@@ -171,13 +172,14 @@ public class MQTTClient {
     ///     when message is sent, when PUBACK is received or when PUBREC and following PUBCOMP are
     ///     received
     public func publish(info: MQTTPublishInfo) -> EventLoopFuture<Void> {
+        guard let connection = self.connection else { return eventLoopGroup.next().makeFailedFuture(Error.noConnection) }
         if info.qos == .atMostOnce {
             // don't send a packet id if QOS is at most once. (MQTT-2.3.1-5)
-            return sendMessageNoWait(MQTTPublishMessage(publish: info, packetId: 0))
+            return connection.sendMessageNoWait(MQTTPublishMessage(publish: info, packetId: 0))
         }
 
         let packetId = Self.globalPacketId.add(1)
-        return sendMessage(MQTTPublishMessage(publish: info, packetId: packetId)) { message in
+        return connection.sendMessage(MQTTPublishMessage(publish: info, packetId: packetId)) { message in
             guard message.packetId == packetId else { return false }
             if info.qos == .atLeastOnce {
                 guard message.type == .PUBACK else { throw Error.unexpectedMessage }
@@ -188,7 +190,7 @@ public class MQTTClient {
         }
         .flatMap { _ in
             if info.qos == .exactlyOnce {
-                return self.sendMessage(MQTTAckMessage(type: .PUBREL, packetId: packetId)) { message in
+                return connection.sendMessage(MQTTAckMessage(type: .PUBREL, packetId: packetId)) { message in
                     guard message.packetId == packetId else { return false }
                     guard message.type == .PUBCOMP else { throw Error.unexpectedMessage }
                     return true
@@ -202,8 +204,10 @@ public class MQTTClient {
     /// - Parameter infos: Subscription infos
     /// - Returns: Future waiting for subscribe to complete. Will wait for SUBACK message from server
     public func subscribe(infos: [MQTTSubscribeInfo]) -> EventLoopFuture<Void> {
+        guard let connection = self.connection else { return eventLoopGroup.next().makeFailedFuture(Error.noConnection) }
         let packetId = Self.globalPacketId.add(1)
-        return sendMessage(MQTTSubscribeMessage(subscriptions: infos, packetId: packetId)) { message in
+        
+        return connection.sendMessage(MQTTSubscribeMessage(subscriptions: infos, packetId: packetId)) { message in
             guard message.packetId == packetId else { return false }
             guard message.type == .SUBACK else { throw Error.unexpectedMessage }
             return true
@@ -215,8 +219,10 @@ public class MQTTClient {
     /// - Parameter infos: Subscription infos
     /// - Returns: Future waiting for unsubscribe to complete. Will wait for UNSUBACK message from server
     public func unsubscribe(infos: [MQTTSubscribeInfo]) -> EventLoopFuture<Void> {
+        guard let connection = self.connection else { return eventLoopGroup.next().makeFailedFuture(Error.noConnection) }
         let packetId = Self.globalPacketId.add(1)
-        return sendMessage(MQTTUnsubscribeMessage(subscriptions: infos, packetId: packetId)) { message in
+
+        return connection.sendMessage(MQTTUnsubscribeMessage(subscriptions: infos, packetId: packetId)) { message in
             guard message.packetId == packetId else { return false }
             guard message.type == .UNSUBACK else { throw Error.unexpectedMessage }
             return true
@@ -230,10 +236,11 @@ public class MQTTClient {
     /// the connection is still live. If you initialize the client with the configuration `disablePingReq: true` then these
     /// are disabled and it is up to you to send the PINGREQ messages yourself
     ///
-    /// - Parameter infos: Subscription infos
-    /// - Returns: Future waiting for unsubscribe to complete. Will wait for UNSUBACK message from server
-    public func pingreq() -> EventLoopFuture<Void> {
-        return sendMessage(MQTTPingreqMessage()) { message in
+    /// - Returns: Future waiting for ping response
+    public func ping() -> EventLoopFuture<Void> {
+        guard let connection = self.connection else { return eventLoopGroup.next().makeFailedFuture(Error.noConnection) }
+        
+        return connection.sendMessage(MQTTPingreqMessage()) { message in
             guard message.type == .PINGRESP else { return false }
             return true
         }
@@ -243,152 +250,21 @@ public class MQTTClient {
     /// Disconnect from server
     /// - Returns: Future waiting on disconnect message to be sent
     public func disconnect() -> EventLoopFuture<Void> {
-        let disconnect: EventLoopFuture<Void> = sendMessageNoWait(MQTTDisconnectMessage())
+        guard let connection = self.connection else { return eventLoopGroup.next().makeFailedFuture(Error.noConnection) }
+
+        return connection.sendMessageNoWait(MQTTDisconnectMessage())
             .flatMap {
-                let future = self.channel!.close()
-                self.channel = nil
-                return future
+                let future = self.connection?.close()
+                self.connection = nil
+                return future ?? self.eventLoopGroup.next().makeSucceededFuture(())
             }
-        return disconnect
     }
 }
 
-extension MQTTClient {
-
-    func getBootstrap(_ eventLoopGroup: EventLoopGroup) throws -> NIOClientTCPBootstrap {
-        var bootstrap: NIOClientTCPBootstrap
-        #if canImport(Network)
-        // if eventLoop is compatible with NIOTransportServices create a NIOTSConnectionBootstrap
-        if #available(OSX 10.14, iOS 12.0, tvOS 12.0, watchOS 6.0, *),
-           let tsBootstrap = NIOTSConnectionBootstrap(validatingGroup: eventLoopGroup) {
-            // create NIOClientTCPBootstrap with NIOTS TLS provider
-            //let tlsConfiguration = self.tlsConfiguration ?? TLSConfiguration.forClient()
-            let parameters = NWProtocolTLS.Options()//tlsConfiguration.getNWProtocolTLSOptions()
-            let tlsProvider = NIOTSClientTLSProvider(tlsOptions: parameters)
-            bootstrap = NIOClientTCPBootstrap(tsBootstrap, tls: tlsProvider)
-        } else if let clientBootstrap = ClientBootstrap(validatingGroup: eventLoopGroup) {
-            let tlsConfiguration = self.configuration.tlsConfiguration ?? TLSConfiguration.forClient()
-            let sslContext = try NIOSSLContext(configuration: tlsConfiguration)
-            let tlsProvider = try NIOSSLClientTLSProvider<ClientBootstrap>(context: sslContext, serverHostname: host)
-            bootstrap = NIOClientTCPBootstrap(clientBootstrap, tls: tlsProvider)
-        } else {
-            preconditionFailure("Cannot create bootstrap for the supplied EventLoop")
-        }
-        #else
-        if let clientBootstrap = ClientBootstrap(validatingGroup: eventLoopGroup) {
-            let tlsConfiguration = self.tlsConfiguration ?? TLSConfiguration.forClient()
-            let sslContext = try NIOSSLContext(configuration: tlsConfiguration)
-            let tlsProvider = try NIOSSLClientTLSProvider<ClientBootstrap>(context: sslContext, serverHostname: host)
-            bootstrap = NIOClientTCPBootstrap(clientBootstrap, tls: tlsProvider)
-        } else {
-            preconditionFailure("Cannot create bootstrap for the supplied EventLoop")
-        }
-        #endif
-        if configuration.useSSL {
-            return bootstrap.enableTLS()
-        }
-        return bootstrap
-    }
-
-    func createBootstrap(pingreqInterval: TimeAmount) -> EventLoopFuture<Void> {
-        let promise = self.eventLoopGroup.next().makePromise(of: Void.self)
-        do {
-            // Work out what handlers to add
-            var handlers: [ChannelHandler] = [
-                MQTTEncodeHandler(client: self),
-                ByteToMessageHandler(ByteToMQTTMessageDecoder(client: self))
-            ]
-            if !configuration.disablePingreq {
-                handlers = [PingreqHandler(client: self, timeout: pingreqInterval)] + handlers
-            }
-            // get bootstrap based off what eventloop we are running on
-            let bootstrap = try getBootstrap(self.eventLoopGroup)
-            bootstrap
-                .channelOption(ChannelOptions.socketOption(.so_reuseaddr), value: 1)
-                .channelOption(ChannelOptions.socket(IPPROTO_TCP, TCP_NODELAY), value: 1)
-                .channelInitializer { channel in
-                    // are we using websockets
-                    if self.configuration.useWebSockets {
-                        // prepare for websockets and on upgrade add handlers
-                        return self.setupChannelForWebsockets(channel: channel, upgradePromise: promise) {
-                            return channel.pipeline.addHandlers(handlers)
-                        }
-                    } else {
-                        return channel.pipeline.addHandlers(handlers)
-                    }
-                }
-                .connect(host: self.host, port: self.port)
-                .map { channel in
-                    self.channel = channel
-                    channel.closeFuture.whenComplete { _ in
-                        self.channel = nil
-                    }
-                }
-                .map {
-                    if !self.configuration.useWebSockets {
-                        promise.succeed(())
-                    }
-                }
-                .cascadeFailure(to: promise)
-        } catch {
-            promise.fail(error)
-        }
-        return promise.futureResult
-    }
-
-    func setupChannelForWebsockets(
-        channel: Channel,
-        upgradePromise promise: EventLoopPromise<Void>,
-        afterHandlerAdded: @escaping () -> EventLoopFuture<Void>
-    ) -> EventLoopFuture<Void> {
-        // initial HTTP request handler, before upgrade
-        let httpHandler = WebSocketInitialRequestHandler(
-            host: self.host,
-            urlPath: configuration.webSocketURLPath ?? "/",
-            upgradePromise: promise
-        )
-        // create random key for request key
-        let requestKey = (0..<16).map { _ in UInt8.random(in: .min ..< .max)}
-        let websocketUpgrader = NIOWebSocketClientUpgrader(
-            requestKey: Data(requestKey).base64EncodedString()) { channel, req in
-            let future = channel.pipeline.addHandler(WebSocketHandler())
-                .flatMap { _ in
-                    afterHandlerAdded()
-                }
-            future.cascade(to: promise)
-            return future
-        }
-
-        let config: NIOHTTPClientUpgradeConfiguration = (
-            upgraders: [ websocketUpgrader ],
-            completionHandler: { _ in
-                channel.pipeline.removeHandler(httpHandler, promise: nil)
-        })
-
-        // add HTTP handler with web socket upgrade
-        return channel.pipeline.addHTTPClientHandlers(withClientUpgrade: config).flatMap {
-            channel.pipeline.addHandler(httpHandler)
-        }
-
-    }
-
-    func sendMessage(_ message: MQTTOutboundMessage, checkInbound: @escaping (MQTTInboundMessage) throws -> Bool) -> EventLoopFuture<MQTTInboundMessage> {
-        guard let channel = self.channel else { return eventLoopGroup.next().makeFailedFuture(Error.noConnection) }
-        let task = MQTTTask(on: eventLoopGroup.next(), timeout: configuration.timeout, checkInbound: checkInbound)
-        let taskHandler = MQTTTaskHandler(task: task, channel: channel)
-
-        channel.pipeline.addHandler(taskHandler)
-            .flatMap {
-                channel.writeAndFlush(message)
-            }
-            .whenFailure { error in
-                task.fail(error)
-            }
-        return task.promise.futureResult
-    }
-
-    func sendMessageNoWait(_ message: MQTTOutboundMessage) -> EventLoopFuture<Void> {
-        guard let channel = self.channel else { return eventLoopGroup.next().makeFailedFuture(Error.noConnection) }
-        return channel.writeAndFlush(message)
+extension Logger {
+    func attachingClientIdentifier(_ identifier: String?) -> Logger {
+        var logger = self
+        logger[metadataKey: "mqtt-client"] = identifier.map { .string($0) }
+        return logger
     }
 }

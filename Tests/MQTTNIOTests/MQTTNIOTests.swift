@@ -89,7 +89,7 @@ final class MQTTNIOTests: XCTestCase {
     func testWebsocketConnect() throws {
         let client = createWebSocketClient()
         try connect(to: client, identifier: "connect")
-        try client.pingreq().wait()
+        try client.ping().wait()
         try client.disconnect().wait()
         try client.syncShutdownGracefully()
     }
@@ -97,7 +97,7 @@ final class MQTTNIOTests: XCTestCase {
     func testSSLConnect() throws {
         let client = try createSSLClient()
         try connect(to: client, identifier: "connect")
-        try client.pingreq().wait()
+        try client.ping().wait()
         try client.disconnect().wait()
         try client.syncShutdownGracefully()
     }
@@ -153,7 +153,7 @@ final class MQTTNIOTests: XCTestCase {
     func testMQTTPingreq() throws {
         let client = self.createClient()
         try connect(to: client, identifier: "soto_publisher")
-        try client.pingreq().wait()
+        try client.ping().wait()
         try client.disconnect().wait()
         try client.syncShutdownGracefully()
     }

@@ -55,7 +55,7 @@ final class PingreqHandler: ChannelDuplexHandler {
             if self.lastEventTime + self.timeout <= .now() {
                 guard context.channel.isActive else { return }
 
-                self.client.pingreq().whenComplete { result in
+                self.client.ping().whenComplete { result in
                     switch result {
                     case .failure(let error):
                         context.fireErrorCaught(error)

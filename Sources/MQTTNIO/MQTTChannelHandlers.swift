@@ -1,3 +1,4 @@
+import Logging
 import NIO
 
 /// Handler encoding MQTT Messages into ByteBuffers
@@ -5,15 +6,15 @@ final class MQTTEncodeHandler: ChannelOutboundHandler {
     public typealias OutboundIn = MQTTOutboundMessage
     public typealias OutboundOut = ByteBuffer
 
-    let client: MQTTClient
+    let logger: Logger
 
-    init(client: MQTTClient) {
-        self.client = client
+    init(logger: Logger) {
+        self.logger = logger
     }
 
     func write(context: ChannelHandlerContext, data: NIOAny, promise: EventLoopPromise<Void>?) {
         let message = unwrapOutboundIn(data)
-        client.logger.debug("MQTT Out", metadata: ["mqtt_client": .string(client.clientIdentifier), "mqtt_message": .string("\(message)")])
+        logger.debug("MQTT Out", metadata: ["mqtt_message": .string("\(message)")])
         var bb = context.channel.allocator.buffer(capacity: 0)
         try! message.serialize(to: &bb)
         context.write(wrapOutboundOut(bb), promise: promise)
@@ -39,7 +40,7 @@ struct ByteToMQTTMessageDecoder: ByteToMessageDecoder {
                 do {
                     let publish = try MQTTSerializer.readPublish(from: packet)
                     let publishMessage = MQTTPublishMessage(publish: publish.publishInfo, packetId: publish.packetId)
-                    client.logger.debug("MQTT In", metadata: ["mqtt_client": .string(client.clientIdentifier), "mqtt_message": .string("\(publishMessage)")])
+                    client.logger.debug("MQTT In", metadata: ["mqtt_message": .string("\(publishMessage)")])
                     self.publish(publishMessage)
                 } catch MQTTSerializer.Error.incompletePacket {
                     return .needMoreData
@@ -58,7 +59,7 @@ struct ByteToMQTTMessageDecoder: ByteToMessageDecoder {
             default:
                 throw MQTTClient.Error.decodeError
             }
-            client.logger.debug("MQTT In", metadata: ["mqtt_client": .string(client.clientIdentifier), "mqtt_message": .string("\(message)")])
+            client.logger.debug("MQTT In", metadata: ["mqtt_message": .string("\(message)")])
             context.fireChannelRead(wrapInboundOut(message))
         } catch MQTTSerializer.Error.incompletePacket {
             return .needMoreData
@@ -73,17 +74,17 @@ struct ByteToMQTTMessageDecoder: ByteToMessageDecoder {
         case .atMostOnce:
             client.publishCallback(.success(message.publish))
         case .atLeastOnce:
-            client.sendMessageNoWait(MQTTAckMessage(type: .PUBACK, packetId: message.packetId))
+            client.connection!.sendMessageNoWait(MQTTAckMessage(type: .PUBACK, packetId: message.packetId))
                 .map { _ in return message.publish }
                 .whenComplete { self.client.publishCallback($0) }
         case .exactlyOnce:
-            client.sendMessage(MQTTAckMessage(type: .PUBREC, packetId: message.packetId)) { newMessage in
+            client.connection!.sendMessage(MQTTAckMessage(type: .PUBREC, packetId: message.packetId)) { newMessage in
                 guard newMessage.packetId == message.packetId else { return false }
                 guard newMessage.type == .PUBREL else { throw MQTTClient.Error.unexpectedMessage }
                 return true
             }
             .flatMap { _ in
-                self.client.sendMessageNoWait(MQTTAckMessage(type: .PUBCOMP, packetId: message.packetId))
+                self.client.connection!.sendMessageNoWait(MQTTAckMessage(type: .PUBCOMP, packetId: message.packetId))
             }
             .map { _ in return message.publish }
             .whenComplete { self.client.publishCallback($0) }
