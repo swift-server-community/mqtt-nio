@@ -1,6 +1,7 @@
 import XCTest
 import Logging
 import NIO
+import NIOConcurrencyHelpers
 import NIOHTTP1
 import NIOSSL
 @testable import MQTTNIO
@@ -142,6 +143,7 @@ final class MQTTNIOTests: XCTestCase {
     }
 
     func testMQTTPublishToClient() throws {
+        let lock = Lock()
         var publishReceived: [MQTTPublishInfo] = []
         let publish = MQTTPublishInfo(
             qos: .atLeastOnce,
@@ -159,7 +161,9 @@ final class MQTTNIOTests: XCTestCase {
                 var buffer = publish.payload
                 let string = buffer.readString(length: buffer.readableBytes)
                 XCTAssertEqual(string, "This is the Test payload")
-                publishReceived.append(publish)
+                lock.withLock {
+                    publishReceived.append(publish)
+                }
             case .failure(let error):
                 XCTFail("\(error)")
             }
@@ -169,7 +173,9 @@ final class MQTTNIOTests: XCTestCase {
         try client.publish(info: publish).wait()
         try client.publish(info: publish).wait()
         Thread.sleep(forTimeInterval: 2)
-        XCTAssertEqual(publishReceived.count, 2)
+        lock.withLock {
+            XCTAssertEqual(publishReceived.count, 2)
+        }
         try client.disconnect().wait()
         try client2.disconnect().wait()
         try client.syncShutdownGracefully()
