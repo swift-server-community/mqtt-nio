@@ -12,7 +12,7 @@ let client = MQTTClient(
     port: 1883,
     eventLoopGroupProvider: .createNew
 )
-let connectInfo = MQTTConnectInfo(
+let connect = MQTTConnectInfo(
     cleanSession: true,
     keepAliveSeconds: 15,
     clientIdentifier: identifier
