@@ -56,6 +56,25 @@ final class MQTTNIOTests: XCTestCase {
         try client.connect(info: connect).wait()
     }
 
+    func testConnectWithWill() throws {
+        let client = createClient()
+        let connect = MQTTConnectInfo(
+            cleanSession: true,
+            keepAliveSeconds: 15,
+            clientIdentifier: "testConnectWithWill"
+        )
+        let publish = MQTTPublishInfo(
+            qos: .atLeastOnce,
+            retain: true,
+            topicName: "MyWillTopic",
+            payload: ByteBufferAllocator().buffer(string: "Test payload")
+        )
+        try client.connect(info: connect, will: publish).wait()
+        try client.ping().wait()
+        try client.disconnect().wait()
+        try client.syncShutdownGracefully()
+    }
+    
     func testWebsocketConnect() throws {
         let client = createWebSocketClient()
         try connect(to: client, identifier: "connect")
