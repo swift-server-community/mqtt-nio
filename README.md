@@ -9,6 +9,7 @@ Create a client.
 ```swift
 let client = MQTTClient(
     host: "mqtt.eclipse.org", 
+    port: 1883,
     eventLoopGroupProvider: .createNew
 )
 ```
@@ -45,7 +46,7 @@ try client.publish(info: publish).wait()
 ```
 ## TLS
 
-MQTT NIO supports TLS connections. You can enable these through the `Configuration` provided at initialization. Set`Configuration.useSSL` to `true` and provide your SSL certificates via the `Configuration.tlsConfiguration` struct. For example to connect to the mosquitto test server `test.mosquitto.org` on port 8884 you need to provide their certificate and your own certificate. They provide details on the website [https://test.mosquitto.org/](https://test.mosquitto.org/) on how to generate your own certificates.
+MQTT NIO supports TLS connections. You can enable this through the `Configuration` provided at initialization. Set`Configuration.useSSL` to `true` and provide your SSL certificates via the `Configuration.tlsConfiguration` struct. For example to connect to the mosquitto test server `test.mosquitto.org` on port 8884 you need to provide their root certificate and your own certificate. They provide details on the website [https://test.mosquitto.org/](https://test.mosquitto.org/) on how to generate these.
 
 ```swift
 let rootCertificate = try NIOSSLCertificate.fromPEMBytes([UInt8](mosquittoCertificateText.utf8))
