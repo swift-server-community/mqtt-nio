@@ -43,6 +43,27 @@ let publish = MQTTPublishInfo(
 )
 try client.publish(info: publish).wait()
 ```
-## WebSockets and SSL
+## TLS
 
-There is support for WebSockets and TLS connections. You can enable these through the `Configuration` provided at initialization. For TLS connections set`Configuration.useSSL` to `true` and provide your SSL certificates via the `Configuration.tlsConfiguration` struct. For WebSockets set `Configuration.useWebSockets` to `true` and set the URL path in `Configuration.webSocketsURLPath`.
+MQTT NIO supports TLS connections. You can enable these through the `Configuration` provided at initialization. Set`Configuration.useSSL` to `true` and provide your SSL certificates via the `Configuration.tlsConfiguration` struct. For example to connect to the mosquitto test server `test.mosquitto.org` on port 8884 you need to provide their certificate and your own certificate. They provide details on the website [https://test.mosquitto.org/](https://test.mosquitto.org/) on how to generate your own certificates.
+
+```swift
+let rootCertificate = try NIOSSLCertificate.fromPEMBytes([UInt8](mosquittoCertificateText.utf8))
+let myCertificate = try NIOSSLCertificate.fromPEMBytes([UInt8](myCertificateText.utf8))
+let myPrivateKey = try NIOSSLPrivateKey(bytes: [UInt8](myPrivateKeyText.utf8), format: .pem)
+let tlsConfiguration: TLSConfiguration? = TLSConfiguration.forClient(
+    trustRoots: .certificates(rootCertificate),
+    certificateChain: myCertificate.map { .certificate($0) },
+    privateKey: .privateKey(myPrivateKey)
+)
+let client = MQTTClient(
+    host: "test.mosquitto.org",
+    port: 8884,
+    eventLoopGroupProvider: .createNew,
+    configuration: .init(useSSL: true, tlsConfiguration: tlsConfiguration),
+)
+```
+
+## WebSockets
+
+MQTT also supports Web Socket connections. Set `Configuration.useWebSockets` to `true` and set the URL path in `Configuration.webSocketsURLPath` to enable these.
