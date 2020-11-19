@@ -87,10 +87,10 @@ final class MQTTConnection {
             preconditionFailure("Cannot create bootstrap for the supplied EventLoop")
         }
         #else
-        if let clientBootstrap = ClientBootstrap(validatingGroup: eventLoopGroup) {
-            let tlsConfiguration = self.tlsConfiguration ?? TLSConfiguration.forClient()
+        if let clientBootstrap = ClientBootstrap(validatingGroup: client.eventLoopGroup) {
+            let tlsConfiguration = client.configuration.tlsConfiguration ?? TLSConfiguration.forClient()
             let sslContext = try NIOSSLContext(configuration: tlsConfiguration)
-            let tlsProvider = try NIOSSLClientTLSProvider<ClientBootstrap>(context: sslContext, serverHostname: host)
+            let tlsProvider = try NIOSSLClientTLSProvider<ClientBootstrap>(context: sslContext, serverHostname: client.host)
             bootstrap = NIOClientTCPBootstrap(clientBootstrap, tls: tlsProvider)
         } else {
             preconditionFailure("Cannot create bootstrap for the supplied EventLoop")
