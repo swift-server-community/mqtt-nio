@@ -1,5 +1,8 @@
 # MQTT NIO 
 
+[<img src="http://img.shields.io/badge/swift-5.3-brightgreen.svg" alt="Swift 5.3" />](https://swift.org)
+[<img src="https://github.com/adam-fowler/mqtt-nio/workflows/CI/badge.svg" />](https://github.com/adam-fowler/mqtt-nio/workflows/CI/badge.svg)
+
 A Swift NIO based MQTT 3.1.1 Client. 
 
 ## Usage
