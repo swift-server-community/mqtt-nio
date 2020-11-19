@@ -5,7 +5,7 @@ services:
   mosquitto:
     image: eclipse-mosquitto
     volumes:
-      - ./mosquitto/config/mosquitto.conf:/mosquitto/config/mosquitto.conf
+      - ./mosquitto/config:/mosquitto/config
       - ./mosquitto/certs:/mosquitto/certs
     ports:
       - "1883:1883"
