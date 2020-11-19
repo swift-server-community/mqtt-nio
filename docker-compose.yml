@@ -1,0 +1,16 @@
+# run this with docker-compose -f docker/docker-compose.yml run test
+version: "3.3"
+
+services:
+  mosquitto:
+    image: eclipse-mosquitto
+    volumes:
+      - ./mosquitto/config:/mosquitto/config
+      - ./mosquitto/certs:/mosquitto/certs
+    ports:
+      - "1883:1883"
+      - "8883:8883"
+      - "8080:8080"
+      - "8081:8081"
+    expose:
+      - "8083"

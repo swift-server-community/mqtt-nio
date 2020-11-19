@@ -95,7 +95,7 @@ public struct MQTTConnectInfo {
     /// MQTT password. Set to "" if not used.
     public let password: String
 
-    public init(cleanSession: Bool, keepAliveSeconds: UInt16, clientIdentifier: String, userName: String, password: String) {
+    public init(cleanSession: Bool, keepAliveSeconds: UInt16, clientIdentifier: String, userName: String = "", password: String = "") {
         self.cleanSession = cleanSession
         self.keepAliveSeconds = keepAliveSeconds
         self.clientIdentifier = clientIdentifier
@@ -142,7 +142,7 @@ public struct MQTTPublishInfo
     /// Message payload.
     public let payload: ByteBuffer
 
-    public init(qos: MQTTQoS, retain: Bool, dup: Bool, topicName: String, payload: ByteBuffer) {
+    public init(qos: MQTTQoS, retain: Bool, dup: Bool = false, topicName: String, payload: ByteBuffer) {
         self.qos = qos
         self.retain = retain
         self.dup = dup

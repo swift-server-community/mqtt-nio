@@ -34,7 +34,18 @@ final public class MQTTClient {
     let configuration: Configuration
 
     /// Connection client is using
-    var connection: MQTTConnection?
+    var connection: MQTTConnection? {
+        get {
+            lock.withLock {
+                _connection
+            }
+        }
+        set {
+            lock.withLock {
+                _connection = newValue
+            }
+        }
+    }
 
     private static let globalPacketId = NIOAtomic<UInt16>.makeAtomic(value: 1)
     /// default logger that logs nothing
@@ -106,7 +117,7 @@ final public class MQTTClient {
             }
         }
         self.configuration = configuration
-        self.connection = nil
+        self._connection = nil
         self.logger = logger ?? Self.loggingDisabled
         self.eventLoopGroupProvider = eventLoopGroupProvider
         switch eventLoopGroupProvider {
@@ -280,6 +291,8 @@ final public class MQTTClient {
 
     var publishListeners = MQTTListeners<MQTTPublishInfo>()
     var closeListeners = MQTTListeners<Void>()
+    private var _connection: MQTTConnection?
+    private var lock = Lock()
 }
 
 extension Logger {

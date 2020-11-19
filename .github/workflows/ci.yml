@@ -1,0 +1,68 @@
+name: CI
+
+on:
+  push:
+    branches:
+    - main
+  pull_request:
+    branches:
+    - main
+  release:
+    types: [published]
+
+jobs:
+  macos:
+    runs-on: macOS-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+    - name: SPM tests
+      run: swift build
+
+  #ios:
+  #  runs-on: macOS-latest
+  #  steps:
+  #  - name: Checkout
+  #    uses: actions/checkout@v2
+  #  - name: Xcodebuild
+  #    run: |
+  #      xcodebuild -scheme soto-core-Package -quiet -destination 'platform=iOS Simulator,name=iPhone 11'
+#        xcodebuild test -scheme soto-core-Package -destination 'platform=iOS Simulator,name=iPhone 11'
+
+  linux:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        tag:
+          - swift:5.3
+    #container:
+    #  image: ${{ matrix.tag }}
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+    #- name: Install dependencies
+    #  run: |
+    #    apt-get update -qq
+    #    apt-get install -q -y tzdata zlib1g-dev curl
+    #- name: Install docker-compose
+    #  run: |
+    #    curl -L "https://github.com/docker/compose/releases/download/1.27.4/docker-compose-$(uname -s)-$(uname -m)" -o docker-compose
+     #   chmod a+x docker-compose
+     #   ./docker-compose --version
+    - name: Mosquitto container
+      run: |
+        docker-compose pull
+        docker-compose up -d
+    - name: Test
+      run: swift test --enable-test-discovery --enable-code-coverage --sanitize=thread
+    #- name: Convert coverage files
+    #  run: |
+    #    llvm-cov export -format="lcov" \
+    #      .build/debug/soto-corePackageTests.xctest \
+    #      -ignore-filename-regex="\/Tests\/" \
+    #      -instr-profile .build/debug/codecov/default.profdata > info.lcov
+    #- name: Upload to codecov.io
+    #  uses: codecov/codecov-action@v1
+    #  with:
+    #    file: info.lcov
+
