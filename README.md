@@ -1,10 +1,10 @@
 # MQTT NIO 
 
-A Swift NIO MQTT 3.1.1 Client. 
+A Swift NIO based MQTT 3.1.1 Client. 
 
 ## Usage
 
-Create a client.  
+Create a client and connect to the MQTT broker.  
 
 ```swift
 let client = MQTTClient(
@@ -12,6 +12,12 @@ let client = MQTTClient(
     port: 1883,
     eventLoopGroupProvider: .createNew
 )
+let connectInfo = MQTTConnectInfo(
+    cleanSession: true,
+    keepAliveSeconds: 15,
+    clientIdentifier: identifier
+)
+try client.connect(info: connect).wait()
 ```
 
 Subscribe to a topic and add a publish listener to report publish messages from the server.
@@ -38,7 +44,6 @@ Publish to a topic.
 let publish = MQTTPublishInfo(
     qos: .atLeastOnce,
     retain: false,
-    dup: false,
     topicName: "my-topics",
     payload: ByteBufferAllocator().buffer(string: "This is the Test payload")
 )
