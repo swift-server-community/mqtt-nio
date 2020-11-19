@@ -10,7 +10,17 @@ Create a client with connection details and a closure to be called whenever a PU
 let client = MQTTClient(
     host: "mqtt.eclipse.org", 
     eventLoopGroupProvider: .createNew
-) { result in
+)
+```
+
+Subscribe to a topic and add a publish listener to report publish messages from the server.
+```swift
+let subscription = MQTTSubscribeInfo(
+    qos: .atLeastOnce,
+    topicFilter: "my-topics"
+)
+try client.subscribe(infos: [subscription]).wait()
+client.addPublishListener("My Listener") { result in
     switch result {
     case .success(let publish):
         var buffer = publish.payload
@@ -20,15 +30,6 @@ let client = MQTTClient(
         print("Error while receiving PUBLISH event")
     }
 }
-```
-
-Subscribe to a topic
-```swift
-let subscription = MQTTSubscribeInfo(
-    qos: .atLeastOnce,
-    topicFilter: "my-topics"
-)
-try client.subscribe(infos: [subscription]).wait()
 ```
 
 Publish to a topic.
@@ -44,4 +45,4 @@ try client.publish(info: publish).wait()
 ```
 ## WebSockets and SSL
 
-There is support for WebSockets and SSL connections. You can enable these through the `Configuration` provided at initialization. I have only been able to verify these work with a small number of servers, so am not sure if the implementation of these is complete.
+There is support for WebSockets and TLS connections. You can enable these through the `Configuration` provided at initialization. For TLS connections set`Configuration.useSSL` to `true` and provide your SSL certificates via the `Configuration.tlsConfiguration` struct. For WebSockets set `Configuration.useWebSockets` to `true` and set the URL path in `Configuration.webSocketsURLPath`.
