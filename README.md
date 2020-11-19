@@ -4,7 +4,7 @@ A Swift NIO MQTT 3.1.1 Client.
 
 ## Usage
 
-Create a client with connection details and a closure to be called whenever a PUBLISH event is received
+Create a client.  
 
 ```swift
 let client = MQTTClient(
