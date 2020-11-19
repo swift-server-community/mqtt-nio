@@ -8,7 +8,7 @@ import NIOSSL
 import NIOTransportServices
 import NIOWebSocket
 
-class MQTTConnection {
+final class MQTTConnection {
     let channel: Channel
     let timeout: TimeAmount?
     

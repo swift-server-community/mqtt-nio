@@ -1,7 +1,7 @@
 
 import NIO
 
-class MQTTTask {
+final class MQTTTask {
     let promise: EventLoopPromise<MQTTInboundMessage>
     let checkInbound: (MQTTInboundMessage) throws -> Bool
     let timeoutTask: Scheduled<Void>?
@@ -30,7 +30,7 @@ class MQTTTask {
     }
 }
 
-class MQTTTaskHandler: ChannelInboundHandler, RemovableChannelHandler {
+final class MQTTTaskHandler: ChannelInboundHandler, RemovableChannelHandler {
     typealias InboundIn = MQTTInboundMessage
     
     let task: MQTTTask

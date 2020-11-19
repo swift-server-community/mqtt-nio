@@ -9,7 +9,7 @@ import NIOSSL
 import NIOTransportServices
 
 /// Swift NIO MQTT Client
-public class MQTTClient {
+final public class MQTTClient {
     /// MQTTClient errors
     enum Error: Swift.Error {
         case alreadyConnected
