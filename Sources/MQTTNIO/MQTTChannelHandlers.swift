@@ -45,7 +45,7 @@ struct ByteToMQTTMessageDecoder: ByteToMessageDecoder {
                 } catch MQTTSerializer.Error.incompletePacket {
                     return .needMoreData
                 } catch {
-                    self.client.publishCallback(.failure(error))
+                    self.client.publishListeners.notify(.failure(error))
                 }
                 return .continue
             case .CONNACK:
@@ -72,11 +72,11 @@ struct ByteToMQTTMessageDecoder: ByteToMessageDecoder {
     func publish(_ message: MQTTPublishMessage) {
         switch message.publish.qos {
         case .atMostOnce:
-            client.publishCallback(.success(message.publish))
+            client.publishListeners.notify(.success(message.publish))
         case .atLeastOnce:
             client.connection!.sendMessageNoWait(MQTTAckMessage(type: .PUBACK, packetId: message.packetId))
                 .map { _ in return message.publish }
-                .whenComplete { self.client.publishCallback($0) }
+                .whenComplete { self.client.publishListeners.notify($0) }
         case .exactlyOnce:
             client.connection!.sendMessage(MQTTAckMessage(type: .PUBREC, packetId: message.packetId)) { newMessage in
                 guard newMessage.packetId == message.packetId else { return false }
@@ -87,7 +87,7 @@ struct ByteToMQTTMessageDecoder: ByteToMessageDecoder {
                 self.client.connection!.sendMessageNoWait(MQTTAckMessage(type: .PUBCOMP, packetId: message.packetId))
             }
             .map { _ in return message.publish }
-            .whenComplete { self.client.publishCallback($0) }
+            .whenComplete { self.client.publishListeners.notify($0) }
         }
 
     }

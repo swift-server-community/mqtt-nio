@@ -32,8 +32,6 @@ final public class MQTTClient {
     var logger: Logger
     /// Client configuration
     let configuration: Configuration
-    /// Called whenever a publish event occurs
-    let publishCallback: (Result<MQTTPublishInfo, Swift.Error>) -> ()
 
     /// Connection client is using
     var connection: MQTTConnection?
@@ -90,8 +88,7 @@ final public class MQTTClient {
         port: Int? = nil,
         eventLoopGroupProvider: NIOEventLoopGroupProvider,
         logger: Logger? = nil,
-        configuration: Configuration = Configuration(),
-        publishCallback: @escaping (Result<MQTTPublishInfo, Swift.Error>) -> () = { _ in }
+        configuration: Configuration = Configuration()
     ) {
         self.host = host
         if let port = port {
@@ -109,7 +106,6 @@ final public class MQTTClient {
             }
         }
         self.configuration = configuration
-        self.publishCallback = publishCallback
         self.connection = nil
         self.logger = logger ?? Self.loggingDisabled
         self.eventLoopGroupProvider = eventLoopGroupProvider
@@ -153,7 +149,8 @@ final public class MQTTClient {
         return MQTTConnection.create(client: self, pingInterval: pingInterval)
             .flatMap { connection -> EventLoopFuture<MQTTInboundMessage> in
                 self.connection = connection
-                connection.closeFuture.whenComplete { _ in
+                connection.closeFuture.whenComplete { result in
+                    self.closeListeners.notify(result)
                     self.connection = nil
                 }
                 // attach client identifier to logger
@@ -259,6 +256,30 @@ final public class MQTTClient {
                 return future ?? self.eventLoopGroup.next().makeSucceededFuture(())
             }
     }
+    
+    /// Add named publish listener. Called whenever a PUBLISH message is received from the server
+    public func addPublishListener(named name: String, _ listener: @escaping (Result<MQTTPublishInfo, Swift.Error>) -> ()) {
+        publishListeners.addListener(named: name, listener: listener)
+    }
+    
+    /// Remove named publish listener
+    public func removePublishListener(named name: String) {
+        publishListeners.removeListener(named: name)
+    }
+    
+    /// Add close listener. Called whenever the connection is closed
+    public func addCloseListener(named name: String, _ listener: @escaping (Result<Void, Swift.Error>) -> ()) {
+        closeListeners.addListener(named: name, listener: listener)
+    }
+    
+    /// Remove named close listener
+    public func removeCloseListener(named name: String) {
+        closeListeners.removeListener(named: name)
+    }
+    
+
+    var publishListeners = MQTTListeners<MQTTPublishInfo>()
+    var closeListeners = MQTTListeners<Void>()
 }
 
 extension Logger {

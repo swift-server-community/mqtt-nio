@@ -41,26 +41,24 @@ final class MQTTNIOTests: XCTestCase {
     -----END CERTIFICATE-----
     """
 
-    func createClient(cb: @escaping (Result<MQTTPublishInfo, Swift.Error>) -> () = { _ in }) -> MQTTClient {
+    func createClient() -> MQTTClient {
         MQTTClient(
             host: "test.mosquitto.org",
             port: 1883,
             eventLoopGroupProvider: .createNew,
-            logger: self.logger,
-            publishCallback: cb
+            logger: self.logger
         )
     }
-    func createWebSocketClient(cb: @escaping (Result<MQTTPublishInfo, Swift.Error>) -> () = { _ in }) -> MQTTClient {
+    func createWebSocketClient() -> MQTTClient {
         MQTTClient(
             host: "test.mosquitto.org",
             port: 8080,
             eventLoopGroupProvider: .createNew,
             logger: self.logger,
-            configuration: .init(useWebSockets: true, webSocketURLPath: "/mqtt"),
-            publishCallback: cb
+            configuration: .init(useWebSockets: true, webSocketURLPath: "/mqtt")
         )
     }
-    func createSSLClient(cb: @escaping (Result<MQTTPublishInfo, Swift.Error>) -> () = { _ in }) throws -> MQTTClient {
+    func createSSLClient() throws -> MQTTClient {
         let rootCertificate = try NIOSSLCertificate.fromPEMBytes([UInt8](mosquittoCertificate.utf8))
         let tlsConfiguration: TLSConfiguration? = TLSConfiguration.forClient(
             trustRoots: .certificates(rootCertificate)
@@ -70,8 +68,7 @@ final class MQTTNIOTests: XCTestCase {
             port: 8883,
             eventLoopGroupProvider: .createNew,
             logger: self.logger,
-            configuration: .init(useSSL: true, tlsConfiguration: tlsConfiguration),
-            publishCallback: cb
+            configuration: .init(useSSL: true, tlsConfiguration: tlsConfiguration)
         )
     }
 
@@ -178,7 +175,8 @@ final class MQTTNIOTests: XCTestCase {
         )
         let client = self.createWebSocketClient()
         try connect(to: client, identifier: "soto_publisher")
-        let client2 = self.createWebSocketClient() { result in
+        let client2 = self.createWebSocketClient()
+        client2.addPublishListener(named: "test") { result in
             switch result {
             case .success(let publish):
                 var buffer = publish.payload
