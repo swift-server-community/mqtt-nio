@@ -41,8 +41,8 @@ final class CoreMQTTTests: XCTestCase {
 
     func testSubscribe() throws {
         let subscriptions: [MQTTSubscribeInfo] = [
-            .init(qos: .atLeastOnce, topicFilter: "topic/cars"),
-            .init(qos: .atLeastOnce, topicFilter: "topic/buses"),
+            .init(topicFilter: "topic/cars", qos: .atLeastOnce),
+            .init(topicFilter: "topic/buses", qos: .atLeastOnce),
         ]
         var byteBuffer = ByteBufferAllocator().buffer(capacity: 1024)
         try MQTTSerializer.writeSubscribe(subscribeInfos: subscriptions, packetId: 456, to: &byteBuffer)

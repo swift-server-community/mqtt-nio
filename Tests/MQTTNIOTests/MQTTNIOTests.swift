@@ -8,154 +8,123 @@ import NIOSSL
 
 final class MQTTNIOTests: XCTestCase {
     
-    func createClient() -> MQTTClient {
+    func createClient(identifier: String) -> MQTTClient {
         MQTTClient(
             host: "localhost",
             port: 1883,
+            identifier: identifier,
             eventLoopGroupProvider: .createNew,
             logger: self.logger
         )
     }
     
-    func createWebSocketClient() -> MQTTClient {
+    func createWebSocketClient(identifier: String) -> MQTTClient {
         MQTTClient(
             host: "localhost",
             port: 8080,
+            identifier: identifier,
             eventLoopGroupProvider: .createNew,
             logger: self.logger,
             configuration: .init(useWebSockets: true, webSocketURLPath: "/mqtt")
         )
     }
 
-    func createSSLClient() throws -> MQTTClient {
+    func createSSLClient(identifier: String) throws -> MQTTClient {
         return try MQTTClient(
             host: "localhost",
             port: 8883,
+            identifier: identifier,
             eventLoopGroupProvider: .createNew,
             logger: self.logger,
             configuration: .init(useSSL: true, tlsConfiguration: Self.getTLSConfiguration())
         )
     }
 
-    func createWebSocketAndSSLClient() throws -> MQTTClient {
+    func createWebSocketAndSSLClient(identifier: String) throws -> MQTTClient {
         return try MQTTClient(
             host: "localhost",
             port: 8081,
+            identifier: identifier,
             eventLoopGroupProvider: .createNew,
             logger: self.logger,
             configuration: .init(useSSL: true, useWebSockets: true, tlsConfiguration: Self.getTLSConfiguration(), webSocketURLPath: "/mqtt")
         )
     }
 
-    func connect(to client: MQTTClient, identifier: String) throws {
-        let connect = MQTTConnectInfo(
-            cleanSession: true,
-            keepAliveSeconds: 15,
-            clientIdentifier: identifier
-        )
-        try client.connect(info: connect).wait()
+    func connect(to client: MQTTClient) throws {
+        try client.connect().wait()
     }
 
     func testConnectWithWill() throws {
-        let client = createClient()
-        let connect = MQTTConnectInfo(
-            cleanSession: true,
-            keepAliveSeconds: 15,
-            clientIdentifier: "testConnectWithWill"
-        )
-        let publish = MQTTPublishInfo(
-            qos: .atLeastOnce,
-            retain: true,
-            topicName: "MyWillTopic",
-            payload: ByteBufferAllocator().buffer(string: "Test payload")
-        )
-        try client.connect(info: connect, will: publish).wait()
+        let client = createClient(identifier: "testConnectWithWill")
+        try client.connect(
+            will: (topicName: "MyWillTopic", payload: ByteBufferAllocator().buffer(string: "Test payload"), retain: false)
+        ).wait()
         try client.ping().wait()
         try client.disconnect().wait()
         try client.syncShutdownGracefully()
     }
     
     func testWebsocketConnect() throws {
-        let client = createWebSocketClient()
-        try connect(to: client, identifier: "connect")
+        let client = createWebSocketClient(identifier: "testWebsocketConnect")
+        try client.connect().wait()
         try client.ping().wait()
         try client.disconnect().wait()
         try client.syncShutdownGracefully()
     }
 
     func testSSLConnect() throws {
-        let client = try createSSLClient()
-        try connect(to: client, identifier: "connect")
+        let client = try createSSLClient(identifier: "testSSLConnect")
+        try client.connect().wait()
         try client.ping().wait()
         try client.disconnect().wait()
         try client.syncShutdownGracefully()
     }
 
     func testWebsocketAndSSLConnect() throws {
-        let client = try createWebSocketAndSSLClient()
-        try connect(to: client, identifier: "connect")
+        let client = try createWebSocketAndSSLClient(identifier: "testWebsocketAndSSLConnect")
+        try client.connect().wait()
         try client.ping().wait()
         try client.disconnect().wait()
         try client.syncShutdownGracefully()
     }
 
     func testMQTTPublishQoS0() throws {
-        let publish = MQTTPublishInfo(
-            qos: .atMostOnce,
-            retain: true,
-            topicName: "MyTopic",
-            payload: ByteBufferAllocator().buffer(string: "Test payload")
-        )
-
-        let client = self.createClient()
-        try connect(to: client, identifier: "publisher")
-        try client.publish(info: publish).wait()
+        let client = self.createClient(identifier: "testMQTTPublishQoS0")
+        try client.connect().wait()
+        try client.publish(to: "testMQTTPublishQoS", payload: ByteBufferAllocator().buffer(string: "Test payload"), qos: .atMostOnce).wait()
         try client.disconnect().wait()
         try client.syncShutdownGracefully()
     }
 
     func testMQTTPublishQoS1() throws {
-        let publish = MQTTPublishInfo(
-            qos: .atLeastOnce,
-            retain: true,
-            topicName: "MyTopic",
-            payload: ByteBufferAllocator().buffer(string: "Test payload")
-        )
-
-        let client = try self.createSSLClient()
-        try connect(to: client, identifier: "publisher")
-        try client.publish(info: publish).wait()
+        let client = try self.createSSLClient(identifier: "testMQTTPublishQoS1")
+        try client.connect().wait()
+        try client.publish(to: "testMQTTPublishQoS", payload: ByteBufferAllocator().buffer(string: "Test payload"), qos: .atLeastOnce).wait()
         try client.disconnect().wait()
         try client.syncShutdownGracefully()
     }
 
     func testMQTTPublishQoS2() throws {
-        let publish = MQTTPublishInfo(
-            qos: .exactlyOnce,
-            retain: true,
-            topicName: "MyTopic",
-            payload: ByteBufferAllocator().buffer(string: "Test payload")
-        )
-        
-        let client = try self.createWebSocketAndSSLClient()
-        try connect(to: client, identifier: "soto_publisher")
-        try client.publish(info: publish).wait()
+        let client = try self.createWebSocketAndSSLClient(identifier: "testMQTTPublishQoS2")
+        try client.connect().wait()
+        try client.publish(to: "testMQTTPublishQoS", payload: ByteBufferAllocator().buffer(string: "Test payload"), qos: .exactlyOnce).wait()
         try client.disconnect().wait()
         try client.syncShutdownGracefully()
     }
 
     func testMQTTPingreq() throws {
-        let client = self.createClient()
-        try connect(to: client, identifier: "soto_publisher")
+        let client = self.createClient(identifier: "testMQTTPingreq")
+        try client.connect().wait()
         try client.ping().wait()
         try client.disconnect().wait()
         try client.syncShutdownGracefully()
     }
 
     func testMQTTSubscribe() throws {
-        let client = self.createClient()
-        try connect(to: client, identifier: "soto_client")
-        try client.subscribe(infos: [.init(qos: .atLeastOnce, topicFilter: "iphone")]).wait()
+        let client = self.createClient(identifier: "testMQTTSubscribe")
+        try client.connect().wait()
+        try client.subscribe(to: [.init(topicFilter: "iphone", qos: .atLeastOnce)]).wait()
         Thread.sleep(forTimeInterval: 15)
         try client.disconnect().wait()
         try client.syncShutdownGracefully()
@@ -164,16 +133,11 @@ final class MQTTNIOTests: XCTestCase {
     func testMQTTPublishToClient() throws {
         let lock = Lock()
         var publishReceived: [MQTTPublishInfo] = []
-        let publish = MQTTPublishInfo(
-            qos: .atLeastOnce,
-            retain: false,
-            dup: false,
-            topicName: "testing-noretain",
-            payload: ByteBufferAllocator().buffer(string: "This is the Test payload")
-        )
-        let client = self.createWebSocketClient()
-        try connect(to: client, identifier: "soto_publisher")
-        let client2 = self.createWebSocketClient()
+        let payload = ByteBufferAllocator().buffer(string: "This is the Test payload")
+
+        let client = self.createWebSocketClient(identifier: "testMQTTPublishToClient_publisher")
+        try client.connect().wait()
+        let client2 = self.createWebSocketClient(identifier: "testMQTTPublishToClient_subscriber")
         client2.addPublishListener(named: "test") { result in
             switch result {
             case .success(let publish):
@@ -187,10 +151,10 @@ final class MQTTNIOTests: XCTestCase {
                 XCTFail("\(error)")
             }
         }
-        try connect(to: client2, identifier: "soto_client")
-        try client2.subscribe(infos: [.init(qos: .atLeastOnce, topicFilter: "testing-noretain")]).wait()
-        try client.publish(info: publish).wait()
-        try client.publish(info: publish).wait()
+        try client2.connect().wait()
+        try client2.subscribe(to: [.init(topicFilter: "testMQTTPublishToClient", qos: .atLeastOnce)]).wait()
+        try client.publish(to: "testMQTTPublishToClient", payload: payload, qos: .atLeastOnce).wait()
+        try client.publish(to: "testMQTTPublishToClient", payload: payload, qos: .atLeastOnce).wait()
         Thread.sleep(forTimeInterval: 2)
         lock.withLock {
             XCTAssertEqual(publishReceived.count, 2)
@@ -201,6 +165,32 @@ final class MQTTNIOTests: XCTestCase {
         try client2.syncShutdownGracefully()
     }
 
+    func testCloseListener() throws {
+        let disconnected = NIOAtomic<Bool>.makeAtomic(value: false)
+        let client = self.createWebSocketClient(identifier: "testReconnect")
+        let client2 = self.createWebSocketClient(identifier: "testReconnect")
+
+        client.addCloseListener(named: "Reconnect") { result in
+            switch result {
+            case .failure(let error):
+                XCTFail("\(error)")
+            case .success:
+                disconnected.store(true)
+            }
+        }
+
+        try client.connect().wait()
+        // by connecting with same identifier the first client uses the first client is forced to disconnect
+        try client2.connect().wait()
+
+        Thread.sleep(forTimeInterval: 5)
+        XCTAssertTrue(disconnected.load())
+        
+        try client2.disconnect().wait()
+        try client.syncShutdownGracefully()
+        try client2.syncShutdownGracefully()
+    }
+    
     // MARK: Helper variables and functions
     
     let logger: Logger = {

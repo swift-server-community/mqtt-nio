@@ -79,29 +79,21 @@ extension ByteBuffer {
 }
 
 /// MQTT CONNECT packet parameters
-public struct MQTTConnectInfo {
+struct MQTTConnectInfo {
     /// Whether to establish a new, clean session or resume a previous session.
-    public let cleanSession: Bool
+    let cleanSession: Bool
 
     /// MQTT keep alive period.
-    public let keepAliveSeconds: UInt16
+    let keepAliveSeconds: UInt16
 
     /// MQTT client identifier. Must be unique per client.
-    public let clientIdentifier: String
+    let clientIdentifier: String
 
     /// MQTT user name. Set to """ if not used.
-    public let userName: String
+    let userName: String
 
     /// MQTT password. Set to "" if not used.
-    public let password: String
-
-    public init(cleanSession: Bool, keepAliveSeconds: UInt16, clientIdentifier: String, userName: String = "", password: String = "") {
-        self.cleanSession = cleanSession
-        self.keepAliveSeconds = keepAliveSeconds
-        self.clientIdentifier = clientIdentifier
-        self.userName = userName
-        self.password = password
-    }
+    let password: String
 
     func withUnsafeType<T>(_ body: (MQTTConnectInfo_t) throws -> T) rethrows -> T {
         return try clientIdentifier.withCString { clientIdentifierChars in
@@ -171,13 +163,13 @@ public struct MQTTPublishInfo
 /// MQTT SUBSCRIBE packet parameters.
 public struct MQTTSubscribeInfo
 {
-    /// Quality of Service for subscription.
-    public let qos: MQTTQoS
-
     /// Topic filter to subscribe to.
     public let topicFilter: String
 
-    public init(qos: MQTTQoS, topicFilter: String) {
+    /// Quality of Service for subscription.
+    public let qos: MQTTQoS
+
+    public init(topicFilter: String, qos: MQTTQoS) {
         self.qos = qos
         self.topicFilter = topicFilter
     }
@@ -195,16 +187,16 @@ public struct MQTTSubscribeInfo
 }
 
 /// MQTT incoming packet parameters.
-public struct MQTTPacketInfo
+struct MQTTPacketInfo
 {
     /// Type of incoming MQTT packet.
-    public let type: MQTTPacketType
+    let type: MQTTPacketType
 
     /// packet flags
-    public let flags: UInt8
+    let flags: UInt8
 
     /// Remaining serialized data in the MQTT packet.
-    public let remainingData: ByteBuffer
+    let remainingData: ByteBuffer
 
     func withUnsafeType<T>(_ body: (MQTTPacketInfo_t) throws -> T) rethrows -> T {
         var remainingData = self.remainingData

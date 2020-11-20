@@ -158,7 +158,11 @@ final class MQTTConnection {
     }
     
     func close() -> EventLoopFuture<Void> {
-        return channel.close()
+        if channel.isActive {
+            return channel.close()
+        } else {
+            return channel.eventLoop.makeSucceededFuture(())
+        }
     }
     
     var closeFuture: EventLoopFuture<Void> { channel.closeFuture }

@@ -28,6 +28,8 @@ final public class MQTTClient {
     let host: String
     /// Port to connect to
     let port: Int
+    /// client identifier
+    let identifier: String
     /// logger
     var logger: Logger
     /// Client configuration
@@ -55,16 +57,22 @@ final public class MQTTClient {
     public struct Configuration {
         public init(
             disablePing: Bool = false,
+            keepAliveInterval: TimeAmount = .seconds(90),
             pingInterval: TimeAmount? = nil,
             timeout: TimeAmount? = nil,
+            userName: String? = nil,
+            password: String? = nil,
             useSSL: Bool = false,
             useWebSockets: Bool = false,
             tlsConfiguration: TLSConfiguration? = nil,
             webSocketURLPath: String? = nil
         ) {
             self.disablePing = disablePing
+            self.keepAliveInterval = keepAliveInterval
             self.pingInterval = pingInterval
             self.timeout = timeout
+            self.userName = userName
+            self.password = password
             self.useSSL = useSSL
             self.useWebSockets = useWebSockets
             self.tlsConfiguration = tlsConfiguration
@@ -72,19 +80,25 @@ final public class MQTTClient {
         }
 
         /// disable the sending of pingreq messages
-        let disablePing: Bool
+        public let disablePing: Bool
+        /// MQTT keep alive period.
+        public let keepAliveInterval: TimeAmount
         /// override interval between each pingreq message
-        let pingInterval: TimeAmount?
+        public let pingInterval: TimeAmount?
         /// timeout for server response
-        let timeout: TimeAmount?
+        public let timeout: TimeAmount?
+        /// MQTT user name.
+        public let userName: String?
+        /// MQTT password.
+        public let password: String?
         /// use encrypted connection to server
-        let useSSL: Bool
+        public let useSSL: Bool
         /// use a websocket connection to server
-        let useWebSockets: Bool
+        public let useWebSockets: Bool
         /// TLS configuration
-        let tlsConfiguration: TLSConfiguration?
+        public let tlsConfiguration: TLSConfiguration?
         /// URL Path for web socket. Defaults to "/"
-        let webSocketURLPath: String?
+        public let webSocketURLPath: String?
     }
 
     /// Create MQTT client
@@ -97,6 +111,7 @@ final public class MQTTClient {
     public init(
         host: String,
         port: Int? = nil,
+        identifier: String,
         eventLoopGroupProvider: NIOEventLoopGroupProvider,
         logger: Logger? = nil,
         configuration: Configuration = Configuration()
@@ -116,6 +131,7 @@ final public class MQTTClient {
                 self.port = 443
             }
         }
+        self.identifier = identifier
         self.configuration = configuration
         self._connection = nil
         self.logger = logger ?? Self.loggingDisabled
@@ -149,11 +165,22 @@ final public class MQTTClient {
 
     /// Connect to MQTT server
     /// - Parameters:
-    ///   - info: Connection info
     ///   - will: Publish message to be posted as soon as connection is made
     /// - Returns: Future waiting for connect to fiinsh
-    public func connect(info: MQTTConnectInfo, will: MQTTPublishInfo? = nil) -> EventLoopFuture<Void> {
+    public func connect(
+        will: (topicName: String, payload: ByteBuffer, retain: Bool)? = nil
+    ) -> EventLoopFuture<Void> {
         guard self.connection == nil else { return eventLoopGroup.next().makeFailedFuture(Error.alreadyConnected) }
+
+        let info = MQTTConnectInfo(
+            cleanSession: true,
+            keepAliveSeconds: UInt16(configuration.keepAliveInterval.nanoseconds / 1_000_000_000),
+            clientIdentifier: self.identifier,
+            userName: configuration.userName ?? "",
+            password: configuration.password ?? ""
+        )
+        let publish = will.map { MQTTPublishInfo(qos: .atMostOnce, retain: $0.retain, dup: false, topicName: $0.topicName, payload: $0.payload) }
+        
         // work out pingreq interval
         let pingInterval = configuration.pingInterval ?? TimeAmount.seconds(max(Int64(info.keepAliveSeconds - 5), 5))
 
@@ -162,11 +189,10 @@ final public class MQTTClient {
                 self.connection = connection
                 connection.closeFuture.whenComplete { result in
                     self.closeListeners.notify(result)
-                    self.connection = nil
                 }
                 // attach client identifier to logger
-                self.logger = self.logger.attachingClientIdentifier(info.clientIdentifier)
-                return connection.sendMessage(MQTTConnectMessage(connect: info, will: nil)) { message in
+                self.logger = self.logger.attachingClientIdentifier(self.identifier)
+                return connection.sendMessage(MQTTConnectMessage(connect: info, will: publish)) { message in
                     guard message.type == .CONNACK else { throw Error.failedToConnect }
                     return true
                 }
@@ -175,12 +201,18 @@ final public class MQTTClient {
     }
 
     /// Publish message to topic
-    /// - Parameter info: Publish info
+    /// - Parameters:
+    ///     - topicName: Topic name on which the message is published
+    ///     - payload: Message payload
+    ///     - qos: Quality of Service for message.
+    ///     - retain: Whether this is a retained message.
     /// - Returns: Future waiting for publish to complete. Depending on QoS setting the future will complete
     ///     when message is sent, when PUBACK is received or when PUBREC and following PUBCOMP are
     ///     received
-    public func publish(info: MQTTPublishInfo) -> EventLoopFuture<Void> {
+    public func publish(to topicName: String, payload: ByteBuffer, qos: MQTTQoS, retain: Bool = false) -> EventLoopFuture<Void> {
         guard let connection = self.connection else { return eventLoopGroup.next().makeFailedFuture(Error.noConnection) }
+
+        let info = MQTTPublishInfo(qos: qos, retain: retain, dup: false, topicName: topicName, payload: payload)
         if info.qos == .atMostOnce {
             // don't send a packet id if QOS is at most once. (MQTT-2.3.1-5)
             return connection.sendMessageNoWait(MQTTPublishMessage(publish: info, packetId: 0))
@@ -209,13 +241,13 @@ final public class MQTTClient {
     }
 
     /// Subscribe to topic
-    /// - Parameter infos: Subscription infos
+    /// - Parameter subscriptions: Subscription infos
     /// - Returns: Future waiting for subscribe to complete. Will wait for SUBACK message from server
-    public func subscribe(infos: [MQTTSubscribeInfo]) -> EventLoopFuture<Void> {
+    public func subscribe(to subscriptions: [MQTTSubscribeInfo]) -> EventLoopFuture<Void> {
         guard let connection = self.connection else { return eventLoopGroup.next().makeFailedFuture(Error.noConnection) }
         let packetId = Self.globalPacketId.add(1)
         
-        return connection.sendMessage(MQTTSubscribeMessage(subscriptions: infos, packetId: packetId)) { message in
+        return connection.sendMessage(MQTTSubscribeMessage(subscriptions: subscriptions, packetId: packetId)) { message in
             guard message.packetId == packetId else { return false }
             guard message.type == .SUBACK else { throw Error.unexpectedMessage }
             return true
@@ -224,13 +256,13 @@ final public class MQTTClient {
     }
 
     /// Unsubscribe from topic
-    /// - Parameter infos: Subscription infos
+    /// - Parameter subscriptions: Subscription infos
     /// - Returns: Future waiting for unsubscribe to complete. Will wait for UNSUBACK message from server
-    public func unsubscribe(infos: [MQTTSubscribeInfo]) -> EventLoopFuture<Void> {
+    public func unsubscribe(from subscriptions: [MQTTSubscribeInfo]) -> EventLoopFuture<Void> {
         guard let connection = self.connection else { return eventLoopGroup.next().makeFailedFuture(Error.noConnection) }
         let packetId = Self.globalPacketId.add(1)
 
-        return connection.sendMessage(MQTTUnsubscribeMessage(subscriptions: infos, packetId: packetId)) { message in
+        return connection.sendMessage(MQTTUnsubscribeMessage(subscriptions: subscriptions, packetId: packetId)) { message in
             guard message.packetId == packetId else { return false }
             guard message.type == .UNSUBACK else { throw Error.unexpectedMessage }
             return true
@@ -268,6 +300,11 @@ final public class MQTTClient {
             }
     }
     
+    /// Return is client has an active connection to broker
+    public func isActive() -> Bool {
+        return connection?.channel.isActive ?? false
+    }
+    
     /// Add named publish listener. Called whenever a PUBLISH message is received from the server
     public func addPublishListener(named name: String, _ listener: @escaping (Result<MQTTPublishInfo, Swift.Error>) -> ()) {
         publishListeners.addListener(named: name, listener: listener)
@@ -287,7 +324,6 @@ final public class MQTTClient {
     public func removeCloseListener(named name: String) {
         closeListeners.removeListener(named: name)
     }
-    
 
     var publishListeners = MQTTListeners<MQTTPublishInfo>()
     var closeListeners = MQTTListeners<Void>()
