@@ -74,8 +74,8 @@ final class MQTTConnection {
         if #available(OSX 10.14, iOS 12.0, tvOS 12.0, watchOS 6.0, *),
            let tsBootstrap = NIOTSConnectionBootstrap(validatingGroup: client.eventLoopGroup) {
             // create NIOClientTCPBootstrap with NIOTS TLS provider
-            //let tlsConfiguration = self.tlsConfiguration ?? TLSConfiguration.forClient()
-            let parameters = NWProtocolTLS.Options()//tlsConfiguration.getNWProtocolTLSOptions()
+            let tlsConfiguration = client.configuration.tlsConfiguration ?? TLSConfiguration.forClient()
+            let parameters = try tlsConfiguration.getNWProtocolTLSOptions()
             let tlsProvider = NIOTSClientTLSProvider(tlsOptions: parameters)
             bootstrap = NIOClientTCPBootstrap(tsBootstrap, tls: tlsProvider)
         } else if let clientBootstrap = ClientBootstrap(validatingGroup: client.eventLoopGroup) {
