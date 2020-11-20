@@ -13,23 +13,19 @@ Create a client and connect to the MQTT broker.
 let client = MQTTClient(
     host: "mqtt.eclipse.org", 
     port: 1883,
+    identifier: "My Client",
     eventLoopGroupProvider: .createNew
 )
-let connect = MQTTConnectInfo(
-    cleanSession: true,
-    keepAliveSeconds: 15,
-    clientIdentifier: identifier
-)
-try client.connect(info: connect).wait()
+try client.connect().wait()
 ```
 
 Subscribe to a topic and add a publish listener to report publish messages from the server.
 ```swift
 let subscription = MQTTSubscribeInfo(
-    qos: .atLeastOnce,
-    topicFilter: "my-topics"
+    topicFilter: "my-topics",
+    qos: .atLeastOnce
 )
-try client.subscribe(infos: [subscription]).wait()
+try client.subscribe(to: [subscription]).wait()
 client.addPublishListener("My Listener") { result in
     switch result {
     case .success(let publish):
@@ -44,13 +40,11 @@ client.addPublishListener("My Listener") { result in
 
 Publish to a topic.
 ```swift
-let publish = MQTTPublishInfo(
-    qos: .atLeastOnce,
-    retain: false,
-    topicName: "my-topics",
-    payload: ByteBufferAllocator().buffer(string: "This is the Test payload")
-)
-try client.publish(info: publish).wait()
+try client.publish(
+    to: "my-topics",
+    payload: ByteBufferAllocator().buffer(string: "This is the Test payload"),
+    qos: .atLeastOnce
+).wait()
 ```
 ## TLS
 
@@ -68,6 +62,7 @@ let tlsConfiguration: TLSConfiguration? = TLSConfiguration.forClient(
 let client = MQTTClient(
     host: "test.mosquitto.org",
     port: 8884,
+    identifier: "MySSLClient",
     eventLoopGroupProvider: .createNew,
     configuration: .init(useSSL: true, tlsConfiguration: tlsConfiguration),
 )
