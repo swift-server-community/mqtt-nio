@@ -134,7 +134,7 @@ final public class MQTTClient {
         self.identifier = identifier
         self.configuration = configuration
         self._connection = nil
-        self.logger = logger ?? Self.loggingDisabled
+        self.logger = (logger ?? Self.loggingDisabled).attachingClientIdentifier(self.identifier)
         self.eventLoopGroupProvider = eventLoopGroupProvider
         switch eventLoopGroupProvider {
         case .createNew:
@@ -190,8 +190,6 @@ final public class MQTTClient {
                 connection.closeFuture.whenComplete { result in
                     self.closeListeners.notify(result)
                 }
-                // attach client identifier to logger
-                self.logger = self.logger.attachingClientIdentifier(self.identifier)
                 return connection.sendMessage(MQTTConnectMessage(connect: info, will: publish)) { message in
                     guard message.type == .CONNACK else { throw Error.failedToConnect }
                     return true
