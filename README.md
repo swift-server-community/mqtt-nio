@@ -67,7 +67,7 @@ let client = MQTTClient(
     configuration: .init(useSSL: true, tlsConfiguration: tlsConfiguration),
 )
 ```
-
+Currently trustRoots and client certificates are not fully supported on iOS. 
 ## WebSockets
 
 MQTT also supports Web Socket connections. Set `Configuration.useWebSockets` to `true` and set the URL path in `Configuration.webSocketsURLPath` to enable these.
