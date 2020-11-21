@@ -75,7 +75,7 @@ final public class MQTTClient {
             self.password = password
             self.useSSL = useSSL
             self.useWebSockets = useWebSockets
-            self.tlsConfiguration = tlsConfiguration
+            self.tlsConfiguration = tlsConfiguration ?? TLSConfiguration.forClient()
             self.webSocketURLPath = webSocketURLPath
         }
 
@@ -96,7 +96,7 @@ final public class MQTTClient {
         /// use a websocket connection to server
         public let useWebSockets: Bool
         /// TLS configuration
-        public let tlsConfiguration: TLSConfiguration?
+        let tlsConfiguration: TLSConfiguration
         /// URL Path for web socket. Defaults to "/"
         public let webSocketURLPath: String?
     }
@@ -139,7 +139,8 @@ final public class MQTTClient {
         switch eventLoopGroupProvider {
         case .createNew:
             #if canImport(Network)
-            if #available(OSX 10.14, iOS 12.0, tvOS 12.0, watchOS 6.0, *)/*, configuration.tlsConfiguration == nil*/ {
+            if #available(OSX 10.14, iOS 12.0, tvOS 12.0, watchOS 6.0, *),
+               configuration.tlsConfiguration.supportedByTransportServices() {
                     self.eventLoopGroup = NIOTSEventLoopGroup()
                 } else {
                     self.eventLoopGroup = MultiThreadedEventLoopGroup(numberOfThreads: 1)
@@ -180,7 +181,7 @@ final public class MQTTClient {
             password: configuration.password ?? ""
         )
         let publish = will.map { MQTTPublishInfo(qos: .atMostOnce, retain: $0.retain, dup: false, topicName: $0.topicName, payload: $0.payload) }
-        
+
         // work out pingreq interval
         let pingInterval = configuration.pingInterval ?? TimeAmount.seconds(max(Int64(info.keepAliveSeconds - 5), 5))
 
@@ -244,7 +245,7 @@ final public class MQTTClient {
     public func subscribe(to subscriptions: [MQTTSubscribeInfo]) -> EventLoopFuture<Void> {
         guard let connection = self.connection else { return eventLoopGroup.next().makeFailedFuture(Error.noConnection) }
         let packetId = Self.globalPacketId.add(1)
-        
+
         return connection.sendMessage(MQTTSubscribeMessage(subscriptions: subscriptions, packetId: packetId)) { message in
             guard message.packetId == packetId else { return false }
             guard message.type == .SUBACK else { throw Error.unexpectedMessage }
@@ -277,7 +278,7 @@ final public class MQTTClient {
     /// - Returns: Future waiting for ping response
     public func ping() -> EventLoopFuture<Void> {
         guard let connection = self.connection else { return eventLoopGroup.next().makeFailedFuture(Error.noConnection) }
-        
+
         return connection.sendMessage(MQTTPingreqMessage()) { message in
             guard message.type == .PINGRESP else { return false }
             return true
@@ -297,27 +298,27 @@ final public class MQTTClient {
                 return future ?? self.eventLoopGroup.next().makeSucceededFuture(())
             }
     }
-    
+
     /// Return is client has an active connection to broker
     public func isActive() -> Bool {
         return connection?.channel.isActive ?? false
     }
-    
+
     /// Add named publish listener. Called whenever a PUBLISH message is received from the server
     public func addPublishListener(named name: String, _ listener: @escaping (Result<MQTTPublishInfo, Swift.Error>) -> ()) {
         publishListeners.addListener(named: name, listener: listener)
     }
-    
+
     /// Remove named publish listener
     public func removePublishListener(named name: String) {
         publishListeners.removeListener(named: name)
     }
-    
+
     /// Add close listener. Called whenever the connection is closed
     public func addCloseListener(named name: String, _ listener: @escaping (Result<Void, Swift.Error>) -> ()) {
         closeListeners.addListener(named: name, listener: listener)
     }
-    
+
     /// Remove named close listener
     public func removeCloseListener(named name: String) {
         closeListeners.removeListener(named: name)

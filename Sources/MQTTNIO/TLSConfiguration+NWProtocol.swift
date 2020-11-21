@@ -42,6 +42,17 @@ extension TLSConfiguration {
     /// Dispatch queue used by Network framework TLS to control certificate verification
     static var tlsDispatchQueue = DispatchQueue(label: "TLSDispatch")
 
+    func supportedByTransportServices() -> Bool {
+        guard
+            case .default = trustRoots,
+            certificateChain.count == 0,
+            privateKey == nil,
+            keyLogCallback == nil else {
+            return false
+        }
+        return true
+    }
+    
     /// create NWProtocolTLS.Options for use with NIOTransportServices from the NIOSSL TLSConfiguration
     ///
     /// - Parameter queue: Dispatch queue to run `sec_protocol_options_set_verify_block` on.
