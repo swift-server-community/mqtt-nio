@@ -5,6 +5,8 @@
 
 A Swift NIO based MQTT 3.1.1 Client. 
 
+MQTT (Message Queuing Telemetry Transport) is a lightweight messaging protocol that was developed by IBM and first released in 1999. It uses the pub/sub pattern and translates messages between devices, servers, and applications. It is commonly used in Internet of things (IoT) technologies.
+
 ## Usage
 
 Create a client and connect to the MQTT broker.  
