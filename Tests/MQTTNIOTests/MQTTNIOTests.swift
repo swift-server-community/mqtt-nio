@@ -213,9 +213,9 @@ final class MQTTNIOTests: XCTestCase {
             let certificate = try NIOSSLCertificate.fromPEMFile(MQTTNIOTests.rootPath + "/mosquitto/certs/client.crt")
             let privateKey = try NIOSSLPrivateKey(file: MQTTNIOTests.rootPath + "/mosquitto/certs/client.key", format: .pem)
             let tlsConfiguration = TLSConfiguration.forClient(
-                trustRoots: .certificates(rootCertificate)/*,
+                trustRoots: .certificates(rootCertificate),
                 certificateChain: certificate.map{ .certificate($0) },
-                privateKey: .privateKey(privateKey)*/
+                privateKey: .privateKey(privateKey)
             )
             return .success(tlsConfiguration)
         } catch {
@@ -223,10 +223,14 @@ final class MQTTNIOTests: XCTestCase {
         }
     }()
     
-    static func getTLSConfiguration() throws -> TLSConfiguration {
+    static func getTLSConfiguration(withTrustRoots: Bool = true, withClientKey: Bool = true) throws -> TLSConfiguration {
         switch _tlsConfiguration {
         case .success(let config):
-            return config
+            return TLSConfiguration.forClient(
+                trustRoots: withTrustRoots == true ? (config.trustRoots ?? .default) : .default,
+                certificateChain: withClientKey ? config.certificateChain : [],
+                privateKey: withClientKey ? config.privateKey : nil
+            )
         case .failure(let error):
             throw error
         }
