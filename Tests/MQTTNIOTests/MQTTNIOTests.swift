@@ -7,49 +7,6 @@ import NIOSSL
 @testable import MQTTNIO
 
 final class MQTTNIOTests: XCTestCase {
-    
-    func createClient(identifier: String) -> MQTTClient {
-        MQTTClient(
-            host: "localhost",
-            port: 1883,
-            identifier: identifier,
-            eventLoopGroupProvider: .createNew,
-            logger: self.logger
-        )
-    }
-    
-    func createWebSocketClient(identifier: String) -> MQTTClient {
-        MQTTClient(
-            host: "localhost",
-            port: 8080,
-            identifier: identifier,
-            eventLoopGroupProvider: .createNew,
-            logger: self.logger,
-            configuration: .init(useWebSockets: true, webSocketURLPath: "/mqtt")
-        )
-    }
-
-    func createSSLClient(identifier: String) throws -> MQTTClient {
-        return try MQTTClient(
-            host: "localhost",
-            port: 8883,
-            identifier: identifier,
-            eventLoopGroupProvider: .createNew,
-            logger: self.logger,
-            configuration: .init(useSSL: true, tlsConfiguration: Self.getTLSConfiguration())
-        )
-    }
-
-    func createWebSocketAndSSLClient(identifier: String) throws -> MQTTClient {
-        return try MQTTClient(
-            host: "localhost",
-            port: 8081,
-            identifier: identifier,
-            eventLoopGroupProvider: .createNew,
-            logger: self.logger,
-            configuration: .init(useSSL: true, useWebSockets: true, tlsConfiguration: Self.getTLSConfiguration(), webSocketURLPath: "/mqtt")
-        )
-    }
 
     func connect(to client: MQTTClient) throws {
         try client.connect().wait()
@@ -192,7 +149,50 @@ final class MQTTNIOTests: XCTestCase {
     }
     
     // MARK: Helper variables and functions
-    
+
+    func createClient(identifier: String) -> MQTTClient {
+        MQTTClient(
+            host: "localhost",
+            port: 1883,
+            identifier: identifier,
+            eventLoopGroupProvider: .createNew,
+            logger: self.logger
+        )
+    }
+
+    func createWebSocketClient(identifier: String) -> MQTTClient {
+        MQTTClient(
+            host: "localhost",
+            port: 8080,
+            identifier: identifier,
+            eventLoopGroupProvider: .createNew,
+            logger: self.logger,
+            configuration: .init(useWebSockets: true, webSocketURLPath: "/mqtt")
+        )
+    }
+
+    func createSSLClient(identifier: String) throws -> MQTTClient {
+        return try MQTTClient(
+            host: "localhost",
+            port: 8883,
+            identifier: identifier,
+            eventLoopGroupProvider: .createNew,
+            logger: self.logger,
+            configuration: .init(useSSL: true, tlsConfiguration: Self.getTLSConfiguration())
+        )
+    }
+
+    func createWebSocketAndSSLClient(identifier: String) throws -> MQTTClient {
+        return try MQTTClient(
+            host: "localhost",
+            port: 8081,
+            identifier: identifier,
+            eventLoopGroupProvider: .createNew,
+            logger: self.logger,
+            configuration: .init(useSSL: true, useWebSockets: true, tlsConfiguration: Self.getTLSConfiguration(), webSocketURLPath: "/mqtt")
+        )
+    }
+
     let logger: Logger = {
         var logger = Logger(label: "MQTTTests")
         logger.logLevel = .trace
@@ -213,9 +213,9 @@ final class MQTTNIOTests: XCTestCase {
             let certificate = try NIOSSLCertificate.fromPEMFile(MQTTNIOTests.rootPath + "/mosquitto/certs/client.crt")
             let privateKey = try NIOSSLPrivateKey(file: MQTTNIOTests.rootPath + "/mosquitto/certs/client.key", format: .pem)
             let tlsConfiguration = TLSConfiguration.forClient(
-                trustRoots: .certificates(rootCertificate),
+                trustRoots: .certificates(rootCertificate)/*,
                 certificateChain: certificate.map{ .certificate($0) },
-                privateKey: .privateKey(privateKey)
+                privateKey: .privateKey(privateKey)*/
             )
             return .success(tlsConfiguration)
         } catch {
