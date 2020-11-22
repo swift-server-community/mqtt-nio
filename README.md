@@ -21,7 +21,7 @@ let client = MQTTClient(
 try client.connect().wait()
 ```
 
-Subscribe to a topic and add a publish listener to report publish messages from the server.
+Subscribe to a topic and add a publish listener to report publish messages from the broker.
 ```swift
 let subscription = MQTTSubscribeInfo(
     topicFilter: "my-topics",
@@ -42,9 +42,10 @@ client.addPublishListener("My Listener") { result in
 
 Publish to a topic.
 ```swift
+let payload = ByteBufferAllocator().buffer(string: "This is the Test payload")
 try client.publish(
     to: "my-topics",
-    payload: ByteBufferAllocator().buffer(string: "This is the Test payload"),
+    payload: payload,
     qos: .atLeastOnce
 ).wait()
 ```
@@ -69,7 +70,8 @@ let client = MQTTClient(
     configuration: .init(useSSL: true, tlsConfiguration: tlsConfiguration),
 )
 ```
-Currently trustRoots and client certificates are not fully supported on iOS. 
+Currently trustRoots and client certificates are not fully while using NIO Transport Services and therefore not supported on iOS. 
+
 ## WebSockets
 
 MQTT also supports Web Socket connections. Set `Configuration.useWebSockets` to `true` and set the URL path in `Configuration.webSocketsURLPath` to enable these.
