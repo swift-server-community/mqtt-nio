@@ -69,19 +69,21 @@ final class MQTTConnection {
 
     static func getBootstrap(client: MQTTClient) throws -> NIOClientTCPBootstrap {
         var bootstrap: NIOClientTCPBootstrap
+        let serverName = client.configuration.sniServerName ?? client.host
         #if canImport(Network)
         // if eventLoop is compatible with NIOTransportServices create a NIOTSConnectionBootstrap
         if #available(OSX 10.14, iOS 12.0, tvOS 12.0, watchOS 6.0, *),
            let tsBootstrap = NIOTSConnectionBootstrap(validatingGroup: client.eventLoopGroup) {
             // create NIOClientTCPBootstrap with NIOTS TLS provider
             let tlsConfiguration = client.configuration.tlsConfiguration
-            let parameters = try tlsConfiguration.getNWProtocolTLSOptions()
-            let tlsProvider = NIOTSClientTLSProvider(tlsOptions: parameters)
+            let options = try tlsConfiguration.getNWProtocolTLSOptions()
+            sec_protocol_options_set_tls_server_name(options.securityProtocolOptions, serverName)
+            let tlsProvider = NIOTSClientTLSProvider(tlsOptions: options)
             bootstrap = NIOClientTCPBootstrap(tsBootstrap, tls: tlsProvider)
         } else if let clientBootstrap = ClientBootstrap(validatingGroup: client.eventLoopGroup) {
             let tlsConfiguration = client.configuration.tlsConfiguration
             let sslContext = try NIOSSLContext(configuration: tlsConfiguration)
-            let tlsProvider = try NIOSSLClientTLSProvider<ClientBootstrap>(context: sslContext, serverHostname: client.host)
+            let tlsProvider = try NIOSSLClientTLSProvider<ClientBootstrap>(context: sslContext, serverHostname: serverName)
             bootstrap = NIOClientTCPBootstrap(clientBootstrap, tls: tlsProvider)
         } else {
             preconditionFailure("Cannot create bootstrap for the supplied EventLoop")
@@ -90,7 +92,7 @@ final class MQTTConnection {
         if let clientBootstrap = ClientBootstrap(validatingGroup: client.eventLoopGroup) {
             let tlsConfiguration = client.configuration.tlsConfiguration ?? TLSConfiguration.forClient()
             let sslContext = try NIOSSLContext(configuration: tlsConfiguration)
-            let tlsProvider = try NIOSSLClientTLSProvider<ClientBootstrap>(context: sslContext, serverHostname: client.host)
+            let tlsProvider = try NIOSSLClientTLSProvider<ClientBootstrap>(context: sslContext, serverHostname: serverName)
             bootstrap = NIOClientTCPBootstrap(clientBootstrap, tls: tlsProvider)
         } else {
             preconditionFailure("Cannot create bootstrap for the supplied EventLoop")

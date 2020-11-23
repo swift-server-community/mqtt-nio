@@ -4,7 +4,7 @@ set -eux
 
 HOME=$(dirname "$0")
 FULL_HOME="$(pwd)"/"$HOME"
-SERVER=localhost
+SERVER=soto.codes
 
 function generateCA() {
     SUBJECT=$1

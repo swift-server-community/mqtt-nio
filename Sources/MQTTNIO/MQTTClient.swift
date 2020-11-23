@@ -65,6 +65,7 @@ final public class MQTTClient {
             useSSL: Bool = false,
             useWebSockets: Bool = false,
             tlsConfiguration: TLSConfiguration? = nil,
+            sniServerName: String? = nil,
             webSocketURLPath: String? = nil
         ) {
             self.disablePing = disablePing
@@ -76,6 +77,7 @@ final public class MQTTClient {
             self.useSSL = useSSL
             self.useWebSockets = useWebSockets
             self.tlsConfiguration = tlsConfiguration ?? TLSConfiguration.forClient()
+            self.sniServerName = sniServerName
             self.webSocketURLPath = webSocketURLPath
         }
 
@@ -97,6 +99,8 @@ final public class MQTTClient {
         public let useWebSockets: Bool
         /// TLS configuration
         let tlsConfiguration: TLSConfiguration
+        /// server name used by TLS
+        let sniServerName: String?
         /// URL Path for web socket. Defaults to "/mqtt"
         public let webSocketURLPath: String?
     }

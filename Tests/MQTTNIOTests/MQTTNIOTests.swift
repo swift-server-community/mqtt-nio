@@ -178,7 +178,7 @@ final class MQTTNIOTests: XCTestCase {
             identifier: identifier,
             eventLoopGroupProvider: .createNew,
             logger: self.logger,
-            configuration: .init(useSSL: true, tlsConfiguration: Self.getTLSConfiguration(withClientKey: false))
+            configuration: .init(useSSL: true, tlsConfiguration: Self.getTLSConfiguration(withClientKey: false), sniServerName: "soto.codes")
         )
     }
 
@@ -189,7 +189,7 @@ final class MQTTNIOTests: XCTestCase {
             identifier: identifier,
             eventLoopGroupProvider: .createNew,
             logger: self.logger,
-            configuration: .init(useSSL: true, useWebSockets: true, tlsConfiguration: Self.getTLSConfiguration(), webSocketURLPath: "/mqtt")
+            configuration: .init(useSSL: true, useWebSockets: true, tlsConfiguration: Self.getTLSConfiguration(), sniServerName: "soto.codes", webSocketURLPath: "/mqtt")
         )
     }
 
