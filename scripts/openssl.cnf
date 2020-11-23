@@ -25,6 +25,5 @@ challengePassword_min		= 4
 challengePassword_max		= 20
 
 [ v3_req ]
-basicConstraints = CA:FALSE
 keyUsage = digitalSignature, keyEncipherment
 extendedKeyUsage = serverAuth, clientAuth
