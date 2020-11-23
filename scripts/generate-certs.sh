@@ -18,6 +18,6 @@ function generateCertificate() {
 
 cd "$HOME"/../mosquitto/certs/
 
-generateCA "/C=UK/ST=Edinburgh/L=Edinburgh/O=Soto/OU=MQTTCA/CN=localhost"
-generateCertificate "/C=UK/ST=Edinburgh/L=Edinburgh/O=Soto/OU=MQTTServer/CN=localhost" server
+generateCA "/C=UK/ST=Edinburgh/L=Edinburgh/O=Soto/OU=MQTTCA/CN=root"
+generateCertificate "/C=UK/ST=Edinburgh/L=Edinburgh/O=Soto/OU=MQTTServer/CN=soto.codes" server
 generateCertificate "/C=UK/ST=Edinburgh/L=Edinburgh/O=Soto/OU=MQTTClient/CN=soto-project.codes" client

@@ -44,7 +44,7 @@ extension TLSConfiguration {
 
     func supportedByTransportServices() -> Bool {
         guard
-            case .default = trustRoots,
+            //case .default = trustRoots,
             certificateChain.count == 0,
             privateKey == nil,
             keyLogCallback == nil else {
@@ -150,12 +150,21 @@ extension TLSConfiguration {
                     if let trustRootCertificates = trustRootCertificates {
                         SecTrustSetAnchorCertificates(trust, trustRootCertificates as CFArray)
                     }
-                    SecTrustEvaluateAsync(trust, TLSConfiguration.tlsDispatchQueue) { (trust, result) in
-                        switch result {
-                        case .proceed, .unspecified:
-                            sec_protocol_verify_complete(true)
-                        default:
-                            sec_protocol_verify_complete(false)
+                    if #available(macOS 10.15, iOS 13.0, *) {
+                        SecTrustEvaluateAsyncWithError(trust, TLSConfiguration.tlsDispatchQueue) { (trust, result, error) in
+                            if let error = error {
+                                print("Trust failed: \(error.localizedDescription)")
+                            }
+                            sec_protocol_verify_complete(result)
+                        }
+                    } else {
+                        SecTrustEvaluateAsync(trust, TLSConfiguration.tlsDispatchQueue) { (trust, result) in
+                             switch result {
+                             case .proceed, .unspecified:
+                                sec_protocol_verify_complete(true)
+                             default:
+                                sec_protocol_verify_complete(false)
+                             }
                         }
                     }
                 }, TLSConfiguration.tlsDispatchQueue

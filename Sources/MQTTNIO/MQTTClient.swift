@@ -97,7 +97,7 @@ final public class MQTTClient {
         public let useWebSockets: Bool
         /// TLS configuration
         let tlsConfiguration: TLSConfiguration
-        /// URL Path for web socket. Defaults to "/"
+        /// URL Path for web socket. Defaults to "/mqtt"
         public let webSocketURLPath: String?
     }
 

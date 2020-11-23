@@ -111,7 +111,7 @@ final class MQTTConnection {
         // initial HTTP request handler, before upgrade
         let httpHandler = WebSocketInitialRequestHandler(
             host: client.host,
-            urlPath: client.configuration.webSocketURLPath ?? "/",
+            urlPath: client.configuration.webSocketURLPath ?? "/mqtt",
             upgradePromise: promise
         )
         // create random key for request key
