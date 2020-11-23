@@ -44,7 +44,6 @@ extension TLSConfiguration {
 
     func supportedByTransportServices() -> Bool {
         guard
-            //case .default = trustRoots,
             certificateChain.count == 0,
             privateKey == nil,
             keyLogCallback == nil else {

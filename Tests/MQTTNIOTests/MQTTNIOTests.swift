@@ -38,14 +38,6 @@ final class MQTTNIOTests: XCTestCase {
         try client.syncShutdownGracefully()
     }
 
-    func testRemoteSSLConnect() throws {
-        let client = try createMosquittoTestServerClient(identifier: "testRemoteSSLConnect")
-        try client.connect().wait()
-        try client.ping().wait()
-        try client.disconnect().wait()
-        try client.syncShutdownGracefully()
-    }
-
     func testWebsocketAndSSLConnect() throws {
         let client = try createWebSocketAndSSLClient(identifier: "testWebsocketAndSSLConnect")
         try client.connect().wait()
@@ -160,7 +152,7 @@ final class MQTTNIOTests: XCTestCase {
 
     func createClient(identifier: String) -> MQTTClient {
         MQTTClient(
-            host: "soto.codes",
+            host: "localhost",
             port: 1883,
             identifier: identifier,
             eventLoopGroupProvider: .createNew,
@@ -170,7 +162,7 @@ final class MQTTNIOTests: XCTestCase {
 
     func createWebSocketClient(identifier: String) -> MQTTClient {
         MQTTClient(
-            host: "soto.codes",
+            host: "localhost",
             port: 8080,
             identifier: identifier,
             eventLoopGroupProvider: .createNew,
@@ -181,7 +173,7 @@ final class MQTTNIOTests: XCTestCase {
 
     func createSSLClient(identifier: String) throws -> MQTTClient {
         return try MQTTClient(
-            host: "soto.codes",
+            host: "localhost",
             port: 8883,
             identifier: identifier,
             eventLoopGroupProvider: .createNew,
@@ -201,19 +193,6 @@ final class MQTTNIOTests: XCTestCase {
         )
     }
 
-    func createMosquittoTestServerClient(identifier: String) throws -> MQTTClient {
-        let rootCertificate = try NIOSSLCertificate.fromPEMFile(MQTTNIOTests.rootPath + "/mosquitto/certs/mosquitto.org.crt")
-        let tlsConfiguration = TLSConfiguration.forClient(trustRoots: .certificates(rootCertificate))
-        return MQTTClient(
-            host: "test.mosquitto.org",
-            port: 8883,
-            identifier: identifier,
-            eventLoopGroupProvider: .createNew,
-            logger: self.logger,
-            configuration: .init(useSSL: true, useWebSockets: true, tlsConfiguration: tlsConfiguration)
-        )
-    }
-    
     let logger: Logger = {
         var logger = Logger(label: "MQTTTests")
         logger.logLevel = .trace
