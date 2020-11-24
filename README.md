@@ -106,6 +106,7 @@ let requestURI = "/mqtt?\(signedURL.query!)"
 let client = MQTTClient(
     host: host,
     port: port,
+    identifier: "MyAWSClient",
     eventLoopGroupProvider: .createNew,
     configuration: .init(useSSL: true, useWebSockets: true, webSocketURLPath: requestUri)
 )
