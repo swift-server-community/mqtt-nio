@@ -254,11 +254,13 @@ final class MQTTNIOTests: XCTestCase {
                     certificateChain: withClientKey ? config.certificateChain : [],
                     privateKey: withClientKey ? config.privateKey : nil
                 ))
+            #if !os(Linux)
             case .ts(let config):
                 return .ts(TSTLSConfiguration(
                     trustRoots: withTrustRoots == true ? config.trustRoots : nil,
                     clientIdentity: withClientKey == true ? config.clientIdentity : nil
                 ))
+            #endif
             }
         case .failure(let error):
             throw error
