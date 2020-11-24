@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 CONTAINER_ID=$(docker container ls | grep eclipse-mosquitto | awk {'print $1'})
 COMMAND=$1
