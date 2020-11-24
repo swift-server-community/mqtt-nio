@@ -34,26 +34,19 @@ jobs:
       matrix:
         tag:
           - swift:5.3
-    #container:
-    #  image: ${{ matrix.tag }}
+#    container:
+#      image: ${{ matrix.tag }}
     steps:
     - name: Checkout
       uses: actions/checkout@v2
-    #- name: Install dependencies
-    #  run: |
-    #    apt-get update -qq
-    #    apt-get install -q -y tzdata zlib1g-dev curl
-    #- name: Install docker-compose
-    #  run: |
-    #    curl -L "https://github.com/docker/compose/releases/download/1.27.4/docker-compose-$(uname -s)-$(uname -m)" -o docker-compose
-     #   chmod a+x docker-compose
-     #   ./docker-compose --version
-    - name: Mosquitto container
+    - name: Mosquitto
       run: |
-        docker-compose pull
-        docker-compose up -d
+        docker-compose --version
+        docker --version
+        ./scripts/mosquitto.sh start
     - name: Test
-      run: swift test --enable-test-discovery --enable-code-coverage --sanitize=thread
+      run: |
+        swift test --enable-test-discovery --enable-code-coverage --sanitize=thread
     #- name: Convert coverage files
     #  run: |
     #    llvm-cov export -format="lcov" \

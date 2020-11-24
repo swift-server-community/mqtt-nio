@@ -1,4 +1,5 @@
 import XCTest
+import Foundation
 import Logging
 import NIO
 import NIOConcurrencyHelpers
@@ -7,7 +8,8 @@ import NIOSSL
 @testable import MQTTNIO
 
 final class MQTTNIOTests: XCTestCase {
-
+    static let hostname = ProcessInfo.processInfo.environment["MOSQUITTO_SERVER"] ?? "localhost"
+    
     func connect(to client: MQTTClient) throws {
         try client.connect().wait()
     }
@@ -152,7 +154,7 @@ final class MQTTNIOTests: XCTestCase {
 
     func createClient(identifier: String) -> MQTTClient {
         MQTTClient(
-            host: "localhost",
+            host: Self.hostname,
             port: 1883,
             identifier: identifier,
             eventLoopGroupProvider: .createNew,
@@ -162,7 +164,7 @@ final class MQTTNIOTests: XCTestCase {
 
     func createWebSocketClient(identifier: String) -> MQTTClient {
         MQTTClient(
-            host: "localhost",
+            host: Self.hostname,
             port: 8080,
             identifier: identifier,
             eventLoopGroupProvider: .createNew,
@@ -173,7 +175,7 @@ final class MQTTNIOTests: XCTestCase {
 
     func createSSLClient(identifier: String) throws -> MQTTClient {
         return try MQTTClient(
-            host: "localhost",
+            host: Self.hostname,
             port: 8883,
             identifier: identifier,
             eventLoopGroupProvider: .createNew,
@@ -184,7 +186,7 @@ final class MQTTNIOTests: XCTestCase {
 
     func createWebSocketAndSSLClient(identifier: String) throws -> MQTTClient {
         return try MQTTClient(
-            host: "localhost",
+            host: Self.hostname,
             port: 8081,
             identifier: identifier,
             eventLoopGroupProvider: .createNew,
