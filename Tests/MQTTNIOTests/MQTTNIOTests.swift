@@ -82,7 +82,7 @@ final class MQTTNIOTests: XCTestCase {
         let client = self.createClient(identifier: "testMQTTSubscribe")
         try client.connect().wait()
         try client.subscribe(to: [.init(topicFilter: "iphone", qos: .atLeastOnce)]).wait()
-        Thread.sleep(forTimeInterval: 15)
+        Thread.sleep(forTimeInterval: 5)
         try client.disconnect().wait()
         try client.syncShutdownGracefully()
     }
@@ -178,7 +178,7 @@ final class MQTTNIOTests: XCTestCase {
             identifier: identifier,
             eventLoopGroupProvider: .createNew,
             logger: self.logger,
-            configuration: .init(useSSL: true, tlsConfiguration: Self.getTLSConfiguration())
+            configuration: .init(useSSL: true, tlsConfiguration: Self.getTLSConfiguration(withClientKey: true), sniServerName: "soto.codes")
         )
     }
 
@@ -189,7 +189,7 @@ final class MQTTNIOTests: XCTestCase {
             identifier: identifier,
             eventLoopGroupProvider: .createNew,
             logger: self.logger,
-            configuration: .init(useSSL: true, useWebSockets: true, tlsConfiguration: Self.getTLSConfiguration(), webSocketURLPath: "/mqtt")
+            configuration: .init(useSSL: true, useWebSockets: true, tlsConfiguration: Self.getTLSConfiguration(), sniServerName: "soto.codes", webSocketURLPath: "/mqtt")
         )
     }
 
@@ -207,8 +207,10 @@ final class MQTTNIOTests: XCTestCase {
             .joined(separator: "/")
     }()
 
-    static var _tlsConfiguration: Result<TLSConfiguration, Error> = {
+    static var _tlsConfiguration: Result<MQTTClient.TLSConfigurationType, Error> = {
         do {
+            #if os(Linux)
+            
             let rootCertificate = try NIOSSLCertificate.fromPEMFile(MQTTNIOTests.rootPath + "/mosquitto/certs/ca.crt")
             let certificate = try NIOSSLCertificate.fromPEMFile(MQTTNIOTests.rootPath + "/mosquitto/certs/client.crt")
             let privateKey = try NIOSSLPrivateKey(file: MQTTNIOTests.rootPath + "/mosquitto/certs/client.key", format: .pem)
@@ -217,20 +219,49 @@ final class MQTTNIOTests: XCTestCase {
                 certificateChain: certificate.map{ .certificate($0) },
                 privateKey: .privateKey(privateKey)
             )
-            return .success(tlsConfiguration)
+            return .success(.niossl(tlsConfiguration))
+            
+            #else
+            
+            let rootCertificate = try NIOSSLCertificate.fromPEMFile(MQTTNIOTests.rootPath + "/mosquitto/certs/ca.crt")
+            let trustRootCertificates = try rootCertificate.compactMap { SecCertificateCreateWithData(nil, Data(try $0.toDERBytes()) as CFData)}
+            let data = try Data(contentsOf: URL(fileURLWithPath: MQTTNIOTests.rootPath + "/mosquitto/certs/client.p12"))
+            let options: [String: String] = [kSecImportExportPassphrase as String: "BoQOxr1HFWb5poBJ0Z9tY1xcB"]
+            var rawItems: CFArray?
+            let rt = SecPKCS12Import(data as CFData, options as CFDictionary, &rawItems)
+            let items = rawItems! as! Array<Dictionary<String, Any>>
+            let firstItem = items[0]
+            let identity = firstItem[kSecImportItemIdentity as String] as! SecIdentity?
+            let tlsConfiguration = TSTLSConfiguration(
+                trustRoots: trustRootCertificates,
+                clientIdentity: identity
+            )
+            return .success(.ts(tlsConfiguration))
+            
+            #endif
         } catch {
             return .failure(error)
         }
     }()
     
-    static func getTLSConfiguration(withTrustRoots: Bool = true, withClientKey: Bool = true) throws -> TLSConfiguration {
+    static func getTLSConfiguration(withTrustRoots: Bool = true, withClientKey: Bool = true) throws -> MQTTClient.TLSConfigurationType {
         switch _tlsConfiguration {
         case .success(let config):
-            return TLSConfiguration.forClient(
-                trustRoots: withTrustRoots == true ? (config.trustRoots ?? .default) : .default,
-                certificateChain: withClientKey ? config.certificateChain : [],
-                privateKey: withClientKey ? config.privateKey : nil
-            )
+            switch config {
+            case .niossl(let config):
+                return .niossl(TLSConfiguration.forClient(
+                    trustRoots: withTrustRoots == true ? (config.trustRoots ?? .default) : .default,
+                    certificateChain: withClientKey ? config.certificateChain : [],
+                    privateKey: withClientKey ? config.privateKey : nil
+                ))
+            #if !os(Linux)
+            case .ts(let config):
+                return .ts(TSTLSConfiguration(
+                    trustRoots: withTrustRoots == true ? config.trustRoots : nil,
+                    clientIdentity: withClientKey == true ? config.clientIdentity : nil
+                ))
+            #endif
+            }
         case .failure(let error):
             throw error
         }
