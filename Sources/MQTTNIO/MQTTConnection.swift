@@ -105,7 +105,13 @@ final class MQTTConnection {
         }
         #else
         if let clientBootstrap = ClientBootstrap(validatingGroup: client.eventLoopGroup) {
-            let tlsConfiguration = client.configuration.tlsConfiguration ?? TLSConfiguration.forClient()
+            let tlsConfiguration: TLSConfiguration
+            switch client.configuration.tlsConfiguration {
+            case .niossl(let config):
+                tlsConfiguration = config
+            default:
+                tlsConfiguration = TLSConfiguration.forClient()
+            }
             let sslContext = try NIOSSLContext(configuration: tlsConfiguration)
             let tlsProvider = try NIOSSLClientTLSProvider<ClientBootstrap>(context: sslContext, serverHostname: serverName)
             bootstrap = NIOClientTCPBootstrap(clientBootstrap, tls: tlsProvider)
