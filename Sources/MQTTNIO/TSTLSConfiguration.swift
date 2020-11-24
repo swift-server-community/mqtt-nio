@@ -55,6 +55,9 @@ public struct TSTLSConfiguration {
     /// The identity associated with the leaf certificate.
     public var clientIdentity: SecIdentity?
 
+    /// The application protocols to use in the connection.
+    public var applicationProtocols: [String]
+    
     /// Whether to verify remote certificates.
     public var certificateVerification: TSCertificateVerification
     
@@ -64,12 +67,14 @@ public struct TSTLSConfiguration {
         maximumTLSVersion: tls_protocol_version_t? = nil,
         trustRoots: [SecCertificate]? = nil,
         clientIdentity: SecIdentity? = nil,
+        applicationProtocols: [String] = [],
         certificateVerification: TSCertificateVerification = .fullVerification
     ) {
         self.minimumTLSVersion = minimumTLSVersion
         self.maximumTLSVersion = maximumTLSVersion
         self.trustRoots = trustRoots
         self.clientIdentity = clientIdentity
+        self.applicationProtocols = applicationProtocols
         self.certificateVerification = certificateVerification
     }
     
@@ -97,6 +102,10 @@ extension TSTLSConfiguration {
         
         if let clientIdentity = self.clientIdentity, let secClientIdentity = sec_identity_create(clientIdentity) {
             sec_protocol_options_set_local_identity(options.securityProtocolOptions, secClientIdentity)
+        }
+        
+        applicationProtocols.forEach {
+            sec_protocol_options_add_tls_application_protocol(options.securityProtocolOptions, $0)
         }
         
         if certificateVerification != .fullVerification || trustRoots != nil {
