@@ -75,13 +75,28 @@ final class MQTTConnection {
         if #available(OSX 10.14, iOS 12.0, tvOS 12.0, watchOS 6.0, *),
            let tsBootstrap = NIOTSConnectionBootstrap(validatingGroup: client.eventLoopGroup) {
             // create NIOClientTCPBootstrap with NIOTS TLS provider
-            let tlsConfiguration = client.configuration.tlsConfiguration
-            let options = try tlsConfiguration.getNWProtocolTLSOptions()
+            let options: NWProtocolTLS.Options
+            switch client.configuration.tlsConfiguration {
+            case .ts(let config):
+                options = try config.getNWProtocolTLSOptions()
+            case .niossl:
+                throw MQTTClient.Error.wrongTLSConfig
+            default:
+                options = NWProtocolTLS.Options()
+            }
             sec_protocol_options_set_tls_server_name(options.securityProtocolOptions, serverName)
             let tlsProvider = NIOTSClientTLSProvider(tlsOptions: options)
             bootstrap = NIOClientTCPBootstrap(tsBootstrap, tls: tlsProvider)
         } else if let clientBootstrap = ClientBootstrap(validatingGroup: client.eventLoopGroup) {
-            let tlsConfiguration = client.configuration.tlsConfiguration
+            let tlsConfiguration: TLSConfiguration
+            switch client.configuration.tlsConfiguration {
+            case .ts:
+                throw MQTTClient.Error.wrongTLSConfig
+            case .niossl(let config):
+                tlsConfiguration = config
+            default:
+                tlsConfiguration = TLSConfiguration.forClient()
+            }
             let sslContext = try NIOSSLContext(configuration: tlsConfiguration)
             let tlsProvider = try NIOSSLClientTLSProvider<ClientBootstrap>(context: sslContext, serverHostname: serverName)
             bootstrap = NIOClientTCPBootstrap(clientBootstrap, tls: tlsProvider)

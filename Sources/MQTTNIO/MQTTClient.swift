@@ -19,6 +19,7 @@ final public class MQTTClient {
         case decodeError
         case websocketUpgradeFailed
         case timeout
+        case wrongTLSConfig
     }
     /// EventLoopGroup used by MQTTCllent
     let eventLoopGroup: EventLoopGroup
@@ -52,7 +53,20 @@ final public class MQTTClient {
     private static let globalPacketId = NIOAtomic<UInt16>.makeAtomic(value: 1)
     /// default logger that logs nothing
     private static let loggingDisabled = Logger(label: "MQTT-do-not-log", factory: { _ in SwiftLogNoOpLogHandler() })
-
+    
+    /// Enum for different TLS Configuration types. The TLS Configuration type to use if defined by the EventLoopGroup the
+    /// client is using. If you don't provide an EventLoopGroup then the EventLoopGroup created will be defined by this variable
+    public enum TLSConfigurationType {
+        #if !os(iOS)
+        /// NIOSSL TLS configuration
+        case niossl(TLSConfiguration)
+        #endif
+        #if canImport(Network)
+        /// NIO Transport Serviecs TLS configuration
+        case ts(TSTLSConfiguration)
+        #endif
+    }
+    
     /// Configuration for MQTTClient
     public struct Configuration {
         public init(
@@ -64,7 +78,7 @@ final public class MQTTClient {
             password: String? = nil,
             useSSL: Bool = false,
             useWebSockets: Bool = false,
-            tlsConfiguration: TLSConfiguration? = nil,
+            tlsConfiguration: TLSConfigurationType? = nil,
             sniServerName: String? = nil,
             webSocketURLPath: String? = nil
         ) {
@@ -76,7 +90,7 @@ final public class MQTTClient {
             self.password = password
             self.useSSL = useSSL
             self.useWebSockets = useWebSockets
-            self.tlsConfiguration = tlsConfiguration ?? TLSConfiguration.forClient()
+            self.tlsConfiguration = tlsConfiguration
             self.sniServerName = sniServerName
             self.webSocketURLPath = webSocketURLPath
         }
@@ -98,7 +112,7 @@ final public class MQTTClient {
         /// use a websocket connection to server
         public let useWebSockets: Bool
         /// TLS configuration
-        let tlsConfiguration: TLSConfiguration
+        let tlsConfiguration: TLSConfigurationType?
         /// server name used by TLS
         let sniServerName: String?
         /// URL Path for web socket. Defaults to "/mqtt"
@@ -144,10 +158,10 @@ final public class MQTTClient {
         case .createNew:
             #if canImport(Network)
             if #available(OSX 10.14, iOS 12.0, tvOS 12.0, watchOS 6.0, *),
-               configuration.tlsConfiguration.supportedByTransportServices() {
-                    self.eventLoopGroup = NIOTSEventLoopGroup()
-                } else {
+               case .niossl = configuration.tlsConfiguration {
                     self.eventLoopGroup = MultiThreadedEventLoopGroup(numberOfThreads: 1)
+                } else {
+                    self.eventLoopGroup = NIOTSEventLoopGroup()
                 }
             #else
                 self.eventLoopGroup = MultiThreadedEventLoopGroup(numberOfThreads: 1)
