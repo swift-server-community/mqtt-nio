@@ -77,7 +77,7 @@ MQTT also supports Web Socket connections. Set `Configuration.useWebSockets` to 
 
 ## NIO Transport Services
 
-On macOS and iOS you can use the NIO Transport Services library (NIOTS) and Apple's `Network.framework` for communication with the MQTT broker. If you don't provide an `eventLoopGroup` or a `TLSConfigurationType` then this is the default on both platforms. If you do provide either of these then the library will base it's decision on whether to use NIOTS or NIOSSL on what you provide. Provide a `MultiThreadedEventLoopGroup` or NIOSSL.TLSConfiguration and the client will use NIOSSL. Provide `NIOTSEventLoopGroup` or TSTLSConfiguration and the client will use NIOTS. If you provide a `MultiThreadedEventLoopGroup` and a `TSTLSConfiguration` then the client will throw an error. If you are running on iOS you should always choose NIOTS. 
+On macOS and iOS you can use the NIO Transport Services library (NIOTS) and Apple's `Network.framework` for communication with the MQTT broker. If you don't provide an `eventLoopGroup` or a `TLSConfigurationType` then this is the default for both platforms. If you do provide either of these then the library will base it's decision on whether to use NIOTS or NIOSSL on what you provide. Provide a `MultiThreadedEventLoopGroup` or `NIOSSL.TLSConfiguration` and the client will use NIOSSL. Provide a `NIOTSEventLoopGroup` or `TSTLSConfiguration` and the client will use NIOTS. If you provide a `MultiThreadedEventLoopGroup` and a `TSTLSConfiguration` then the client will throw an error. If you are running on iOS you should always choose NIOTS. 
 
 ## AWS IoT
 
@@ -110,4 +110,4 @@ let client = MQTTClient(
     configuration: .init(useSSL: true, useWebSockets: true, webSocketURLPath: requestUri)
 )
 ```
-
+You can find out more about connecting to AWS brokers [here](https://docs.aws.amazon.com/iot/latest/developerguide/protocols.html)
