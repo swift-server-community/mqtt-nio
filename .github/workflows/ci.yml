@@ -19,15 +19,14 @@ jobs:
     - name: SPM tests
       run: swift build
 
-  #ios:
-  #  runs-on: macOS-latest
-  #  steps:
-  #  - name: Checkout
-  #    uses: actions/checkout@v2
-  #  - name: Xcodebuild
-  #    run: |
-  #      xcodebuild -scheme soto-core-Package -quiet -destination 'platform=iOS Simulator,name=iPhone 11'
-#        xcodebuild test -scheme soto-core-Package -destination 'platform=iOS Simulator,name=iPhone 11'
+  ios:
+    runs-on: macOS-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+    - name: Xcodebuild
+      run: |
+        xcodebuild build -scheme mqtt-nio -destination 'platform=iOS Simulator,name=iPhone 11'
 
   linux:
     runs-on: ubuntu-latest
