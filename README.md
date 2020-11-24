@@ -67,11 +67,47 @@ let client = MQTTClient(
     port: 8884,
     identifier: "MySSLClient",
     eventLoopGroupProvider: .createNew,
-    configuration: .init(useSSL: true, tlsConfiguration: tlsConfiguration),
+    configuration: .init(useSSL: true, tlsConfiguration: .niossl(tlsConfiguration)),
 )
 ```
-Currently trustRoots and client certificates are not fully while using NIO Transport Services and therefore not supported on iOS. 
 
 ## WebSockets
 
 MQTT also supports Web Socket connections. Set `Configuration.useWebSockets` to `true` and set the URL path in `Configuration.webSocketsURLPath` to enable these.
+
+## NIO Transport Services
+
+On macOS and iOS you can use the NIO Transport Services library (NIOTS) and Apple's `Network.framework` for communication with the MQTT broker. If you don't provide an `eventLoopGroup` or a `TLSConfigurationType` then this is the default on both platforms. If you do provide either of these then the library will base it's decision on whether to use NIOTS or NIOSSL on what you provide. Provide a `MultiThreadedEventLoopGroup` or NIOSSL.TLSConfiguration and the client will use NIOSSL. Provide `NIOTSEventLoopGroup` or TSTLSConfiguration and the client will use NIOTS. If you provide a `MultiThreadedEventLoopGroup` and a `TSTLSConfiguration` then the client will throw an error. If you are running on iOS you should always choose NIOTS. 
+
+## AWS IoT
+
+The MQTT client can be used to connect to AWS IoT brokers. You can use both a WebSocket connection authenticated using AWS Signature V4 and a standard connection using a X.509 client certificate. If you are using a X.509 certificate make sure you update the attached role to allow your client id to connect and which topics you can subscribe, publish to.
+
+If you are using an AWS Signature V4 authenticated WebSocket connection you can use the V4 signer from [SotoCore](https://github.com/soto-project/soto) to sign your initial request as follows
+```swift
+import SotoSignerV4
+
+let host = "MY_AWS_IOT_ENDPOINT"
+let port = 443
+let headers = HTTPHeaders([("host", host)])
+let signer = AWSSigner(
+    credentials: StaticCredential(accessKeyId: "MYACCESSKEY", secretAccessKey: "MYSECRETKEY"), 
+    name: "iotdata", 
+    region: "eu-west-1"
+)
+let signedURL = signer.signURL(
+    url: URL(string: "https://\(host):\(port)/mqtt")!, 
+    method: .GET, 
+    headers: headers, 
+    body: .none, 
+    expires: .minutes(30)
+)
+let requestURI = "/mqtt?\(signedURL.query!)"
+let client = MQTTClient(
+    host: host,
+    port: port,
+    eventLoopGroupProvider: .createNew,
+    configuration: .init(useSSL: true, useWebSockets: true, webSocketURLPath: requestUri)
+)
+```
+
