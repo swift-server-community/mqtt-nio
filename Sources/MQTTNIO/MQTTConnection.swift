@@ -11,17 +11,17 @@ import NIOWebSocket
 final class MQTTConnection {
     let channel: Channel
     let timeout: TimeAmount?
-    
+
     private init(channel: Channel, timeout: TimeAmount?) {
         self.channel = channel
         self.timeout = timeout
     }
-    
+
     static func create(client: MQTTClient, pingInterval: TimeAmount) -> EventLoopFuture<MQTTConnection> {
         return createBootstrap(client: client, pingInterval: pingInterval)
             .map { MQTTConnection(channel: $0, timeout: client.configuration.timeout)}
     }
-    
+
     static func createBootstrap(client: MQTTClient, pingInterval: TimeAmount) -> EventLoopFuture<Channel> {
         let eventLoop = client.eventLoopGroup.next()
         let channelPromise = eventLoop.makePromise(of: Channel.self)
@@ -46,7 +46,7 @@ final class MQTTConnection {
                         let promise = eventLoop.makePromise(of: Void.self)
                         promise.futureResult.map { _ in channel }
                             .cascade(to: channelPromise)
-                        
+
                         return Self.setupChannelForWebsockets(client: client, channel: channel, upgradePromise: promise) {
                             return channel.pipeline.addHandlers(handlers)
                         }
@@ -133,7 +133,7 @@ final class MQTTConnection {
     ) -> EventLoopFuture<Void> {
         // initial HTTP request handler, before upgrade
         let httpHandler = WebSocketInitialRequestHandler(
-            host: client.host,
+            host: client.configuration.sniServerName ?? client.host,
             urlPath: client.configuration.webSocketURLPath ?? "/mqtt",
             upgradePromise: promise
         )
@@ -179,7 +179,7 @@ final class MQTTConnection {
     func sendMessageNoWait(_ message: MQTTOutboundMessage) -> EventLoopFuture<Void> {
         return channel.writeAndFlush(message)
     }
-    
+
     func close() -> EventLoopFuture<Void> {
         if channel.isActive {
             return channel.close()
@@ -187,7 +187,6 @@ final class MQTTConnection {
             return channel.eventLoop.makeSucceededFuture(())
         }
     }
-    
+
     var closeFuture: EventLoopFuture<Void> { channel.closeFuture }
 }
-
