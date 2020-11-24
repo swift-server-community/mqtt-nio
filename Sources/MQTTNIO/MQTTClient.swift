@@ -56,11 +56,10 @@ final public class MQTTClient {
     
     /// Enum for different TLS Configuration types. The TLS Configuration type to use if defined by the EventLoopGroup the
     /// client is using. If you don't provide an EventLoopGroup then the EventLoopGroup created will be defined by this variable
+    /// It is recommended on iOS you use NIO Transport Services.
     public enum TLSConfigurationType {
-        #if !os(iOS)
         /// NIOSSL TLS configuration
         case niossl(TLSConfiguration)
-        #endif
         #if canImport(Network)
         /// NIO Transport Serviecs TLS configuration
         case ts(TSTLSConfiguration)

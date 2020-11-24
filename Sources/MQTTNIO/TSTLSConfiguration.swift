@@ -58,6 +58,7 @@ public struct TSTLSConfiguration {
     /// Whether to verify remote certificates.
     public var certificateVerification: TSCertificateVerification
     
+    /// Initialize TSTLSConfiguration
     public init(
         minimumTLSVersion: tls_protocol_version_t = .TLSv10,
         maximumTLSVersion: tls_protocol_version_t? = nil,
