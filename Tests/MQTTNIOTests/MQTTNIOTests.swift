@@ -178,7 +178,7 @@ final class MQTTNIOTests: XCTestCase {
             identifier: identifier,
             eventLoopGroupProvider: .createNew,
             logger: self.logger,
-            configuration: .init(useSSL: true, tlsConfiguration: Self.getTLSConfiguration(withClientKey: false), sniServerName: "soto.codes")
+            configuration: .init(useSSL: true, tlsConfiguration: Self.getTLSConfiguration(withClientKey: true), sniServerName: "soto.codes")
         )
     }
 
@@ -225,8 +225,16 @@ final class MQTTNIOTests: XCTestCase {
             
             let rootCertificate = try NIOSSLCertificate.fromPEMFile(MQTTNIOTests.rootPath + "/mosquitto/certs/ca.crt")
             let trustRootCertificates = try rootCertificate.compactMap { SecCertificateCreateWithData(nil, Data(try $0.toDERBytes()) as CFData)}
+            let data = try Data(contentsOf: URL(fileURLWithPath: MQTTNIOTests.rootPath + "/mosquitto/certs/client.p12"))
+            let options: [String: String] = [kSecImportExportPassphrase as String: "BoQOxr1HFWb5poBJ0Z9tY1xcB"]
+            var rawItems: CFArray?
+            let rt = SecPKCS12Import(data as CFData, options as CFDictionary, &rawItems)
+            let items = rawItems! as! Array<Dictionary<String, Any>>
+            let firstItem = items[0]
+            let identity = firstItem[kSecImportItemIdentity as String] as! SecIdentity?
             let tlsConfiguration = TSTLSConfiguration(
-                trustRoots: trustRootCertificates
+                trustRoots: trustRootCertificates,
+                clientIdentity: identity
             )
             return .success(.ts(tlsConfiguration))
             

@@ -94,6 +94,10 @@ extension TSTLSConfiguration {
             }
         }
         
+        if let clientIdentity = self.clientIdentity, let secClientIdentity = sec_identity_create(clientIdentity) {
+            sec_protocol_options_set_local_identity(options.securityProtocolOptions, secClientIdentity)
+        }
+        
         if certificateVerification != .fullVerification || trustRoots != nil {
             // add verify block to control certificate verification
             sec_protocol_options_set_verify_block(
