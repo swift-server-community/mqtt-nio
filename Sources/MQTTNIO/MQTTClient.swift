@@ -72,7 +72,7 @@ final public class MQTTClient {
             disablePing: Bool = false,
             keepAliveInterval: TimeAmount = .seconds(90),
             pingInterval: TimeAmount? = nil,
-            timeout: TimeAmount? = nil,
+            timeout: TimeAmount? = .seconds(10),
             userName: String? = nil,
             password: String? = nil,
             useSSL: Bool = false,
