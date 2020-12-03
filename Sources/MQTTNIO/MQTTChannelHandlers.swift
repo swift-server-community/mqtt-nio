@@ -78,7 +78,7 @@ struct ByteToMQTTMessageDecoder: ByteToMessageDecoder {
                 .map { _ in return message.publish }
                 .whenComplete { self.client.publishListeners.notify($0) }
         case .exactlyOnce:
-            client.connection!.sendMessage(MQTTAckMessage(type: .PUBREC, packetId: message.packetId)) { newMessage in
+            client.connection!.sendMessageWithRetry(MQTTAckMessage(type: .PUBREC, packetId: message.packetId), maxRetryAttempts: client.configuration.maxRetryAttempts) { newMessage in
                 guard newMessage.packetId == message.packetId else { return false }
                 guard newMessage.type == .PUBREL else { throw MQTTClient.Error.unexpectedMessage }
                 return true
