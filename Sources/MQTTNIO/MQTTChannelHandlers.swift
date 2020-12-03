@@ -70,26 +70,39 @@ struct ByteToMQTTMessageDecoder: ByteToMessageDecoder {
     }
     
     func publish(_ message: MQTTPublishMessage) {
+        guard let connection = client.connection else { return }
+        var publish = message.publish
         switch message.publish.qos {
         case .atMostOnce:
             client.publishListeners.notify(.success(message.publish))
         case .atLeastOnce:
-            client.connection!.sendMessageNoWait(MQTTAckMessage(type: .PUBACK, packetId: message.packetId))
+            connection.sendMessageNoWait(MQTTAckMessage(type: .PUBACK, packetId: message.packetId))
                 .map { _ in return message.publish }
                 .whenComplete { self.client.publishListeners.notify($0) }
         case .exactlyOnce:
-            client.connection!.sendMessageWithRetry(MQTTAckMessage(type: .PUBREC, packetId: message.packetId), maxRetryAttempts: client.configuration.maxRetryAttempts) { newMessage in
+            connection.sendMessageWithRetry(MQTTAckMessage(type: .PUBREC, packetId: message.packetId), maxRetryAttempts: client.configuration.maxRetryAttempts) { newMessage in
                 guard newMessage.packetId == message.packetId else { return false }
+                // if we receive a publish message while waiting for a PUBREL from broker then replace data to be published and retry PUBREC
+                if newMessage.type == .PUBLISH, let publishMessage = newMessage as? MQTTPublishMessage {
+                    publish = publishMessage.publish
+                    throw MQTTClient.Error.retrySend
+                }
+                // if we receive anything but a PUBREL then throw unexpected message
                 guard newMessage.type == .PUBREL else { throw MQTTClient.Error.unexpectedMessage }
                 return true
             }
             .flatMap { _ in
-                self.client.connection!.sendMessageNoWait(MQTTAckMessage(type: .PUBCOMP, packetId: message.packetId))
+                connection.sendMessageNoWait(MQTTAckMessage(type: .PUBCOMP, packetId: message.packetId))
             }
-            .map { _ in return message.publish }
-            .whenComplete { self.client.publishListeners.notify($0) }
+            .map { _ in return publish }
+            .whenComplete { result in
+                // do not report retrySend error
+                if case .failure(let error) = result, case MQTTClient.Error.retrySend = error {
+                    return
+                }
+                self.client.publishListeners.notify(result)
+            }
         }
-
     }
 }
 

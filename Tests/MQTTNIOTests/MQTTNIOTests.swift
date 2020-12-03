@@ -68,7 +68,6 @@ final class MQTTNIOTests: XCTestCase {
         let client = try self.createWebSocketAndSSLClient(identifier: "testMQTTPublishQoS2")
         try client.connect().wait()
         try client.publish(to: "testMQTTPublishQoS", payload: ByteBufferAllocator().buffer(string: "Test payload"), qos: .exactlyOnce).wait()
-        print(client.connection?.channel.pipeline)
         try client.disconnect().wait()
         try client.syncShutdownGracefully()
     }
@@ -128,8 +127,8 @@ final class MQTTNIOTests: XCTestCase {
 
     func testCloseListener() throws {
         let disconnected = NIOAtomic<Bool>.makeAtomic(value: false)
-        let client = self.createWebSocketClient(identifier: "testReconnect")
-        let client2 = self.createWebSocketClient(identifier: "testReconnect")
+        let client = self.createWebSocketClient(identifier: "testCloseListener")
+        let client2 = self.createWebSocketClient(identifier: "testCloseListener")
 
         client.addCloseListener(named: "Reconnect") { result in
             switch result {
@@ -166,6 +165,50 @@ final class MQTTNIOTests: XCTestCase {
         try client.disconnect().wait()
         try client.syncShutdownGracefully()
     }
+
+    func testMQTTSubscribeQoS2WithStall() throws {
+        let stallHandler = InboundStallHandler { packet in
+            if packet.type == .PUBREL {
+                return .seconds(15)
+            }
+            return nil
+        }
+        let lock = Lock()
+        var publishReceived: [MQTTPublishInfo] = []
+        let payload = ByteBufferAllocator().buffer(string: "This is the Test payload")
+
+        let client = self.createClient(identifier: "testMQTTPublishToClient_publisher", timeout: .seconds(2))
+        try client.connect().wait()
+        let client2 = self.createClient(identifier: "testMQTTPublishToClient_subscriber", timeout: .seconds(30))
+        client2.addPublishListener(named: "test") { result in
+            switch result {
+            case .success(let publish):
+                var buffer = publish.payload
+                let string = buffer.readString(length: buffer.readableBytes)
+                XCTAssertEqual(string, "This is the Test payload")
+                lock.withLock {
+                    publishReceived.append(publish)
+                }
+                print("Received: \(string!)")
+            case .failure(let error):
+                XCTFail("\(error)")
+            }
+        }
+        try client2.connect().wait()
+        try client2.connection?.channel.pipeline.addHandler(stallHandler, position: .first).wait()
+        try client2.subscribe(to: [.init(topicFilter: "testMQTTSubscribeQoS2WithStall", qos: .exactlyOnce)]).wait()
+        try client.publish(to: "testMQTTSubscribeQoS2WithStall", payload: payload, qos: .exactlyOnce).wait()
+
+        Thread.sleep(forTimeInterval: 20)
+        lock.withLock {
+            XCTAssertEqual(publishReceived.count, 1)
+        }
+        try client.disconnect().wait()
+        try client2.disconnect().wait()
+        try client.syncShutdownGracefully()
+        try client2.syncShutdownGracefully()
+    }
+
 
     // MARK: Helper variables and functions
 
@@ -309,4 +352,30 @@ class OutboundStallHandler: ChannelOutboundHandler {
         }
     }
 
+}
+
+class InboundStallHandler: ChannelInboundHandler {
+    typealias InboundIn = ByteBuffer
+    typealias InboundOut = ByteBuffer
+
+    let callback: (MQTTPacketInfo) -> TimeAmount?
+
+    init(callback: @escaping (MQTTPacketInfo) -> TimeAmount?) {
+        self.callback = callback
+    }
+
+    func channelRead(context: ChannelHandlerContext, data: NIOAny) {
+        var bb = unwrapInboundIn(data)
+        do {
+            let packet = try MQTTSerializer.readIncomingPacket(from: &bb)
+            if let stallTime = callback(packet) {
+                context.eventLoop.scheduleTask(in: stallTime) {
+                    context.fireChannelRead(data)
+                }
+                return
+            }
+        } catch {
+        }
+        context.fireChannelRead(data)
+    }
 }
