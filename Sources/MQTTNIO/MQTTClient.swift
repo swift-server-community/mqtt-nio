@@ -12,15 +12,26 @@ import NIOTransportServices
 final public class MQTTClient {
     /// MQTTClient errors
     enum Error: Swift.Error {
+        /// You called connect on a client that is already connected to the broker
         case alreadyConnected
+        /// We received an unexpected message while connecting
         case failedToConnect
+        /// client in not connected
         case noConnection
+        /// received unexpected message from broker
         case unexpectedMessage
+        /// Decode of MQTT message failed
         case decodeError
+        /// Upgrade to websocker failed
         case websocketUpgradeFailed
+        /// client timed out while waiting for response from server
         case timeout
+        /// Internal error, used to get the client to retry sending
+        case retrySend
+        /// You have provided the wrong TLS configuration for the EventLoopGroup you provided
         case wrongTLSConfig
     }
+    
     /// EventLoopGroup used by MQTTCllent
     let eventLoopGroup: EventLoopGroup
     /// How was EventLoopGroup provided to the client
@@ -73,6 +84,7 @@ final public class MQTTClient {
             keepAliveInterval: TimeAmount = .seconds(90),
             pingInterval: TimeAmount? = nil,
             timeout: TimeAmount? = .seconds(10),
+            maxRetryAttempts: Int = 4,
             userName: String? = nil,
             password: String? = nil,
             useSSL: Bool = false,
@@ -85,6 +97,7 @@ final public class MQTTClient {
             self.keepAliveInterval = keepAliveInterval
             self.pingInterval = pingInterval
             self.timeout = timeout
+            self.maxRetryAttempts = maxRetryAttempts
             self.userName = userName
             self.password = password
             self.useSSL = useSSL
@@ -102,6 +115,8 @@ final public class MQTTClient {
         public let pingInterval: TimeAmount?
         /// timeout for server response
         public let timeout: TimeAmount?
+        /// max number of times to send a message
+        public let maxRetryAttempts: Int
         /// MQTT user name.
         public let userName: String?
         /// MQTT password.
@@ -208,7 +223,7 @@ final public class MQTTClient {
                 connection.closeFuture.whenComplete { result in
                     self.closeListeners.notify(result)
                 }
-                return connection.sendMessage(MQTTConnectMessage(connect: info, will: publish)) { message in
+                return connection.sendMessageWithRetry(MQTTConnectMessage(connect: info, will: publish), maxRetryAttempts: self.configuration.maxRetryAttempts) { message in
                     guard message.type == .CONNACK else { throw Error.failedToConnect }
                     return true
                 }
@@ -235,20 +250,27 @@ final public class MQTTClient {
         }
 
         let packetId = Self.globalPacketId.add(1)
-        return connection.sendMessage(MQTTPublishMessage(publish: info, packetId: packetId)) { message in
+        return connection.sendMessageWithRetry(MQTTPublishMessage(publish: info, packetId: packetId), maxRetryAttempts: configuration.maxRetryAttempts) { message in
             guard message.packetId == packetId else { return false }
             if info.qos == .atLeastOnce {
-                guard message.type == .PUBACK else { throw Error.unexpectedMessage }
+                guard message.type == .PUBACK else {
+                    throw Error.unexpectedMessage
+                }
             } else if info.qos == .exactlyOnce {
-                guard message.type == .PUBREC else { throw Error.unexpectedMessage }
+                guard message.type == .PUBREC else {
+                    throw Error.unexpectedMessage
+                }
             }
             return true
         }
         .flatMap { _ in
             if info.qos == .exactlyOnce {
-                return connection.sendMessage(MQTTAckMessage(type: .PUBREL, packetId: packetId)) { message in
+                return connection.sendMessageWithRetry(MQTTAckMessage(type: .PUBREL, packetId: packetId), maxRetryAttempts: self.configuration.maxRetryAttempts) { message in
                     guard message.packetId == packetId else { return false }
-                    guard message.type == .PUBCOMP else { throw Error.unexpectedMessage }
+                    guard message.type != .PUBREC else { return false }
+                    guard message.type == .PUBCOMP else {
+                        throw Error.unexpectedMessage
+                    }
                     return true
                 }.map { _ in }
             }
@@ -263,7 +285,7 @@ final public class MQTTClient {
         guard let connection = self.connection else { return eventLoopGroup.next().makeFailedFuture(Error.noConnection) }
         let packetId = Self.globalPacketId.add(1)
 
-        return connection.sendMessage(MQTTSubscribeMessage(subscriptions: subscriptions, packetId: packetId)) { message in
+        return connection.sendMessageWithRetry(MQTTSubscribeMessage(subscriptions: subscriptions, packetId: packetId), maxRetryAttempts: configuration.maxRetryAttempts) { message in
             guard message.packetId == packetId else { return false }
             guard message.type == .SUBACK else { throw Error.unexpectedMessage }
             return true
@@ -278,7 +300,7 @@ final public class MQTTClient {
         guard let connection = self.connection else { return eventLoopGroup.next().makeFailedFuture(Error.noConnection) }
         let packetId = Self.globalPacketId.add(1)
 
-        return connection.sendMessage(MQTTUnsubscribeMessage(subscriptions: subscriptions, packetId: packetId)) { message in
+        return connection.sendMessageWithRetry(MQTTUnsubscribeMessage(subscriptions: subscriptions, packetId: packetId), maxRetryAttempts: configuration.maxRetryAttempts) { message in
             guard message.packetId == packetId else { return false }
             guard message.type == .UNSUBACK else { throw Error.unexpectedMessage }
             return true
@@ -296,7 +318,7 @@ final public class MQTTClient {
     public func ping() -> EventLoopFuture<Void> {
         guard let connection = self.connection else { return eventLoopGroup.next().makeFailedFuture(Error.noConnection) }
 
-        return connection.sendMessage(MQTTPingreqMessage()) { message in
+        return connection.sendMessageWithRetry(MQTTPingreqMessage(), maxRetryAttempts: configuration.maxRetryAttempts) { message in
             guard message.type == .PINGRESP else { return false }
             return true
         }

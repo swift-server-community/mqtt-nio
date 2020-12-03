@@ -68,6 +68,7 @@ final class MQTTNIOTests: XCTestCase {
         let client = try self.createWebSocketAndSSLClient(identifier: "testMQTTPublishQoS2")
         try client.connect().wait()
         try client.publish(to: "testMQTTPublishQoS", payload: ByteBufferAllocator().buffer(string: "Test payload"), qos: .exactlyOnce).wait()
+        print(client.connection?.channel.pipeline)
         try client.disconnect().wait()
         try client.syncShutdownGracefully()
     }
@@ -111,9 +112,10 @@ final class MQTTNIOTests: XCTestCase {
             }
         }
         try client2.connect().wait()
-        try client2.subscribe(to: [.init(topicFilter: "testMQTTPublishToClient", qos: .atLeastOnce)]).wait()
-        try client.publish(to: "testMQTTPublishToClient", payload: payload, qos: .atLeastOnce).wait()
-        try client.publish(to: "testMQTTPublishToClient", payload: payload, qos: .atLeastOnce).wait()
+        try client2.subscribe(to: [.init(topicFilter: "testMQTTAtLeastOnce", qos: .atLeastOnce)]).wait()
+        try client2.subscribe(to: [.init(topicFilter: "testMQTTExactlyOnce", qos: .exactlyOnce)]).wait()
+        try client.publish(to: "testMQTTAtLeastOnce", payload: payload, qos: .atLeastOnce).wait()
+        try client.publish(to: "testMQTTExactlyOnce", payload: payload, qos: .exactlyOnce).wait()
         Thread.sleep(forTimeInterval: 2)
         lock.withLock {
             XCTAssertEqual(publishReceived.count, 2)
@@ -149,16 +151,32 @@ final class MQTTNIOTests: XCTestCase {
         try client.syncShutdownGracefully()
         try client2.syncShutdownGracefully()
     }
-    
+
+    func testMQTTPublishQoS2WithStall() throws {
+        let stallHandler = OutboundStallHandler { message in
+            if message.type == .PUBLISH || message.type == .PUBREL {
+                return .seconds(6)
+            }
+            return nil
+        }
+        let client = self.createClient(identifier: "testMQTTPublishQoS2WithStall", timeout: .seconds(4))
+        try client.connect().wait()
+        try client.connection?.channel.pipeline.addHandler(stallHandler).wait()
+        try client.publish(to: "testMQTTPublishQoS2WithStall", payload: ByteBufferAllocator().buffer(string: "Test payload"), qos: .exactlyOnce).wait()
+        try client.disconnect().wait()
+        try client.syncShutdownGracefully()
+    }
+
     // MARK: Helper variables and functions
 
-    func createClient(identifier: String) -> MQTTClient {
+    func createClient(identifier: String, timeout: TimeAmount? = .seconds(10)) -> MQTTClient {
         MQTTClient(
             host: Self.hostname,
             port: 1883,
             identifier: identifier,
             eventLoopGroupProvider: .createNew,
-            logger: self.logger
+            logger: self.logger,
+            configuration: .init(timeout: timeout)
         )
     }
 
@@ -191,7 +209,7 @@ final class MQTTNIOTests: XCTestCase {
             identifier: identifier,
             eventLoopGroupProvider: .createNew,
             logger: self.logger,
-            configuration: .init(useSSL: true, useWebSockets: true, tlsConfiguration: Self.getTLSConfiguration(), sniServerName: "soto.codes", webSocketURLPath: "/mqtt")
+            configuration: .init(timeout: .seconds(5), useSSL: true, useWebSockets: true, tlsConfiguration: Self.getTLSConfiguration(), sniServerName: "soto.codes", webSocketURLPath: "/mqtt")
         )
     }
 
@@ -268,4 +286,27 @@ final class MQTTNIOTests: XCTestCase {
             throw error
         }
     }
+}
+
+class OutboundStallHandler: ChannelOutboundHandler {
+    typealias OutboundIn = MQTTOutboundMessage
+    typealias OutboundOut = MQTTOutboundMessage
+
+    let callback: (MQTTOutboundMessage) -> TimeAmount?
+
+    init(callback: @escaping (MQTTOutboundMessage) -> TimeAmount?) {
+        self.callback = callback
+    }
+
+    func write(context: ChannelHandlerContext, data: NIOAny, promise: EventLoopPromise<Void>?) {
+        let message = unwrapOutboundIn(data)
+        if let stallTime = callback(message) {
+            context.eventLoop.scheduleTask(in: stallTime) {
+                context.write(data, promise: promise)
+            }
+        } else {
+            context.write(data, promise: promise)
+        }
+    }
+
 }
