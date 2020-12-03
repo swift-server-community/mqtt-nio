@@ -16,8 +16,12 @@ final class MQTTEncodeHandler: ChannelOutboundHandler {
         let message = unwrapOutboundIn(data)
         logger.debug("MQTT Out", metadata: ["mqtt_message": .string("\(message)")])
         var bb = context.channel.allocator.buffer(capacity: 0)
-        try! message.serialize(to: &bb)
-        context.write(wrapOutboundOut(bb), promise: promise)
+        do {
+            try message.serialize(to: &bb)
+            context.write(wrapOutboundOut(bb), promise: promise)
+        } catch {
+            promise?.fail(error)
+        }
     }
 }
 
