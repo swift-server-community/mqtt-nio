@@ -179,7 +179,7 @@ final class MQTTNIOTests: XCTestCase {
 
         let client = self.createClient(identifier: "testMQTTPublishToClient_publisher", timeout: .seconds(2))
         try client.connect().wait()
-        let client2 = self.createClient(identifier: "testMQTTPublishToClient_subscriber", timeout: .seconds(30))
+        let client2 = self.createClient(identifier: "testMQTTPublishToClient_subscriber", timeout: .seconds(10))
         client2.addPublishListener(named: "test") { result in
             switch result {
             case .success(let publish):
