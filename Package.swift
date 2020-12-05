@@ -1,10 +1,10 @@
-// swift-tools-version:5.3
+// swift-tools-version:5.1
 
 import PackageDescription
 
 let package = Package(
     name: "mqtt-nio",
-    platforms: [.macOS(.v10_14), .iOS(.v12), .tvOS(.v12)],
+    platforms: [.macOS(.v10_14), .iOS(.v12), .tvOS(.v12), .watchOS(.v6)],
     products: [
         .library(name: "MQTTNIO", targets: ["MQTTNIO"]),
     ],
@@ -25,6 +25,6 @@ let package = Package(
             .product(name: "NIOTransportServices", package: "swift-nio-transport-services"),
         ]),
         .target(name: "CCoreMQTT", dependencies: []),
-        .testTarget(name: "MQTTNIOTests", dependencies: ["MQTTNIO"], resources: [.process("mosquitto.org.crt")]),
+        .testTarget(name: "MQTTNIOTests", dependencies: ["MQTTNIO"]),
     ]
 )
