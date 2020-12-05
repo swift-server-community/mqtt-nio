@@ -122,7 +122,7 @@ extension TSTLSConfiguration {
                     if let trustRootCertificates = trustRoots {
                         SecTrustSetAnchorCertificates(trust, trustRootCertificates as CFArray)
                     }
-                    if #available(macOS 10.15, iOS 13.0, *) {
+                    if #available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *) {
                         SecTrustEvaluateAsyncWithError(trust, Self.tlsDispatchQueue) { (trust, result, error) in
                             if let error = error {
                                 print("Trust failed: \(error.localizedDescription)")
