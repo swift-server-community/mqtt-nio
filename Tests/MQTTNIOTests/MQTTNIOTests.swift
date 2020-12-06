@@ -3,6 +3,7 @@ import Foundation
 import Logging
 import NIO
 import NIOConcurrencyHelpers
+import NIOFoundationCompat
 import NIOHTTP1
 import NIOSSL
 @testable import MQTTNIO
