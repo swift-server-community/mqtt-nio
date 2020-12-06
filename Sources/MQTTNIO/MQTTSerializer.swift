@@ -196,13 +196,14 @@ enum MQTTSerializer {
 extension MQTTSerializer {
     static func readLength(from byteBuffer: inout ByteBuffer) throws -> Int {
         var length = 0
+        var shift = 0
         repeat {
             guard let byte: UInt8 = byteBuffer.readInteger() else { throw Error.incompletePacket }
-            length += Int(byte) & 0x7f
+            length += (Int(byte) & 0x7f) << shift
             if byte & 0x80 == 0 {
                 break
             }
-            length <<= 7
+            shift += 7
         } while(true)
         return length
     }

@@ -92,7 +92,8 @@ final class MQTTNIOTests: XCTestCase {
     func testMQTTPublishToClient() throws {
         let lock = Lock()
         var publishReceived: [MQTTPublishInfo] = []
-        let payload = ByteBufferAllocator().buffer(string: "This is the Test payload")
+        let payloadString = #"{"from":1000000,"to":1234567,"type":1,"content":"I am a beginner in swift and I am studying hard!!测试\n\n test, message","timestamp":1607243024,"nonce":"pAx2EsUuXrVuiIU3GGOGHNbUjzRRdT5b","sign":"ff902e31a6a5f5343d70a3a93ac9f946adf1caccab539c6f3a6"}"#
+        let payload = ByteBufferAllocator().buffer(string: payloadString)
 
         let client = self.createWebSocketClient(identifier: "testMQTTPublishToClient_publisher")
         try client.connect().wait()
@@ -102,7 +103,7 @@ final class MQTTNIOTests: XCTestCase {
             case .success(let publish):
                 var buffer = publish.payload
                 let string = buffer.readString(length: buffer.readableBytes)
-                XCTAssertEqual(string, "This is the Test payload")
+                XCTAssertEqual(string, payloadString)
                 lock.withLock {
                     publishReceived.append(publish)
                 }
@@ -118,6 +119,42 @@ final class MQTTNIOTests: XCTestCase {
         Thread.sleep(forTimeInterval: 2)
         lock.withLock {
             XCTAssertEqual(publishReceived.count, 2)
+        }
+        try client.disconnect().wait()
+        try client2.disconnect().wait()
+        try client.syncShutdownGracefully()
+        try client2.syncShutdownGracefully()
+    }
+
+    func testMQTTPublishToClientLargePayload() throws {
+        let lock = Lock()
+        var publishReceived: [MQTTPublishInfo] = []
+        let payloadSize = 65537
+        let payloadData = Data(count: payloadSize)
+        let payload = ByteBufferAllocator().buffer(data: payloadData)
+
+        let client = self.createWebSocketClient(identifier: "testMQTTPublishToClientLargePayload_publisher")
+        try client.connect().wait()
+        let client2 = self.createWebSocketClient(identifier: "testMQTTPublishToClientLargePayload_subscriber")
+        client2.addPublishListener(named: "test") { result in
+            switch result {
+            case .success(let publish):
+                var buffer = publish.payload
+                let data = buffer.readData(length: buffer.readableBytes)
+                XCTAssertEqual(data, payloadData)
+                lock.withLock {
+                    publishReceived.append(publish)
+                }
+            case .failure(let error):
+                XCTFail("\(error)")
+            }
+        }
+        try client2.connect().wait()
+        try client2.subscribe(to: [.init(topicFilter: "testMQTTAtLeastOnce", qos: .atLeastOnce)]).wait()
+        try client.publish(to: "testMQTTAtLeastOnce", payload: payload, qos: .atLeastOnce).wait()
+        Thread.sleep(forTimeInterval: 2)
+        lock.withLock {
+            XCTAssertEqual(publishReceived.count, 1)
         }
         try client.disconnect().wait()
         try client2.disconnect().wait()

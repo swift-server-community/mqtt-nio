@@ -36,8 +36,9 @@ struct ByteToMQTTMessageDecoder: ByteToMessageDecoder {
     }
 
     mutating func decode(context: ChannelHandlerContext, buffer: inout ByteBuffer) throws -> DecodingState {
+        var readBuffer = buffer
         do {
-            let packet = try MQTTSerializer.readIncomingPacket(from: &buffer)
+            let packet = try MQTTSerializer.readIncomingPacket(from: &readBuffer)
             let message: MQTTInboundMessage
             switch packet.type {
             case .PUBLISH:
@@ -51,6 +52,7 @@ struct ByteToMQTTMessageDecoder: ByteToMessageDecoder {
                 } catch {
                     self.client.publishListeners.notify(.failure(error))
                 }
+                buffer = readBuffer
                 return .continue
             case .CONNACK:
                 let connack = try MQTTSerializer.readAck(from: packet)
@@ -73,6 +75,7 @@ struct ByteToMQTTMessageDecoder: ByteToMessageDecoder {
         } catch {
             context.fireErrorCaught(error)
         }
+        buffer = readBuffer
         return .continue
     }
 
