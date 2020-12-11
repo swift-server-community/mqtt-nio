@@ -227,6 +227,7 @@ final public class MQTTClient {
             .flatMap { connection -> EventLoopFuture<MQTTInboundMessage> in
                 self.connection = connection
                 connection.closeFuture.whenComplete { result in
+                    self.connection = nil
                     self.closeListeners.notify(result)
                 }
                 return connection.sendMessageWithRetry(MQTTConnectMessage(connect: info, will: publish), maxRetryAttempts: self.configuration.maxRetryAttempts) { message in
