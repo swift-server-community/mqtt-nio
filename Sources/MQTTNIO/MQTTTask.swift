@@ -38,6 +38,10 @@ final class MQTTTaskHandler: ChannelInboundHandler, RemovableChannelHandler {
         addTimeoutTask()
     }
 
+    public func handlerRemoved(context: ChannelHandlerContext) {
+        self.timeoutTask?.cancel()
+    }
+
     func channelRead(context: ChannelHandlerContext, data: NIOAny) {
         let response = self.unwrapInboundIn(data)
         do {
@@ -51,7 +55,11 @@ final class MQTTTaskHandler: ChannelInboundHandler, RemovableChannelHandler {
             self.errorCaught(context: context, error: error)
         }
     }
-    
+
+    func channelInactive(context: ChannelHandlerContext) {
+        self.task.fail(MQTTClient.Error.serverClosedConnection)
+    }
+
     func errorCaught(context: ChannelHandlerContext, error: Error) {
         self.timeoutTask?.cancel()
         channel.pipeline.removeHandler(self).whenSuccess { _ in
