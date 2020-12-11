@@ -90,6 +90,26 @@ final class MQTTNIOTests: XCTestCase {
         try client.syncShutdownGracefully()
     }
 
+    func testMQTTServerDisconnect() throws {
+        struct MQTTForceDisconnectMessage: MQTTOutboundMessage {
+            var type: MQTTPacketType { .PUBLISH }
+            var description: String { "FORCEDISCONNECT" }
+
+            func serialize(to byteBuffer: inout ByteBuffer) throws {
+                // writing publish header with no content will cause a disconnect from the server
+                byteBuffer.writeInteger(UInt8(0x30))
+                byteBuffer.writeInteger(UInt8(0x0))
+            }
+        }
+
+        let client = self.createClient(identifier: "testMQTTServerDisconnect")
+        try client.connect().wait()
+        try client.connection?.sendMessageNoWait(MQTTForceDisconnectMessage()).wait()
+        Thread.sleep(forTimeInterval: 1)
+        XCTAssertFalse(client.isActive())
+        try client.syncShutdownGracefully()
+    }
+
     func testMQTTPublishToClient() throws {
         let lock = Lock()
         var publishReceived: [MQTTPublishInfo] = []
