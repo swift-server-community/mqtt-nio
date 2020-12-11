@@ -18,6 +18,8 @@ final public class MQTTClient {
         case failedToConnect
         /// client in not connected
         case noConnection
+        /// the server closed the connection
+        case serverClosedConnection
         /// received unexpected message from broker
         case unexpectedMessage
         /// Decode of MQTT message failed
@@ -227,7 +229,11 @@ final public class MQTTClient {
             .flatMap { connection -> EventLoopFuture<MQTTInboundMessage> in
                 self.connection = connection
                 connection.closeFuture.whenComplete { result in
-                    self.connection = nil
+                    // only reset connection if this connection is still set. Stops a reconnect having its connection removed by the
+                    // previous connection
+                    if self.connection === connection {
+                        self.connection = nil
+                    }
                     self.closeListeners.notify(result)
                 }
                 return connection.sendMessageWithRetry(MQTTConnectMessage(connect: info, will: publish), maxRetryAttempts: self.configuration.maxRetryAttempts) { message in
