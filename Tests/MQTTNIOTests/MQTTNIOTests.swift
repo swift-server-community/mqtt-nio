@@ -105,7 +105,7 @@ final class MQTTNIOTests: XCTestCase {
         let client = self.createClient(identifier: "testMQTTServerDisconnect")
         try client.connect().wait()
         try client.connection?.sendMessageNoWait(MQTTForceDisconnectMessage()).wait()
-        Thread.sleep(forTimeInterval: 1)
+        Thread.sleep(forTimeInterval: 2)
         XCTAssertFalse(client.isActive())
         try client.syncShutdownGracefully()
     }
@@ -246,6 +246,14 @@ final class MQTTNIOTests: XCTestCase {
         try client2.syncShutdownGracefully()
     }
 
+    func testDoubleConnect() throws {
+        let client = self.createClient(identifier: "DoubleConnect")
+        try client.connect(cleanSession: true).wait()
+        try client.connect(cleanSession: false).wait()
+        try client.disconnect().wait()
+        try client.syncShutdownGracefully()
+    }
+
     func testMQTTPublishQoS2WithStall() throws {
         let stallHandler = OutboundStallHandler { message in
             if message.type == .PUBLISH || message.type == .PUBREL {
@@ -330,16 +338,19 @@ final class MQTTNIOTests: XCTestCase {
         try client2.connect(cleanSession: false).wait()
         try client2.subscribe(to: [.init(topicFilter: "testMQTTAtLeastOnce", qos: .atLeastOnce)]).wait()
         try client.publish(to: "testMQTTAtLeastOnce", payload: payload, qos: .atLeastOnce).wait()
+        Thread.sleep(forTimeInterval: 1)
         try client2.disconnect().wait()
         try client.publish(to: "testMQTTAtLeastOnce", payload: payload, qos: .atLeastOnce).wait()
+        Thread.sleep(forTimeInterval: 1)
         // should receive previous publish on new connect as this is not a cleanSession
         try client2.connect(cleanSession: false).wait()
+        Thread.sleep(forTimeInterval: 1)
         try client2.disconnect().wait()
+        Thread.sleep(forTimeInterval: 1)
         try client.publish(to: "testMQTTAtLeastOnce", payload: payload, qos: .atLeastOnce).wait()
         // should not receive previous publish on connect as this is a cleanSession
         try client2.connect(cleanSession: true).wait()
-
-        Thread.sleep(forTimeInterval: 2)
+        Thread.sleep(forTimeInterval: 1)
         lock.withLock {
             XCTAssertEqual(publishReceived.count, 2)
         }
