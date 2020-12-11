@@ -300,13 +300,14 @@ final public class MQTTClient {
     }
 
     /// Unsubscribe from topic
-    /// - Parameter subscriptions: Subscription infos
+    /// - Parameter subscriptions: List of subscriptions to unsubscribe from
     /// - Returns: Future waiting for unsubscribe to complete. Will wait for UNSUBACK message from server
-    public func unsubscribe(from subscriptions: [MQTTSubscribeInfo]) -> EventLoopFuture<Void> {
+    public func unsubscribe(from subscriptions: [String]) -> EventLoopFuture<Void> {
         guard let connection = self.connection else { return eventLoopGroup.next().makeFailedFuture(Error.noConnection) }
         let packetId = Self.globalPacketId.add(1)
 
-        return connection.sendMessageWithRetry(MQTTUnsubscribeMessage(subscriptions: subscriptions, packetId: packetId), maxRetryAttempts: configuration.maxRetryAttempts) { message in
+        let subscribeInfos = subscriptions.map { MQTTSubscribeInfo(topicFilter: $0, qos: .atLeastOnce) }
+        return connection.sendMessageWithRetry(MQTTUnsubscribeMessage(subscriptions: subscribeInfos, packetId: packetId), maxRetryAttempts: configuration.maxRetryAttempts) { message in
             guard message.packetId == packetId else { return false }
             guard message.type == .UNSUBACK else { throw Error.unexpectedMessage }
             return true

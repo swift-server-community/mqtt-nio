@@ -127,6 +127,43 @@ final class MQTTNIOTests: XCTestCase {
         try client2.syncShutdownGracefully()
     }
 
+    func testUnsubscribe() throws {
+        let lock = Lock()
+        var publishReceived: [MQTTPublishInfo] = []
+        let payloadString = #"test payload"#
+        let payload = ByteBufferAllocator().buffer(string: payloadString)
+
+        let client = self.createClient(identifier: "testUnsubscribe_publisher")
+        try client.connect().wait()
+        let client2 = self.createClient(identifier: "testUnsubscribe_subscriber")
+        client2.addPublishListener(named: "test") { result in
+            switch result {
+            case .success(let publish):
+                var buffer = publish.payload
+                let string = buffer.readString(length: buffer.readableBytes)
+                XCTAssertEqual(string, payloadString)
+                lock.withLock {
+                    publishReceived.append(publish)
+                }
+            case .failure(let error):
+                XCTFail("\(error)")
+            }
+        }
+        try client2.connect().wait()
+        try client2.subscribe(to: [.init(topicFilter: "testUnsubscribe", qos: .atLeastOnce)]).wait()
+        try client.publish(to: "testUnsubscribe", payload: payload, qos: .atLeastOnce).wait()
+        try client2.unsubscribe(from: ["testUnsubscribe"]).wait()
+        try client.publish(to: "testUnsubscribe", payload: payload, qos: .atLeastOnce).wait()
+
+        Thread.sleep(forTimeInterval: 2)
+        lock.withLock {
+            XCTAssertEqual(publishReceived.count, 1)
+        }
+        try client.disconnect().wait()
+        try client2.disconnect().wait()
+        try client.syncShutdownGracefully()
+        try client2.syncShutdownGracefully()
+    }
     func testMQTTPublishToClientLargePayload() throws {
         let lock = Lock()
         var publishReceived: [MQTTPublishInfo] = []
