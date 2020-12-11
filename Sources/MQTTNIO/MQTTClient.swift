@@ -200,17 +200,20 @@ final public class MQTTClient {
 
     /// Connect to MQTT server
     ///
-    /// If set to false the Server MUST resume communications with the Client based on state from the current Session (as identified by the Client identifier).
+    /// If `cleanSession` is set to false the Server MUST resume communications with the Client based on state from the current Session (as identified by the Client identifier).
     /// If there is no Session associated with the Client identifier the Server MUST create a new Session. The Client and Server MUST store the Session
     /// after the Client and Server are disconnected. If set to true then the Client and Server MUST discard any previous Session and start a new one
+    ///
+    /// The function returns an EventLoopFuture which will be updated with whether the server has restored a session for this client.
+    ///
     /// - Parameters:
     ///   - cleanSession: should we start with a new session
     ///   - will: Publish message to be posted as soon as connection is made
-    /// - Returns: Future waiting for connect to fiinsh
+    /// - Returns: EventLoopFuture to be updated with whether server holds a session for this client
     public func connect(
         cleanSession: Bool = true,
         will: (topicName: String, payload: ByteBuffer, retain: Bool)? = nil
-    ) -> EventLoopFuture<Void> {
+    ) -> EventLoopFuture<Bool> {
         //guard self.connection == nil else { return eventLoopGroup.next().makeFailedFuture(Error.alreadyConnected) }
 
         let info = MQTTConnectInfo(
@@ -241,7 +244,10 @@ final public class MQTTClient {
                     return true
                 }
             }
-            .map { _ in }
+            .map { message in
+                guard let connack = message as? MQTTConnAckMessage else { return false }
+                return connack.sessionPresent
+            }
     }
 
     /// Publish message to topic
