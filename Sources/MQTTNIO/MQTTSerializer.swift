@@ -157,15 +157,21 @@ enum MQTTSerializer {
             )
             // Payload
             guard let remainingDataPtr = UnsafeRawPointer(packetInfo.pRemainingData) else { throw MQTTError(status: .MQTTNoMemory) }
-            let offset = publishInfoCoreType.pPayload - remainingDataPtr
-            guard let payload = packet.remainingData.getSlice(at: offset, length: publishInfoCoreType.payloadLength) else { throw MQTTError(status: .MQTTNoMemory) }
-            
+            let payloadByteBuffer: ByteBuffer
+            // publish packet may not have payload
+            if let pPayload = publishInfoCoreType.pPayload {
+                let offset = pPayload - remainingDataPtr
+                guard let payload = packet.remainingData.getSlice(at: offset, length: publishInfoCoreType.payloadLength) else { throw MQTTError(status: .MQTTNoMemory) }
+                payloadByteBuffer = payload
+            } else {
+                payloadByteBuffer = MQTTPublishInfo.emptyByteBuffer
+            }
             return MQTTPublishInfo(
                 qos: MQTTQoS(rawValue: publishInfoCoreType.qos.rawValue)!,
                 retain: publishInfoCoreType.retain,
                 dup: publishInfoCoreType.dup,
                 topicName: topicName,
-                payload: payload
+                payload: payloadByteBuffer
             )
         }
         return (packetId: packetId, publishInfo: publishInfo)

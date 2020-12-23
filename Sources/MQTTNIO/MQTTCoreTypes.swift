@@ -158,6 +158,8 @@ public struct MQTTPublishInfo
             }
         }
     }
+    
+    static let emptyByteBuffer = ByteBufferAllocator().buffer(capacity: 0);
 }
 
 /// MQTT SUBSCRIBE packet parameters.

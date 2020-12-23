@@ -45,7 +45,10 @@ struct ByteToMQTTMessageDecoder: ByteToMessageDecoder {
                 do {
                     let publish = try MQTTSerializer.readPublish(from: packet)
                     let publishMessage = MQTTPublishMessage(publish: publish.publishInfo, packetId: publish.packetId)
-                    client.logger.debug("MQTT In", metadata: ["mqtt_message": .string("\(publishMessage)")])
+                    client.logger.debug("MQTT In", metadata: [
+                        "mqtt_message": .string("\(publishMessage)"),
+                        "mqtt_topicName": .string("\(publishMessage.publish.topicName)")
+                    ])
                     self.respondToPublish(publishMessage)
                 } catch MQTTSerializer.Error.incompletePacket {
                     return .needMoreData
