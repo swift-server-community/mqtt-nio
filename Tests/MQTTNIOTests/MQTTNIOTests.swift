@@ -364,11 +364,16 @@ final class MQTTNIOTests: XCTestCase {
     }
 
     func testSubscribeAll() throws {
+        if ProcessInfo.processInfo.environment["CI"] != nil {
+            return
+        }
+        let elg = MultiThreadedEventLoopGroup(numberOfThreads: 1)
+        defer { XCTAssertNoThrow(try elg.syncShutdownGracefully()) }
         let client = MQTTClient(
             host: "test.mosquitto.org",
             port: 1883,
             identifier: "testSubscribeAll",
-            eventLoopGroupProvider: .createNew,
+            eventLoopGroupProvider: .shared(elg),
             logger: self.logger
         )
         _ = try client.connect().wait()
