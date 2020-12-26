@@ -15,7 +15,7 @@ services:
       - mosquitto
     environment:
       - MOSQUITTO_SERVER=mosquitto
-    command: /bin/bash -xcl "swift test --enable-test-discovery"
+    command: /bin/bash -xcl "swift test --enable-test-discovery --sanitize=thread"
 
   mosquitto:
     image: eclipse-mosquitto

@@ -34,21 +34,23 @@ jobs:
       matrix:
         tag:
           - swift:5.1
-          - swift:5.2
-          - swift:5.3
-#    container:
-#      image: ${{ matrix.tag }}
+    # swift docker images don't have docker-compose installed
+    #       - swift:5.2
+    #       - swift:5.3
+    # container:
+    #   image: ${{ matrix.tag }}
     steps:
     - name: Checkout
       uses: actions/checkout@v2
     - name: Mosquitto
       run: |
         docker-compose --version
-        docker --version
+        swift --version
         ./scripts/mosquitto.sh start
     - name: Test
       run: |
         swift test --enable-test-discovery --enable-code-coverage --sanitize=thread
+    # ubuntu latest docker image doesn't have llvm-cov installed
     #- name: Convert coverage files
     #  run: |
     #    llvm-cov export -format="lcov" \
