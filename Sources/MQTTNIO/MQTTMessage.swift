@@ -10,6 +10,11 @@ protocol MQTTInboundMessage: CustomStringConvertible {
     var packetId: UInt16 { get }
 }
 
+protocol MQTTOutboundWithPacketIdMessage: MQTTOutboundMessage {
+    var packetId: UInt16 { get }
+}
+
+
 struct MQTTConnectMessage: MQTTOutboundMessage {
     var type: MQTTPacketType { .CONNECT }
     var description: String { "CONNECT" }
@@ -22,7 +27,7 @@ struct MQTTConnectMessage: MQTTOutboundMessage {
     }
 }
 
-struct MQTTPublishMessage: MQTTOutboundMessage, MQTTInboundMessage {
+struct MQTTPublishMessage: MQTTOutboundWithPacketIdMessage, MQTTInboundMessage {
     var type: MQTTPacketType { .PUBLISH }
     var description: String { "PUBLISH" }
 
@@ -34,7 +39,7 @@ struct MQTTPublishMessage: MQTTOutboundMessage, MQTTInboundMessage {
     }
 }
 
-struct MQTTSubscribeMessage: MQTTOutboundMessage {
+struct MQTTSubscribeMessage: MQTTOutboundWithPacketIdMessage {
     var type: MQTTPacketType { .SUBSCRIBE }
     var description: String { "SUBSCRIBE" }
 
@@ -46,7 +51,7 @@ struct MQTTSubscribeMessage: MQTTOutboundMessage {
     }
 }
 
-struct MQTTUnsubscribeMessage: MQTTOutboundMessage {
+struct MQTTUnsubscribeMessage: MQTTOutboundWithPacketIdMessage {
     var type: MQTTPacketType { .UNSUBSCRIBE }
     var description: String { "UNSUBSCRIBE" }
 
@@ -58,7 +63,7 @@ struct MQTTUnsubscribeMessage: MQTTOutboundMessage {
     }
 }
 
-struct MQTTAckMessage: MQTTOutboundMessage, MQTTInboundMessage {
+struct MQTTAckMessage: MQTTOutboundWithPacketIdMessage, MQTTInboundMessage {
     var description: String { "ACK \(type)" }
     let type: MQTTPacketType
     let packetId: UInt16

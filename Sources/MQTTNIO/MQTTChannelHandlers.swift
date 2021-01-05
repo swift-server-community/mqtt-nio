@@ -14,7 +14,11 @@ final class MQTTEncodeHandler: ChannelOutboundHandler {
 
     func write(context: ChannelHandlerContext, data: NIOAny, promise: EventLoopPromise<Void>?) {
         let message = unwrapOutboundIn(data)
-        logger.debug("MQTT Out", metadata: ["mqtt_message": .string("\(message)")])
+        if let messageWithPacketId = message as? MQTTOutboundWithPacketIdMessage {
+            logger.debug("MQTT Out", metadata: ["mqtt_message": .string("\(message)"), "mqtt_packet_id": .string("\(messageWithPacketId.packetId)")])
+        } else {
+            logger.debug("MQTT Out", metadata: ["mqtt_message": .string("\(message)")])
+        }
         var bb = context.channel.allocator.buffer(capacity: 0)
         do {
             try message.serialize(to: &bb)
@@ -47,6 +51,7 @@ struct ByteToMQTTMessageDecoder: ByteToMessageDecoder {
                     let publishMessage = MQTTPublishMessage(publish: publish.publishInfo, packetId: publish.packetId)
                     client.logger.debug("MQTT In", metadata: [
                         "mqtt_message": .string("\(publishMessage)"),
+                        "mqtt_packet_id": .string("\(publishMessage.packetId)"),
                         "mqtt_topicName": .string("\(publishMessage.publish.topicName)")
                     ])
                     self.respondToPublish(publishMessage)
@@ -68,7 +73,7 @@ struct ByteToMQTTMessageDecoder: ByteToMessageDecoder {
             default:
                 throw MQTTClient.Error.decodeError
             }
-            client.logger.debug("MQTT In", metadata: ["mqtt_message": .string("\(message)")])
+            client.logger.debug("MQTT In", metadata: ["mqtt_message": .string("\(message)"), "mqtt_packet_id": .string("\(message.packetId)")])
             if message.type == .PUBREL {
                 respondToPubrel(message)
             }
