@@ -26,20 +26,20 @@ final class MQTTConnection {
         let eventLoop = client.eventLoopGroup.next()
         let channelPromise = eventLoop.makePromise(of: Channel.self)
         do {
-            // Work out what handlers to add
-            var handlers: [ChannelHandler] = [
-                MQTTEncodeHandler(logger: client.logger),
-                ByteToMessageHandler(ByteToMQTTMessageDecoder(client: client))
-            ]
-            if !client.configuration.disablePing {
-                handlers = [PingreqHandler(client: client, timeout: pingInterval)] + handlers
-            }
             // get bootstrap based off what eventloop we are running on
             let bootstrap = try getBootstrap(client: client)
             bootstrap
                 .channelOption(ChannelOptions.socketOption(.so_reuseaddr), value: 1)
                 .channelOption(ChannelOptions.socket(IPPROTO_TCP, TCP_NODELAY), value: 1)
                 .channelInitializer { channel in
+                    // Work out what handlers to add
+                    var handlers: [ChannelHandler] = [
+                        MQTTEncodeHandler(logger: client.logger),
+                        ByteToMessageHandler(ByteToMQTTMessageDecoder(client: client))
+                    ]
+                    if !client.configuration.disablePing {
+                        handlers = [PingreqHandler(client: client, timeout: pingInterval)] + handlers
+                    }
                     // are we using websockets
                     if client.configuration.useWebSockets {
                         // prepare for websockets and on upgrade add handlers
