@@ -63,7 +63,7 @@ final public class MQTTClient {
         }
     }
 
-    private static let globalPacketId = NIOAtomic<UInt16>.makeAtomic(value: 1)
+    private let globalPacketId = NIOAtomic<UInt16>.makeAtomic(value: 1)
     /// default logger that logs nothing
     private static let loggingDisabled = Logger(label: "MQTT-do-not-log", factory: { _ in SwiftLogNoOpLogHandler() })
     
@@ -246,6 +246,7 @@ final public class MQTTClient {
             }
             .map { message in
                 guard let connack = message as? MQTTConnAckMessage else { return false }
+                _ = self.globalPacketId.exchange(with: connack.packetId + 5716)
                 return connack.sessionPresent
             }
     }
@@ -268,7 +269,7 @@ final public class MQTTClient {
             return connection.sendMessageNoWait(MQTTPublishMessage(publish: info, packetId: 0))
         }
 
-        let packetId = Self.globalPacketId.add(1)
+        let packetId = self.globalPacketId.add(1)
         return connection.sendMessageWithRetry(MQTTPublishMessage(publish: info, packetId: packetId), maxRetryAttempts: configuration.maxRetryAttempts) { message in
             guard message.packetId == packetId else { return false }
             if info.qos == .atLeastOnce {
@@ -302,7 +303,7 @@ final public class MQTTClient {
     /// - Returns: Future waiting for subscribe to complete. Will wait for SUBACK message from server
     public func subscribe(to subscriptions: [MQTTSubscribeInfo]) -> EventLoopFuture<Void> {
         guard let connection = self.connection else { return eventLoopGroup.next().makeFailedFuture(Error.noConnection) }
-        let packetId = Self.globalPacketId.add(1)
+        let packetId = self.globalPacketId.add(1)
 
         return connection.sendMessageWithRetry(MQTTSubscribeMessage(subscriptions: subscriptions, packetId: packetId), maxRetryAttempts: configuration.maxRetryAttempts) { message in
             guard message.packetId == packetId else { return false }
@@ -317,7 +318,7 @@ final public class MQTTClient {
     /// - Returns: Future waiting for unsubscribe to complete. Will wait for UNSUBACK message from server
     public func unsubscribe(from subscriptions: [String]) -> EventLoopFuture<Void> {
         guard let connection = self.connection else { return eventLoopGroup.next().makeFailedFuture(Error.noConnection) }
-        let packetId = Self.globalPacketId.add(1)
+        let packetId = self.globalPacketId.add(1)
 
         let subscribeInfos = subscriptions.map { MQTTSubscribeInfo(topicFilter: $0, qos: .atLeastOnce) }
         return connection.sendMessageWithRetry(MQTTUnsubscribeMessage(subscriptions: subscribeInfos, packetId: packetId), maxRetryAttempts: configuration.maxRetryAttempts) { message in
