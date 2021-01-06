@@ -35,19 +35,19 @@ final public class MQTTClient {
     }
     
     /// EventLoopGroup used by MQTTCllent
-    let eventLoopGroup: EventLoopGroup
+    public let eventLoopGroup: EventLoopGroup
     /// How was EventLoopGroup provided to the client
     let eventLoopGroupProvider: NIOEventLoopGroupProvider
     /// Host name of server to connect to
-    let host: String
+    public let host: String
     /// Port to connect to
-    let port: Int
+    public let port: Int
     /// client identifier
-    let identifier: String
+    public let identifier: String
     /// logger
-    var logger: Logger
+    public var logger: Logger
     /// Client configuration
-    let configuration: Configuration
+    public let configuration: Configuration
 
     /// Connection client is using
     var connection: MQTTConnection? {
@@ -128,9 +128,9 @@ final public class MQTTClient {
         /// use a websocket connection to server
         public let useWebSockets: Bool
         /// TLS configuration
-        let tlsConfiguration: TLSConfigurationType?
+        public let tlsConfiguration: TLSConfigurationType?
         /// server name used by TLS
-        let sniServerName: String?
+        public let sniServerName: String?
         /// URL Path for web socket. Defaults to "/mqtt"
         public let webSocketURLPath: String?
     }
