@@ -67,74 +67,6 @@ final public class MQTTClient {
     /// default logger that logs nothing
     private static let loggingDisabled = Logger(label: "MQTT-do-not-log", factory: { _ in SwiftLogNoOpLogHandler() })
     
-    /// Enum for different TLS Configuration types. The TLS Configuration type to use if defined by the EventLoopGroup the
-    /// client is using. If you don't provide an EventLoopGroup then the EventLoopGroup created will be defined by this variable
-    /// It is recommended on iOS you use NIO Transport Services.
-    public enum TLSConfigurationType {
-        /// NIOSSL TLS configuration
-        case niossl(TLSConfiguration)
-        #if canImport(Network)
-        /// NIO Transport Serviecs TLS configuration
-        case ts(TSTLSConfiguration)
-        #endif
-    }
-    
-    /// Configuration for MQTTClient
-    public struct Configuration {
-        public init(
-            disablePing: Bool = false,
-            keepAliveInterval: TimeAmount = .seconds(90),
-            pingInterval: TimeAmount? = nil,
-            timeout: TimeAmount? = .seconds(10),
-            maxRetryAttempts: Int = 4,
-            userName: String? = nil,
-            password: String? = nil,
-            useSSL: Bool = false,
-            useWebSockets: Bool = false,
-            tlsConfiguration: TLSConfigurationType? = nil,
-            sniServerName: String? = nil,
-            webSocketURLPath: String? = nil
-        ) {
-            self.disablePing = disablePing
-            self.keepAliveInterval = keepAliveInterval
-            self.pingInterval = pingInterval
-            self.timeout = timeout
-            self.maxRetryAttempts = maxRetryAttempts
-            self.userName = userName
-            self.password = password
-            self.useSSL = useSSL
-            self.useWebSockets = useWebSockets
-            self.tlsConfiguration = tlsConfiguration
-            self.sniServerName = sniServerName
-            self.webSocketURLPath = webSocketURLPath
-        }
-
-        /// disable the sending of pingreq messages
-        public let disablePing: Bool
-        /// MQTT keep alive period.
-        public let keepAliveInterval: TimeAmount
-        /// override interval between each pingreq message
-        public let pingInterval: TimeAmount?
-        /// timeout for server response
-        public let timeout: TimeAmount?
-        /// max number of times to send a message
-        public let maxRetryAttempts: Int
-        /// MQTT user name.
-        public let userName: String?
-        /// MQTT password.
-        public let password: String?
-        /// use encrypted connection to server
-        public let useSSL: Bool
-        /// use a websocket connection to server
-        public let useWebSockets: Bool
-        /// TLS configuration
-        public let tlsConfiguration: TLSConfigurationType?
-        /// server name used by TLS
-        public let sniServerName: String?
-        /// URL Path for web socket. Defaults to "/mqtt"
-        public let webSocketURLPath: String?
-    }
-
     /// Create MQTT client
     /// - Parameters:
     ///   - host: host name
@@ -246,7 +178,7 @@ final public class MQTTClient {
             }
             .map { message in
                 guard let connack = message as? MQTTConnAckMessage else { return false }
-                _ = self.globalPacketId.exchange(with: connack.packetId + 5716)
+                _ = self.globalPacketId.exchange(with: connack.packetId + 32767)
                 return connack.sessionPresent
             }
     }
@@ -269,7 +201,7 @@ final public class MQTTClient {
             return connection.sendMessageNoWait(MQTTPublishMessage(publish: info, packetId: 0))
         }
 
-        let packetId = self.globalPacketId.add(1)
+        let packetId = self.updatePacketId()
         return connection.sendMessageWithRetry(MQTTPublishMessage(publish: info, packetId: packetId), maxRetryAttempts: configuration.maxRetryAttempts) { message in
             guard message.packetId == packetId else { return false }
             if info.qos == .atLeastOnce {
@@ -303,7 +235,7 @@ final public class MQTTClient {
     /// - Returns: Future waiting for subscribe to complete. Will wait for SUBACK message from server
     public func subscribe(to subscriptions: [MQTTSubscribeInfo]) -> EventLoopFuture<Void> {
         guard let connection = self.connection else { return eventLoopGroup.next().makeFailedFuture(Error.noConnection) }
-        let packetId = self.globalPacketId.add(1)
+        let packetId = self.updatePacketId()
 
         return connection.sendMessageWithRetry(MQTTSubscribeMessage(subscriptions: subscriptions, packetId: packetId), maxRetryAttempts: configuration.maxRetryAttempts) { message in
             guard message.packetId == packetId else { return false }
@@ -318,7 +250,7 @@ final public class MQTTClient {
     /// - Returns: Future waiting for unsubscribe to complete. Will wait for UNSUBACK message from server
     public func unsubscribe(from subscriptions: [String]) -> EventLoopFuture<Void> {
         guard let connection = self.connection else { return eventLoopGroup.next().makeFailedFuture(Error.noConnection) }
-        let packetId = self.globalPacketId.add(1)
+        let packetId = self.updatePacketId()
 
         let subscribeInfos = subscriptions.map { MQTTSubscribeInfo(topicFilter: $0, qos: .atLeastOnce) }
         return connection.sendMessageWithRetry(MQTTUnsubscribeMessage(subscriptions: subscribeInfos, packetId: packetId), maxRetryAttempts: configuration.maxRetryAttempts) { message in
@@ -382,6 +314,15 @@ final public class MQTTClient {
     /// Remove named close listener
     public func removeCloseListener(named name: String) {
         closeListeners.removeListener(named: name)
+    }
+
+    private func updatePacketId() -> UInt16 {
+        // packet id must be non-zero
+        if self.globalPacketId.compareAndExchange(expected: 0, desired: 1) {
+            return 1
+        } else {
+            return self.globalPacketId.add(1)
+        }
     }
 
     var publishListeners = MQTTListeners<MQTTPublishInfo>()
