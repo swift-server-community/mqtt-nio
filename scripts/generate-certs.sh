@@ -77,24 +77,24 @@ function generateClientCertificate() {
 
 cd "$HOME"/../mosquitto/certs/
 
-ROOT=1
-CLIENT=1
-SERVER=1
+OUTPUT_ROOT=1
+OUTPUT_CLIENT=1
+OUTPUT_SERVER=1
 
 while getopts 'sc' option
 do
     case $option in
-        s) ROOT=0;SERVER=1;CLIENT=0 ;;
-        c) ROOT=0;SERVER=0;CLIENT=1 ;;
+        s) OUTPUT_ROOT=0;OUTPUT_SERVER=1;OUTPUT_CLIENT=0 ;;
+        c) OUTPUT_ROOT=0;OUTPUT_SERVER=0;OUTPUT_CLIENT=1 ;;
     esac
 done
 
-if test "$ROOT" == 1; then
-    generateCA "/C=UK/ST=Edinburgh/L=Edinburgh/O=Soto/OU=MQTTCA/CN=${SERVER}"
+if test "$OUTPUT_ROOT" == 1; then
+    generateCA "/C=UK/ST=Edinburgh/L=Edinburgh/O=Soto/OU=MQTT/CN=${SERVER}"
 fi
-if test "$SERVER" == 1; then
-    generateServerCertificate "/C=UK/ST=Edinburgh/L=Edinburgh/O=Soto/OU=MQTTServer/CN=${SERVER}" server
+if test "$OUTPUT_SERVER" == 1; then
+    generateServerCertificate "/C=UK/ST=Edinburgh/L=Edinburgh/O=Soto/OU=MQTT/CN=${SERVER}" server
 fi
-if test "$CLIENT" == 1; then
-    generateClientCertificate "/C=UK/ST=Edinburgh/L=Edinburgh/O=Soto/OU=MQTTClient/CN=soto-project.codes" client
+if test "$OUTPUT_CLIENT" == 1; then
+    generateClientCertificate "/C=UK/ST=Edinburgh/L=Edinburgh/O=Soto/OU=MQTT/CN=${SERVER}" client
 fi
