@@ -30,18 +30,13 @@ jobs:
 
   linux:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        tag:
-          - swift:5.1
-    # swift docker images don't have docker-compose installed
-    #       - swift:5.2
-    #       - swift:5.3
-    # container:
-    #   image: ${{ matrix.tag }}
     steps:
     - name: Checkout
       uses: actions/checkout@v2
+    - name: Install dependencies
+    # ubuntu latest docker image doesn't have llvm-cov installed
+      run: |
+        apt-get install llvm-9
     - name: Mosquitto
       run: |
         docker-compose --version
@@ -50,15 +45,14 @@ jobs:
     - name: Test
       run: |
         swift test --enable-test-discovery --enable-code-coverage --sanitize=thread
-    # ubuntu latest docker image doesn't have llvm-cov installed
-    #- name: Convert coverage files
-    #  run: |
-    #    llvm-cov export -format="lcov" \
-    #      .build/debug/soto-corePackageTests.xctest \
-    #      -ignore-filename-regex="\/Tests\/" \
-    #      -instr-profile .build/debug/codecov/default.profdata > info.lcov
-    #- name: Upload to codecov.io
-    #  uses: codecov/codecov-action@v1
-    #  with:
-    #    file: info.lcov
+    - name: Convert coverage files
+      run: |
+        llvm-cov export -format="lcov" \
+          .build/debug/soto-corePackageTests.xctest \
+          -ignore-filename-regex="\/Tests\/" \
+          -instr-profile .build/debug/codecov/default.profdata > info.lcov
+    - name: Upload to codecov.io
+      uses: codecov/codecov-action@v1
+      with:
+        file: info.lcov
 
