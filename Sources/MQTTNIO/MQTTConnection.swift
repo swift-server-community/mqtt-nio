@@ -4,7 +4,9 @@ import Network
 #endif
 import NIO
 import NIOHTTP1
+#if canImport(NIOSSL)
 import NIOSSL
+#endif
 import NIOTransportServices
 import NIOWebSocket
 
@@ -79,31 +81,23 @@ final class MQTTConnection {
             switch client.configuration.tlsConfiguration {
             case .ts(let config):
                 options = try config.getNWProtocolTLSOptions()
+            #if canImport(NIOSSL)
             case .niossl:
                 throw MQTTClient.Error.wrongTLSConfig
+            #endif
             default:
                 options = NWProtocolTLS.Options()
             }
             sec_protocol_options_set_tls_server_name(options.securityProtocolOptions, serverName)
             let tlsProvider = NIOTSClientTLSProvider(tlsOptions: options)
             bootstrap = NIOClientTCPBootstrap(tsBootstrap, tls: tlsProvider)
-        } else if let clientBootstrap = ClientBootstrap(validatingGroup: client.eventLoopGroup) {
-            let tlsConfiguration: TLSConfiguration
-            switch client.configuration.tlsConfiguration {
-            case .ts:
-                throw MQTTClient.Error.wrongTLSConfig
-            case .niossl(let config):
-                tlsConfiguration = config
-            default:
-                tlsConfiguration = TLSConfiguration.forClient()
+            if client.configuration.useSSL {
+                return bootstrap.enableTLS()
             }
-            let sslContext = try NIOSSLContext(configuration: tlsConfiguration)
-            let tlsProvider = try NIOSSLClientTLSProvider<ClientBootstrap>(context: sslContext, serverHostname: serverName)
-            bootstrap = NIOClientTCPBootstrap(clientBootstrap, tls: tlsProvider)
-        } else {
-            preconditionFailure("Cannot create bootstrap for the supplied EventLoop")
+            return bootstrap
         }
-        #else
+        #endif
+        #if canImport(NIOSSL) // canImport(Network)
         if let clientBootstrap = ClientBootstrap(validatingGroup: client.eventLoopGroup) {
             let tlsConfiguration: TLSConfiguration
             switch client.configuration.tlsConfiguration {
@@ -115,14 +109,13 @@ final class MQTTConnection {
             let sslContext = try NIOSSLContext(configuration: tlsConfiguration)
             let tlsProvider = try NIOSSLClientTLSProvider<ClientBootstrap>(context: sslContext, serverHostname: serverName)
             bootstrap = NIOClientTCPBootstrap(clientBootstrap, tls: tlsProvider)
-        } else {
-            preconditionFailure("Cannot create bootstrap for the supplied EventLoop")
+            if client.configuration.useSSL {
+                return bootstrap.enableTLS()
+            }
+            return bootstrap
         }
         #endif
-        if client.configuration.useSSL {
-            return bootstrap.enableTLS()
-        }
-        return bootstrap
+        preconditionFailure("Cannot create bootstrap for the supplied EventLoop")
     }
 
     static func setupChannelForWebsockets(

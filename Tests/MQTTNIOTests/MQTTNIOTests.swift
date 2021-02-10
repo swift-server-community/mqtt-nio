@@ -5,7 +5,9 @@ import NIO
 import NIOConcurrencyHelpers
 import NIOFoundationCompat
 import NIOHTTP1
+#if canImport(NIOSSL)
 import NIOSSL
+#endif
 @testable import MQTTNIO
 
 final class MQTTNIOTests: XCTestCase {
@@ -33,6 +35,7 @@ final class MQTTNIOTests: XCTestCase {
         try client.syncShutdownGracefully()
     }
 
+    #if canImport(NIOSSL)
     func testSSLConnect() throws {
         let client = try createSSLClient(identifier: "testSSLConnect")
         _ = try client.connect().wait()
@@ -48,7 +51,8 @@ final class MQTTNIOTests: XCTestCase {
         try client.disconnect().wait()
         try client.syncShutdownGracefully()
     }
-
+    #endif
+    
     func testMQTTPublishQoS0() throws {
         let client = self.createClient(identifier: "testMQTTPublishQoS0")
         _ = try client.connect().wait()
@@ -58,7 +62,7 @@ final class MQTTNIOTests: XCTestCase {
     }
 
     func testMQTTPublishQoS1() throws {
-        let client = try self.createSSLClient(identifier: "testMQTTPublishQoS1")
+        let client = self.createClient(identifier: "testMQTTPublishQoS1")
         _ = try client.connect().wait()
         try client.publish(to: "testMQTTPublishQoS", payload: ByteBufferAllocator().buffer(string: "Test payload"), qos: .atLeastOnce).wait()
         try client.disconnect().wait()
@@ -66,7 +70,7 @@ final class MQTTNIOTests: XCTestCase {
     }
 
     func testMQTTPublishQoS2() throws {
-        let client = try self.createWebSocketAndSSLClient(identifier: "testMQTTPublishQoS2")
+        let client = self.createWebSocketClient(identifier: "testMQTTPublishQoS2")
         _ = try client.connect().wait()
         try client.publish(to: "testMQTTPublishQoS", payload: ByteBufferAllocator().buffer(string: "Test payload"), qos: .exactlyOnce).wait()
         try client.disconnect().wait()
@@ -321,9 +325,9 @@ final class MQTTNIOTests: XCTestCase {
         let payloadString = #"{"from":1000000,"to":1234567,"type":1,"content":"I am a beginner in swift and I am studying hard!!测试\n\n test, message","timestamp":1607243024,"nonce":"pAx2EsUuXrVuiIU3GGOGHNbUjzRRdT5b","sign":"ff902e31a6a5f5343d70a3a93ac9f946adf1caccab539c6f3a6"}"#
         let payload = ByteBufferAllocator().buffer(string: payloadString)
 
-        let client = try self.createSSLClient(identifier: "testPersistentSession_publisher")
+        let client = self.createClient(identifier: "testPersistentSession_publisher")
         _ = try client.connect().wait()
-        let client2 = try self.createSSLClient(identifier: "testPersistentSession_subscriber")
+        let client2 = self.createClient(identifier: "testPersistentSession_subscriber")
         client2.addPublishListener(named: "test") { result in
             switch result {
             case .success(let publish):
@@ -367,13 +371,11 @@ final class MQTTNIOTests: XCTestCase {
         if ProcessInfo.processInfo.environment["CI"] != nil {
             return
         }
-        let elg = MultiThreadedEventLoopGroup(numberOfThreads: 1)
-        defer { XCTAssertNoThrow(try elg.syncShutdownGracefully()) }
         let client = MQTTClient(
             host: "test.mosquitto.org",
             port: 1883,
             identifier: "testSubscribeAll",
-            eventLoopGroupProvider: .shared(elg),
+            eventLoopGroupProvider: .createNew,
             logger: self.logger
         )
         _ = try client.connect().wait()
@@ -408,6 +410,7 @@ final class MQTTNIOTests: XCTestCase {
         )
     }
 
+    #if canImport(NIOSSL)
     func createSSLClient(identifier: String) throws -> MQTTClient {
         return try MQTTClient(
             host: Self.hostname,
@@ -429,6 +432,7 @@ final class MQTTNIOTests: XCTestCase {
             configuration: .init(timeout: .seconds(5), useSSL: true, useWebSockets: true, tlsConfiguration: Self.getTLSConfiguration(), sniServerName: "soto.codes", webSocketURLPath: "/mqtt")
         )
     }
+    #endif
 
     let logger: Logger = {
         var logger = Logger(label: "MQTTTests")
@@ -444,6 +448,7 @@ final class MQTTNIOTests: XCTestCase {
             .joined(separator: "/")
     }()
 
+    #if canImport(NIOSSL)
     static var _tlsConfiguration: Result<MQTTClient.TLSConfigurationType, Error> = {
         do {
             #if os(Linux)
@@ -503,6 +508,7 @@ final class MQTTNIOTests: XCTestCase {
             throw error
         }
     }
+    #endif // canImport(NIOSSL)
 }
 
 class OutboundStallHandler: ChannelOutboundHandler {
