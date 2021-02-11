@@ -1,5 +1,7 @@
 import NIO
+#if canImport(NIOSSL)
 import NIOSSL
+#endif
 
 extension MQTTClient {
     /// Enum for different TLS Configuration types. The TLS Configuration type to use if defined by the EventLoopGroup the
@@ -7,7 +9,9 @@ extension MQTTClient {
     /// It is recommended on iOS you use NIO Transport Services.
     public enum TLSConfigurationType {
         /// NIOSSL TLS configuration
+        #if canImport(NIOSSL)
         case niossl(TLSConfiguration)
+        #endif
         #if canImport(Network)
         /// NIO Transport Serviecs TLS configuration
         case ts(TSTLSConfiguration)
