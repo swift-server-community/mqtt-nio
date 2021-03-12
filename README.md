@@ -87,8 +87,7 @@ If you are using an AWS Signature V4 authenticated WebSocket connection you can 
 ```swift
 import SotoSignerV4
 
-let host = "MY_AWS_IOT_ENDPOINT"
-let port = 443
+let host = "MY_AWS_IOT_ENDPOINT.iot.eu-west-1.amazonaws.com"
 let headers = HTTPHeaders([("host", host)])
 let signer = AWSSigner(
     credentials: StaticCredential(accessKeyId: "MYACCESSKEY", secretAccessKey: "MYSECRETKEY"), 
@@ -96,7 +95,7 @@ let signer = AWSSigner(
     region: "eu-west-1"
 )
 let signedURL = signer.signURL(
-    url: URL(string: "https://\(host):\(port)/mqtt")!, 
+    url: URL(string: "https://\(host)/mqtt")!, 
     method: .GET, 
     headers: headers, 
     body: .none, 
@@ -105,7 +104,6 @@ let signedURL = signer.signURL(
 let requestURI = "/mqtt?\(signedURL.query!)"
 let client = MQTTClient(
     host: host,
-    port: port,
     identifier: "MyAWSClient",
     eventLoopGroupProvider: .createNew,
     configuration: .init(useSSL: true, useWebSockets: true, webSocketURLPath: requestUri)
