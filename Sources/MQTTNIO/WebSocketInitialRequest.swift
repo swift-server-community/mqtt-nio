@@ -21,8 +21,7 @@ final class WebSocketInitialRequestHandler: ChannelInboundHandler, RemovableChan
     public func channelActive(context: ChannelHandlerContext) {
         // We are connected. It's time to send the message to the server to initialize the upgrade dance.
         var headers = HTTPHeaders()
-        headers.add(name: "Content-Type", value: "text/plain; charset=utf-8")
-        headers.add(name: "Content-Length", value: "\(0)")
+        headers.add(name: "Content-Length", value: "0")
         headers.add(name: "host", value: host)
         headers.add(name: "Sec-WebSocket-Protocol", value: "mqttv3.1")
 

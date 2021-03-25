@@ -65,6 +65,13 @@ final public class MQTTClient {
         }
     }
 
+    var hostHeader: String {
+        if (self.configuration.useSSL && self.port != 443) || (!self.configuration.useSSL && self.port != 80) {
+            return "\(self.host):\(self.port)"
+        }
+        return self.host
+    }
+    
     private let globalPacketId = NIOAtomic<UInt16>.makeAtomic(value: 1)
     /// default logger that logs nothing
     private static let loggingDisabled = Logger(label: "MQTT-do-not-log", factory: { _ in SwiftLogNoOpLogHandler() })

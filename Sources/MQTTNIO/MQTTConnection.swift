@@ -126,7 +126,7 @@ final class MQTTConnection {
     ) -> EventLoopFuture<Void> {
         // initial HTTP request handler, before upgrade
         let httpHandler = WebSocketInitialRequestHandler(
-            host: client.configuration.sniServerName ?? client.host,
+            host: client.configuration.sniServerName ?? client.hostHeader,
             urlPath: client.configuration.webSocketURLPath ?? "/mqtt",
             upgradePromise: promise
         )
