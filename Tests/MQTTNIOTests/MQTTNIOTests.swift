@@ -195,9 +195,9 @@ final class MQTTNIOTests: XCTestCase {
         let payloadData = Data(count: payloadSize)
         let payload = ByteBufferAllocator().buffer(data: payloadData)
 
-        let client = self.createWebSocketClient(identifier: "testMQTTPublishToClientLargePayload_publisher")
+        let client = self.createClient(identifier: "testMQTTPublishToClientLargePayload_publisher")
         _ = try client.connect().wait()
-        let client2 = self.createWebSocketClient(identifier: "testMQTTPublishToClientLargePayload_subscriber")
+        let client2 = self.createClient(identifier: "testMQTTPublishToClientLargePayload_subscriber")
         client2.addPublishListener(named: "test") { result in
             switch result {
             case .success(let publish):
