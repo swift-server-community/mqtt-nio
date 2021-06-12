@@ -23,6 +23,7 @@ let package = Package(
             .product(name: "NIOWebSocket", package: "swift-nio"),
             .product(name: "NIOSSL", package: "swift-nio-ssl", condition: .when(platforms: [.linux, .macOS])),
             .product(name: "NIOTransportServices", package: "swift-nio-transport-services"),
+            .product(name: "_NIOConcurrency", package: "swift-nio"),
         ]),
         .testTarget(name: "MQTTNIOTests", dependencies: ["MQTTNIO"]),
     ]
