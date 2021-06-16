@@ -1,7 +1,7 @@
 import CCoreMQTT
 import NIO
 
-public enum MQTTQoS: UInt32 {
+public enum MQTTQoS: UInt8 {
     /// fire and forget
     case atMostOnce = 0
     /// wait for PUBACK, if you don't receive it after a period of time retry sending
@@ -9,7 +9,7 @@ public enum MQTTQoS: UInt32 {
     /// wait for PUBREC, send PUBREL and then wait for PUBCOMP
     case exactlyOnce = 2
 
-    var coreType: MQTTQoS_t { .init(rawValue: self.rawValue) }
+    var coreType: MQTTQoS_t { .init(rawValue: UInt32(self.rawValue)) }
 }
 
 public enum MQTTStatus: UInt32 {
@@ -179,7 +179,7 @@ public struct MQTTSubscribeInfo
     func withUnsafeType<T>(_ body: (MQTTSubscribeInfo_t) throws -> T) rethrows -> T {
         return try topicFilter.withCString { topicFilterChars in
             let coreType = MQTTSubscribeInfo_t(
-                qos: MQTTQoS_t(self.qos.rawValue),
+                qos: qos.coreType,
                 pTopicFilter: topicFilterChars,
                 topicFilterLength: UInt16(topicFilter.utf8.count)
             )
@@ -243,7 +243,7 @@ extension Array where Element == MQTTSubscribeInfo {
             for i in 0..<count {
                 let topicPtr: UnsafePointer<CChar>? = basePtr + offsets[i]
                 let topicFilterLength = self[i].topicFilter.count
-                let qos = MQTTQoS_t(self[i].qos.rawValue)
+                let qos = self[i].qos.coreType
                 infos.append(MQTTSubscribeInfo_t(qos: qos, pTopicFilter: topicPtr, topicFilterLength: UInt16(topicFilterLength)))
             }
             return try body(infos)

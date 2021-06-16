@@ -18,6 +18,26 @@ enum MQTTSerializer {
         case incompletePacket
     }
 
+    /// write fixed header for packet
+    static func writeFixedHeader(packetType: MQTTPacketType, flags: UInt8 = 0, size: UInt32, to byteBuffer: inout ByteBuffer) {
+        byteBuffer.writeInteger(packetType.rawValue | flags)
+        writeLength(size, to: &byteBuffer)
+    }
+    
+    /// write variable length
+    static func writeLength(_ length: UInt32, to byteBuffer: inout ByteBuffer) {
+        var length = length
+        repeat {
+            let byte = UInt8(length & 0x7f)
+            length >>= 8
+            if length != 0 {
+                byteBuffer.writeInteger(byte | 0x80)
+            } else {
+                byteBuffer.writeInteger(byte)
+            }
+        } while length != 0
+    }
+    
     static func writeConnect(connectInfo: MQTTConnectInfo, willInfo: MQTTPublishInfo?, to byteBuffer: inout ByteBuffer) throws {
         var remainingLength: Int = 0
         var packetSize: Int = 0
@@ -55,6 +75,11 @@ enum MQTTSerializer {
     }
 
     static func writePublish(publishInfo: MQTTPublishInfo, packetId: UInt16, to byteBuffer: inout ByteBuffer) throws {
+        var flags: UInt8 = publishInfo.retain ? 1 : 0
+        flags |= publishInfo.qos.rawValue << 1
+        flags |= publishInfo.dup ? (1<<3) : 0
+        //writeFixedHeader(packetType: packetType, flags: flags, size: 2, to: &byteBuffer)
+
         var remainingLength: Int = 0
         var packetSize: Int = 0
         try publishInfo.withUnsafeType { publishInfo in
@@ -105,40 +130,16 @@ enum MQTTSerializer {
     }
 
     static func writeAck(packetType: MQTTPacketType, packetId: UInt16, to byteBuffer: inout ByteBuffer) throws {
-        let mqttPublishAckPacketSize = 4
-
-        try byteBuffer.writeWithUnsafeMutableType(minimumWritableBytes: mqttPublishAckPacketSize) { fixedBuffer in
-            var fixedBuffer = fixedBuffer
-            let rt = MQTT_SerializeAck(&fixedBuffer, packetType.rawValue, packetId)
-            guard rt == MQTTSuccess else { throw MQTTError(status: rt) }
-            return mqttPublishAckPacketSize
-        }
+        writeFixedHeader(packetType: packetType, size: 2, to: &byteBuffer)
+        byteBuffer.writeInteger(packetId)
     }
 
     static func writeDisconnect(to byteBuffer: inout ByteBuffer) throws {
-        var packetSize: Int = 0
-        let rt = MQTT_GetDisconnectPacketSize(&packetSize)
-        guard rt == MQTTSuccess else { throw MQTTError(status: rt) }
-
-        try byteBuffer.writeWithUnsafeMutableType(minimumWritableBytes: packetSize) { fixedBuffer in
-            var fixedBuffer = fixedBuffer
-            let rt = MQTT_SerializeDisconnect(&fixedBuffer)
-            guard rt == MQTTSuccess else { throw MQTTError(status: rt) }
-            return packetSize
-        }
+        writeFixedHeader(packetType: .DISCONNECT, size: 0, to: &byteBuffer)
     }
 
     static func writePingreq(to byteBuffer: inout ByteBuffer) throws {
-        var packetSize: Int = 0
-        let rt = MQTT_GetPingreqPacketSize(&packetSize)
-        guard rt == MQTTSuccess else { throw MQTTError(status: rt) }
-
-        try byteBuffer.writeWithUnsafeMutableType(minimumWritableBytes: packetSize) { fixedBuffer in
-            var fixedBuffer = fixedBuffer
-            let rt = MQTT_SerializePingreq(&fixedBuffer)
-            guard rt == MQTTSuccess else { throw MQTTError(status: rt) }
-            return packetSize
-        }
+        writeFixedHeader(packetType: .PINGREQ, size: 0, to: &byteBuffer)
     }
 
     static func readPublish(from packet: MQTTPacketInfo) throws -> (packetId: UInt16, publishInfo: MQTTPublishInfo) {
@@ -167,7 +168,7 @@ enum MQTTSerializer {
                 payloadByteBuffer = MQTTPublishInfo.emptyByteBuffer
             }
             return MQTTPublishInfo(
-                qos: MQTTQoS(rawValue: publishInfoCoreType.qos.rawValue)!,
+                qos: MQTTQoS(rawValue: UInt8(publishInfoCoreType.qos.rawValue))!,
                 retain: publishInfoCoreType.retain,
                 dup: publishInfoCoreType.dup,
                 topicName: topicName,
