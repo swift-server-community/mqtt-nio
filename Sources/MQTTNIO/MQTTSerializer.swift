@@ -14,38 +14,22 @@ enum MQTTSerializer {
         }
 
         static var badParameter: MQTTError { .init(status: .MQTTBadParameter) }
+        static var badResponse: MQTTError { .init(status: .MQTTBadResponse) }
     }
 
     enum Error: Swift.Error {
         case incompletePacket
     }
 
-    /// write fixed header for packet
-    static func writeFixedHeader(packetType: MQTTPacketType, flags: UInt8 = 0, size: Int, to byteBuffer: inout ByteBuffer) {
-        byteBuffer.writeInteger(packetType.rawValue | flags)
-        writeLength(size, to: &byteBuffer)
-    }
-    
-    /// write variable length
-    static func writeLength(_ length: Int, to byteBuffer: inout ByteBuffer) {
-        var length = length
-        repeat {
-            let byte = UInt8(length & 0x7f)
-            length >>= 7
-            if length != 0 {
-                byteBuffer.writeInteger(byte | 0x80)
-            } else {
-                byteBuffer.writeInteger(byte)
-            }
-        } while length != 0
-    }
-
-    /// write string
-    static func writeString(_ string: String, to byteBuffer: inout ByteBuffer) throws {
-        let length = string.utf8.count
-        guard length < 65536 else { throw MQTTError.badParameter }
-        byteBuffer.writeInteger(UInt16(length))
-        byteBuffer.writeString(string)
+    enum ConnectFlags {
+        static let reserved: UInt8 = 1
+        static let cleanSession: UInt8 = 2
+        static let willFlag: UInt8 = 4
+        static let willQoSShift: UInt8 = 3
+        static let willQoSMask: UInt8 = 24
+        static let willRetain: UInt8 = 32
+        static let password: UInt8 = 64
+        static let userName: UInt8 = 128
     }
 
     /// calculate size of connect packet
@@ -73,17 +57,8 @@ enum MQTTSerializer {
         return size
     }
 
+    // write connect packet
     static func writeConnect(connectInfo: MQTTConnectInfo, willInfo: MQTTPublishInfo?, to byteBuffer: inout ByteBuffer) throws {
-        enum ConnectFlags {
-            static let reserved: UInt8 = 1
-            static let cleanSession: UInt8 = 2
-            static let willFlag: UInt8 = 4
-            static let willQoSShift: UInt8 = 3
-            static let willQoSMask: UInt8 = 24
-            static let willRetain: UInt8 = 32
-            static let password: UInt8 = 64
-            static let userName: UInt8 = 128
-        }
         let length = calculateConnectPacketSize(connectInfo: connectInfo, publishInfo: willInfo)
 
         writeFixedHeader(packetType: .CONNECT, size: length, to: &byteBuffer)
@@ -204,15 +179,18 @@ enum MQTTSerializer {
         }
     }
 
+    /// write ACK packet
     static func writeAck(packetType: MQTTPacketType, packetId: UInt16, to byteBuffer: inout ByteBuffer) throws {
         writeFixedHeader(packetType: packetType, size: 2, to: &byteBuffer)
         byteBuffer.writeInteger(packetId)
     }
 
+    /// write disconnect packet
     static func writeDisconnect(to byteBuffer: inout ByteBuffer) throws {
         writeFixedHeader(packetType: .DISCONNECT, size: 0, to: &byteBuffer)
     }
 
+    /// write PINGREQ packet
     static func writePingreq(to byteBuffer: inout ByteBuffer) throws {
         writeFixedHeader(packetType: .PINGREQ, size: 0, to: &byteBuffer)
     }
@@ -253,15 +231,16 @@ enum MQTTSerializer {
         return (packetId: packetId, publishInfo: publishInfo)
     }
 
-    static func readAck(from packet: MQTTPacketInfo) throws -> (packetId: UInt16, sessionPresent: Bool) {
-        var packetId: UInt16 = 0
-        var sessionPresent: Bool = false
-        let rt = packet.withUnsafeType { packetInfo -> MQTTStatus_t in
-            var packetInfo = packetInfo
-            return MQTT_DeserializeAck(&packetInfo, &packetId, &sessionPresent)
-        }
-        guard rt == MQTTSuccess else { throw MQTTError(status: rt) }
-        return (packetId: packetId, sessionPresent: sessionPresent)
+    static func readConnack(from packet: MQTTPacketInfo) throws -> (returnCode: UInt8, sessionPresent: Bool) {
+        var remainingData = packet.remainingData
+        guard let bytes = remainingData.readBytes(length: 2) else { throw MQTTError.badResponse }
+        return (returnCode: bytes[1], sessionPresent: bytes[0] & 0x1 == 0x1)
+    }
+
+    static func readAck(from packet: MQTTPacketInfo) throws -> UInt16 {
+        var remainingData = packet.remainingData
+        guard let packetId: UInt16 = remainingData.readInteger() else { throw MQTTError.badResponse }
+        return packetId
     }
 
     static func readIncomingPacket(from byteBuffer: inout ByteBuffer) throws -> MQTTPacketInfo {
@@ -276,6 +255,34 @@ enum MQTTSerializer {
 }
 
 extension MQTTSerializer {
+    /// write fixed header for packet
+    static func writeFixedHeader(packetType: MQTTPacketType, flags: UInt8 = 0, size: Int, to byteBuffer: inout ByteBuffer) {
+        byteBuffer.writeInteger(packetType.rawValue | flags)
+        writeLength(size, to: &byteBuffer)
+    }
+
+    /// write variable length
+    static func writeLength(_ length: Int, to byteBuffer: inout ByteBuffer) {
+        var length = length
+        repeat {
+            let byte = UInt8(length & 0x7f)
+            length >>= 7
+            if length != 0 {
+                byteBuffer.writeInteger(byte | 0x80)
+            } else {
+                byteBuffer.writeInteger(byte)
+            }
+        } while length != 0
+    }
+
+    /// write string
+    static func writeString(_ string: String, to byteBuffer: inout ByteBuffer) throws {
+        let length = string.utf8.count
+        guard length < 65536 else { throw MQTTError.badParameter }
+        byteBuffer.writeInteger(UInt16(length))
+        byteBuffer.writeString(string)
+    }
+
     static func readLength(from byteBuffer: inout ByteBuffer) throws -> Int {
         var length = 0
         var shift = 0

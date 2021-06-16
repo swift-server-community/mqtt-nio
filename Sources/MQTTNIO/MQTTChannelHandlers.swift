@@ -63,11 +63,11 @@ struct ByteToMQTTMessageDecoder: ByteToMessageDecoder {
                 buffer = readBuffer
                 return .continue
             case .CONNACK:
-                let connack = try MQTTSerializer.readAck(from: packet)
-                message = MQTTConnAckMessage(packetId: connack.packetId, sessionPresent: connack.sessionPresent)
+                let connack = try MQTTSerializer.readConnack(from: packet)
+                message = MQTTConnAckMessage(returnCode: connack.returnCode, sessionPresent: connack.sessionPresent)
             case .PUBACK, .PUBREC, .PUBREL, .PUBCOMP, .SUBACK, .UNSUBACK:
-                let ack = try MQTTSerializer.readAck(from: packet)
-                message = MQTTAckMessage(type: packet.type, packetId: ack.packetId)
+                let packetId = try MQTTSerializer.readAck(from: packet)
+                message = MQTTAckMessage(type: packet.type, packetId: packetId)
             case .PINGRESP:
                 message = MQTTPingrespMessage()
             default:
