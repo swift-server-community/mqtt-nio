@@ -12,6 +12,8 @@ enum MQTTSerializer {
         init(status: MQTTStatus) {
             self.status = status
         }
+
+        static var badParameter: MQTTError { .init(status: .MQTTBadParameter) }
     }
 
     enum Error: Swift.Error {
@@ -19,17 +21,17 @@ enum MQTTSerializer {
     }
 
     /// write fixed header for packet
-    static func writeFixedHeader(packetType: MQTTPacketType, flags: UInt8 = 0, size: UInt32, to byteBuffer: inout ByteBuffer) {
+    static func writeFixedHeader(packetType: MQTTPacketType, flags: UInt8 = 0, size: Int, to byteBuffer: inout ByteBuffer) {
         byteBuffer.writeInteger(packetType.rawValue | flags)
         writeLength(size, to: &byteBuffer)
     }
     
     /// write variable length
-    static func writeLength(_ length: UInt32, to byteBuffer: inout ByteBuffer) {
+    static func writeLength(_ length: Int, to byteBuffer: inout ByteBuffer) {
         var length = length
         repeat {
             let byte = UInt8(length & 0x7f)
-            length >>= 8
+            length >>= 7
             if length != 0 {
                 byteBuffer.writeInteger(byte | 0x80)
             } else {
@@ -37,7 +39,24 @@ enum MQTTSerializer {
             }
         } while length != 0
     }
-    
+
+    /// write string
+    static func writeString(_ string: String, to byteBuffer: inout ByteBuffer) throws {
+        let length = string.utf8.count
+        guard length < 65536 else { throw MQTTError.badParameter }
+        byteBuffer.writeInteger(UInt16(length))
+        byteBuffer.writeString(string)
+    }
+
+    /// calculate size of connect packet
+    /*static func calculateConnectPacketSize(connectInfo: MQTTConnectInfo, publishInfo: MQTTPublishInfo?) -> Int {
+        // variable header
+        var size = 10
+        // payload
+        // identifier
+        return size
+    }*/
+
     static func writeConnect(connectInfo: MQTTConnectInfo, willInfo: MQTTPublishInfo?, to byteBuffer: inout ByteBuffer) throws {
         var remainingLength: Int = 0
         var packetSize: Int = 0
@@ -74,58 +93,83 @@ enum MQTTSerializer {
         }
     }
 
+    /// calculate size of publish packet
+    static func calculatePublishPacketSize(publishInfo: MQTTPublishInfo) -> Int {
+        // topic name
+        var size = publishInfo.topicName.utf8.count
+        if publishInfo.qos != .atMostOnce {
+            size += 2
+        }
+        // packet identifier
+        size += 2
+        // payload
+        size += publishInfo.payload.readableBytes
+        return size
+    }
+
+    /// write publish packet
     static func writePublish(publishInfo: MQTTPublishInfo, packetId: UInt16, to byteBuffer: inout ByteBuffer) throws {
         var flags: UInt8 = publishInfo.retain ? 1 : 0
         flags |= publishInfo.qos.rawValue << 1
         flags |= publishInfo.dup ? (1<<3) : 0
-        //writeFixedHeader(packetType: packetType, flags: flags, size: 2, to: &byteBuffer)
 
-        var remainingLength: Int = 0
-        var packetSize: Int = 0
-        try publishInfo.withUnsafeType { publishInfo in
-            var publishInfo = publishInfo
-            let rt = MQTT_GetPublishPacketSize(&publishInfo, &remainingLength, &packetSize)
-            guard rt == MQTTSuccess else { throw MQTTError(status: rt) }
+        let length = calculatePublishPacketSize(publishInfo: publishInfo)
 
-            _ = try byteBuffer.writeWithUnsafeMutableType(minimumWritableBytes: packetSize) { fixedBuffer in
-                var publishInfo = publishInfo
-                var fixedBuffer = fixedBuffer
-                let rt = MQTT_SerializePublish(&publishInfo, packetId, remainingLength, &fixedBuffer)
-                guard rt == MQTTSuccess else { throw MQTTError(status: rt) }
-                return packetSize
-            }
+        writeFixedHeader(packetType: .PUBLISH, flags: flags, size: length, to: &byteBuffer)
+        // write variable header
+        try writeString(publishInfo.topicName, to: &byteBuffer)
+        if publishInfo.qos != .atMostOnce {
+            byteBuffer.writeInteger(packetId)
+        }
+        // write payload
+        var payload = publishInfo.payload
+        byteBuffer.writeBuffer(&payload)
+    }
+
+    /// calculate size of subscribe packet
+    static func calculateSubscribePacketSize(subscribeInfos: [MQTTSubscribeInfo]) -> Int {
+        // packet identifier
+        let size = 2
+        // payload
+        return subscribeInfos.reduce(size) {
+            $0 + 2 + $1.topicFilter.utf8.count + 1  // topic filter length + topic filter + qos
         }
     }
 
+    /// write subscribe packet
     static func writeSubscribe(subscribeInfos: [MQTTSubscribeInfo], packetId: UInt16, to byteBuffer: inout ByteBuffer) throws {
-        var remainingLength: Int = 0
-        var packetSize: Int = 0
-        try subscribeInfos.withUnsafeType { subscribeInfos in
-            let rt = MQTT_GetSubscribePacketSize(subscribeInfos, subscribeInfos.count, &remainingLength, &packetSize)
-            guard rt == MQTTSuccess else { throw MQTTError(status: rt) }
+        let length = calculateSubscribePacketSize(subscribeInfos: subscribeInfos)
 
-            try byteBuffer.writeWithUnsafeMutableType(minimumWritableBytes: packetSize) { fixedBuffer in
-                var fixedBuffer = fixedBuffer
-                let rt = MQTT_SerializeSubscribe(subscribeInfos, subscribeInfos.count, packetId, remainingLength, &fixedBuffer)
-                guard rt == MQTTSuccess else { throw MQTTError(status: rt) }
-                return packetSize
-            }
+        writeFixedHeader(packetType: .SUBSCRIBE, size: length, to: &byteBuffer)
+        // write variable header
+        byteBuffer.writeInteger(packetId)
+        // write payload
+        for info in subscribeInfos {
+            try writeString(info.topicFilter, to: &byteBuffer)
+            byteBuffer.writeInteger(info.qos.rawValue)
         }
     }
 
-    static func writeUnsubscribe(subscribeInfos: [MQTTSubscribeInfo], packetId: UInt16, to byteBuffer: inout ByteBuffer) throws {
-        var remainingLength: Int = 0
-        var packetSize: Int = 0
-        try subscribeInfos.withUnsafeType { subscribeInfos in
-            let rt = MQTT_GetUnsubscribePacketSize(subscribeInfos, subscribeInfos.count, &remainingLength, &packetSize)
-            guard rt == MQTTSuccess else { throw MQTTError(status: rt) }
+    /// calculate size of subscribe packet
+    static func calculateUnsubscribePacketSize(subscribeInfos: [MQTTSubscribeInfo]) -> Int {
+        // packet identifier
+        let size = 2
+        // payload
+        return subscribeInfos.reduce(size) {
+            $0 + 2 + $1.topicFilter.utf8.count  // topic filter length + topic filter
+        }
+    }
 
-            try byteBuffer.writeWithUnsafeMutableType(minimumWritableBytes: packetSize) { fixedBuffer in
-                var fixedBuffer = fixedBuffer
-                let rt = MQTT_SerializeUnsubscribe(subscribeInfos, subscribeInfos.count, packetId, remainingLength, &fixedBuffer)
-                guard rt == MQTTSuccess else { throw MQTTError(status: rt) }
-                return packetSize
-            }
+    /// write unsubscribe packet
+    static func writeUnsubscribe(subscribeInfos: [MQTTSubscribeInfo], packetId: UInt16, to byteBuffer: inout ByteBuffer) throws {
+        let length = calculateUnsubscribePacketSize(subscribeInfos: subscribeInfos)
+
+        writeFixedHeader(packetType: .UNSUBSCRIBE, size: length, to: &byteBuffer)
+        // write variable header
+        byteBuffer.writeInteger(packetId)
+        // write payload
+        for info in subscribeInfos {
+            try writeString(info.topicFilter, to: &byteBuffer)
         }
     }
 
