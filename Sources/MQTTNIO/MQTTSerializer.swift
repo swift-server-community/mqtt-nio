@@ -49,47 +49,78 @@ enum MQTTSerializer {
     }
 
     /// calculate size of connect packet
-    /*static func calculateConnectPacketSize(connectInfo: MQTTConnectInfo, publishInfo: MQTTPublishInfo?) -> Int {
+    static func calculateConnectPacketSize(connectInfo: MQTTConnectInfo, publishInfo: MQTTPublishInfo?) -> Int {
         // variable header
         var size = 10
         // payload
-        // identifier
+        // client identifier
+        size += connectInfo.clientIdentifier.utf8.count + 2
+        // will publish
+        if let publishInfo = publishInfo {
+            // will topic
+            size += publishInfo.topicName.utf8.count + 2
+            // will message
+            size += publishInfo.payload.readableBytes + 2
+        }
+        // user name
+        if connectInfo.userName.count > 0 {
+            size += connectInfo.userName.utf8.count + 2
+        }
+        // password
+        if connectInfo.password.count > 0 {
+            size += connectInfo.password.utf8.count + 2
+        }
         return size
-    }*/
+    }
 
     static func writeConnect(connectInfo: MQTTConnectInfo, willInfo: MQTTPublishInfo?, to byteBuffer: inout ByteBuffer) throws {
-        var remainingLength: Int = 0
-        var packetSize: Int = 0
-        try connectInfo.withUnsafeType { connectInfo in
-            if let willInfo = willInfo {
-                try willInfo.withUnsafeType { publishInfo in
-                    var connectInfo = connectInfo
-                    var publishInfo = publishInfo
-                    let rt = MQTT_GetConnectPacketSize(&connectInfo, &publishInfo, &remainingLength, &packetSize)
-                    guard rt == MQTTSuccess else { throw MQTTError(status: rt) }
+        enum ConnectFlags {
+            static let reserved: UInt8 = 1
+            static let cleanSession: UInt8 = 2
+            static let willFlag: UInt8 = 4
+            static let willQoSShift: UInt8 = 3
+            static let willQoSMask: UInt8 = 24
+            static let willRetain: UInt8 = 32
+            static let password: UInt8 = 64
+            static let userName: UInt8 = 128
+        }
+        let length = calculateConnectPacketSize(connectInfo: connectInfo, publishInfo: willInfo)
 
-                    _ = try byteBuffer.writeWithUnsafeMutableType(minimumWritableBytes: packetSize) { fixedBuffer in
-                        var connectInfo = connectInfo
-                        var publishInfo = publishInfo
-                        var fixedBuffer = fixedBuffer
-                        let rt = MQTT_SerializeConnect(&connectInfo, &publishInfo, remainingLength, &fixedBuffer)
-                        guard rt == MQTTSuccess else { throw MQTTError(status: rt) }
-                        return packetSize
-                    }
-                }
-            } else {
-                var connectInfo = connectInfo
-                let rt = MQTT_GetConnectPacketSize(&connectInfo, nil, &remainingLength, &packetSize)
-                guard rt == MQTTSuccess else { throw MQTTError(status: rt) }
+        writeFixedHeader(packetType: .CONNECT, size: length, to: &byteBuffer)
+        // variable header
+        try writeString("MQTT", to: &byteBuffer)
+        // protocol level
+        byteBuffer.writeInteger(UInt8(4))
+        // connect flags
+        var flags = connectInfo.cleanSession ? ConnectFlags.cleanSession : 0
+        if let willInfo = willInfo {
+            flags |= ConnectFlags.willFlag
+            flags |= willInfo.retain ? ConnectFlags.willRetain : 0
+            flags |= willInfo.qos.rawValue << ConnectFlags.willQoSShift
+        }
+        flags |= connectInfo.password.count > 0 ? ConnectFlags.password : 0
+        flags |= connectInfo.userName.count > 0 ? ConnectFlags.userName : 0
+        byteBuffer.writeInteger(flags)
+        // keep alive
+        byteBuffer.writeInteger(connectInfo.keepAliveSeconds)
 
-                _ = try byteBuffer.writeWithUnsafeMutableType(minimumWritableBytes: packetSize) { fixedBuffer in
-                    var connectInfo = connectInfo
-                    var fixedBuffer = fixedBuffer
-                    let rt = MQTT_SerializeConnect(&connectInfo, nil, remainingLength, &fixedBuffer)
-                    guard rt == MQTTSuccess else { throw MQTTError(status: rt) }
-                    return packetSize
-                }
-            }
+        // payload
+        try writeString(connectInfo.clientIdentifier, to: &byteBuffer)
+        if let willInfo = willInfo {
+            try writeString(willInfo.topicName, to: &byteBuffer)
+            var payload = willInfo.payload
+            // payload size
+            let length = payload.readableBytes
+            guard length < 65536 else { throw MQTTError.badParameter }
+            byteBuffer.writeInteger(UInt16(length))
+            // payload data
+            byteBuffer.writeBuffer(&payload)
+        }
+        if connectInfo.userName.count > 0 {
+            try writeString(connectInfo.userName, to: &byteBuffer)
+        }
+        if connectInfo.password.count > 0 {
+            try writeString(connectInfo.password, to: &byteBuffer)
         }
     }
 

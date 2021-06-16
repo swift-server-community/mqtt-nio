@@ -26,7 +26,15 @@ final class MQTTNIOTests: XCTestCase {
         try client.disconnect().wait()
         try client.syncShutdownGracefully()
     }
-    
+
+    func testConnectWithUsernameAndPassword() throws {
+        let client = createClient(identifier: "testConnectWithWill", configuration: .init(userName: "adam", password: "password123"))
+        _ = try client.connect().wait()
+        try client.ping().wait()
+        try client.disconnect().wait()
+        try client.syncShutdownGracefully()
+    }
+
     func testWebsocketConnect() throws {
         let client = createWebSocketClient(identifier: "testWebsocketConnect")
         _ = try client.connect().wait()
@@ -268,7 +276,7 @@ final class MQTTNIOTests: XCTestCase {
             }
             return nil
         }
-        let client = self.createClient(identifier: "testMQTTPublishQoS2WithStall", timeout: .seconds(4))
+        let client = self.createClient(identifier: "testMQTTPublishQoS2WithStall", configuration: .init(timeout: .seconds(4)))
         _ = try client.connect().wait()
         try client.connection?.channel.pipeline.addHandler(stallHandler).wait()
         try client.publish(to: "testMQTTPublishQoS2WithStall", payload: ByteBufferAllocator().buffer(string: "Test payload"), qos: .exactlyOnce).wait()
@@ -287,9 +295,9 @@ final class MQTTNIOTests: XCTestCase {
         var publishReceived: [MQTTPublishInfo] = []
         let payload = ByteBufferAllocator().buffer(string: "This is the Test payload")
 
-        let client = self.createClient(identifier: "testMQTTPublishToClient_publisher", timeout: .seconds(2))
+        let client = self.createClient(identifier: "testMQTTPublishToClient_publisher", configuration: .init(timeout: .seconds(2)))
         _ = try client.connect().wait()
-        let client2 = self.createClient(identifier: "testMQTTPublishToClient_subscriber", timeout: .seconds(10))
+        let client2 = self.createClient(identifier: "testMQTTPublishToClient_subscriber", configuration: .init(timeout: .seconds(10)))
         client2.addPublishListener(named: "test") { result in
             switch result {
             case .success(let publish):
@@ -388,14 +396,14 @@ final class MQTTNIOTests: XCTestCase {
 
     // MARK: Helper variables and functions
 
-    func createClient(identifier: String, timeout: TimeAmount? = .seconds(10)) -> MQTTClient {
+    func createClient(identifier: String, configuration: MQTTClient.Configuration = .init()) -> MQTTClient {
         MQTTClient(
             host: Self.hostname,
             port: 1883,
             identifier: identifier,
             eventLoopGroupProvider: .createNew,
             logger: self.logger,
-            configuration: .init(timeout: timeout)
+            configuration: configuration
         )
     }
 
