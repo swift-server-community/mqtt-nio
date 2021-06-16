@@ -283,6 +283,7 @@ extension MQTTSerializer {
         byteBuffer.writeString(string)
     }
 
+    /// read variable length
     static func readLength(from byteBuffer: inout ByteBuffer) throws -> Int {
         var length = 0
         var shift = 0
@@ -295,5 +296,12 @@ extension MQTTSerializer {
             shift += 7
         } while(true)
         return length
+    }
+
+    /// read string
+    static func readString(from byteBuffer: inout ByteBuffer) throws -> String {
+        guard let length: UInt16 = byteBuffer.readInteger() else { throw MQTTError.badResponse }
+        guard let string = byteBuffer.readString(length: Int(length)) else { throw MQTTError.badResponse }
+        return string
     }
 }
