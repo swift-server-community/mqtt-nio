@@ -98,7 +98,8 @@ struct MQTTDisconnectMessage: MQTTOutboundMessage {
 struct MQTTConnAckMessage: MQTTInboundMessage {
     var type: MQTTPacketType { .CONNACK }
     var description: String { "CONNACK" }
-    let packetId: UInt16
+    var packetId: UInt16 { 0 }
+    let returnCode: UInt8
     let sessionPresent: Bool
 }
 

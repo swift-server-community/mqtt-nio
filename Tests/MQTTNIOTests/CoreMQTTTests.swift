@@ -8,8 +8,8 @@ final class CoreMQTTTests: XCTestCase {
             cleanSession: true,
             keepAliveSeconds: 15,
             clientIdentifier: "MyClient",
-            userName: "",
-            password: ""
+            userName: nil,
+            password: nil
         )
         let publish = MQTTPublishInfo(
             qos: .atMostOnce,
@@ -36,7 +36,7 @@ final class CoreMQTTTests: XCTestCase {
         let packet = try MQTTSerializer.readIncomingPacket(from: &byteBuffer)
         let publish2 = try MQTTSerializer.readPublish(from: packet)
         XCTAssertEqual(publish.topicName, publish2.publishInfo.topicName)
-        XCTAssertEqual(publish.payload.getString(at: publish.payload.readerIndex, length: 10), publish2.publishInfo.payload.getString(at: publish2.publishInfo.payload.readerIndex, length: 10))
+        XCTAssertEqual(publish.payload.getString(at: publish.payload.readerIndex, length: 12), publish2.publishInfo.payload.getString(at: publish2.publishInfo.payload.readerIndex, length: 12))
     }
 
     func testSubscribe() throws {

@@ -163,8 +163,8 @@ final public class MQTTClient {
             cleanSession: cleanSession,
             keepAliveSeconds: UInt16(configuration.keepAliveInterval.nanoseconds / 1_000_000_000),
             clientIdentifier: self.identifier,
-            userName: configuration.userName ?? "",
-            password: configuration.password ?? ""
+            userName: configuration.userName,
+            password: configuration.password
         )
         let publish = will.map { MQTTPublishInfo(qos: .atMostOnce, retain: $0.retain, dup: false, topicName: $0.topicName, payload: $0.payload) }
 

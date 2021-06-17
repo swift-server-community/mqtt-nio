@@ -55,7 +55,7 @@ struct ByteToMQTTMessageDecoder: ByteToMessageDecoder {
                         "mqtt_topicName": .string("\(publishMessage.publish.topicName)")
                     ])
                     self.respondToPublish(publishMessage)
-                } catch MQTTSerializer.Error.incompletePacket {
+                } catch MQTTSerializer.InternalError.incompletePacket {
                     return .needMoreData
                 } catch {
                     self.client.publishListeners.notify(.failure(error))
@@ -63,11 +63,11 @@ struct ByteToMQTTMessageDecoder: ByteToMessageDecoder {
                 buffer = readBuffer
                 return .continue
             case .CONNACK:
-                let connack = try MQTTSerializer.readAck(from: packet)
-                message = MQTTConnAckMessage(packetId: connack.packetId, sessionPresent: connack.sessionPresent)
+                let connack = try MQTTSerializer.readConnack(from: packet)
+                message = MQTTConnAckMessage(returnCode: connack.returnCode, sessionPresent: connack.sessionPresent)
             case .PUBACK, .PUBREC, .PUBREL, .PUBCOMP, .SUBACK, .UNSUBACK:
-                let ack = try MQTTSerializer.readAck(from: packet)
-                message = MQTTAckMessage(type: packet.type, packetId: ack.packetId)
+                let packetId = try MQTTSerializer.readAck(from: packet)
+                message = MQTTAckMessage(type: packet.type, packetId: packetId)
             case .PINGRESP:
                 message = MQTTPingrespMessage()
             default:
@@ -78,7 +78,7 @@ struct ByteToMQTTMessageDecoder: ByteToMessageDecoder {
                 respondToPubrel(message)
             }
             context.fireChannelRead(wrapInboundOut(message))
-        } catch MQTTSerializer.Error.incompletePacket {
+        } catch MQTTSerializer.InternalError.incompletePacket {
             return .needMoreData
         } catch {
             context.fireErrorCaught(error)
