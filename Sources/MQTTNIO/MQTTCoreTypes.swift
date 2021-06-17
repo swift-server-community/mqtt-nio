@@ -89,31 +89,11 @@ struct MQTTConnectInfo {
     /// MQTT client identifier. Must be unique per client.
     let clientIdentifier: String
 
-    /// MQTT user name. Set to """ if not used.
-    let userName: String
+    /// MQTT user name.
+    let userName: String?
 
-    /// MQTT password. Set to "" if not used.
-    let password: String
-
-    func withUnsafeType<T>(_ body: (MQTTConnectInfo_t) throws -> T) rethrows -> T {
-        return try clientIdentifier.withCString { clientIdentifierChars in
-            try userName.withCString { userNameChars in
-                try password.withCString { passwordChars in
-                    let coreType = MQTTConnectInfo_t(
-                        cleanSession: self.cleanSession,
-                        keepAliveSeconds: self.keepAliveSeconds,
-                        pClientIdentifier: clientIdentifierChars,
-                        clientIdentifierLength: UInt16(clientIdentifier.utf8.count),
-                        pUserName: self.userName.count > 0 ? userNameChars : nil,
-                        userNameLength: UInt16(self.userName.utf8.count),
-                        pPassword: self.password.count > 0 ? passwordChars : nil,
-                        passwordLength: UInt16(self.password.utf8.count)
-                    )
-                    return try body(coreType)
-                }
-            }
-        }
-    }
+    /// MQTT password.
+    let password: String?
 }
 
 /// MQTT PUBLISH packet parameters.

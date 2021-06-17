@@ -8,8 +8,8 @@ final class CoreMQTTTests: XCTestCase {
             cleanSession: true,
             keepAliveSeconds: 15,
             clientIdentifier: "MyClient",
-            userName: "",
-            password: ""
+            userName: nil,
+            password: nil
         )
         let publish = MQTTPublishInfo(
             qos: .atMostOnce,

@@ -47,12 +47,12 @@ enum MQTTSerializer {
             size += publishInfo.payload.readableBytes + 2
         }
         // user name
-        if connectInfo.userName.count > 0 {
-            size += connectInfo.userName.utf8.count + 2
+        if let userName = connectInfo.userName {
+            size += userName.utf8.count + 2
         }
         // password
-        if connectInfo.password.count > 0 {
-            size += connectInfo.password.utf8.count + 2
+        if let password = connectInfo.password {
+            size += password.utf8.count + 2
         }
         return size
     }
@@ -73,8 +73,8 @@ enum MQTTSerializer {
             flags |= willInfo.retain ? ConnectFlags.willRetain : 0
             flags |= willInfo.qos.rawValue << ConnectFlags.willQoSShift
         }
-        flags |= connectInfo.password.count > 0 ? ConnectFlags.password : 0
-        flags |= connectInfo.userName.count > 0 ? ConnectFlags.userName : 0
+        flags |= connectInfo.password != nil ? ConnectFlags.password : 0
+        flags |= connectInfo.userName != nil ? ConnectFlags.userName : 0
         byteBuffer.writeInteger(flags)
         // keep alive
         byteBuffer.writeInteger(connectInfo.keepAliveSeconds)
@@ -91,11 +91,11 @@ enum MQTTSerializer {
             // payload data
             byteBuffer.writeBuffer(&payload)
         }
-        if connectInfo.userName.count > 0 {
-            try writeString(connectInfo.userName, to: &byteBuffer)
+        if let userName = connectInfo.userName {
+            try writeString(userName, to: &byteBuffer)
         }
-        if connectInfo.password.count > 0 {
-            try writeString(connectInfo.password, to: &byteBuffer)
+        if let password = connectInfo.password {
+            try writeString(password, to: &byteBuffer)
         }
     }
 
