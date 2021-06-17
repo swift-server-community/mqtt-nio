@@ -55,7 +55,7 @@ struct ByteToMQTTMessageDecoder: ByteToMessageDecoder {
                         "mqtt_topicName": .string("\(publishMessage.publish.topicName)")
                     ])
                     self.respondToPublish(publishMessage)
-                } catch MQTTSerializer.Error.incompletePacket {
+                } catch MQTTSerializer.InternalError.incompletePacket {
                     return .needMoreData
                 } catch {
                     self.client.publishListeners.notify(.failure(error))
@@ -78,7 +78,7 @@ struct ByteToMQTTMessageDecoder: ByteToMessageDecoder {
                 respondToPubrel(message)
             }
             context.fireChannelRead(wrapInboundOut(message))
-        } catch MQTTSerializer.Error.incompletePacket {
+        } catch MQTTSerializer.InternalError.incompletePacket {
             return .needMoreData
         } catch {
             context.fireErrorCaught(error)

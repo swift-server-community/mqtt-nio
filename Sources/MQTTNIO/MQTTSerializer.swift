@@ -1,23 +1,24 @@
-import CCoreMQTT
 import Foundation
 import NIO
 
 enum MQTTSerializer {
     struct MQTTError: Swift.Error {
-        let status: MQTTStatus
-
-        init(status: MQTTStatus_t) {
-            self.status = MQTTStatus(rawValue: status.rawValue)!
+        enum ErrorEnum {
+            case badParameter
+            case badResponse
+            case incompletePacket
         }
-        init(status: MQTTStatus) {
-            self.status = status
+        let error: ErrorEnum
+
+        init(_ error: ErrorEnum) {
+            self.error = error
         }
 
-        static var badParameter: MQTTError { .init(status: .MQTTBadParameter) }
-        static var badResponse: MQTTError { .init(status: .MQTTBadResponse) }
+        public static var badParameter: MQTTError { .init(.badParameter) }
+        public static var badResponse: MQTTError { .init(.badResponse) }
     }
 
-    enum Error: Swift.Error {
+    enum InternalError: Swift.Error {
         case incompletePacket
     }
 
@@ -205,6 +206,7 @@ enum MQTTSerializer {
     static func readPublish(from packet: MQTTPacketInfo) throws -> (packetId: UInt16, publishInfo: MQTTPublishInfo) {
         var remainingData = packet.remainingData
         var packetId: UInt16 = 0
+        // read topic name
         let topicName = try readString(from: &remainingData)
         guard let qos = MQTTQoS(rawValue: (packet.flags & PublishFlags.qosMask) >> PublishFlags.qosShift) else { throw MQTTError.badResponse }
         // read packet id if QoS is not atMostOnce
@@ -232,19 +234,24 @@ enum MQTTSerializer {
         return (returnCode: bytes[1], sessionPresent: bytes[0] & 0x1 == 0x1)
     }
 
+    /// read basic ack packet (SUBACK, UNSUBACK, PUBACK, PUBREL etc)
     static func readAck(from packet: MQTTPacketInfo) throws -> UInt16 {
         var remainingData = packet.remainingData
         guard let packetId: UInt16 = remainingData.readInteger() else { throw MQTTError.badResponse }
         return packetId
     }
 
+    /// read incoming packet
+    ///
+    /// read fixed header and data attached. Throws incomplete packet error if if cannot read
+    /// everything
     static func readIncomingPacket(from byteBuffer: inout ByteBuffer) throws -> MQTTPacketInfo {
-        guard let byte: UInt8 = byteBuffer.readInteger() else { throw Error.incompletePacket }
+        guard let byte: UInt8 = byteBuffer.readInteger() else { throw InternalError.incompletePacket }
         guard let type = MQTTPacketType(rawValue: byte) ?? MQTTPacketType(rawValue: byte & 0xf0) else {
-            throw MQTTError(status: MQTTBadParameter)
+            throw MQTTError.badParameter
         }
         let length = try readLength(from: &byteBuffer)
-        guard let bytes = byteBuffer.readSlice(length: length) else { throw Error.incompletePacket }
+        guard let bytes = byteBuffer.readSlice(length: length) else { throw InternalError.incompletePacket }
         return MQTTPacketInfo(type: type, flags: byte & 0xf, remainingData: bytes)
     }
 }
@@ -283,7 +290,7 @@ extension MQTTSerializer {
         var length = 0
         var shift = 0
         repeat {
-            guard let byte: UInt8 = byteBuffer.readInteger() else { throw Error.incompletePacket }
+            guard let byte: UInt8 = byteBuffer.readInteger() else { throw InternalError.incompletePacket }
             length += (Int(byte) & 0x7f) << shift
             if byte & 0x80 == 0 {
                 break
