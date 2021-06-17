@@ -54,30 +54,6 @@ public enum MQTTPacketType: UInt8 {
     case DISCONNECT = 0xE0
 }
 
-/// Buffer passed to MQTT library
-extension ByteBuffer {
-    func withUnsafeType<T>(_ body: (MQTTFixedBuffer_t) throws -> T) rethrows -> T {
-        var buffer = self
-        return try buffer.withUnsafeMutableReadableBytes { bytes in
-            let coreType = MQTTFixedBuffer_t(
-                pBuffer: CCoreMQTT_voidPtr_to_UInt8Ptr(bytes.baseAddress),
-                size: self.readableBytes
-            )
-            return try body(coreType)
-        }
-    }
-
-    @discardableResult mutating func writeWithUnsafeMutableType(minimumWritableBytes: Int, _ body: (MQTTFixedBuffer_t) throws -> Int) rethrows -> Int {
-        return try writeWithUnsafeMutableBytes(minimumWritableBytes: minimumWritableBytes) { bytes in
-            let coreType = MQTTFixedBuffer_t(
-                pBuffer: CCoreMQTT_voidPtr_to_UInt8Ptr(bytes.baseAddress),
-                size: minimumWritableBytes
-            )
-            return try body(coreType)
-        }
-    }
-}
-
 /// MQTT CONNECT packet parameters
 struct MQTTConnectInfo {
     /// Whether to establish a new, clean session or resume a previous session.
@@ -122,23 +98,6 @@ public struct MQTTPublishInfo
         self.payload = payload
     }
 
-    func withUnsafeType<T>(_ body: (MQTTPublishInfo_t) throws -> T) rethrows -> T {
-        return try topicName.withCString { topicNameChars in
-            try payload.withUnsafeReadableBytes { payloadBytes in
-                let coreType = MQTTPublishInfo_t(
-                    qos: self.qos.coreType,
-                    retain: self.retain,
-                    dup: self.dup,
-                    pTopicName: topicNameChars,
-                    topicNameLength: UInt16(topicName.utf8.count),
-                    pPayload: payloadBytes.baseAddress,
-                    payloadLength: payload.readableBytes
-                )
-                return try body(coreType)
-            }
-        }
-    }
-    
     static let emptyByteBuffer = ByteBufferAllocator().buffer(capacity: 0);
 }
 
@@ -155,17 +114,6 @@ public struct MQTTSubscribeInfo
         self.qos = qos
         self.topicFilter = topicFilter
     }
-
-    func withUnsafeType<T>(_ body: (MQTTSubscribeInfo_t) throws -> T) rethrows -> T {
-        return try topicFilter.withCString { topicFilterChars in
-            let coreType = MQTTSubscribeInfo_t(
-                qos: qos.coreType,
-                pTopicFilter: topicFilterChars,
-                topicFilterLength: UInt16(topicFilter.utf8.count)
-            )
-            return try body(coreType)
-        }
-    }
 }
 
 /// MQTT incoming packet parameters.
@@ -179,54 +127,4 @@ struct MQTTPacketInfo
 
     /// Remaining serialized data in the MQTT packet.
     let remainingData: ByteBuffer
-
-    func withUnsafeType<T>(_ body: (MQTTPacketInfo_t) throws -> T) rethrows -> T {
-        var remainingData = self.remainingData
-        return try remainingData.withUnsafeMutableReadableBytes { remainingBytes in
-            let coreType = MQTTPacketInfo_t(
-                type: type.rawValue | flags,
-                pRemainingData: CCoreMQTT_voidPtr_to_UInt8Ptr(remainingBytes.baseAddress),
-                remainingLength: self.remainingData.readableBytes
-            )
-            return try body(coreType)
-        }
-    }
-}
-
-/// Compute the prefix sum of `seq`.
-func scan<S : Sequence, U>(_ seq: S, _ initial: U, _ combine: (U, S.Element) -> U) -> [U] {
-  var result: [U] = []
-  result.reserveCapacity(seq.underestimatedCount)
-  var runningResult = initial
-  for element in seq {
-    runningResult = combine(runningResult, element)
-    result.append(runningResult)
-  }
-  return result
-}
-
-extension Array where Element == MQTTSubscribeInfo {
-    func withUnsafeType<T>(_ body: ([MQTTSubscribeInfo_t]) throws -> T) rethrows -> T {
-        let counts = map { $0.topicFilter.utf8.count + 1}
-        let offsets = [0] + scan(counts, 0, +)
-        let bufferSize = offsets.last!
-        var buffer: [UInt8] = []
-        buffer.reserveCapacity(bufferSize)
-        forEach {
-            buffer.append(contentsOf: $0.topicFilter.utf8)
-            buffer.append(0)
-        }
-        return try buffer.withUnsafeBufferPointer { buffer in
-            let basePtr = UnsafeRawPointer(buffer.baseAddress!).bindMemory(to: CChar.self, capacity: buffer.count)
-            var infos: [MQTTSubscribeInfo_t] = []
-            infos.reserveCapacity(count)
-            for i in 0..<count {
-                let topicPtr: UnsafePointer<CChar>? = basePtr + offsets[i]
-                let topicFilterLength = self[i].topicFilter.count
-                let qos = self[i].qos.coreType
-                infos.append(MQTTSubscribeInfo_t(qos: qos, pTopicFilter: topicPtr, topicFilterLength: UInt16(topicFilterLength)))
-            }
-            return try body(infos)
-        }
-    }
 }

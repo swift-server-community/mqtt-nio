@@ -32,6 +32,12 @@ enum MQTTSerializer {
         static let userName: UInt8 = 128
     }
 
+    enum PublishFlags {
+        static let duplicate: UInt8 = 8
+        static let retain: UInt8 = 1
+        static let qosShift: UInt8 = 1
+        static let qosMask: UInt8 = 6
+    }
     /// calculate size of connect packet
     static func calculateConnectPacketSize(connectInfo: MQTTConnectInfo, publishInfo: MQTTPublishInfo?) -> Int {
         // variable header
@@ -115,9 +121,9 @@ enum MQTTSerializer {
 
     /// write publish packet
     static func writePublish(publishInfo: MQTTPublishInfo, packetId: UInt16, to byteBuffer: inout ByteBuffer) throws {
-        var flags: UInt8 = publishInfo.retain ? 1 : 0
-        flags |= publishInfo.qos.rawValue << 1
-        flags |= publishInfo.dup ? (1<<3) : 0
+        var flags: UInt8 = publishInfo.retain ? PublishFlags.retain : 0
+        flags |= publishInfo.qos.rawValue << PublishFlags.qosShift
+        flags |= publishInfo.dup ? PublishFlags.duplicate : 0
 
         let length = calculatePublishPacketSize(publishInfo: publishInfo)
 
@@ -195,42 +201,31 @@ enum MQTTSerializer {
         writeFixedHeader(packetType: .PINGREQ, size: 0, to: &byteBuffer)
     }
 
+    /// read publish packet
     static func readPublish(from packet: MQTTPacketInfo) throws -> (packetId: UInt16, publishInfo: MQTTPublishInfo) {
+        var remainingData = packet.remainingData
         var packetId: UInt16 = 0
-
-        let publishInfo: MQTTPublishInfo = try packet.withUnsafeType { packetInfo in
-            var packetInfo = packetInfo
-            var publishInfoCoreType = MQTTPublishInfo_t()
-            let rt = MQTT_DeserializePublish(&packetInfo, &packetId, &publishInfoCoreType)
-            guard rt == MQTTSuccess else { throw MQTTError(status: rt) }
-
-            // Topic string
-            let topicName = String(
-                decoding: UnsafeRawBufferPointer(start: publishInfoCoreType.pTopicName, count: Int(publishInfoCoreType.topicNameLength)),
-                as: Unicode.UTF8.self
-            )
-            // Payload
-            guard let remainingDataPtr = UnsafeRawPointer(packetInfo.pRemainingData) else { throw MQTTError(status: .MQTTNoMemory) }
-            let payloadByteBuffer: ByteBuffer
-            // publish packet may not have payload
-            if let pPayload = publishInfoCoreType.pPayload {
-                let offset = pPayload - remainingDataPtr
-                guard let payload = packet.remainingData.getSlice(at: offset, length: publishInfoCoreType.payloadLength) else { throw MQTTError(status: .MQTTNoMemory) }
-                payloadByteBuffer = payload
-            } else {
-                payloadByteBuffer = MQTTPublishInfo.emptyByteBuffer
-            }
-            return MQTTPublishInfo(
-                qos: MQTTQoS(rawValue: UInt8(publishInfoCoreType.qos.rawValue))!,
-                retain: publishInfoCoreType.retain,
-                dup: publishInfoCoreType.dup,
-                topicName: topicName,
-                payload: payloadByteBuffer
-            )
+        let topicName = try readString(from: &remainingData)
+        guard let qos = MQTTQoS(rawValue: (packet.flags & PublishFlags.qosMask) >> PublishFlags.qosShift) else { throw MQTTError.badResponse }
+        // read packet id if QoS is not atMostOnce
+        if qos != .atMostOnce {
+            guard let readPacketId: UInt16 = remainingData.readInteger() else { throw MQTTError.badResponse }
+            packetId = readPacketId
         }
+        // read payload
+        let payload = remainingData.readSlice(length: remainingData.readableBytes) ?? MQTTPublishInfo.emptyByteBuffer
+        // create publish info
+        let publishInfo = MQTTPublishInfo(
+            qos: qos,
+            retain: packet.flags & PublishFlags.retain != 0,
+            dup: packet.flags & PublishFlags.duplicate != 0,
+            topicName: topicName,
+            payload: payload
+        )
         return (packetId: packetId, publishInfo: publishInfo)
     }
 
+    /// read connack packet
     static func readConnack(from packet: MQTTPacketInfo) throws -> (returnCode: UInt8, sessionPresent: Bool) {
         var remainingData = packet.remainingData
         guard let bytes = remainingData.readBytes(length: 2) else { throw MQTTError.badResponse }
