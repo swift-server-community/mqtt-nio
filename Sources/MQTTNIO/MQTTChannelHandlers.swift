@@ -70,7 +70,7 @@ struct ByteToMQTTMessageDecoder: ByteToMessageDecoder {
             case .PINGRESP:
                 message = MQTTPingrespPacket()
             default:
-                throw MQTTClient.Error.decodeError
+                throw MQTTError.decodeError
             }
             client.logger.debug("MQTT Out", metadata: ["mqtt_message": .string("\(message)"), "mqtt_packet_id": .string("\(message.packetId)")])
             context.fireChannelRead(wrapInboundOut(message))
@@ -102,17 +102,17 @@ struct ByteToMQTTMessageDecoder: ByteToMessageDecoder {
                 // if we receive a publish message while waiting for a PUBREL from broker then replace data to be published and retry PUBREC
                 if newMessage.type == .PUBLISH, let publishMessage = newMessage as? MQTTPublishPacket {
                     publish = publishMessage.publish
-                    throw MQTTClient.Error.retrySend
+                    throw MQTTError.retrySend
                 }
                 // if we receive anything but a PUBREL then throw unexpected message
-                guard newMessage.type == .PUBREL else { throw MQTTClient.Error.unexpectedMessage }
+                guard newMessage.type == .PUBREL else { throw MQTTError.unexpectedMessage }
                 // now we have received the PUBREL we can process the published message. PUBCOMP is sent by `respondToPubrel`
                 return true
             }
             .map { _ in return publish }
             .whenComplete { result in
                 // do not report retrySend error
-                if case .failure(let error) = result, case MQTTClient.Error.retrySend = error {
+                if case .failure(let error) = result, case MQTTError.retrySend = error {
                     return
                 }
                 self.client.publishListeners.notify(result)

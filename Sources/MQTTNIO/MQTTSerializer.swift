@@ -2,23 +2,6 @@ import Foundation
 import NIO
 
 enum MQTTSerializer {
-    struct MQTTError: Swift.Error {
-        enum ErrorEnum {
-            case badParameter
-            case badResponse
-            case incompletePacket
-        }
-
-        let error: ErrorEnum
-
-        init(_ error: ErrorEnum) {
-            self.error = error
-        }
-
-        public static var badParameter: MQTTError { .init(.badParameter) }
-        public static var badResponse: MQTTError { .init(.badResponse) }
-    }
-
     enum InternalError: Swift.Error {
         case incompletePacket
     }

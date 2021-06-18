@@ -42,7 +42,7 @@ final class WebSocketInitialRequestHandler: ChannelInboundHandler, RemovableChan
 
         switch clientResponse {
         case .head:
-            self.upgradePromise.fail(MQTTClient.Error.websocketUpgradeFailed)
+            self.upgradePromise.fail(MQTTError.websocketUpgradeFailed)
         case .body:
             break
         case .end:
