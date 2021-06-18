@@ -64,15 +64,15 @@ struct ByteToMQTTMessageDecoder: ByteToMessageDecoder {
             case .PUBACK, .PUBREC, .PUBREL, .PUBCOMP, .SUBACK, .UNSUBACK:
                 let packetId = try MQTTSerializer.readAck(from: packet)
                 message = MQTTAckPacket(type: packet.type, packetId: packetId)
+                if packet.type == .PUBREL {
+                    self.respondToPubrel(message)
+                }
             case .PINGRESP:
                 message = MQTTPingrespPacket()
             default:
                 throw MQTTClient.Error.decodeError
             }
             client.logger.debug("MQTT Out", metadata: ["mqtt_message": .string("\(message)"), "mqtt_packet_id": .string("\(message.packetId)")])
-            if message.type == .PUBREL {
-                self.respondToPubrel(message)
-            }
             context.fireChannelRead(wrapInboundOut(message))
         } catch MQTTSerializer.InternalError.incompletePacket {
             return .needMoreData
