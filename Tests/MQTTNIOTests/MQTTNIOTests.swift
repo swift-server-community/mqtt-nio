@@ -107,10 +107,14 @@ final class MQTTNIOTests: XCTestCase {
             var type: MQTTPacketType { .PUBLISH }
             var description: String { "FORCEDISCONNECT" }
 
-            func serialize(to byteBuffer: inout ByteBuffer) throws {
+            func write(to byteBuffer: inout ByteBuffer) throws {
                 // writing publish header with no content will cause a disconnect from the server
                 byteBuffer.writeInteger(UInt8(0x30))
                 byteBuffer.writeInteger(UInt8(0x0))
+            }
+
+            static func read(from packet: MQTTIncomingPacket) throws -> Self {
+                throw InternalError.notImplemented
             }
         }
 
@@ -545,16 +549,16 @@ class InboundStallHandler: ChannelInboundHandler {
     typealias InboundIn = ByteBuffer
     typealias InboundOut = ByteBuffer
 
-    let callback: (MQTTPacketInfo) -> TimeAmount?
+    let callback: (MQTTIncomingPacket) -> TimeAmount?
 
-    init(callback: @escaping (MQTTPacketInfo) -> TimeAmount?) {
+    init(callback: @escaping (MQTTIncomingPacket) -> TimeAmount?) {
         self.callback = callback
     }
 
     func channelRead(context: ChannelHandlerContext, data: NIOAny) {
         var bb = unwrapInboundIn(data)
         do {
-            let packet = try MQTTSerializer.readIncomingPacket(from: &bb)
+            let packet = try MQTTIncomingPacket.read(from: &bb)
             if let stallTime = callback(packet) {
                 context.eventLoop.scheduleTask(in: stallTime) {
                     context.fireChannelRead(data)

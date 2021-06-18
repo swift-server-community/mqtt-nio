@@ -17,7 +17,7 @@ final class MQTTEncodeHandler: ChannelOutboundHandler {
         self.logger.debug("MQTT Out", metadata: ["mqtt_message": .string("\(message)"), "mqtt_packet_id": .string("\(message.packetId)")])
         var bb = context.channel.allocator.buffer(capacity: 0)
         do {
-            try message.serialize(to: &bb)
+            try message.write(to: &bb)
             context.write(wrapOutboundOut(bb), promise: promise)
         } catch {
             promise?.fail(error)
@@ -38,20 +38,21 @@ struct ByteToMQTTMessageDecoder: ByteToMessageDecoder {
     mutating func decode(context: ChannelHandlerContext, buffer: inout ByteBuffer) throws -> DecodingState {
         var readBuffer = buffer
         do {
-            let packet = try MQTTSerializer.readIncomingPacket(from: &readBuffer)
+            let packet = try MQTTIncomingPacket.read(from: &readBuffer)
             let message: MQTTPacket
             switch packet.type {
             case .PUBLISH:
                 do {
-                    let publish = try MQTTSerializer.readPublish(from: packet)
-                    let publishMessage = MQTTPublishPacket(publish: publish.publishInfo, packetId: publish.packetId)
+                    let publishMessage = try MQTTPublishPacket.read(from: packet)
+                    //let publish = try MQTTSerializer.readPublish(from: packet)
+                    //let publishMessage = MQTTPublishPacket(publish: publish.publishInfo, packetId: publish.packetId)
                     self.client.logger.debug("MQTT In", metadata: [
                         "mqtt_message": .string("\(publishMessage)"),
                         "mqtt_packet_id": .string("\(publishMessage.packetId)"),
                         "mqtt_topicName": .string("\(publishMessage.publish.topicName)"),
                     ])
                     self.respondToPublish(publishMessage)
-                } catch MQTTSerializer.InternalError.incompletePacket {
+                } catch InternalError.incompletePacket {
                     return .needMoreData
                 } catch {
                     self.client.publishListeners.notify(.failure(error))
@@ -59,22 +60,20 @@ struct ByteToMQTTMessageDecoder: ByteToMessageDecoder {
                 buffer = readBuffer
                 return .continue
             case .CONNACK:
-                let connack = try MQTTSerializer.readConnack(from: packet)
-                message = MQTTConnAckPacket(returnCode: connack.returnCode, sessionPresent: connack.sessionPresent)
+                message = try MQTTConnAckPacket.read(from: packet)
             case .PUBACK, .PUBREC, .PUBREL, .PUBCOMP, .SUBACK, .UNSUBACK:
-                let packetId = try MQTTSerializer.readAck(from: packet)
-                message = MQTTAckPacket(type: packet.type, packetId: packetId)
+                message = try MQTTAckPacket.read(from: packet)
                 if packet.type == .PUBREL {
                     self.respondToPubrel(message)
                 }
             case .PINGRESP:
-                message = MQTTPingrespPacket()
+                message = try MQTTPingrespPacket.read(from: packet)
             default:
                 throw MQTTError.decodeError
             }
             self.client.logger.debug("MQTT Out", metadata: ["mqtt_message": .string("\(message)"), "mqtt_packet_id": .string("\(message.packetId)")])
             context.fireChannelRead(wrapInboundOut(message))
-        } catch MQTTSerializer.InternalError.incompletePacket {
+        } catch InternalError.incompletePacket {
             return .needMoreData
         } catch {
             context.fireErrorCaught(error)

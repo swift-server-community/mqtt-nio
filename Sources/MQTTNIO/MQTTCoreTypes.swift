@@ -85,15 +85,3 @@ public struct MQTTSubscribeInfo {
         self.topicFilter = topicFilter
     }
 }
-
-/// MQTT incoming packet parameters.
-struct MQTTPacketInfo {
-    /// Type of incoming MQTT packet.
-    let type: MQTTPacketType
-
-    /// packet flags
-    let flags: UInt8
-
-    /// Remaining serialized data in the MQTT packet.
-    let remainingData: ByteBuffer
-}
