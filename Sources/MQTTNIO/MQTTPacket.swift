@@ -45,6 +45,15 @@ extension MQTTPacket {
         byteBuffer.writeString(string)
     }
 
+    /// write buffer
+    static func writeBuffer(_ buffer: ByteBuffer, to byteBuffer: inout ByteBuffer) throws {
+        let length = buffer.readableBytes
+        guard length < 65536 else { throw MQTTError.badParameter }
+        var buffer = buffer
+        byteBuffer.writeInteger(UInt16(length))
+        byteBuffer.writeBuffer(&buffer)
+    }
+
     /// read variable length
     static func readVariableLengthInteger(from byteBuffer: inout ByteBuffer) throws -> Int {
         var value = 0
@@ -111,13 +120,7 @@ struct MQTTConnectPacket: MQTTPacket {
         try Self.writeString(connect.clientIdentifier, to: &byteBuffer)
         if let will = will {
             try Self.writeString(will.topicName, to: &byteBuffer)
-            var payload = will.payload
-            // payload size
-            let length = payload.readableBytes
-            guard length < 65536 else { throw MQTTError.badParameter }
-            byteBuffer.writeInteger(UInt16(length))
-            // payload data
-            byteBuffer.writeBuffer(&payload)
+            try Self.writeBuffer(will.payload, to: &byteBuffer)
         }
         if let userName = connect.userName {
             try Self.writeString(userName, to: &byteBuffer)
