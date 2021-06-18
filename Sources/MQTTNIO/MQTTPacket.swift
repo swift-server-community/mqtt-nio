@@ -1,20 +1,16 @@
 import NIO
 
-protocol MQTTOutboundMessage: CustomStringConvertible {
+protocol MQTTPacket: CustomStringConvertible {
     var type: MQTTPacketType { get }
+    var packetId: UInt16 { get }
     func serialize(to: inout ByteBuffer) throws
 }
 
-protocol MQTTInboundMessage: CustomStringConvertible {
-    var type: MQTTPacketType { get }
-    var packetId: UInt16 { get }
+extension MQTTPacket {
+    var packetId: UInt16 { 0 }
 }
 
-protocol MQTTOutboundWithPacketIdMessage: MQTTOutboundMessage {
-    var packetId: UInt16 { get }
-}
-
-struct MQTTConnectMessage: MQTTOutboundMessage {
+struct MQTTConnectPacket: MQTTPacket {
     var type: MQTTPacketType { .CONNECT }
     var description: String { "CONNECT" }
 
@@ -26,7 +22,7 @@ struct MQTTConnectMessage: MQTTOutboundMessage {
     }
 }
 
-struct MQTTPublishMessage: MQTTOutboundWithPacketIdMessage, MQTTInboundMessage {
+struct MQTTPublishPacket: MQTTPacket {
     var type: MQTTPacketType { .PUBLISH }
     var description: String { "PUBLISH" }
 
@@ -38,7 +34,7 @@ struct MQTTPublishMessage: MQTTOutboundWithPacketIdMessage, MQTTInboundMessage {
     }
 }
 
-struct MQTTSubscribeMessage: MQTTOutboundWithPacketIdMessage {
+struct MQTTSubscribePacket: MQTTPacket {
     var type: MQTTPacketType { .SUBSCRIBE }
     var description: String { "SUBSCRIBE" }
 
@@ -50,7 +46,7 @@ struct MQTTSubscribeMessage: MQTTOutboundWithPacketIdMessage {
     }
 }
 
-struct MQTTUnsubscribeMessage: MQTTOutboundWithPacketIdMessage {
+struct MQTTUnsubscribePacket: MQTTPacket {
     var type: MQTTPacketType { .UNSUBSCRIBE }
     var description: String { "UNSUBSCRIBE" }
 
@@ -62,7 +58,7 @@ struct MQTTUnsubscribeMessage: MQTTOutboundWithPacketIdMessage {
     }
 }
 
-struct MQTTAckMessage: MQTTOutboundWithPacketIdMessage, MQTTInboundMessage {
+struct MQTTAckPacket: MQTTPacket {
     var description: String { "ACK \(self.type)" }
     let type: MQTTPacketType
     let packetId: UInt16
@@ -72,7 +68,7 @@ struct MQTTAckMessage: MQTTOutboundWithPacketIdMessage, MQTTInboundMessage {
     }
 }
 
-struct MQTTPingreqMessage: MQTTOutboundMessage {
+struct MQTTPingreqPacket: MQTTPacket {
     var type: MQTTPacketType { .PINGREQ }
     var description: String { "PINGREQ" }
     func serialize(to byteBuffer: inout ByteBuffer) throws {
@@ -80,13 +76,16 @@ struct MQTTPingreqMessage: MQTTOutboundMessage {
     }
 }
 
-struct MQTTPingrespMessage: MQTTInboundMessage {
+struct MQTTPingrespPacket: MQTTPacket {
     var type: MQTTPacketType { .PINGRESP }
     var description: String { "PINGRESP" }
-    var packetId: UInt16 { 0 }
+    
+    func serialize(to: inout ByteBuffer) throws {
+        try MQTTSerializer.writeAck(packetType: self.type, to: &to)
+    }
 }
 
-struct MQTTDisconnectMessage: MQTTOutboundMessage {
+struct MQTTDisconnectPacket: MQTTPacket {
     var type: MQTTPacketType { .DISCONNECT }
     var description: String { "DISCONNECT" }
     func serialize(to byteBuffer: inout ByteBuffer) throws {
@@ -94,10 +93,13 @@ struct MQTTDisconnectMessage: MQTTOutboundMessage {
     }
 }
 
-struct MQTTConnAckMessage: MQTTInboundMessage {
+struct MQTTConnAckPacket: MQTTPacket {
     var type: MQTTPacketType { .CONNACK }
     var description: String { "CONNACK" }
-    var packetId: UInt16 { 0 }
     let returnCode: UInt8
     let sessionPresent: Bool
+
+    func serialize(to: inout ByteBuffer) throws {
+        try MQTTSerializer.writeAck(packetType: self.type, to: &to)
+    }
 }

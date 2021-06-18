@@ -156,10 +156,10 @@ final class MQTTConnection {
         }
     }
 
-    func sendMessageWithRetry(_ message: MQTTOutboundMessage, maxRetryAttempts: Int, checkInbound: @escaping (MQTTInboundMessage) throws -> Bool) -> EventLoopFuture<MQTTInboundMessage> {
-        let promise = self.channel.eventLoop.makePromise(of: MQTTInboundMessage.self)
+    func sendMessageWithRetry(_ message: MQTTPacket, maxRetryAttempts: Int, checkInbound: @escaping (MQTTPacket) throws -> Bool) -> EventLoopFuture<MQTTPacket> {
+        let promise = self.channel.eventLoop.makePromise(of: MQTTPacket.self)
 
-        func _sendMessage(_ message: MQTTOutboundMessage, attempt: Int) {
+        func _sendMessage(_ message: MQTTPacket, attempt: Int) {
             self.sendMessage(message, checkInbound: checkInbound)
                 .map { response in
                     promise.succeed(response)
@@ -169,9 +169,9 @@ final class MQTTConnection {
                     case MQTTClient.Error.timeout:
                         guard attempt < maxRetryAttempts else { throw MQTTClient.Error.timeout }
                         // if we have a publish message we have to resend it with `dup` set to true
-                        if let publishMessage = message as? MQTTPublishMessage {
+                        if let publishMessage = message as? MQTTPublishPacket {
                             let publish = publishMessage.publish
-                            let newMessage = MQTTPublishMessage(
+                            let newMessage = MQTTPublishPacket(
                                 publish: .init(qos: publish.qos, retain: publish.retain, dup: true, topicName: publish.topicName, payload: publish.payload),
                                 packetId: publishMessage.packetId
                             )
@@ -189,7 +189,7 @@ final class MQTTConnection {
         return promise.futureResult
     }
 
-    func sendMessageNoWait(_ message: MQTTOutboundMessage) -> EventLoopFuture<Void> {
+    func sendMessageNoWait(_ message: MQTTPacket) -> EventLoopFuture<Void> {
         return self.channel.writeAndFlush(message)
     }
 
@@ -201,7 +201,7 @@ final class MQTTConnection {
         }
     }
 
-    private func sendMessage(_ message: MQTTOutboundMessage, checkInbound: @escaping (MQTTInboundMessage) throws -> Bool) -> EventLoopFuture<MQTTInboundMessage> {
+    private func sendMessage(_ message: MQTTPacket, checkInbound: @escaping (MQTTPacket) throws -> Bool) -> EventLoopFuture<MQTTPacket> {
         let task = MQTTTask(on: channel.eventLoop, timeout: self.timeout, checkInbound: checkInbound)
         let taskHandler = MQTTTaskHandler(task: task, channel: channel)
 
