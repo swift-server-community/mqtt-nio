@@ -163,9 +163,14 @@ public final class MQTTClient {
                     return true
                 }
             }
-            .map { message in
+            .flatMapThrowing { message in
                 guard let connack = message as? MQTTConnAckPacket else { return false }
+                // connack doesn't return a packet id so this is alway 32767. Need a better way to choose first packet id
                 _ = self.globalPacketId.exchange(with: connack.packetId + 32767)
+                if connack.returnCode != 0 {
+                    let returnCode = MQTTError.ConnectionReturnValue(rawValue: connack.returnCode) ?? .unrecognizedReturnValue
+                    throw MQTTError.connectionError(returnCode)
+                }
                 return connack.sessionPresent
             }
     }

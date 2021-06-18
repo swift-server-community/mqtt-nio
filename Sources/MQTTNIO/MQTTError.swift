@@ -1,9 +1,20 @@
 /// MQTTClient errors
 enum MQTTError: Error {
+    enum ConnectionReturnValue: UInt8 {
+        case accepted = 0
+        case unacceptableProtocolVersion = 1
+        case identifierRejected = 2
+        case serverUnavailable = 3
+        case badUserNameOrPassword = 4
+        case notAuthorized = 5
+        case unrecognizedReturnValue = 0xff
+    }
     /// You called connect on a client that is already connected to the broker
     case alreadyConnected
     /// We received an unexpected message while connecting
     case failedToConnect
+    /// We received an unsuccessful connection return value
+    case connectionError(ConnectionReturnValue)
     /// client in not connected
     case noConnection
     /// the server closed the connection
