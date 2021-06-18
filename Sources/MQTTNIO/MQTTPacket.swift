@@ -79,7 +79,7 @@ struct MQTTPingreqPacket: MQTTPacket {
 struct MQTTPingrespPacket: MQTTPacket {
     var type: MQTTPacketType { .PINGRESP }
     var description: String { "PINGRESP" }
-    
+
     func serialize(to: inout ByteBuffer) throws {
         try MQTTSerializer.writeAck(packetType: self.type, to: &to)
     }

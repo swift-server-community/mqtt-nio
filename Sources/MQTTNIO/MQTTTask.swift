@@ -57,7 +57,7 @@ final class MQTTTaskHandler: ChannelInboundHandler, RemovableChannelHandler {
     }
 
     func channelInactive(context: ChannelHandlerContext) {
-        self.task.fail(MQTTClient.Error.serverClosedConnection)
+        self.task.fail(MQTTError.serverClosedConnection)
     }
 
     func errorCaught(context: ChannelHandlerContext, error: Error) {
@@ -71,7 +71,7 @@ final class MQTTTaskHandler: ChannelInboundHandler, RemovableChannelHandler {
         if let timeout = task.timeout {
             self.timeoutTask = self.channel.eventLoop.scheduleTask(in: timeout) {
                 self.channel.pipeline.removeHandler(self).whenSuccess { _ in
-                    self.task.fail(MQTTClient.Error.timeout)
+                    self.task.fail(MQTTError.timeout)
                 }
             }
         } else {

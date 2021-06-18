@@ -84,7 +84,7 @@ final class MQTTConnection {
                 options = try config.getNWProtocolTLSOptions()
             #if canImport(NIOSSL)
             case .niossl:
-                throw MQTTClient.Error.wrongTLSConfig
+                throw MQTTError.wrongTLSConfig
             #endif
             default:
                 options = NWProtocolTLS.Options()
@@ -166,8 +166,8 @@ final class MQTTConnection {
                 }
                 .flatMapErrorThrowing { error in
                     switch error {
-                    case MQTTClient.Error.timeout:
-                        guard attempt < maxRetryAttempts else { throw MQTTClient.Error.timeout }
+                    case MQTTError.timeout:
+                        guard attempt < maxRetryAttempts else { throw MQTTError.timeout }
                         // if we have a publish message we have to resend it with `dup` set to true
                         if let publishMessage = message as? MQTTPublishPacket {
                             let publish = publishMessage.publish
