@@ -103,7 +103,7 @@ final class MQTTNIOTests: XCTestCase {
     }
 
     func testMQTTServerDisconnect() throws {
-        struct MQTTForceDisconnectMessage: MQTTOutboundMessage {
+        struct MQTTForceDisconnectMessage: MQTTPacket {
             var type: MQTTPacketType { .PUBLISH }
             var description: String { "FORCEDISCONNECT" }
 
@@ -520,12 +520,12 @@ final class MQTTNIOTests: XCTestCase {
 }
 
 class OutboundStallHandler: ChannelOutboundHandler {
-    typealias OutboundIn = MQTTOutboundMessage
-    typealias OutboundOut = MQTTOutboundMessage
+    typealias OutboundIn = MQTTPacket
+    typealias OutboundOut = MQTTPacket
 
-    let callback: (MQTTOutboundMessage) -> TimeAmount?
+    let callback: (MQTTPacket) -> TimeAmount?
 
-    init(callback: @escaping (MQTTOutboundMessage) -> TimeAmount?) {
+    init(callback: @escaping (MQTTPacket) -> TimeAmount?) {
         self.callback = callback
     }
 

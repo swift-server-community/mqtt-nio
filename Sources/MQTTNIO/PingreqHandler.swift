@@ -2,10 +2,10 @@ import NIO
 
 /// Channel handler for sending PINGREQ messages to keep connect alive
 final class PingreqHandler: ChannelDuplexHandler {
-    typealias OutboundIn = MQTTOutboundMessage
-    typealias OutboundOut = MQTTOutboundMessage
-    typealias InboundIn = MQTTInboundMessage
-    typealias InboundOut = MQTTInboundMessage
+    typealias OutboundIn = MQTTPacket
+    typealias OutboundOut = MQTTPacket
+    typealias InboundIn = MQTTPacket
+    typealias InboundOut = MQTTPacket
 
     let client: MQTTClient
     let timeout: TimeAmount

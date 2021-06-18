@@ -2,17 +2,17 @@
 import NIO
 
 final class MQTTTask {
-    let promise: EventLoopPromise<MQTTInboundMessage>
-    let checkInbound: (MQTTInboundMessage) throws -> Bool
+    let promise: EventLoopPromise<MQTTPacket>
+    let checkInbound: (MQTTPacket) throws -> Bool
     let timeout: TimeAmount?
 
-    init(on eventLoop: EventLoop, timeout: TimeAmount?, checkInbound: @escaping (MQTTInboundMessage) throws -> Bool) {
-        self.promise = eventLoop.makePromise(of: MQTTInboundMessage.self)
+    init(on eventLoop: EventLoop, timeout: TimeAmount?, checkInbound: @escaping (MQTTPacket) throws -> Bool) {
+        self.promise = eventLoop.makePromise(of: MQTTPacket.self)
         self.checkInbound = checkInbound
         self.timeout = timeout
     }
 
-    func succeed(_ response: MQTTInboundMessage) {
+    func succeed(_ response: MQTTPacket) {
         self.promise.succeed(response)
     }
 
@@ -22,7 +22,7 @@ final class MQTTTask {
 }
 
 final class MQTTTaskHandler: ChannelInboundHandler, RemovableChannelHandler {
-    typealias InboundIn = MQTTInboundMessage
+    typealias InboundIn = MQTTPacket
 
     let task: MQTTTask
     let channel: Channel

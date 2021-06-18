@@ -189,9 +189,11 @@ enum MQTTSerializer {
     }
 
     /// write ACK packet
-    static func writeAck(packetType: MQTTPacketType, packetId: UInt16, to byteBuffer: inout ByteBuffer) throws {
+    static func writeAck(packetType: MQTTPacketType, packetId: UInt16? = nil, to byteBuffer: inout ByteBuffer) throws {
         writeFixedHeader(packetType: packetType, size: 2, to: &byteBuffer)
-        byteBuffer.writeInteger(packetId)
+        if let packetId = packetId {
+            byteBuffer.writeInteger(packetId)
+        }
     }
 
     /// write disconnect packet
