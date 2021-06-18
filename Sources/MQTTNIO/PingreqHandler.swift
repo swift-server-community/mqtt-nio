@@ -21,17 +21,17 @@ final class PingreqHandler: ChannelDuplexHandler {
 
     public func handlerAdded(context: ChannelHandlerContext) {
         if context.channel.isActive {
-            scheduleTask(context)
+            self.scheduleTask(context)
         }
     }
 
     public func handlerRemoved(context: ChannelHandlerContext) {
-        cancelTask()
+        self.cancelTask()
     }
 
     public func channelActive(context: ChannelHandlerContext) {
         if self.task == nil {
-            scheduleTask(context)
+            self.scheduleTask(context)
         }
         context.fireChannelActive()
     }
@@ -49,7 +49,7 @@ final class PingreqHandler: ChannelDuplexHandler {
     func scheduleTask(_ context: ChannelHandlerContext) {
         guard context.channel.isActive else { return }
 
-        self.task = context.eventLoop.scheduleTask(deadline: lastEventTime + timeout) {
+        self.task = context.eventLoop.scheduleTask(deadline: self.lastEventTime + self.timeout) {
             // if lastEventTime plus the timeout is less than now send PINGREQ
             // otherwise reschedule task
             if self.lastEventTime + self.timeout <= .now() {

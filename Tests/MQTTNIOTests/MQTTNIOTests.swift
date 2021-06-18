@@ -1,10 +1,10 @@
-import XCTest
 import Foundation
 import Logging
 import NIO
 import NIOConcurrencyHelpers
 import NIOFoundationCompat
 import NIOHTTP1
+import XCTest
 #if canImport(NIOSSL)
 import NIOSSL
 #endif
@@ -12,13 +12,13 @@ import NIOSSL
 
 final class MQTTNIOTests: XCTestCase {
     static let hostname = ProcessInfo.processInfo.environment["MOSQUITTO_SERVER"] ?? "localhost"
-    
+
     func connect(to client: MQTTClient) throws {
         _ = try client.connect().wait()
     }
 
     func testConnectWithWill() throws {
-        let client = createClient(identifier: "testConnectWithWill")
+        let client = self.createClient(identifier: "testConnectWithWill")
         _ = try client.connect(
             will: (topicName: "MyWillTopic", payload: ByteBufferAllocator().buffer(string: "Test payload"), retain: false)
         ).wait()
@@ -28,7 +28,7 @@ final class MQTTNIOTests: XCTestCase {
     }
 
     func testConnectWithUsernameAndPassword() throws {
-        let client = createClient(identifier: "testConnectWithWill", configuration: .init(userName: "adam", password: "password123"))
+        let client = self.createClient(identifier: "testConnectWithWill", configuration: .init(userName: "adam", password: "password123"))
         _ = try client.connect().wait()
         try client.ping().wait()
         try client.disconnect().wait()
@@ -36,7 +36,7 @@ final class MQTTNIOTests: XCTestCase {
     }
 
     func testWebsocketConnect() throws {
-        let client = createWebSocketClient(identifier: "testWebsocketConnect")
+        let client = self.createWebSocketClient(identifier: "testWebsocketConnect")
         _ = try client.connect().wait()
         try client.ping().wait()
         try client.disconnect().wait()
@@ -60,7 +60,7 @@ final class MQTTNIOTests: XCTestCase {
         try client.syncShutdownGracefully()
     }
     #endif
-    
+
     func testMQTTPublishQoS0() throws {
         let client = self.createClient(identifier: "testMQTTPublishQoS0")
         _ = try client.connect().wait()
@@ -196,6 +196,7 @@ final class MQTTNIOTests: XCTestCase {
         try client.syncShutdownGracefully()
         try client2.syncShutdownGracefully()
     }
+
     func testMQTTPublishToClientLargePayload() throws {
         let lock = Lock()
         var publishReceived: [MQTTPublishInfo] = []
@@ -252,7 +253,7 @@ final class MQTTNIOTests: XCTestCase {
 
         Thread.sleep(forTimeInterval: 5)
         XCTAssertTrue(disconnected.load())
-        
+
         try client2.disconnect().wait()
         try client.syncShutdownGracefully()
         try client2.syncShutdownGracefully()
@@ -388,11 +389,10 @@ final class MQTTNIOTests: XCTestCase {
         )
         _ = try client.connect().wait()
         try client.subscribe(to: [.init(topicFilter: "#", qos: .exactlyOnce)]).wait()
-        Thread.sleep(forTimeInterval: 5);
+        Thread.sleep(forTimeInterval: 5)
         try client.disconnect().wait()
         try client.syncShutdownGracefully()
     }
-
 
     // MARK: Helper variables and functions
 
@@ -460,26 +460,26 @@ final class MQTTNIOTests: XCTestCase {
     static var _tlsConfiguration: Result<MQTTClient.TLSConfigurationType, Error> = {
         do {
             #if os(Linux)
-            
+
             let rootCertificate = try NIOSSLCertificate.fromPEMFile(MQTTNIOTests.rootPath + "/mosquitto/certs/ca.crt")
             let certificate = try NIOSSLCertificate.fromPEMFile(MQTTNIOTests.rootPath + "/mosquitto/certs/client.crt")
             let privateKey = try NIOSSLPrivateKey(file: MQTTNIOTests.rootPath + "/mosquitto/certs/client.key", format: .pem)
             let tlsConfiguration = TLSConfiguration.forClient(
                 trustRoots: .certificates(rootCertificate),
-                certificateChain: certificate.map{ .certificate($0) },
+                certificateChain: certificate.map { .certificate($0) },
                 privateKey: .privateKey(privateKey)
             )
             return .success(.niossl(tlsConfiguration))
-            
+
             #else
-            
+
             let rootCertificate = try NIOSSLCertificate.fromPEMFile(MQTTNIOTests.rootPath + "/mosquitto/certs/ca.crt")
-            let trustRootCertificates = try rootCertificate.compactMap { SecCertificateCreateWithData(nil, Data(try $0.toDERBytes()) as CFData)}
+            let trustRootCertificates = try rootCertificate.compactMap { SecCertificateCreateWithData(nil, Data(try $0.toDERBytes()) as CFData) }
             let data = try Data(contentsOf: URL(fileURLWithPath: MQTTNIOTests.rootPath + "/mosquitto/certs/client.p12"))
             let options: [String: String] = [kSecImportExportPassphrase as String: "BoQOxr1HFWb5poBJ0Z9tY1xcB"]
             var rawItems: CFArray?
             let rt = SecPKCS12Import(data as CFData, options as CFDictionary, &rawItems)
-            let items = rawItems! as! Array<Dictionary<String, Any>>
+            let items = rawItems! as! [[String: Any]]
             let firstItem = items[0]
             let identity = firstItem[kSecImportItemIdentity as String] as! SecIdentity?
             let tlsConfiguration = TSTLSConfiguration(
@@ -487,15 +487,15 @@ final class MQTTNIOTests: XCTestCase {
                 clientIdentity: identity
             )
             return .success(.ts(tlsConfiguration))
-            
+
             #endif
         } catch {
             return .failure(error)
         }
     }()
-    
+
     static func getTLSConfiguration(withTrustRoots: Bool = true, withClientKey: Bool = true) throws -> MQTTClient.TLSConfigurationType {
-        switch _tlsConfiguration {
+        switch self._tlsConfiguration {
         case .success(let config):
             switch config {
             case .niossl(let config):
@@ -539,7 +539,6 @@ class OutboundStallHandler: ChannelOutboundHandler {
             context.write(data, promise: promise)
         }
     }
-
 }
 
 class InboundStallHandler: ChannelInboundHandler {
@@ -562,8 +561,7 @@ class InboundStallHandler: ChannelInboundHandler {
                 }
                 return
             }
-        } catch {
-        }
+        } catch {}
         context.fireChannelRead(data)
     }
 }

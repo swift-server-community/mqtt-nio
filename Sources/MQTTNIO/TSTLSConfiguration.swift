@@ -1,6 +1,6 @@
 //
 //  File.swift
-//  
+//
 //
 //  Created by Adam Fowler on 24/11/2020.
 //
@@ -11,7 +11,6 @@ import Network
 extension tls_protocol_version_t {
     var sslProtocol: SSLProtocol {
         switch self {
-        
         case .TLSv10:
             return .tlsProtocol1
         case .TLSv11:
@@ -57,10 +56,10 @@ public struct TSTLSConfiguration {
 
     /// The application protocols to use in the connection.
     public var applicationProtocols: [String]
-    
+
     /// Whether to verify remote certificates.
     public var certificateVerification: TSCertificateVerification
-    
+
     /// Initialize TSTLSConfiguration
     public init(
         minimumTLSVersion: tls_protocol_version_t = .TLSv10,
@@ -77,7 +76,6 @@ public struct TSTLSConfiguration {
         self.applicationProtocols = applicationProtocols
         self.certificateVerification = certificateVerification
     }
-    
 }
 
 extension TSTLSConfiguration {
@@ -99,20 +97,20 @@ extension TSTLSConfiguration {
                 sec_protocol_options_set_tls_max_version(options.securityProtocolOptions, maximumTLSVersion.sslProtocol)
             }
         }
-        
+
         if let clientIdentity = self.clientIdentity, let secClientIdentity = sec_identity_create(clientIdentity) {
             sec_protocol_options_set_local_identity(options.securityProtocolOptions, secClientIdentity)
         }
-        
-        applicationProtocols.forEach {
+
+        self.applicationProtocols.forEach {
             sec_protocol_options_add_tls_application_protocol(options.securityProtocolOptions, $0)
         }
-        
-        if certificateVerification != .fullVerification || trustRoots != nil {
+
+        if self.certificateVerification != .fullVerification || self.trustRoots != nil {
             // add verify block to control certificate verification
             sec_protocol_options_set_verify_block(
                 options.securityProtocolOptions,
-                { sec_metadata, sec_trust, sec_protocol_verify_complete in
+                { _, sec_trust, sec_protocol_verify_complete in
                     guard self.certificateVerification != .none else {
                         sec_protocol_verify_complete(true)
                         return
@@ -123,20 +121,20 @@ extension TSTLSConfiguration {
                         SecTrustSetAnchorCertificates(trust, trustRootCertificates as CFArray)
                     }
                     if #available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *) {
-                        SecTrustEvaluateAsyncWithError(trust, Self.tlsDispatchQueue) { (trust, result, error) in
+                        SecTrustEvaluateAsyncWithError(trust, Self.tlsDispatchQueue) { _, result, error in
                             if let error = error {
                                 print("Trust failed: \(error.localizedDescription)")
                             }
                             sec_protocol_verify_complete(result)
                         }
                     } else {
-                        SecTrustEvaluateAsync(trust, Self.tlsDispatchQueue) { (trust, result) in
-                             switch result {
-                             case .proceed, .unspecified:
+                        SecTrustEvaluateAsync(trust, Self.tlsDispatchQueue) { _, result in
+                            switch result {
+                            case .proceed, .unspecified:
                                 sec_protocol_verify_complete(true)
-                             default:
+                            default:
                                 sec_protocol_verify_complete(false)
-                             }
+                            }
                         }
                     }
                 }, Self.tlsDispatchQueue

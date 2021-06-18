@@ -1,6 +1,6 @@
-import XCTest
-import NIO
 @testable import MQTTNIO
+import NIO
+import XCTest
 
 final class CoreMQTTTests: XCTestCase {
     func testConnect() throws {
@@ -50,4 +50,3 @@ final class CoreMQTTTests: XCTestCase {
         XCTAssertEqual(packet.remainingData.readableBytes, 29)
     }
 }
-

@@ -45,8 +45,7 @@ struct MQTTConnectInfo {
 }
 
 /// MQTT PUBLISH packet parameters.
-public struct MQTTPublishInfo
-{
+public struct MQTTPublishInfo {
     /// Quality of Service for message.
     public let qos: MQTTQoS
 
@@ -70,12 +69,11 @@ public struct MQTTPublishInfo
         self.payload = payload
     }
 
-    static let emptyByteBuffer = ByteBufferAllocator().buffer(capacity: 0);
+    static let emptyByteBuffer = ByteBufferAllocator().buffer(capacity: 0)
 }
 
 /// MQTT SUBSCRIBE packet parameters.
-public struct MQTTSubscribeInfo
-{
+public struct MQTTSubscribeInfo {
     /// Topic filter to subscribe to.
     public let topicFilter: String
 
@@ -89,8 +87,7 @@ public struct MQTTSubscribeInfo
 }
 
 /// MQTT incoming packet parameters.
-struct MQTTPacketInfo
-{
+struct MQTTPacketInfo {
     /// Type of incoming MQTT packet.
     let type: MQTTPacketType
 

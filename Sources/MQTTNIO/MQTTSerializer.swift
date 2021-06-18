@@ -8,6 +8,7 @@ enum MQTTSerializer {
             case badResponse
             case incompletePacket
         }
+
         let error: ErrorEnum
 
         init(_ error: ErrorEnum) {
@@ -39,6 +40,7 @@ enum MQTTSerializer {
         static let qosShift: UInt8 = 1
         static let qosMask: UInt8 = 6
     }
+
     /// calculate size of connect packet
     static func calculateConnectPacketSize(connectInfo: MQTTConnectInfo, publishInfo: MQTTPublishInfo?) -> Int {
         // variable header
@@ -66,7 +68,7 @@ enum MQTTSerializer {
 
     // write connect packet
     static func writeConnect(connectInfo: MQTTConnectInfo, willInfo: MQTTPublishInfo?, to byteBuffer: inout ByteBuffer) throws {
-        let length = calculateConnectPacketSize(connectInfo: connectInfo, publishInfo: willInfo)
+        let length = self.calculateConnectPacketSize(connectInfo: connectInfo, publishInfo: willInfo)
 
         writeFixedHeader(packetType: .CONNECT, size: length, to: &byteBuffer)
         // variable header
@@ -126,7 +128,7 @@ enum MQTTSerializer {
         flags |= publishInfo.qos.rawValue << PublishFlags.qosShift
         flags |= publishInfo.dup ? PublishFlags.duplicate : 0
 
-        let length = calculatePublishPacketSize(publishInfo: publishInfo)
+        let length = self.calculatePublishPacketSize(publishInfo: publishInfo)
 
         writeFixedHeader(packetType: .PUBLISH, flags: flags, size: length, to: &byteBuffer)
         // write variable header
@@ -145,13 +147,13 @@ enum MQTTSerializer {
         let size = 2
         // payload
         return subscribeInfos.reduce(size) {
-            $0 + 2 + $1.topicFilter.utf8.count + 1  // topic filter length + topic filter + qos
+            $0 + 2 + $1.topicFilter.utf8.count + 1 // topic filter length + topic filter + qos
         }
     }
 
     /// write subscribe packet
     static func writeSubscribe(subscribeInfos: [MQTTSubscribeInfo], packetId: UInt16, to byteBuffer: inout ByteBuffer) throws {
-        let length = calculateSubscribePacketSize(subscribeInfos: subscribeInfos)
+        let length = self.calculateSubscribePacketSize(subscribeInfos: subscribeInfos)
 
         writeFixedHeader(packetType: .SUBSCRIBE, size: length, to: &byteBuffer)
         // write variable header
@@ -169,13 +171,13 @@ enum MQTTSerializer {
         let size = 2
         // payload
         return subscribeInfos.reduce(size) {
-            $0 + 2 + $1.topicFilter.utf8.count  // topic filter length + topic filter
+            $0 + 2 + $1.topicFilter.utf8.count // topic filter length + topic filter
         }
     }
 
     /// write unsubscribe packet
     static func writeUnsubscribe(subscribeInfos: [MQTTSubscribeInfo], packetId: UInt16, to byteBuffer: inout ByteBuffer) throws {
-        let length = calculateUnsubscribePacketSize(subscribeInfos: subscribeInfos)
+        let length = self.calculateUnsubscribePacketSize(subscribeInfos: subscribeInfos)
 
         writeFixedHeader(packetType: .UNSUBSCRIBE, size: length, to: &byteBuffer)
         // write variable header
@@ -247,12 +249,12 @@ enum MQTTSerializer {
     /// everything
     static func readIncomingPacket(from byteBuffer: inout ByteBuffer) throws -> MQTTPacketInfo {
         guard let byte: UInt8 = byteBuffer.readInteger() else { throw InternalError.incompletePacket }
-        guard let type = MQTTPacketType(rawValue: byte) ?? MQTTPacketType(rawValue: byte & 0xf0) else {
+        guard let type = MQTTPacketType(rawValue: byte) ?? MQTTPacketType(rawValue: byte & 0xF0) else {
             throw MQTTError.badParameter
         }
         let length = try readLength(from: &byteBuffer)
         guard let bytes = byteBuffer.readSlice(length: length) else { throw InternalError.incompletePacket }
-        return MQTTPacketInfo(type: type, flags: byte & 0xf, remainingData: bytes)
+        return MQTTPacketInfo(type: type, flags: byte & 0xF, remainingData: bytes)
     }
 }
 
@@ -260,14 +262,14 @@ extension MQTTSerializer {
     /// write fixed header for packet
     static func writeFixedHeader(packetType: MQTTPacketType, flags: UInt8 = 0, size: Int, to byteBuffer: inout ByteBuffer) {
         byteBuffer.writeInteger(packetType.rawValue | flags)
-        writeLength(size, to: &byteBuffer)
+        self.writeLength(size, to: &byteBuffer)
     }
 
     /// write variable length
     static func writeLength(_ length: Int, to byteBuffer: inout ByteBuffer) {
         var length = length
         repeat {
-            let byte = UInt8(length & 0x7f)
+            let byte = UInt8(length & 0x7F)
             length >>= 7
             if length != 0 {
                 byteBuffer.writeInteger(byte | 0x80)
@@ -291,12 +293,12 @@ extension MQTTSerializer {
         var shift = 0
         repeat {
             guard let byte: UInt8 = byteBuffer.readInteger() else { throw InternalError.incompletePacket }
-            length += (Int(byte) & 0x7f) << shift
+            length += (Int(byte) & 0x7F) << shift
             if byte & 0x80 == 0 {
                 break
             }
             shift += 7
-        } while(true)
+        } while true
         return length
     }
 

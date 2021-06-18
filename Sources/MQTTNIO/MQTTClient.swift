@@ -11,7 +11,7 @@ import NIOSSL
 import NIOTransportServices
 
 /// Swift NIO MQTT Client
-final public class MQTTClient {
+public final class MQTTClient {
     /// MQTTClient errors
     enum Error: Swift.Error {
         /// You called connect on a client that is already connected to the broker
@@ -35,7 +35,7 @@ final public class MQTTClient {
         /// You have provided the wrong TLS configuration for the EventLoopGroup you provided
         case wrongTLSConfig
     }
-    
+
     /// EventLoopGroup used by MQTTCllent
     public let eventLoopGroup: EventLoopGroup
     /// How was EventLoopGroup provided to the client
@@ -54,12 +54,12 @@ final public class MQTTClient {
     /// Connection client is using
     var connection: MQTTConnection? {
         get {
-            lock.withLock {
+            self.lock.withLock {
                 _connection
             }
         }
         set {
-            lock.withLock {
+            self.lock.withLock {
                 _connection = newValue
             }
         }
@@ -71,11 +71,11 @@ final public class MQTTClient {
         }
         return self.host
     }
-    
+
     private let globalPacketId = NIOAtomic<UInt16>.makeAtomic(value: 1)
     /// default logger that logs nothing
     private static let loggingDisabled = Logger(label: "MQTT-do-not-log", factory: { _ in SwiftLogNoOpLogHandler() })
-    
+
     /// Create MQTT client
     /// - Parameters:
     ///   - host: host name
@@ -95,7 +95,7 @@ final public class MQTTClient {
         if let port = port {
             self.port = port
         } else {
-            switch (configuration.useSSL, configuration.useWebSockets){
+            switch (configuration.useSSL, configuration.useWebSockets) {
             case (false, false):
                 self.port = 1883
             case (true, false):
@@ -123,19 +123,19 @@ final public class MQTTClient {
                 self.eventLoopGroup = NIOTSEventLoopGroup()
             }
             #else
-                self.eventLoopGroup = MultiThreadedEventLoopGroup(numberOfThreads: 1)
+            self.eventLoopGroup = MultiThreadedEventLoopGroup(numberOfThreads: 1)
             #endif
-        case.shared(let elg):
+        case .shared(let elg):
             self.eventLoopGroup = elg
         }
     }
 
     /// Close down client. Must be called before the client is destroyed
     public func syncShutdownGracefully() throws {
-        try connection?.close().wait()
+        try self.connection?.close().wait()
         switch self.eventLoopGroupProvider {
         case .createNew:
-            try eventLoopGroup.syncShutdownGracefully()
+            try self.eventLoopGroup.syncShutdownGracefully()
         case .shared:
             break
         }
@@ -157,19 +157,19 @@ final public class MQTTClient {
         cleanSession: Bool = true,
         will: (topicName: String, payload: ByteBuffer, retain: Bool)? = nil
     ) -> EventLoopFuture<Bool> {
-        //guard self.connection == nil else { return eventLoopGroup.next().makeFailedFuture(Error.alreadyConnected) }
+        // guard self.connection == nil else { return eventLoopGroup.next().makeFailedFuture(Error.alreadyConnected) }
 
         let info = MQTTConnectInfo(
             cleanSession: cleanSession,
             keepAliveSeconds: UInt16(configuration.keepAliveInterval.nanoseconds / 1_000_000_000),
             clientIdentifier: self.identifier,
-            userName: configuration.userName,
-            password: configuration.password
+            userName: self.configuration.userName,
+            password: self.configuration.password
         )
         let publish = will.map { MQTTPublishInfo(qos: .atMostOnce, retain: $0.retain, dup: false, topicName: $0.topicName, payload: $0.payload) }
 
         // work out pingreq interval
-        let pingInterval = configuration.pingInterval ?? TimeAmount.seconds(max(Int64(info.keepAliveSeconds - 5), 5))
+        let pingInterval = self.configuration.pingInterval ?? TimeAmount.seconds(max(Int64(info.keepAliveSeconds - 5), 5))
 
         return MQTTConnection.create(client: self, pingInterval: pingInterval)
             .flatMap { connection -> EventLoopFuture<MQTTInboundMessage> in
@@ -204,7 +204,7 @@ final public class MQTTClient {
     ///     when message is sent, when PUBACK is received or when PUBREC and following PUBCOMP are
     ///     received
     public func publish(to topicName: String, payload: ByteBuffer, qos: MQTTQoS, retain: Bool = false) -> EventLoopFuture<Void> {
-        guard let connection = self.connection else { return eventLoopGroup.next().makeFailedFuture(Error.noConnection) }
+        guard let connection = self.connection else { return self.eventLoopGroup.next().makeFailedFuture(Error.noConnection) }
 
         let info = MQTTPublishInfo(qos: qos, retain: retain, dup: false, topicName: topicName, payload: payload)
         if info.qos == .atMostOnce {
@@ -213,7 +213,7 @@ final public class MQTTClient {
         }
 
         let packetId = self.updatePacketId()
-        return connection.sendMessageWithRetry(MQTTPublishMessage(publish: info, packetId: packetId), maxRetryAttempts: configuration.maxRetryAttempts) { message in
+        return connection.sendMessageWithRetry(MQTTPublishMessage(publish: info, packetId: packetId), maxRetryAttempts: self.configuration.maxRetryAttempts) { message in
             guard message.packetId == packetId else { return false }
             if info.qos == .atLeastOnce {
                 guard message.type == .PUBACK else {
@@ -245,10 +245,10 @@ final public class MQTTClient {
     /// - Parameter subscriptions: Subscription infos
     /// - Returns: Future waiting for subscribe to complete. Will wait for SUBACK message from server
     public func subscribe(to subscriptions: [MQTTSubscribeInfo]) -> EventLoopFuture<Void> {
-        guard let connection = self.connection else { return eventLoopGroup.next().makeFailedFuture(Error.noConnection) }
+        guard let connection = self.connection else { return self.eventLoopGroup.next().makeFailedFuture(Error.noConnection) }
         let packetId = self.updatePacketId()
 
-        return connection.sendMessageWithRetry(MQTTSubscribeMessage(subscriptions: subscriptions, packetId: packetId), maxRetryAttempts: configuration.maxRetryAttempts) { message in
+        return connection.sendMessageWithRetry(MQTTSubscribeMessage(subscriptions: subscriptions, packetId: packetId), maxRetryAttempts: self.configuration.maxRetryAttempts) { message in
             guard message.packetId == packetId else { return false }
             guard message.type == .SUBACK else { throw Error.unexpectedMessage }
             return true
@@ -260,11 +260,11 @@ final public class MQTTClient {
     /// - Parameter subscriptions: List of subscriptions to unsubscribe from
     /// - Returns: Future waiting for unsubscribe to complete. Will wait for UNSUBACK message from server
     public func unsubscribe(from subscriptions: [String]) -> EventLoopFuture<Void> {
-        guard let connection = self.connection else { return eventLoopGroup.next().makeFailedFuture(Error.noConnection) }
+        guard let connection = self.connection else { return self.eventLoopGroup.next().makeFailedFuture(Error.noConnection) }
         let packetId = self.updatePacketId()
 
         let subscribeInfos = subscriptions.map { MQTTSubscribeInfo(topicFilter: $0, qos: .atLeastOnce) }
-        return connection.sendMessageWithRetry(MQTTUnsubscribeMessage(subscriptions: subscribeInfos, packetId: packetId), maxRetryAttempts: configuration.maxRetryAttempts) { message in
+        return connection.sendMessageWithRetry(MQTTUnsubscribeMessage(subscriptions: subscribeInfos, packetId: packetId), maxRetryAttempts: self.configuration.maxRetryAttempts) { message in
             guard message.packetId == packetId else { return false }
             guard message.type == .UNSUBACK else { throw Error.unexpectedMessage }
             return true
@@ -280,9 +280,9 @@ final public class MQTTClient {
     ///
     /// - Returns: Future waiting for ping response
     public func ping() -> EventLoopFuture<Void> {
-        guard let connection = self.connection else { return eventLoopGroup.next().makeFailedFuture(Error.noConnection) }
+        guard let connection = self.connection else { return self.eventLoopGroup.next().makeFailedFuture(Error.noConnection) }
 
-        return connection.sendMessageWithRetry(MQTTPingreqMessage(), maxRetryAttempts: configuration.maxRetryAttempts) { message in
+        return connection.sendMessageWithRetry(MQTTPingreqMessage(), maxRetryAttempts: self.configuration.maxRetryAttempts) { message in
             guard message.type == .PINGRESP else { return false }
             return true
         }
@@ -292,7 +292,7 @@ final public class MQTTClient {
     /// Disconnect from server
     /// - Returns: Future waiting on disconnect message to be sent
     public func disconnect() -> EventLoopFuture<Void> {
-        guard let connection = self.connection else { return eventLoopGroup.next().makeFailedFuture(Error.noConnection) }
+        guard let connection = self.connection else { return self.eventLoopGroup.next().makeFailedFuture(Error.noConnection) }
 
         return connection.sendMessageNoWait(MQTTDisconnectMessage())
             .flatMap {
@@ -304,27 +304,27 @@ final public class MQTTClient {
 
     /// Return is client has an active connection to broker
     public func isActive() -> Bool {
-        return connection?.channel.isActive ?? false
+        return self.connection?.channel.isActive ?? false
     }
 
     /// Add named publish listener. Called whenever a PUBLISH message is received from the server
-    public func addPublishListener(named name: String, _ listener: @escaping (Result<MQTTPublishInfo, Swift.Error>) -> ()) {
-        publishListeners.addListener(named: name, listener: listener)
+    public func addPublishListener(named name: String, _ listener: @escaping (Result<MQTTPublishInfo, Swift.Error>) -> Void) {
+        self.publishListeners.addListener(named: name, listener: listener)
     }
 
     /// Remove named publish listener
     public func removePublishListener(named name: String) {
-        publishListeners.removeListener(named: name)
+        self.publishListeners.removeListener(named: name)
     }
 
     /// Add close listener. Called whenever the connection is closed
-    public func addCloseListener(named name: String, _ listener: @escaping (Result<Void, Swift.Error>) -> ()) {
-        closeListeners.addListener(named: name, listener: listener)
+    public func addCloseListener(named name: String, _ listener: @escaping (Result<Void, Swift.Error>) -> Void) {
+        self.closeListeners.addListener(named: name, listener: listener)
     }
 
     /// Remove named close listener
     public func removeCloseListener(named name: String) {
-        closeListeners.removeListener(named: name)
+        self.closeListeners.removeListener(named: name)
     }
 
     private func updatePacketId() -> UInt16 {

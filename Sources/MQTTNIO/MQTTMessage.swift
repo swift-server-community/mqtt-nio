@@ -14,7 +14,6 @@ protocol MQTTOutboundWithPacketIdMessage: MQTTOutboundMessage {
     var packetId: UInt16 { get }
 }
 
-
 struct MQTTConnectMessage: MQTTOutboundMessage {
     var type: MQTTPacketType { .CONNECT }
     var description: String { "CONNECT" }
@@ -23,7 +22,7 @@ struct MQTTConnectMessage: MQTTOutboundMessage {
     let will: MQTTPublishInfo?
 
     func serialize(to byteBuffer: inout ByteBuffer) throws {
-        try MQTTSerializer.writeConnect(connectInfo: connect, willInfo: will, to: &byteBuffer)
+        try MQTTSerializer.writeConnect(connectInfo: self.connect, willInfo: self.will, to: &byteBuffer)
     }
 }
 
@@ -35,7 +34,7 @@ struct MQTTPublishMessage: MQTTOutboundWithPacketIdMessage, MQTTInboundMessage {
     let packetId: UInt16
 
     func serialize(to byteBuffer: inout ByteBuffer) throws {
-        try MQTTSerializer.writePublish(publishInfo: publish, packetId: packetId, to: &byteBuffer)
+        try MQTTSerializer.writePublish(publishInfo: self.publish, packetId: self.packetId, to: &byteBuffer)
     }
 }
 
@@ -47,7 +46,7 @@ struct MQTTSubscribeMessage: MQTTOutboundWithPacketIdMessage {
     let packetId: UInt16
 
     func serialize(to byteBuffer: inout ByteBuffer) throws {
-        try MQTTSerializer.writeSubscribe(subscribeInfos: subscriptions, packetId: packetId, to: &byteBuffer)
+        try MQTTSerializer.writeSubscribe(subscribeInfos: self.subscriptions, packetId: self.packetId, to: &byteBuffer)
     }
 }
 
@@ -59,17 +58,17 @@ struct MQTTUnsubscribeMessage: MQTTOutboundWithPacketIdMessage {
     let packetId: UInt16
 
     func serialize(to byteBuffer: inout ByteBuffer) throws {
-        try MQTTSerializer.writeUnsubscribe(subscribeInfos: subscriptions, packetId: packetId, to: &byteBuffer)
+        try MQTTSerializer.writeUnsubscribe(subscribeInfos: self.subscriptions, packetId: self.packetId, to: &byteBuffer)
     }
 }
 
 struct MQTTAckMessage: MQTTOutboundWithPacketIdMessage, MQTTInboundMessage {
-    var description: String { "ACK \(type)" }
+    var description: String { "ACK \(self.type)" }
     let type: MQTTPacketType
     let packetId: UInt16
 
     func serialize(to byteBuffer: inout ByteBuffer) throws {
-        try MQTTSerializer.writeAck(packetType: type, packetId: packetId, to: &byteBuffer)
+        try MQTTSerializer.writeAck(packetType: self.type, packetId: self.packetId, to: &byteBuffer)
     }
 }
 
@@ -102,5 +101,3 @@ struct MQTTConnAckMessage: MQTTInboundMessage {
     let returnCode: UInt8
     let sessionPresent: Bool
 }
-
-

@@ -18,7 +18,7 @@ final class WebSocketHandler: ChannelDuplexHandler {
 
     var webSocketFrameSequence: WebSocketFrameSequence?
     var waitingOnPong: Bool = false
-    var pingInterval: TimeAmount? = nil
+    var pingInterval: TimeAmount?
 
     /// Write bytebuffer as WebSocket frame
     func write(context: ChannelHandlerContext, data: NIOAny, promise: EventLoopPromise<Void>?) {
@@ -87,7 +87,7 @@ final class WebSocketHandler: ChannelDuplexHandler {
         fin: Bool = true,
         promise: EventLoopPromise<Void>? = nil
     ) {
-        let maskKey = makeMaskKey()
+        let maskKey = self.makeMaskKey()
         let frame = WebSocketFrame(fin: fin, opcode: opcode, maskKey: maskKey, data: buffer)
         context.writeAndFlush(wrapOutboundOut(frame), promise: promise)
     }
@@ -97,7 +97,7 @@ final class WebSocketHandler: ChannelDuplexHandler {
         guard context.channel.isActive, let pingInterval = pingInterval else {
             return
         }
-        if waitingOnPong {
+        if self.waitingOnPong {
             // We never received a pong from our last ping, so the connection has timed out
             let promise = context.eventLoop.makePromise(of: Void.self)
             self.close(context: context, code: .unknown(1006), promise: promise)
@@ -122,7 +122,8 @@ final class WebSocketHandler: ChannelDuplexHandler {
     private func pong(context: ChannelHandlerContext, frame: WebSocketFrame) {
         var frameData = frame.unmaskedData
         guard let frameDataString = frameData.readString(length: Self.pingData.count),
-              frameDataString == Self.pingData else {
+              frameDataString == Self.pingData
+        else {
             self.close(context: context, code: .goingAway, promise: nil)
             return
         }
@@ -152,12 +153,12 @@ final class WebSocketHandler: ChannelDuplexHandler {
 
     /// Close websocket connection
     public func close(context: ChannelHandlerContext, code: WebSocketErrorCode = .goingAway, promise: EventLoopPromise<Void>?) {
-        guard isClosed == false else {
+        guard self.isClosed == false else {
             promise?.succeed(())
             return
         }
         self.isClosed = true
-        
+
         let codeAsInt = UInt16(webSocketErrorCode: code)
         let codeToSend: WebSocketErrorCode
         if codeAsInt == 1005 || codeAsInt == 1006 {
@@ -174,7 +175,7 @@ final class WebSocketHandler: ChannelDuplexHandler {
     }
 
     func channelInactive(context: ChannelHandlerContext) {
-        close(context: context, code: .unknown(1006), promise: nil)
+        self.close(context: context, code: .unknown(1006), promise: nil)
 
         // We always forward the error on to let others see it.
         context.fireChannelInactive()
@@ -187,7 +188,7 @@ final class WebSocketHandler: ChannelDuplexHandler {
         } else {
             errorCode = .unexpectedServerError
         }
-        close(context: context, code: errorCode, promise: nil)
+        self.close(context: context, code: errorCode, promise: nil)
 
         // We always forward the error on to let others see it.
         context.fireErrorCaught(error)
@@ -207,7 +208,7 @@ struct WebSocketFrameSequence {
 
     mutating func append(_ frame: WebSocketFrame) {
         var data = frame.unmaskedData
-        switch type {
+        switch self.type {
         case .binary, .text:
             self.buffer.writeBuffer(&data)
         default: break
@@ -226,4 +227,3 @@ extension WebSocketErrorCode {
         }
     }
 }
-

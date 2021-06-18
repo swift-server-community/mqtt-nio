@@ -11,19 +11,19 @@ final class MQTTTask {
         self.checkInbound = checkInbound
         self.timeout = timeout
     }
-    
+
     func succeed(_ response: MQTTInboundMessage) {
-        promise.succeed(response)
+        self.promise.succeed(response)
     }
-    
+
     func fail(_ error: Error) {
-        promise.fail(error)
+        self.promise.fail(error)
     }
 }
 
 final class MQTTTaskHandler: ChannelInboundHandler, RemovableChannelHandler {
     typealias InboundIn = MQTTInboundMessage
-    
+
     let task: MQTTTask
     let channel: Channel
     var timeoutTask: Scheduled<Void>?
@@ -35,7 +35,7 @@ final class MQTTTaskHandler: ChannelInboundHandler, RemovableChannelHandler {
     }
 
     public func handlerAdded(context: ChannelHandlerContext) {
-        addTimeoutTask()
+        self.addTimeoutTask()
     }
 
     public func handlerRemoved(context: ChannelHandlerContext) {
@@ -45,7 +45,7 @@ final class MQTTTaskHandler: ChannelInboundHandler, RemovableChannelHandler {
     func channelRead(context: ChannelHandlerContext, data: NIOAny) {
         let response = self.unwrapInboundIn(data)
         do {
-            if try task.checkInbound(response) {
+            if try self.task.checkInbound(response) {
                 self.channel.pipeline.removeHandler(self).whenSuccess { _ in
                     self.timeoutTask?.cancel()
                     self.task.succeed(response)
@@ -62,7 +62,7 @@ final class MQTTTaskHandler: ChannelInboundHandler, RemovableChannelHandler {
 
     func errorCaught(context: ChannelHandlerContext, error: Error) {
         self.timeoutTask?.cancel()
-        channel.pipeline.removeHandler(self).whenSuccess { _ in
+        self.channel.pipeline.removeHandler(self).whenSuccess { _ in
             self.task.fail(error)
         }
     }

@@ -20,8 +20,8 @@ final class MQTTConnection {
     }
 
     static func create(client: MQTTClient, pingInterval: TimeAmount) -> EventLoopFuture<MQTTConnection> {
-        return createBootstrap(client: client, pingInterval: pingInterval)
-            .map { MQTTConnection(channel: $0, timeout: client.configuration.timeout)}
+        return self.createBootstrap(client: client, pingInterval: pingInterval)
+            .map { MQTTConnection(channel: $0, timeout: client.configuration.timeout) }
     }
 
     static func createBootstrap(client: MQTTClient, pingInterval: TimeAmount) -> EventLoopFuture<Channel> {
@@ -37,7 +37,7 @@ final class MQTTConnection {
                     // Work out what handlers to add
                     var handlers: [ChannelHandler] = [
                         MQTTEncodeHandler(logger: client.logger),
-                        ByteToMessageHandler(ByteToMQTTMessageDecoder(client: client))
+                        ByteToMessageHandler(ByteToMQTTMessageDecoder(client: client)),
                     ]
                     if !client.configuration.disablePing {
                         handlers = [PingreqHandler(client: client, timeout: pingInterval)] + handlers
@@ -75,7 +75,8 @@ final class MQTTConnection {
         #if canImport(Network)
         // if eventLoop is compatible with NIOTransportServices create a NIOTSConnectionBootstrap
         if #available(OSX 10.14, iOS 12.0, tvOS 12.0, watchOS 6.0, *),
-           let tsBootstrap = NIOTSConnectionBootstrap(validatingGroup: client.eventLoopGroup) {
+           let tsBootstrap = NIOTSConnectionBootstrap(validatingGroup: client.eventLoopGroup)
+        {
             // create NIOClientTCPBootstrap with NIOTS TLS provider
             let options: NWProtocolTLS.Options
             switch client.configuration.tlsConfiguration {
@@ -131,9 +132,9 @@ final class MQTTConnection {
             upgradePromise: promise
         )
         // create random key for request key
-        let requestKey = (0..<16).map { _ in UInt8.random(in: .min ..< .max)}
+        let requestKey = (0..<16).map { _ in UInt8.random(in: .min ..< .max) }
         let websocketUpgrader = NIOWebSocketClientUpgrader(
-            requestKey: Data(requestKey).base64EncodedString()) { channel, req in
+            requestKey: Data(requestKey).base64EncodedString()) { channel, _ in
             let future = channel.pipeline.addHandler(WebSocketHandler())
                 .flatMap { _ in
                     afterHandlerAdded()
@@ -143,23 +144,23 @@ final class MQTTConnection {
         }
 
         let config: NIOHTTPClientUpgradeConfiguration = (
-            upgraders: [ websocketUpgrader ],
+            upgraders: [websocketUpgrader],
             completionHandler: { _ in
                 channel.pipeline.removeHandler(httpHandler, promise: nil)
-        })
+            }
+        )
 
         // add HTTP handler with web socket upgrade
         return channel.pipeline.addHTTPClientHandlers(withClientUpgrade: config).flatMap {
             channel.pipeline.addHandler(httpHandler)
         }
-
     }
 
     func sendMessageWithRetry(_ message: MQTTOutboundMessage, maxRetryAttempts: Int, checkInbound: @escaping (MQTTInboundMessage) throws -> Bool) -> EventLoopFuture<MQTTInboundMessage> {
-        let promise = channel.eventLoop.makePromise(of: MQTTInboundMessage.self)
+        let promise = self.channel.eventLoop.makePromise(of: MQTTInboundMessage.self)
 
         func _sendMessage(_ message: MQTTOutboundMessage, attempt: Int) {
-            sendMessage(message, checkInbound: checkInbound)
+            self.sendMessage(message, checkInbound: checkInbound)
                 .map { response in
                     promise.succeed(response)
                 }
@@ -189,14 +190,14 @@ final class MQTTConnection {
     }
 
     func sendMessageNoWait(_ message: MQTTOutboundMessage) -> EventLoopFuture<Void> {
-        return channel.writeAndFlush(message)
+        return self.channel.writeAndFlush(message)
     }
 
     func close() -> EventLoopFuture<Void> {
-        if channel.isActive {
-            return channel.close()
+        if self.channel.isActive {
+            return self.channel.close()
         } else {
-            return channel.eventLoop.makeSucceededFuture(())
+            return self.channel.eventLoop.makeSucceededFuture(())
         }
     }
 
@@ -214,5 +215,5 @@ final class MQTTConnection {
         return task.promise.futureResult
     }
 
-    var closeFuture: EventLoopFuture<Void> { channel.closeFuture }
+    var closeFuture: EventLoopFuture<Void> { self.channel.closeFuture }
 }
