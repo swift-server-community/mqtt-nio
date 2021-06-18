@@ -7,8 +7,9 @@ enum MQTTError: Error {
         case serverUnavailable = 3
         case badUserNameOrPassword = 4
         case notAuthorized = 5
-        case unrecognizedReturnValue = 0xff
+        case unrecognizedReturnValue = 0xFF
     }
+
     /// You called connect on a client that is already connected to the broker
     case alreadyConnected
     /// We received an unexpected message while connecting
