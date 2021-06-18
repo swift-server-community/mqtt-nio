@@ -25,4 +25,3 @@ enum MQTTError: Error {
     /// Packet received contained invalid entries
     case badResponse
 }
-

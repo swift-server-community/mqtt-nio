@@ -72,7 +72,7 @@ struct ByteToMQTTMessageDecoder: ByteToMessageDecoder {
             default:
                 throw MQTTError.decodeError
             }
-            client.logger.debug("MQTT Out", metadata: ["mqtt_message": .string("\(message)"), "mqtt_packet_id": .string("\(message.packetId)")])
+            self.client.logger.debug("MQTT Out", metadata: ["mqtt_message": .string("\(message)"), "mqtt_packet_id": .string("\(message.packetId)")])
             context.fireChannelRead(wrapInboundOut(message))
         } catch MQTTSerializer.InternalError.incompletePacket {
             return .needMoreData
