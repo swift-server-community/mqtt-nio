@@ -44,8 +44,8 @@ struct ByteToMQTTMessageDecoder: ByteToMessageDecoder {
             case .PUBLISH:
                 do {
                     let publishMessage = try MQTTPublishPacket.read(from: packet)
-                    //let publish = try MQTTSerializer.readPublish(from: packet)
-                    //let publishMessage = MQTTPublishPacket(publish: publish.publishInfo, packetId: publish.packetId)
+                    // let publish = try MQTTSerializer.readPublish(from: packet)
+                    // let publishMessage = MQTTPublishPacket(publish: publish.publishInfo, packetId: publish.packetId)
                     self.client.logger.debug("MQTT In", metadata: [
                         "mqtt_message": .string("\(publishMessage)"),
                         "mqtt_packet_id": .string("\(publishMessage.packetId)"),

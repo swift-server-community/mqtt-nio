@@ -109,20 +109,20 @@ struct MQTTConnectPacket: MQTTPacket {
         // protocol level
         byteBuffer.writeInteger(UInt8(4))
         // connect flags
-        var flags = connect.cleanSession ? ConnectFlags.cleanSession : 0
+        var flags = self.connect.cleanSession ? ConnectFlags.cleanSession : 0
         if let will = will {
             flags |= ConnectFlags.willFlag
             flags |= will.retain ? ConnectFlags.willRetain : 0
             flags |= will.qos.rawValue << ConnectFlags.willQoSShift
         }
-        flags |= connect.password != nil ? ConnectFlags.password : 0
-        flags |= connect.userName != nil ? ConnectFlags.userName : 0
+        flags |= self.connect.password != nil ? ConnectFlags.password : 0
+        flags |= self.connect.userName != nil ? ConnectFlags.userName : 0
         byteBuffer.writeInteger(flags)
         // keep alive
-        byteBuffer.writeInteger(connect.keepAliveSeconds)
+        byteBuffer.writeInteger(self.connect.keepAliveSeconds)
 
         // payload
-        try Self.writeString(connect.clientIdentifier, to: &byteBuffer)
+        try Self.writeString(self.connect.clientIdentifier, to: &byteBuffer)
         if let will = will {
             try Self.writeString(will.topicName, to: &byteBuffer)
             try Self.writeBuffer(will.payload, to: &byteBuffer)
@@ -134,7 +134,7 @@ struct MQTTConnectPacket: MQTTPacket {
             try Self.writeString(password, to: &byteBuffer)
         }
     }
-    
+
     /// read connect packet from incoming packet (not implemented)
     static func read(from: MQTTIncomingPacket) throws -> Self {
         throw InternalError.notImplemented
@@ -146,7 +146,7 @@ struct MQTTConnectPacket: MQTTPacket {
         var size = 10
         // payload
         // client identifier
-        size += connect.clientIdentifier.utf8.count + 2
+        size += self.connect.clientIdentifier.utf8.count + 2
         // will publish
         if let will = will {
             // will topic
@@ -181,21 +181,21 @@ struct MQTTPublishPacket: MQTTPacket {
     let packetId: UInt16
 
     func write(to byteBuffer: inout ByteBuffer) throws {
-        var flags: UInt8 = publish.retain ? PublishFlags.retain : 0
-        flags |= publish.qos.rawValue << PublishFlags.qosShift
-        flags |= publish.dup ? PublishFlags.duplicate : 0
+        var flags: UInt8 = self.publish.retain ? PublishFlags.retain : 0
+        flags |= self.publish.qos.rawValue << PublishFlags.qosShift
+        flags |= self.publish.dup ? PublishFlags.duplicate : 0
 
         writeFixedHeader(packetType: .PUBLISH, flags: flags, size: self.packetSize, to: &byteBuffer)
         // write variable header
-        try Self.writeString(publish.topicName, to: &byteBuffer)
-        if publish.qos != .atMostOnce {
-            byteBuffer.writeInteger(packetId)
+        try Self.writeString(self.publish.topicName, to: &byteBuffer)
+        if self.publish.qos != .atMostOnce {
+            byteBuffer.writeInteger(self.packetId)
         }
         // write payload
-        var payload = publish.payload
+        var payload = self.publish.payload
         byteBuffer.writeBuffer(&payload)
     }
-    
+
     static func read(from packet: MQTTIncomingPacket) throws -> Self {
         var remainingData = packet.remainingData
         var packetId: UInt16 = 0
@@ -224,16 +224,15 @@ struct MQTTPublishPacket: MQTTPacket {
     var packetSize: Int {
         // topic name
         var size = self.publish.topicName.utf8.count
-        if publish.qos != .atMostOnce {
+        if self.publish.qos != .atMostOnce {
             size += 2
         }
         // packet identifier
         size += 2
         // payload
-        size += publish.payload.readableBytes
+        size += self.publish.payload.readableBytes
         return size
     }
-
 }
 
 struct MQTTSubscribePacket: MQTTPacket {
@@ -246,9 +245,9 @@ struct MQTTSubscribePacket: MQTTPacket {
     func write(to byteBuffer: inout ByteBuffer) throws {
         writeFixedHeader(packetType: .SUBSCRIBE, size: self.packetSize, to: &byteBuffer)
         // write variable header
-        byteBuffer.writeInteger(packetId)
+        byteBuffer.writeInteger(self.packetId)
         // write payload
-        for info in subscriptions {
+        for info in self.subscriptions {
             try Self.writeString(info.topicFilter, to: &byteBuffer)
             byteBuffer.writeInteger(info.qos.rawValue)
         }
@@ -263,11 +262,10 @@ struct MQTTSubscribePacket: MQTTPacket {
         // packet identifier
         let size = 2
         // payload
-        return subscriptions.reduce(size) {
+        return self.subscriptions.reduce(size) {
             $0 + 2 + $1.topicFilter.utf8.count + 1 // topic filter length + topic filter + qos
         }
     }
-
 }
 
 struct MQTTUnsubscribePacket: MQTTPacket {
@@ -280,9 +278,9 @@ struct MQTTUnsubscribePacket: MQTTPacket {
     func write(to byteBuffer: inout ByteBuffer) throws {
         writeFixedHeader(packetType: .UNSUBSCRIBE, size: self.packetSize, to: &byteBuffer)
         // write variable header
-        byteBuffer.writeInteger(packetId)
+        byteBuffer.writeInteger(self.packetId)
         // write payload
-        for info in subscriptions {
+        for info in self.subscriptions {
             try Self.writeString(info.topicFilter, to: &byteBuffer)
         }
     }
@@ -296,7 +294,7 @@ struct MQTTUnsubscribePacket: MQTTPacket {
         // packet identifier
         let size = 2
         // payload
-        return subscriptions.reduce(size) {
+        return self.subscriptions.reduce(size) {
             $0 + 2 + $1.topicFilter.utf8.count // topic filter length + topic filter
         }
     }
@@ -308,8 +306,8 @@ struct MQTTAckPacket: MQTTPacket {
     let packetId: UInt16
 
     func write(to byteBuffer: inout ByteBuffer) throws {
-        writeFixedHeader(packetType: type, size: self.packetSize, to: &byteBuffer)
-        byteBuffer.writeInteger(packetId)
+        writeFixedHeader(packetType: self.type, size: self.packetSize, to: &byteBuffer)
+        byteBuffer.writeInteger(self.packetId)
     }
 
     static func read(from packet: MQTTIncomingPacket) throws -> Self {
@@ -317,7 +315,7 @@ struct MQTTAckPacket: MQTTPacket {
         guard let packetId: UInt16 = remainingData.readInteger() else { throw MQTTError.badResponse }
         return MQTTAckPacket(type: packet.type, packetId: packetId)
     }
-    
+
     var packetSize: Int { 2 }
 }
 
@@ -331,7 +329,7 @@ struct MQTTPingreqPacket: MQTTPacket {
     static func read(from packet: MQTTIncomingPacket) throws -> Self {
         throw InternalError.notImplemented
     }
-    
+
     var packetSize: Int { 0 }
 }
 
@@ -340,13 +338,13 @@ struct MQTTPingrespPacket: MQTTPacket {
     var description: String { "PINGRESP" }
 
     func write(to byteBuffer: inout ByteBuffer) throws {
-        writeFixedHeader(packetType: type, size: self.packetSize, to: &byteBuffer)
+        writeFixedHeader(packetType: self.type, size: self.packetSize, to: &byteBuffer)
     }
 
     static func read(from packet: MQTTIncomingPacket) throws -> Self {
         return MQTTPingrespPacket()
     }
-    
+
     var packetSize: Int { 0 }
 }
 
@@ -354,13 +352,13 @@ struct MQTTDisconnectPacket: MQTTPacket {
     var type: MQTTPacketType { .DISCONNECT }
     var description: String { "DISCONNECT" }
     func write(to byteBuffer: inout ByteBuffer) throws {
-        writeFixedHeader(packetType: type, size: self.packetSize, to: &byteBuffer)
+        writeFixedHeader(packetType: self.type, size: self.packetSize, to: &byteBuffer)
     }
 
     static func read(from packet: MQTTIncomingPacket) throws -> Self {
         throw InternalError.notImplemented
     }
-    
+
     var packetSize: Int { 0 }
 }
 
@@ -383,8 +381,8 @@ struct MQTTConnAckPacket: MQTTPacket {
 
 /// MQTT incoming packet parameters.
 struct MQTTIncomingPacket: MQTTPacket {
-    var description: String { "Incoming Packet 0x\(String(format: "%x", type.rawValue))" }
-    
+    var description: String { "Incoming Packet 0x\(String(format: "%x", self.type.rawValue))" }
+
     /// Type of incoming MQTT packet.
     let type: MQTTPacketType
 
@@ -395,7 +393,7 @@ struct MQTTIncomingPacket: MQTTPacket {
     let remainingData: ByteBuffer
 
     func write(to byteBuffer: inout ByteBuffer) throws {
-        writeFixedHeader(packetType: type, flags: flags, size: remainingData.readableBytes, to: &byteBuffer)
+        writeFixedHeader(packetType: self.type, flags: self.flags, size: self.remainingData.readableBytes, to: &byteBuffer)
         var buffer = self.remainingData
         byteBuffer.writeBuffer(&buffer)
     }
