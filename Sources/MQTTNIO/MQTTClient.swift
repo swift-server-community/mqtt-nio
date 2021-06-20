@@ -131,9 +131,9 @@ public final class MQTTClient {
     /// - Returns: EventLoopFuture to be updated with whether server holds a session for this client
     public func connect(
         cleanSession: Bool = true,
+        properties: MQTTProperties? = nil,
         will: (topicName: String, payload: ByteBuffer, retain: Bool)? = nil
     ) -> EventLoopFuture<Bool> {
-        // guard self.connection == nil else { return eventLoopGroup.next().makeFailedFuture(Error.alreadyConnected) }
 
         let info = MQTTConnectInfo(
             cleanSession: cleanSession,
@@ -141,7 +141,7 @@ public final class MQTTClient {
             clientIdentifier: self.identifier,
             userName: self.configuration.userName,
             password: self.configuration.password,
-            properties: nil
+            properties: properties
         )
         let publish = will.map { MQTTPublishInfo(qos: .atMostOnce, retain: $0.retain, dup: false, topicName: $0.topicName, payload: $0.payload) }
 

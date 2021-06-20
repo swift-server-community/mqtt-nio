@@ -31,6 +31,17 @@ extension MQTTPacket {
 
 }
 
+extension MQTTClient.Version {
+    var versionByte: UInt8 {
+        switch self {
+        case .v3_1_1:
+            return 4
+        case .v5_0:
+            return 5
+        }
+    }
+}
+
 struct MQTTConnectPacket: MQTTPacket {
     enum ConnectFlags {
         static let reserved: UInt8 = 1
@@ -55,7 +66,7 @@ struct MQTTConnectPacket: MQTTPacket {
         // variable header
         try MQTTSerializer.writeString("MQTT", to: &byteBuffer)
         // protocol level
-        byteBuffer.writeInteger(UInt8(4))
+        byteBuffer.writeInteger(version.versionByte)
         // connect flags
         var flags = self.connect.cleanSession ? ConnectFlags.cleanSession : 0
         if let will = will {
@@ -68,6 +79,11 @@ struct MQTTConnectPacket: MQTTPacket {
         byteBuffer.writeInteger(flags)
         // keep alive
         byteBuffer.writeInteger(self.connect.keepAliveSeconds)
+        // v5 properties
+        if version == .v5_0 {
+            let properties = self.connect.properties ?? MQTTProperties()
+            try properties.write(to: &byteBuffer)
+        }
 
         // payload
         try MQTTSerializer.writeString(self.connect.clientIdentifier, to: &byteBuffer)
