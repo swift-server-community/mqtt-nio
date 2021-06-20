@@ -15,6 +15,16 @@ enum MQTTSerializer {
         } while value != 0
     }
 
+    static func variableLengthIntegerPacketSize(_ value: Int) -> Int {
+        var value = value
+        var size = 0
+        repeat {
+            size += 1
+            value >>= 7
+        } while value != 0
+        return size
+    }
+    
     /// write string to byte buffer
     static func writeString(_ string: String, to byteBuffer: inout ByteBuffer) throws {
         let length = string.utf8.count

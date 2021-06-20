@@ -86,8 +86,7 @@ public struct MQTTProperties {
     }
 
     func write(to byteBuffer: inout ByteBuffer) throws {
-        let packetSize = properties.reduce(0) { $0 + 1 + $1.value.packetSize }
-        MQTTSerializer.writeVariableLengthInteger(packetSize, to: &byteBuffer)
+        MQTTSerializer.writeVariableLengthInteger(self.packetSize, to: &byteBuffer)
         
         for property in properties {
             byteBuffer.writeInteger(property.key.rawValue)
@@ -106,6 +105,9 @@ public struct MQTTProperties {
         return Self(properties)
     }
     
+    var packetSize: Int {
+        return properties.reduce(0) { $0 + 1 + $1.value.packetSize }
+    }
     var properties: [PropertyId: PropertyValue]
 
     enum PropertyValueType {
@@ -167,13 +169,8 @@ extension MQTTProperties.PropertyValue {
             return 2
         case .fourByteInteger:
             return 4
-        case .variableLengthInteger(var value):
-            var size = 0
-            repeat {
-                size += 1
-                value >>= 7
-            } while value != 0
-            return size
+        case .variableLengthInteger(let value):
+            return MQTTSerializer.variableLengthIntegerPacketSize(Int(value))
         case .string(let string):
             return 2 + string.utf8.count
         case .stringPair(let strings):
@@ -233,5 +230,4 @@ extension MQTTProperties.PropertyValue {
         }
         return (id: id, value: propertyValue)
     }
-
 }

@@ -62,7 +62,7 @@ struct MQTTConnectPacket: MQTTPacket {
 
     /// write connect packet to bytebuffer
     func write(version: MQTTClient.Version, to byteBuffer: inout ByteBuffer) throws {
-        writeFixedHeader(packetType: .CONNECT, size: self.packetSize, to: &byteBuffer)
+        writeFixedHeader(packetType: .CONNECT, size: self.packetSize(version: version), to: &byteBuffer)
         // variable header
         try MQTTSerializer.writeString("MQTT", to: &byteBuffer)
         // protocol level
@@ -105,9 +105,14 @@ struct MQTTConnectPacket: MQTTPacket {
     }
 
     /// calculate size of connect packet
-    var packetSize: Int {
+    func packetSize(version: MQTTClient.Version) -> Int {
         // variable header
         var size = 10
+        // properties
+        if version == .v5_0 {
+            let propertiesPacketSize = self.connect.properties?.packetSize ?? 0
+            size += MQTTSerializer.variableLengthIntegerPacketSize(propertiesPacketSize) + propertiesPacketSize
+        }
         // payload
         // client identifier
         size += self.connect.clientIdentifier.utf8.count + 2
