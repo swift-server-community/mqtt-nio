@@ -12,9 +12,9 @@ protocol MQTTPacket: CustomStringConvertible {
     /// packet id (default to zero if not used)
     var packetId: UInt16 { get }
     /// write packet to bytebuffer
-    func write(to: inout ByteBuffer) throws
+    func write(version: MQTTClient.Version, to: inout ByteBuffer) throws
     /// read packet from incoming packet
-    static func read(from: MQTTIncomingPacket) throws -> Self
+    static func read(version: MQTTClient.Version, from: MQTTIncomingPacket) throws -> Self
 }
 
 extension MQTTPacket {
@@ -50,7 +50,7 @@ struct MQTTConnectPacket: MQTTPacket {
     let will: MQTTPublishInfo?
 
     /// write connect packet to bytebuffer
-    func write(to byteBuffer: inout ByteBuffer) throws {
+    func write(version: MQTTClient.Version, to byteBuffer: inout ByteBuffer) throws {
         writeFixedHeader(packetType: .CONNECT, size: self.packetSize, to: &byteBuffer)
         // variable header
         try MQTTSerializer.writeString("MQTT", to: &byteBuffer)
@@ -84,7 +84,7 @@ struct MQTTConnectPacket: MQTTPacket {
     }
 
     /// read connect packet from incoming packet (not implemented)
-    static func read(from: MQTTIncomingPacket) throws -> Self {
+    static func read(version: MQTTClient.Version, from: MQTTIncomingPacket) throws -> Self {
         throw InternalError.notImplemented
     }
 
@@ -128,7 +128,7 @@ struct MQTTPublishPacket: MQTTPacket {
     let publish: MQTTPublishInfo
     let packetId: UInt16
 
-    func write(to byteBuffer: inout ByteBuffer) throws {
+    func write(version: MQTTClient.Version, to byteBuffer: inout ByteBuffer) throws {
         var flags: UInt8 = self.publish.retain ? PublishFlags.retain : 0
         flags |= self.publish.qos.rawValue << PublishFlags.qosShift
         flags |= self.publish.dup ? PublishFlags.duplicate : 0
@@ -144,7 +144,7 @@ struct MQTTPublishPacket: MQTTPacket {
         byteBuffer.writeBuffer(&payload)
     }
 
-    static func read(from packet: MQTTIncomingPacket) throws -> Self {
+    static func read(version: MQTTClient.Version, from packet: MQTTIncomingPacket) throws -> Self {
         var remainingData = packet.remainingData
         var packetId: UInt16 = 0
         // read topic name
@@ -190,7 +190,7 @@ struct MQTTSubscribePacket: MQTTPacket {
     let subscriptions: [MQTTSubscribeInfo]
     let packetId: UInt16
 
-    func write(to byteBuffer: inout ByteBuffer) throws {
+    func write(version: MQTTClient.Version, to byteBuffer: inout ByteBuffer) throws {
         writeFixedHeader(packetType: .SUBSCRIBE, size: self.packetSize, to: &byteBuffer)
         // write variable header
         byteBuffer.writeInteger(self.packetId)
@@ -201,7 +201,7 @@ struct MQTTSubscribePacket: MQTTPacket {
         }
     }
 
-    static func read(from packet: MQTTIncomingPacket) throws -> Self {
+    static func read(version: MQTTClient.Version, from packet: MQTTIncomingPacket) throws -> Self {
         throw InternalError.notImplemented
     }
 
@@ -223,7 +223,7 @@ struct MQTTUnsubscribePacket: MQTTPacket {
     let subscriptions: [MQTTSubscribeInfo]
     let packetId: UInt16
 
-    func write(to byteBuffer: inout ByteBuffer) throws {
+    func write(version: MQTTClient.Version, to byteBuffer: inout ByteBuffer) throws {
         writeFixedHeader(packetType: .UNSUBSCRIBE, size: self.packetSize, to: &byteBuffer)
         // write variable header
         byteBuffer.writeInteger(self.packetId)
@@ -233,7 +233,7 @@ struct MQTTUnsubscribePacket: MQTTPacket {
         }
     }
 
-    static func read(from packet: MQTTIncomingPacket) throws -> Self {
+    static func read(version: MQTTClient.Version, from packet: MQTTIncomingPacket) throws -> Self {
         throw InternalError.notImplemented
     }
 
@@ -253,12 +253,12 @@ struct MQTTAckPacket: MQTTPacket {
     let type: MQTTPacketType
     let packetId: UInt16
 
-    func write(to byteBuffer: inout ByteBuffer) throws {
+    func write(version: MQTTClient.Version, to byteBuffer: inout ByteBuffer) throws {
         writeFixedHeader(packetType: self.type, size: self.packetSize, to: &byteBuffer)
         byteBuffer.writeInteger(self.packetId)
     }
 
-    static func read(from packet: MQTTIncomingPacket) throws -> Self {
+    static func read(version: MQTTClient.Version, from packet: MQTTIncomingPacket) throws -> Self {
         var remainingData = packet.remainingData
         guard let packetId: UInt16 = remainingData.readInteger() else { throw MQTTError.badResponse }
         return MQTTAckPacket(type: packet.type, packetId: packetId)
@@ -270,11 +270,11 @@ struct MQTTAckPacket: MQTTPacket {
 struct MQTTPingreqPacket: MQTTPacket {
     var type: MQTTPacketType { .PINGREQ }
     var description: String { "PINGREQ" }
-    func write(to byteBuffer: inout ByteBuffer) throws {
+    func write(version: MQTTClient.Version, to byteBuffer: inout ByteBuffer) throws {
         writeFixedHeader(packetType: .PINGREQ, size: self.packetSize, to: &byteBuffer)
     }
 
-    static func read(from packet: MQTTIncomingPacket) throws -> Self {
+    static func read(version: MQTTClient.Version, from packet: MQTTIncomingPacket) throws -> Self {
         throw InternalError.notImplemented
     }
 
@@ -285,11 +285,11 @@ struct MQTTPingrespPacket: MQTTPacket {
     var type: MQTTPacketType { .PINGRESP }
     var description: String { "PINGRESP" }
 
-    func write(to byteBuffer: inout ByteBuffer) throws {
+    func write(version: MQTTClient.Version, to byteBuffer: inout ByteBuffer) throws {
         writeFixedHeader(packetType: self.type, size: self.packetSize, to: &byteBuffer)
     }
 
-    static func read(from packet: MQTTIncomingPacket) throws -> Self {
+    static func read(version: MQTTClient.Version, from packet: MQTTIncomingPacket) throws -> Self {
         return MQTTPingrespPacket()
     }
 
@@ -299,11 +299,11 @@ struct MQTTPingrespPacket: MQTTPacket {
 struct MQTTDisconnectPacket: MQTTPacket {
     var type: MQTTPacketType { .DISCONNECT }
     var description: String { "DISCONNECT" }
-    func write(to byteBuffer: inout ByteBuffer) throws {
+    func write(version: MQTTClient.Version, to byteBuffer: inout ByteBuffer) throws {
         writeFixedHeader(packetType: self.type, size: self.packetSize, to: &byteBuffer)
     }
 
-    static func read(from packet: MQTTIncomingPacket) throws -> Self {
+    static func read(version: MQTTClient.Version, from packet: MQTTIncomingPacket) throws -> Self {
         throw InternalError.notImplemented
     }
 
@@ -316,11 +316,11 @@ struct MQTTConnAckPacket: MQTTPacket {
     let returnCode: UInt8
     let sessionPresent: Bool
 
-    func write(to: inout ByteBuffer) throws {
+    func write(version: MQTTClient.Version, to: inout ByteBuffer) throws {
         throw InternalError.notImplemented
     }
 
-    static func read(from packet: MQTTIncomingPacket) throws -> Self {
+    static func read(version: MQTTClient.Version, from packet: MQTTIncomingPacket) throws -> Self {
         var remainingData = packet.remainingData
         guard let bytes = remainingData.readBytes(length: 2) else { throw MQTTError.badResponse }
         return MQTTConnAckPacket(returnCode: bytes[1], sessionPresent: bytes[0] & 0x1 == 0x1)
@@ -340,13 +340,13 @@ struct MQTTIncomingPacket: MQTTPacket {
     /// Remaining serialized data in the MQTT packet.
     let remainingData: ByteBuffer
 
-    func write(to byteBuffer: inout ByteBuffer) throws {
+    func write(version: MQTTClient.Version, to byteBuffer: inout ByteBuffer) throws {
         writeFixedHeader(packetType: self.type, flags: self.flags, size: self.remainingData.readableBytes, to: &byteBuffer)
         var buffer = self.remainingData
         byteBuffer.writeBuffer(&buffer)
     }
 
-    static func read(from packet: MQTTIncomingPacket) throws -> Self {
+    static func read(version: MQTTClient.Version, from packet: MQTTIncomingPacket) throws -> Self {
         throw InternalError.notImplemented
     }
 

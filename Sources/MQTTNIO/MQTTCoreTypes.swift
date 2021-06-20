@@ -42,6 +42,9 @@ struct MQTTConnectInfo {
 
     /// MQTT password.
     let password: String?
+    
+    /// MQTT v5 properties
+    let properties: MQTTProperties?
 }
 
 /// MQTT PUBLISH packet parameters.
@@ -57,6 +60,9 @@ public struct MQTTPublishInfo {
 
     /// Topic name on which the message is published.
     public let topicName: String
+    
+    /// MQTT v5 properties
+    public let properties: MQTTProperties?
 
     /// Message payload.
     public let payload: ByteBuffer
@@ -67,6 +73,7 @@ public struct MQTTPublishInfo {
         self.dup = dup
         self.topicName = topicName
         self.payload = payload
+        self.properties = nil
     }
 
     static let emptyByteBuffer = ByteBufferAllocator().buffer(capacity: 0)

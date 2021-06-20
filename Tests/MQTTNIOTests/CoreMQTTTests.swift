@@ -9,7 +9,8 @@ final class CoreMQTTTests: XCTestCase {
             keepAliveSeconds: 15,
             clientIdentifier: "MyClient",
             userName: nil,
-            password: nil
+            password: nil,
+            properties: nil
         )
         let publish = MQTTPublishInfo(
             qos: .atMostOnce,
@@ -20,7 +21,7 @@ final class CoreMQTTTests: XCTestCase {
         )
         var byteBuffer = ByteBufferAllocator().buffer(capacity: 1024)
         let connectPacket = MQTTConnectPacket(connect: connect, will: publish)
-        try connectPacket.write(to: &byteBuffer)
+        try connectPacket.write(version: .v3_1_1, to: &byteBuffer)
         XCTAssertEqual(byteBuffer.readableBytes, 45)
     }
 
@@ -34,9 +35,9 @@ final class CoreMQTTTests: XCTestCase {
         )
         var byteBuffer = ByteBufferAllocator().buffer(capacity: 1024)
         let publishPacket = MQTTPublishPacket(publish: publish, packetId: 456)
-        try publishPacket.write(to: &byteBuffer)
+        try publishPacket.write(version: .v3_1_1, to: &byteBuffer)
         let packet = try MQTTIncomingPacket.read(from: &byteBuffer)
-        let publish2 = try MQTTPublishPacket.read(from: packet)
+        let publish2 = try MQTTPublishPacket.read(version: .v3_1_1, from: packet)
         XCTAssertEqual(publish.topicName, publish2.publish.topicName)
         XCTAssertEqual(publish.payload, publish2.publish.payload)
     }
@@ -48,7 +49,7 @@ final class CoreMQTTTests: XCTestCase {
         ]
         var byteBuffer = ByteBufferAllocator().buffer(capacity: 1024)
         let subscribePacket = MQTTSubscribePacket(subscriptions: subscriptions, packetId: 456)
-        try subscribePacket.write(to: &byteBuffer)
+        try subscribePacket.write(version: .v3_1_1, to: &byteBuffer)
         let packet = try MQTTIncomingPacket.read(from: &byteBuffer)
         XCTAssertEqual(packet.remainingData.readableBytes, 29)
     }

@@ -36,7 +36,7 @@ final class MQTTConnection {
                 .channelInitializer { channel in
                     // Work out what handlers to add
                     var handlers: [ChannelHandler] = [
-                        MQTTEncodeHandler(logger: client.logger),
+                        MQTTEncodeHandler(client: client),
                         ByteToMessageHandler(ByteToMQTTMessageDecoder(client: client)),
                     ]
                     if !client.configuration.disablePing {
