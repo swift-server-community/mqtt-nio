@@ -26,68 +26,9 @@ extension MQTTPacket {
     /// write fixed header for packet
     func writeFixedHeader(packetType: MQTTPacketType, flags: UInt8 = 0, size: Int, to byteBuffer: inout ByteBuffer) {
         byteBuffer.writeInteger(packetType.rawValue | flags)
-        Self.writeVariableLengthInteger(size, to: &byteBuffer)
+        MQTTSerializer.writeVariableLengthInteger(size, to: &byteBuffer)
     }
 
-    /// write variable length
-    static func writeVariableLengthInteger(_ value: Int, to byteBuffer: inout ByteBuffer) {
-        var value = value
-        repeat {
-            let byte = UInt8(value & 0x7F)
-            value >>= 7
-            if value != 0 {
-                byteBuffer.writeInteger(byte | 0x80)
-            } else {
-                byteBuffer.writeInteger(byte)
-            }
-        } while value != 0
-    }
-
-    /// write string to byte buffer
-    static func writeString(_ string: String, to byteBuffer: inout ByteBuffer) throws {
-        let length = string.utf8.count
-        guard length < 65536 else { throw MQTTError.badParameter }
-        byteBuffer.writeInteger(UInt16(length))
-        byteBuffer.writeString(string)
-    }
-
-    /// write buffer to byte buffer
-    static func writeBuffer(_ buffer: ByteBuffer, to byteBuffer: inout ByteBuffer) throws {
-        let length = buffer.readableBytes
-        guard length < 65536 else { throw MQTTError.badParameter }
-        var buffer = buffer
-        byteBuffer.writeInteger(UInt16(length))
-        byteBuffer.writeBuffer(&buffer)
-    }
-
-    /// read variable length from bytebuffer
-    static func readVariableLengthInteger(from byteBuffer: inout ByteBuffer) throws -> Int {
-        var value = 0
-        var shift = 0
-        repeat {
-            guard let byte: UInt8 = byteBuffer.readInteger() else { throw InternalError.incompletePacket }
-            value += (Int(byte) & 0x7F) << shift
-            if byte & 0x80 == 0 {
-                break
-            }
-            shift += 7
-        } while true
-        return value
-    }
-
-    /// read string from bytebuffer
-    static func readString(from byteBuffer: inout ByteBuffer) throws -> String {
-        guard let length: UInt16 = byteBuffer.readInteger() else { throw MQTTError.badResponse }
-        guard let string = byteBuffer.readString(length: Int(length)) else { throw MQTTError.badResponse }
-        return string
-    }
-
-    /// read slice from bytebuffer
-    static func readBuffer(from byteBuffer: inout ByteBuffer) throws -> ByteBuffer {
-        guard let length: UInt16 = byteBuffer.readInteger() else { throw MQTTError.badResponse }
-        guard let buffer = byteBuffer.readSlice(length: Int(length)) else { throw MQTTError.badResponse }
-        return buffer
-    }
 }
 
 struct MQTTConnectPacket: MQTTPacket {
@@ -112,7 +53,7 @@ struct MQTTConnectPacket: MQTTPacket {
     func write(to byteBuffer: inout ByteBuffer) throws {
         writeFixedHeader(packetType: .CONNECT, size: self.packetSize, to: &byteBuffer)
         // variable header
-        try Self.writeString("MQTT", to: &byteBuffer)
+        try MQTTSerializer.writeString("MQTT", to: &byteBuffer)
         // protocol level
         byteBuffer.writeInteger(UInt8(4))
         // connect flags
@@ -129,16 +70,16 @@ struct MQTTConnectPacket: MQTTPacket {
         byteBuffer.writeInteger(self.connect.keepAliveSeconds)
 
         // payload
-        try Self.writeString(self.connect.clientIdentifier, to: &byteBuffer)
+        try MQTTSerializer.writeString(self.connect.clientIdentifier, to: &byteBuffer)
         if let will = will {
-            try Self.writeString(will.topicName, to: &byteBuffer)
-            try Self.writeBuffer(will.payload, to: &byteBuffer)
+            try MQTTSerializer.writeString(will.topicName, to: &byteBuffer)
+            try MQTTSerializer.writeBuffer(will.payload, to: &byteBuffer)
         }
         if let userName = connect.userName {
-            try Self.writeString(userName, to: &byteBuffer)
+            try MQTTSerializer.writeString(userName, to: &byteBuffer)
         }
         if let password = connect.password {
-            try Self.writeString(password, to: &byteBuffer)
+            try MQTTSerializer.writeString(password, to: &byteBuffer)
         }
     }
 
@@ -194,7 +135,7 @@ struct MQTTPublishPacket: MQTTPacket {
 
         writeFixedHeader(packetType: .PUBLISH, flags: flags, size: self.packetSize, to: &byteBuffer)
         // write variable header
-        try Self.writeString(self.publish.topicName, to: &byteBuffer)
+        try MQTTSerializer.writeString(self.publish.topicName, to: &byteBuffer)
         if self.publish.qos != .atMostOnce {
             byteBuffer.writeInteger(self.packetId)
         }
@@ -207,7 +148,7 @@ struct MQTTPublishPacket: MQTTPacket {
         var remainingData = packet.remainingData
         var packetId: UInt16 = 0
         // read topic name
-        let topicName = try readString(from: &remainingData)
+        let topicName = try MQTTSerializer.readString(from: &remainingData)
         guard let qos = MQTTQoS(rawValue: (packet.flags & PublishFlags.qosMask) >> PublishFlags.qosShift) else { throw MQTTError.badResponse }
         // read packet id if QoS is not atMostOnce
         if qos != .atMostOnce {
@@ -255,7 +196,7 @@ struct MQTTSubscribePacket: MQTTPacket {
         byteBuffer.writeInteger(self.packetId)
         // write payload
         for info in self.subscriptions {
-            try Self.writeString(info.topicFilter, to: &byteBuffer)
+            try MQTTSerializer.writeString(info.topicFilter, to: &byteBuffer)
             byteBuffer.writeInteger(info.qos.rawValue)
         }
     }
@@ -288,7 +229,7 @@ struct MQTTUnsubscribePacket: MQTTPacket {
         byteBuffer.writeInteger(self.packetId)
         // write payload
         for info in self.subscriptions {
-            try Self.writeString(info.topicFilter, to: &byteBuffer)
+            try MQTTSerializer.writeString(info.topicFilter, to: &byteBuffer)
         }
     }
 
@@ -418,7 +359,7 @@ struct MQTTIncomingPacket: MQTTPacket {
         guard let type = MQTTPacketType(rawValue: byte) ?? MQTTPacketType(rawValue: byte & 0xF0) else {
             throw MQTTError.badParameter
         }
-        let length = try readVariableLengthInteger(from: &byteBuffer)
+        let length = try MQTTSerializer.readVariableLengthInteger(from: &byteBuffer)
         guard let bytes = byteBuffer.readSlice(length: length) else { throw InternalError.incompletePacket }
         return MQTTIncomingPacket(type: type, flags: byte & 0xF, remainingData: bytes)
     }

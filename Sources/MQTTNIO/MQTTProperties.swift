@@ -108,7 +108,7 @@ public struct MQTTProperties {
 
     func write(to byteBuffer: inout ByteBuffer) throws {
         let packetSize = properties.reduce(0) { $0 + 1 + $1.value.packetSize }
-        MQTTConnectPacket.writeVariableLengthInteger(packetSize, to: &byteBuffer)
+        MQTTSerializer.writeVariableLengthInteger(packetSize, to: &byteBuffer)
         
         for property in properties {
             byteBuffer.writeInteger(property.key.rawValue)
@@ -118,7 +118,7 @@ public struct MQTTProperties {
 
     static func read(from byteBuffer: inout ByteBuffer) throws -> Self {
         var properties: [PropertyId: PropertyValue] = [:]
-        let packetSize = try MQTTConnectPacket.readVariableLengthInteger(from: &byteBuffer)
+        let packetSize = try MQTTSerializer.readVariableLengthInteger(from: &byteBuffer)
         guard var propertyBuffer = byteBuffer.readSlice(length: packetSize) else { throw MQTTError.badResponse }
         while propertyBuffer.readableBytes > 0 {
             let property = try PropertyValue.read(from: &propertyBuffer)
@@ -181,14 +181,14 @@ public struct MQTTProperties {
             case .fourByteInteger(let value):
                 byteBuffer.writeInteger(value)
             case .variableLengthInteger(let value):
-                MQTTConnectPacket.writeVariableLengthInteger(Int(value), to: &byteBuffer)
+                MQTTSerializer.writeVariableLengthInteger(Int(value), to: &byteBuffer)
             case .string(let string):
-                try MQTTConnectPacket.writeString(string, to: &byteBuffer)
+                try MQTTSerializer.writeString(string, to: &byteBuffer)
             case .stringPair(let strings):
-                try MQTTConnectPacket.writeString(strings.0, to: &byteBuffer)
-                try MQTTConnectPacket.writeString(strings.1, to: &byteBuffer)
+                try MQTTSerializer.writeString(strings.0, to: &byteBuffer)
+                try MQTTSerializer.writeString(strings.1, to: &byteBuffer)
             case .binaryData(let buffer):
-                try MQTTConnectPacket.writeBuffer(buffer, to: &byteBuffer)
+                try MQTTSerializer.writeBuffer(buffer, to: &byteBuffer)
             }
         }
         
@@ -207,17 +207,17 @@ public struct MQTTProperties {
                 guard let integer: UInt32 = byteBuffer.readInteger() else { throw MQTTError.badResponse}
                 propertyValue = .fourByteInteger(UInt(integer))
             case .variableLengthInteger:
-                let integer = try MQTTConnectPacket.readVariableLengthInteger(from: &byteBuffer)
+                let integer = try MQTTSerializer.readVariableLengthInteger(from: &byteBuffer)
                 propertyValue = .variableLengthInteger(UInt(integer))
             case .string:
-                let string = try MQTTConnectPacket.readString(from: &byteBuffer)
+                let string = try MQTTSerializer.readString(from: &byteBuffer)
                 propertyValue = .string(string)
             case .stringPair:
-                let string1 = try MQTTConnectPacket.readString(from: &byteBuffer)
-                let string2 = try MQTTConnectPacket.readString(from: &byteBuffer)
+                let string1 = try MQTTSerializer.readString(from: &byteBuffer)
+                let string2 = try MQTTSerializer.readString(from: &byteBuffer)
                 propertyValue = .stringPair((string1, string2))
             case .binaryData:
-                let buffer = try MQTTConnectPacket.readBuffer(from: &byteBuffer)
+                let buffer = try MQTTSerializer.readBuffer(from: &byteBuffer)
                 propertyValue = .binaryData(buffer)
             }
             return (id: id, value: propertyValue)
