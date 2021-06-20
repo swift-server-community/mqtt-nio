@@ -36,4 +36,8 @@ enum MQTTError: Error {
     case badParameter
     /// Packet received contained invalid entries
     case badResponse
+    /// invalid property value
+    case invalidPropertyValue
+    /// property value out of range
+    case propertyValueOutOfRange
 }

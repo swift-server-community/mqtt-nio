@@ -81,6 +81,13 @@ extension MQTTPacket {
         guard let string = byteBuffer.readString(length: Int(length)) else { throw MQTTError.badResponse }
         return string
     }
+
+    /// read slice from bytebuffer
+    static func readBuffer(from byteBuffer: inout ByteBuffer) throws -> ByteBuffer {
+        guard let length: UInt16 = byteBuffer.readInteger() else { throw MQTTError.badResponse }
+        guard let buffer = byteBuffer.readSlice(length: Int(length)) else { throw MQTTError.badResponse }
+        return buffer
+    }
 }
 
 struct MQTTConnectPacket: MQTTPacket {
