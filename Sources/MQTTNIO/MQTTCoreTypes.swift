@@ -26,27 +26,6 @@ public enum MQTTPacketType: UInt8 {
     case DISCONNECT = 0xE0
 }
 
-/// MQTT CONNECT packet parameters
-struct MQTTConnectInfo {
-    /// Whether to establish a new, clean session or resume a previous session.
-    let cleanSession: Bool
-
-    /// MQTT keep alive period.
-    let keepAliveSeconds: UInt16
-
-    /// MQTT client identifier. Must be unique per client.
-    let clientIdentifier: String
-
-    /// MQTT user name.
-    let userName: String?
-
-    /// MQTT password.
-    let password: String?
-    
-    /// MQTT v5 properties
-    let properties: MQTTProperties?
-}
-
 /// MQTT PUBLISH packet parameters.
 public struct MQTTPublishInfo {
     /// Quality of Service for message.

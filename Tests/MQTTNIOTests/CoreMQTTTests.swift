@@ -4,14 +4,6 @@ import XCTest
 
 final class CoreMQTTTests: XCTestCase {
     func testConnect() throws {
-        let connect = MQTTConnectInfo(
-            cleanSession: true,
-            keepAliveSeconds: 15,
-            clientIdentifier: "MyClient",
-            userName: nil,
-            password: nil,
-            properties: nil
-        )
         let publish = MQTTPublishInfo(
             qos: .atMostOnce,
             retain: false,
@@ -21,7 +13,15 @@ final class CoreMQTTTests: XCTestCase {
             properties: nil
         )
         var byteBuffer = ByteBufferAllocator().buffer(capacity: 1024)
-        let connectPacket = MQTTConnectPacket(connect: connect, will: publish)
+        let connectPacket = MQTTConnectPacket(
+            cleanSession: true,
+            keepAliveSeconds: 15,
+            clientIdentifier: "MyClient",
+            userName: nil,
+            password: nil,
+            properties: nil,
+            will: publish
+        )
         try connectPacket.write(version: .v3_1_1, to: &byteBuffer)
         XCTAssertEqual(byteBuffer.readableBytes, 45)
     }

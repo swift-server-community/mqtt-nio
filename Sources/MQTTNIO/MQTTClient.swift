@@ -136,14 +136,6 @@ public final class MQTTClient {
         willProperties: MQTTProperties? = nil
     ) -> EventLoopFuture<Bool> {
 
-        let info = MQTTConnectInfo(
-            cleanSession: cleanSession,
-            keepAliveSeconds: UInt16(configuration.keepAliveInterval.nanoseconds / 1_000_000_000),
-            clientIdentifier: self.identifier,
-            userName: self.configuration.userName,
-            password: self.configuration.password,
-            properties: properties
-        )
         let publish = will.map {
             MQTTPublishInfo(
                 qos: .atMostOnce,
@@ -156,7 +148,8 @@ public final class MQTTClient {
         }
 
         // work out pingreq interval
-        let pingInterval = self.configuration.pingInterval ?? TimeAmount.seconds(max(Int64(info.keepAliveSeconds - 5), 5))
+        let keepAliveSeconds = UInt16(configuration.keepAliveInterval.nanoseconds / 1_000_000_000)
+        let pingInterval = self.configuration.pingInterval ?? TimeAmount.seconds(max(Int64(keepAliveSeconds - 5), 5))
 
         return MQTTConnection.create(client: self, pingInterval: pingInterval)
             .flatMap { connection -> EventLoopFuture<MQTTPacket> in
@@ -169,8 +162,17 @@ public final class MQTTClient {
                     }
                     self.closeListeners.notify(result)
                 }
+                let packet = MQTTConnectPacket(
+                    cleanSession: cleanSession,
+                    keepAliveSeconds: keepAliveSeconds,
+                    clientIdentifier: self.identifier,
+                    userName: self.configuration.userName,
+                    password: self.configuration.password,
+                    properties: properties,
+                    will: publish
+                )
                 return connection.sendMessageWithRetry(
-                    MQTTConnectPacket(connect: info, will: publish),
+                    packet,
                     maxRetryAttempts: self.configuration.maxRetryAttempts
                 ) { message -> Bool in
                     guard message.type == .CONNACK else { throw MQTTError.failedToConnect }

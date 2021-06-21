@@ -57,7 +57,25 @@ struct MQTTConnectPacket: MQTTPacket {
     var type: MQTTPacketType { .CONNECT }
     var description: String { "CONNECT" }
 
-    let connect: MQTTConnectInfo
+    /// Whether to establish a new, clean session or resume a previous session.
+    let cleanSession: Bool
+
+    /// MQTT keep alive period.
+    let keepAliveSeconds: UInt16
+
+    /// MQTT client identifier. Must be unique per client.
+    let clientIdentifier: String
+
+    /// MQTT user name.
+    let userName: String?
+
+    /// MQTT password.
+    let password: String?
+
+    /// MQTT v5 properties
+    let properties: MQTTProperties?
+
+    /// will published when connected
     let will: MQTTPublishInfo?
 
     /// write connect packet to bytebuffer
@@ -68,25 +86,25 @@ struct MQTTConnectPacket: MQTTPacket {
         // protocol level
         byteBuffer.writeInteger(version.versionByte)
         // connect flags
-        var flags = self.connect.cleanSession ? ConnectFlags.cleanSession : 0
+        var flags = self.cleanSession ? ConnectFlags.cleanSession : 0
         if let will = will {
             flags |= ConnectFlags.willFlag
             flags |= will.retain ? ConnectFlags.willRetain : 0
             flags |= will.qos.rawValue << ConnectFlags.willQoSShift
         }
-        flags |= self.connect.password != nil ? ConnectFlags.password : 0
-        flags |= self.connect.userName != nil ? ConnectFlags.userName : 0
+        flags |= self.password != nil ? ConnectFlags.password : 0
+        flags |= self.userName != nil ? ConnectFlags.userName : 0
         byteBuffer.writeInteger(flags)
         // keep alive
-        byteBuffer.writeInteger(self.connect.keepAliveSeconds)
+        byteBuffer.writeInteger(self.keepAliveSeconds)
         // v5 properties
         if version == .v5_0 {
-            let properties = self.connect.properties ?? MQTTProperties()
+            let properties = self.properties ?? MQTTProperties()
             try properties.write(to: &byteBuffer)
         }
 
         // payload
-        try MQTTSerializer.writeString(self.connect.clientIdentifier, to: &byteBuffer)
+        try MQTTSerializer.writeString(self.clientIdentifier, to: &byteBuffer)
         if let will = will {
             if version == .v5_0 {
                 let properties = will.properties ?? MQTTProperties()
@@ -95,10 +113,10 @@ struct MQTTConnectPacket: MQTTPacket {
             try MQTTSerializer.writeString(will.topicName, to: &byteBuffer)
             try MQTTSerializer.writeBuffer(will.payload, to: &byteBuffer)
         }
-        if let userName = connect.userName {
+        if let userName = userName {
             try MQTTSerializer.writeString(userName, to: &byteBuffer)
         }
-        if let password = connect.password {
+        if let password = password {
             try MQTTSerializer.writeString(password, to: &byteBuffer)
         }
     }
@@ -114,12 +132,12 @@ struct MQTTConnectPacket: MQTTPacket {
         var size = 10
         // properties
         if version == .v5_0 {
-            let propertiesPacketSize = self.connect.properties?.packetSize ?? 0
+            let propertiesPacketSize = self.properties?.packetSize ?? 0
             size += MQTTSerializer.variableLengthIntegerPacketSize(propertiesPacketSize) + propertiesPacketSize
         }
         // payload
         // client identifier
-        size += self.connect.clientIdentifier.utf8.count + 2
+        size += self.clientIdentifier.utf8.count + 2
         // will publish
         if let will = will {
             // properties
@@ -133,11 +151,11 @@ struct MQTTConnectPacket: MQTTPacket {
             size += will.payload.readableBytes + 2
         }
         // user name
-        if let userName = connect.userName {
+        if let userName = userName {
             size += userName.utf8.count + 2
         }
         // password
-        if let password = connect.password {
+        if let password = password {
             size += password.utf8.count + 2
         }
         return size
