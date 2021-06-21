@@ -15,7 +15,7 @@ final class MQTTNIOv5Tests: XCTestCase {
     
     func testConnect() throws {
         let client = self.createClient(identifier: "testConnectV5")
-        try client.v5.connect().wait()
+        _ = try client.v5.connect().wait()
         try client.ping().wait()
         try client.disconnect().wait()
         try client.syncShutdownGracefully()
@@ -64,7 +64,7 @@ final class MQTTNIOv5Tests: XCTestCase {
         _ = try client.connect().wait()
         var publishProperties = MQTTProperties()
         try publishProperties.addProperty(id: .contentType, value: "text/plain")
-        try client.publish(
+        let puback = try client.v5.publish(
             to: "testMQTTPublishQoS",
             payload: ByteBufferAllocator().buffer(string: "Test payload"),
             qos: .atLeastOnce,
@@ -144,7 +144,7 @@ final class MQTTNIOv5Tests: XCTestCase {
 
     func testConnectWithProperty(_ id: MQTTProperties.PropertyId, value: MQTTProperties.PropertyValue) throws {
         let client = self.createClient(identifier: "testConnectV5")
-        let connack = try client.v5.connect(properties: .init([id: value])).wait()
+        _ = try client.v5.connect(properties: .init([id: value])).wait()
         try client.ping().wait()
         try client.disconnect().wait()
         try client.syncShutdownGracefully()

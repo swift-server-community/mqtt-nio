@@ -173,58 +173,10 @@ public final class MQTTClient {
         retain: Bool = false,
         properties: MQTTProperties = .init()
     ) -> EventLoopFuture<Void> {
-        guard let connection = self.connection else { return self.eventLoopGroup.next().makeFailedFuture(MQTTError.noConnection) }
-
         let info = MQTTPublishInfo(qos: qos, retain: retain, dup: false, topicName: topicName, payload: payload, properties: properties)
-        if info.qos == .atMostOnce {
-            // don't send a packet id if QOS is at most once. (MQTT-2.3.1-5)
-            return connection.sendMessageNoWait(MQTTPublishPacket(publish: info, packetId: 0))
-        }
-
         let packetId = self.updatePacketId()
-        return connection.sendMessageWithRetry(
-            MQTTPublishPacket(publish: info, packetId: packetId),
-            maxRetryAttempts: self.configuration.maxRetryAttempts
-        ) { message in
-            guard message.packetId == packetId else { return false }
-            if info.qos == .atLeastOnce {
-                guard message.type == .PUBACK else {
-                    throw MQTTError.unexpectedMessage
-                }
-            } else if info.qos == .exactlyOnce {
-                guard message.type == .PUBREC else {
-                    throw MQTTError.unexpectedMessage
-                }
-            }
-            if let pubAckPacket = message as? MQTTPubAckPacket {
-                if pubAckPacket.ack.reason.rawValue > 0x7f {
-                    throw MQTTError.reasonError(pubAckPacket.ack.reason)
-                }
-            }
-            return true
-        }
-        .flatMap { _ in
-            if info.qos == .exactlyOnce {
-                let ack = MQTTAckInfo(reason: .success, properties: .init())
-                return connection.sendMessageWithRetry(
-                    MQTTPubAckPacket(type: .PUBREL, packetId: packetId, ack: ack),
-                    maxRetryAttempts: self.configuration.maxRetryAttempts
-                ) { message in
-                    guard message.packetId == packetId else { return false }
-                    guard message.type != .PUBREC else { return false }
-                    guard message.type == .PUBCOMP else {
-                        throw MQTTError.unexpectedMessage
-                    }
-                    if let pubAckPacket = message as? MQTTPubAckPacket {
-                        if pubAckPacket.ack.reason.rawValue > 0x7f {
-                            throw MQTTError.reasonError(pubAckPacket.ack.reason)
-                        }
-                    }
-                    return true
-                }.map { _ in }
-            }
-            return self.eventLoopGroup.next().makeSucceededFuture(())
-        }
+        let packet = MQTTPublishPacket(publish: info, packetId: packetId)
+        return publish(packet: packet).map { _ in }
     }
 
     /// Subscribe to topic
@@ -362,7 +314,70 @@ public final class MQTTClient {
             }
     }
 
-    private func updatePacketId() -> UInt16 {
+    /// Publish message to topic
+    /// - Parameters:
+    ///     - topicName: Topic name on which the message is published
+    ///     - payload: Message payload
+    ///     - qos: Quality of Service for message.
+    ///     - retain: Whether this is a retained message.
+    /// - Returns: Future waiting for publish to complete. Depending on QoS setting the future will complete
+    ///     when message is sent, when PUBACK is received or when PUBREC and following PUBCOMP are
+    ///     received
+    func publish(packet: MQTTPublishPacket) -> EventLoopFuture<MQTTAckInfo?> {
+        guard let connection = self.connection else { return self.eventLoopGroup.next().makeFailedFuture(MQTTError.noConnection) }
+
+        if packet.publish.qos == .atMostOnce {
+            // don't send a packet id if QOS is at most once. (MQTT-2.3.1-5)
+            return connection.sendMessageNoWait(packet).map { _ in nil }
+        }
+
+        return connection.sendMessageWithRetry(
+            packet,
+            maxRetryAttempts: self.configuration.maxRetryAttempts
+        ) { message in
+            guard message.packetId == packet.packetId else { return false }
+            if packet.publish.qos == .atLeastOnce {
+                guard message.type == .PUBACK else {
+                    throw MQTTError.unexpectedMessage
+                }
+            } else if packet.publish.qos == .exactlyOnce {
+                guard message.type == .PUBREC else {
+                    throw MQTTError.unexpectedMessage
+                }
+            }
+            if let pubAckPacket = message as? MQTTPubAckPacket {
+                if pubAckPacket.ack.reason.rawValue > 0x7f {
+                    throw MQTTError.reasonError(pubAckPacket.ack.reason)
+                }
+            }
+            return true
+        }
+        .flatMap { ackPacket in
+            let ackPacket = ackPacket as? MQTTPubAckPacket
+            if packet.publish.qos == .exactlyOnce {
+                let ack = MQTTAckInfo(reason: .success, properties: .init())
+                return connection.sendMessageWithRetry(
+                    MQTTPubAckPacket(type: .PUBREL, packetId: packet.packetId, ack: ack),
+                    maxRetryAttempts: self.configuration.maxRetryAttempts
+                ) { message in
+                    guard message.packetId == packet.packetId else { return false }
+                    guard message.type != .PUBREC else { return false }
+                    guard message.type == .PUBCOMP else {
+                        throw MQTTError.unexpectedMessage
+                    }
+                    if let pubAckPacket = message as? MQTTPubAckPacket {
+                        if pubAckPacket.ack.reason.rawValue > 0x7f {
+                            throw MQTTError.reasonError(pubAckPacket.ack.reason)
+                        }
+                    }
+                    return true
+                }.map { _ in ackPacket?.ack }
+            }
+            return self.eventLoopGroup.next().makeSucceededFuture(ackPacket?.ack)
+        }
+    }
+
+    internal func updatePacketId() -> UInt16 {
         // packet id must be non-zero
         if self.globalPacketId.compareAndExchange(expected: 0, desired: 1) {
             return 1

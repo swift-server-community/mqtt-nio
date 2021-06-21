@@ -51,6 +51,29 @@ extension MQTTClient {
                 )
             }
         }
+
+        /// Publish message to topic
+        /// - Parameters:
+        ///     - topicName: Topic name on which the message is published
+        ///     - payload: Message payload
+        ///     - qos: Quality of Service for message.
+        ///     - retain: Whether this is a retained message.
+        /// - Returns: Future waiting for publish to complete. Depending on QoS setting the future will complete
+        ///     when message is sent, when PUBACK is received or when PUBREC and following PUBCOMP are
+        ///     received
+        public func publish(
+            to topicName: String,
+            payload: ByteBuffer,
+            qos: MQTTQoS,
+            retain: Bool = false,
+            properties: MQTTProperties = .init()
+        ) -> EventLoopFuture<MQTTAckInfo?> {
+            let info = MQTTPublishInfo(qos: qos, retain: retain, dup: false, topicName: topicName, payload: payload, properties: properties)
+            let packetId = client.updatePacketId()
+            let packet = MQTTPublishPacket(publish: info, packetId: packetId)
+            return client.publish(packet: packet)
+        }
+
     }
 
     /// v5 client
