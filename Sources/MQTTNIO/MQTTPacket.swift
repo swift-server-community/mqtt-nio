@@ -88,6 +88,10 @@ struct MQTTConnectPacket: MQTTPacket {
         // payload
         try MQTTSerializer.writeString(self.connect.clientIdentifier, to: &byteBuffer)
         if let will = will {
+            if version == .v5_0 {
+                let properties = will.properties ?? MQTTProperties()
+                try properties.write(to: &byteBuffer)
+            }
             try MQTTSerializer.writeString(will.topicName, to: &byteBuffer)
             try MQTTSerializer.writeBuffer(will.payload, to: &byteBuffer)
         }
@@ -118,6 +122,11 @@ struct MQTTConnectPacket: MQTTPacket {
         size += self.connect.clientIdentifier.utf8.count + 2
         // will publish
         if let will = will {
+            // properties
+            if version == .v5_0 {
+                let propertiesPacketSize = will.properties?.packetSize ?? 0
+                size += MQTTSerializer.variableLengthIntegerPacketSize(propertiesPacketSize) + propertiesPacketSize
+            }
             // will topic
             size += will.topicName.utf8.count + 2
             // will message
@@ -297,6 +306,8 @@ struct MQTTPubAckPacket: MQTTPacket {
         byteBuffer.writeInteger(self.packetId)
         if version == .v5_0 {
             byteBuffer.writeInteger(self.ack.reason.rawValue)
+            let properties = self.ack.properties ?? MQTTProperties()
+            try properties.write(to: &byteBuffer)
         }
     }
 
@@ -308,6 +319,10 @@ struct MQTTPubAckPacket: MQTTPacket {
             let ack = MQTTAckInfo(reason: .success, properties: nil)
             return MQTTPubAckPacket(type: packet.type, packetId: packetId, ack: ack)
         case .v5_0:
+            if remainingData.readableBytes == 0 {
+                let ack = MQTTAckInfo(reason: .success, properties: nil)
+                return MQTTPubAckPacket(type: packet.type, packetId: packetId, ack: ack)
+            }
             guard let reasonByte: UInt8 = remainingData.readInteger(),
                   let reason = MQTTReasonCode(rawValue: reasonByte) else {
                 throw MQTTError.badResponse
