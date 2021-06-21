@@ -63,8 +63,8 @@ final class MQTTNIOv5Tests: XCTestCase {
         let client = self.createClient(identifier: "testPublishQoS1V5")
         _ = try client.connect().wait()
         var publishProperties = MQTTProperties()
-        try publishProperties.addProperty(id: .contentType, value: "text/plain")
-        let puback = try client.v5.publish(
+        try publishProperties.add(.contentType, "text/plain")
+        _ = try client.v5.publish(
             to: "testMQTTPublishQoS",
             payload: ByteBufferAllocator().buffer(string: "Test payload"),
             qos: .atLeastOnce,

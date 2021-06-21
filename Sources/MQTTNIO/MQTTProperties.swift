@@ -40,18 +40,32 @@ public struct MQTTProperties {
         case string(String)
         case stringPair(String, String)
         case binaryData(ByteBuffer)
-        
+
+        var type: PropertyValueType {
+            switch self {
+            case .byte: return .byte
+            case .twoByteInteger: return .twoByteInteger
+            case .fourByteInteger: return .fourByteInteger
+            case .variableLengthInteger: return .variableLengthInteger
+            case .string: return .string
+            case .stringPair: return .stringPair
+            case .binaryData: return .binaryData
+            }
+        }
     }
 
     public init() {
         self.properties = [:]
     }
     
-    public init(_ properties: [PropertyId: PropertyValue]) {
+    public init(_ properties: [PropertyId: PropertyValue]) throws {
+        try properties.forEach {
+            guard $0.key.definition.type == $0.value.type else { throw MQTTError.invalidPropertyValue }
+        }
         self.properties = properties
     }
     
-    public mutating func addProperty(id: PropertyId, value: UInt) throws {
+    public mutating func add(_ id: PropertyId, _ value: UInt) throws {
         switch id.definition.type {
         case .byte:
             guard (0...255).contains(value) else { throw MQTTError.propertyValueOutOfRange }
@@ -70,17 +84,17 @@ public struct MQTTProperties {
         }
     }
     
-    public mutating func addProperty(id: PropertyId, value: String) throws {
+    public mutating func add(_ id: PropertyId, _ value: String) throws {
         guard id.definition.type == .string else { throw MQTTError.invalidPropertyValue }
         properties[id] = .string(value)
     }
     
-    public mutating func addProperty(id: PropertyId, value: (String, String)) throws {
+    public mutating func add(_ id: PropertyId, _ value: (String, String)) throws {
         guard id.definition.type == .stringPair else { throw MQTTError.invalidPropertyValue }
         properties[id] = .stringPair(value.0, value.1)
     }
     
-    public mutating func addProperty(id: PropertyId, value: ByteBuffer) throws {
+    public mutating func add(_ id: PropertyId, _ value: ByteBuffer) throws {
         guard id.definition.type == .binaryData else { throw MQTTError.invalidPropertyValue }
         properties[id] = .binaryData(value)
     }
@@ -97,7 +111,7 @@ public struct MQTTProperties {
     static func read(from byteBuffer: inout ByteBuffer) throws -> Self {
         var properties: [PropertyId: PropertyValue] = [:]
         guard byteBuffer.readableBytes > 0 else {
-            return Self(properties)
+            return try Self(properties)
         }
         let packetSize = try MQTTSerializer.readVariableLengthInteger(from: &byteBuffer)
         guard var propertyBuffer = byteBuffer.readSlice(length: packetSize) else { throw MQTTError.badResponse }
@@ -105,7 +119,7 @@ public struct MQTTProperties {
             let property = try PropertyValue.read(from: &propertyBuffer)
             properties[property.id] = property.value
         }
-        return Self(properties)
+        return try Self(properties)
     }
     
     var packetSize: Int {
