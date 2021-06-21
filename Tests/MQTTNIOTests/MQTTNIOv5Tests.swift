@@ -21,6 +21,16 @@ final class MQTTNIOv5Tests: XCTestCase {
         try client.syncShutdownGracefully()
     }
 
+    func testConnectWithWill() throws {
+        let client = self.createClient(identifier: "testConnectWithWill")
+        _ = try client.connect(
+            will: (topicName: "MyWillTopic", payload: ByteBufferAllocator().buffer(string: "Test payload"), retain: false)
+        ).wait()
+        try client.ping().wait()
+        try client.disconnect().wait()
+        try client.syncShutdownGracefully()
+    }
+
     func testConnectWithUInt8Property() throws {
         try testConnectWithProperty(.requestResponseInformation, value: .byte(1))
     }
@@ -63,6 +73,61 @@ final class MQTTNIOv5Tests: XCTestCase {
         try client.disconnect().wait()
         try client.syncShutdownGracefully()
     }
+
+    func testPublishQoS2() throws {
+        let client = self.createClient(identifier: "testPublishQoS1V5")
+        _ = try client.connect().wait()
+        try client.publish(to: "testMQTTPublishQoS", payload: ByteBufferAllocator().buffer(string: "Test payload"), qos: .exactlyOnce).wait()
+        try client.disconnect().wait()
+        try client.syncShutdownGracefully()
+    }
+
+    func testMQTTSubscribe() throws {
+        let client = self.createClient(identifier: "testMQTTSubscribeV5")
+        _ = try client.connect().wait()
+        try client.subscribe(to: [.init(topicFilter: "iphone", qos: .atLeastOnce)]).wait()
+        try client.disconnect().wait()
+        try client.syncShutdownGracefully()
+    }
+
+    func testUnsubscribe() throws {
+        let lock = Lock()
+        var publishReceived: [MQTTPublishInfo] = []
+        let payloadString = #"test payload"#
+        let payload = ByteBufferAllocator().buffer(string: payloadString)
+
+        let client = self.createClient(identifier: "testUnsubscribe_publisherV5")
+        _ = try client.connect().wait()
+        let client2 = self.createClient(identifier: "testUnsubscribe_subscriberV5")
+        client2.addPublishListener(named: "test") { result in
+            switch result {
+            case .success(let publish):
+                var buffer = publish.payload
+                let string = buffer.readString(length: buffer.readableBytes)
+                XCTAssertEqual(string, payloadString)
+                lock.withLock {
+                    publishReceived.append(publish)
+                }
+            case .failure(let error):
+                XCTFail("\(error)")
+            }
+        }
+        _ = try client2.connect().wait()
+        try client2.subscribe(to: [.init(topicFilter: "testUnsubscribe", qos: .atLeastOnce)]).wait()
+        try client.publish(to: "testUnsubscribe", payload: payload, qos: .atLeastOnce).wait()
+        try client2.unsubscribe(from: ["testUnsubscribe"]).wait()
+        try client.publish(to: "testUnsubscribe", payload: payload, qos: .atLeastOnce).wait()
+
+        Thread.sleep(forTimeInterval: 2)
+        lock.withLock {
+            XCTAssertEqual(publishReceived.count, 1)
+        }
+        try client.disconnect().wait()
+        try client2.disconnect().wait()
+        try client.syncShutdownGracefully()
+        try client2.syncShutdownGracefully()
+    }
+
 
     // MARK: Helper variables and functions
 
