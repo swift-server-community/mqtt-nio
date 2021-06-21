@@ -96,14 +96,14 @@ struct ByteToMQTTMessageDecoder: ByteToMessageDecoder {
             self.client.publishListeners.notify(.success(message.publish))
 
         case .atLeastOnce:
-            let ack = MQTTAckInfo(reason: .success, properties: nil)
+            let ack = MQTTAckInfo(reason: .success)
             connection.sendMessageNoWait(MQTTPubAckPacket(type: .PUBACK, packetId: message.packetId, ack: ack))
                 .map { _ in return message.publish }
                 .whenComplete { self.client.publishListeners.notify($0) }
 
         case .exactlyOnce:
             var publish = message.publish
-            let ack = MQTTAckInfo(reason: .success, properties: nil)
+            let ack = MQTTAckInfo(reason: .success)
             connection.sendMessageWithRetry(
                 MQTTPubAckPacket(type: .PUBREC, packetId: message.packetId, ack: ack),
                 maxRetryAttempts: self.client.configuration.maxRetryAttempts
@@ -134,7 +134,7 @@ struct ByteToMQTTMessageDecoder: ByteToMessageDecoder {
     /// multiple PUBREL messages, if the client is slow to respond
     func respondToPubrel(_ message: MQTTPacket) {
         guard let connection = client.connection else { return }
-        let ack = MQTTAckInfo(reason: .success, properties: nil)
+        let ack = MQTTAckInfo(reason: .success)
         _ = connection.sendMessageNoWait(MQTTPubAckPacket(type: .PUBCOMP, packetId: message.packetId, ack: ack))
     }
 }

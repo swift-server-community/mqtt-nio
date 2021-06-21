@@ -41,12 +41,12 @@ public struct MQTTPublishInfo {
     public let topicName: String
     
     /// MQTT v5 properties
-    public let properties: MQTTProperties?
+    public let properties: MQTTProperties
 
     /// Message payload.
     public let payload: ByteBuffer
 
-    public init(qos: MQTTQoS, retain: Bool, dup: Bool = false, topicName: String, payload: ByteBuffer, properties: MQTTProperties?) {
+    public init(qos: MQTTQoS, retain: Bool, dup: Bool = false, topicName: String, payload: ByteBuffer, properties: MQTTProperties) {
         self.qos = qos
         self.retain = retain
         self.dup = dup
@@ -77,11 +77,11 @@ public struct MQTTAckInfo {
     /// MQTT v5 disconnection reason
     public var reason: MQTTReasonCode
     /// MQTT v5 properties
-    public var properties: MQTTProperties?
+    public var properties: MQTTProperties
 
-    init(reason: MQTTReasonCode = .success, properties: MQTTProperties? = nil) {
+    init(reason: MQTTReasonCode = .success, properties: MQTTProperties = .init()) {
         self.reason = reason
-        self.properties = nil
+        self.properties = properties
     }
 }
 
@@ -92,10 +92,10 @@ public struct MQTTSubAckInfo {
     /// MQTT v5 disconnection reason
     public var reasons: [MQTTReasonCode]
     /// MQTT v5 properties
-    public var properties: MQTTProperties?
+    public var properties: MQTTProperties
 
-    init(reasons: [MQTTReasonCode], properties: MQTTProperties? = nil) {
+    init(reasons: [MQTTReasonCode], properties: MQTTProperties = .init()) {
         self.reasons = reasons
-        self.properties = nil
+        self.properties = properties
     }
 }

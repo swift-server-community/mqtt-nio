@@ -132,8 +132,8 @@ public final class MQTTClient {
     public func connect(
         cleanSession: Bool = true,
         will: (topicName: String, payload: ByteBuffer, retain: Bool)? = nil,
-        properties: MQTTProperties? = nil,
-        willProperties: MQTTProperties? = nil
+        properties: MQTTProperties = .init(),
+        willProperties: MQTTProperties = .init()
     ) -> EventLoopFuture<Bool> {
 
         let publish = will.map {
@@ -213,7 +213,7 @@ public final class MQTTClient {
         payload: ByteBuffer,
         qos: MQTTQoS,
         retain: Bool = false,
-        properties: MQTTProperties? = nil
+        properties: MQTTProperties = .init()
     ) -> EventLoopFuture<Void> {
         guard let connection = self.connection else { return self.eventLoopGroup.next().makeFailedFuture(MQTTError.noConnection) }
 

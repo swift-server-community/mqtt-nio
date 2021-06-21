@@ -10,7 +10,7 @@ final class CoreMQTTTests: XCTestCase {
             dup: false,
             topicName: "MyTopic",
             payload: ByteBufferAllocator().buffer(string: "Test payload"),
-            properties: nil
+            properties: .init()
         )
         var byteBuffer = ByteBufferAllocator().buffer(capacity: 1024)
         let connectPacket = MQTTConnectPacket(
@@ -19,7 +19,7 @@ final class CoreMQTTTests: XCTestCase {
             clientIdentifier: "MyClient",
             userName: nil,
             password: nil,
-            properties: nil,
+            properties: .init(),
             will: publish
         )
         try connectPacket.write(version: .v3_1_1, to: &byteBuffer)
@@ -33,7 +33,7 @@ final class CoreMQTTTests: XCTestCase {
             dup: false,
             topicName: "MyTopic",
             payload: ByteBufferAllocator().buffer(string: "Test payload"),
-            properties: nil
+            properties: .init()
         )
         var byteBuffer = ByteBufferAllocator().buffer(capacity: 1024)
         let publishPacket = MQTTPublishPacket(publish: publish, packetId: 456)

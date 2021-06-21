@@ -73,7 +73,7 @@ struct MQTTConnectPacket: MQTTPacket {
     let password: String?
 
     /// MQTT v5 properties
-    let properties: MQTTProperties?
+    let properties: MQTTProperties
 
     /// will published when connected
     let will: MQTTPublishInfo?
@@ -99,16 +99,14 @@ struct MQTTConnectPacket: MQTTPacket {
         byteBuffer.writeInteger(self.keepAliveSeconds)
         // v5 properties
         if version == .v5_0 {
-            let properties = self.properties ?? MQTTProperties()
-            try properties.write(to: &byteBuffer)
+            try self.properties.write(to: &byteBuffer)
         }
 
         // payload
         try MQTTSerializer.writeString(self.clientIdentifier, to: &byteBuffer)
         if let will = will {
             if version == .v5_0 {
-                let properties = will.properties ?? MQTTProperties()
-                try properties.write(to: &byteBuffer)
+                try will.properties.write(to: &byteBuffer)
             }
             try MQTTSerializer.writeString(will.topicName, to: &byteBuffer)
             try MQTTSerializer.writeBuffer(will.payload, to: &byteBuffer)
@@ -132,7 +130,7 @@ struct MQTTConnectPacket: MQTTPacket {
         var size = 10
         // properties
         if version == .v5_0 {
-            let propertiesPacketSize = self.properties?.packetSize ?? 0
+            let propertiesPacketSize = self.properties.packetSize
             size += MQTTSerializer.variableLengthIntegerPacketSize(propertiesPacketSize) + propertiesPacketSize
         }
         // payload
@@ -142,7 +140,7 @@ struct MQTTConnectPacket: MQTTPacket {
         if let will = will {
             // properties
             if version == .v5_0 {
-                let propertiesPacketSize = will.properties?.packetSize ?? 0
+                let propertiesPacketSize = will.properties.packetSize
                 size += MQTTSerializer.variableLengthIntegerPacketSize(propertiesPacketSize) + propertiesPacketSize
             }
             // will topic
@@ -189,8 +187,7 @@ struct MQTTPublishPacket: MQTTPacket {
         }
         // v5 properties
         if version == .v5_0 {
-            let properties = self.publish.properties ?? MQTTProperties()
-            try properties.write(to: &byteBuffer)
+            try self.publish.properties.write(to: &byteBuffer)
         }
         // write payload
         var payload = self.publish.payload
@@ -209,9 +206,11 @@ struct MQTTPublishPacket: MQTTPacket {
             packetId = readPacketId
         }
         // read properties
-        var properties: MQTTProperties?
+        let properties: MQTTProperties
         if version == .v5_0 {
             properties = try MQTTProperties.read(from: &remainingData)
+        } else {
+            properties = .init()
         }
 
         // read payload
@@ -239,7 +238,7 @@ struct MQTTPublishPacket: MQTTPacket {
         size += 2
         // properties
         if version == .v5_0 {
-            let propertiesPacketSize = self.publish.properties?.packetSize ?? 0
+            let propertiesPacketSize = self.publish.properties.packetSize
             size += MQTTSerializer.variableLengthIntegerPacketSize(propertiesPacketSize) + propertiesPacketSize
         }
         // payload
@@ -346,8 +345,7 @@ struct MQTTPubAckPacket: MQTTPacket {
         byteBuffer.writeInteger(self.packetId)
         if version == .v5_0 {
             byteBuffer.writeInteger(self.ack.reason.rawValue)
-            let properties = self.ack.properties ?? MQTTProperties()
-            try properties.write(to: &byteBuffer)
+            try self.ack.properties.write(to: &byteBuffer)
         }
     }
 
@@ -356,11 +354,11 @@ struct MQTTPubAckPacket: MQTTPacket {
         guard let packetId: UInt16 = remainingData.readInteger() else { throw MQTTError.badResponse }
         switch version {
         case .v3_1_1:
-            let ack = MQTTAckInfo(reason: .success, properties: nil)
+            let ack = MQTTAckInfo(reason: .success)
             return MQTTPubAckPacket(type: packet.type, packetId: packetId, ack: ack)
         case .v5_0:
             if remainingData.readableBytes == 0 {
-                let ack = MQTTAckInfo(reason: .success, properties: nil)
+                let ack = MQTTAckInfo(reason: .success)
                 return MQTTPubAckPacket(type: packet.type, packetId: packetId, ack: ack)
             }
             guard let reasonByte: UInt8 = remainingData.readInteger(),
@@ -375,7 +373,7 @@ struct MQTTPubAckPacket: MQTTPacket {
 
     func packetSize(version: MQTTClient.Version) -> Int {
         if version == .v5_0 {
-            let propertiesPacketSize = self.ack.properties?.packetSize ?? 0
+            let propertiesPacketSize = self.ack.properties.packetSize
             return 3 + MQTTSerializer.variableLengthIntegerPacketSize(propertiesPacketSize) + propertiesPacketSize
         }
         return 2
@@ -397,7 +395,7 @@ struct MQTTSubAckPacket: MQTTPacket {
         guard let packetId: UInt16 = remainingData.readInteger() else { throw MQTTError.badResponse }
         switch version {
         case .v3_1_1:
-            let ack = MQTTSubAckInfo(reasons: [], properties: nil)
+            let ack = MQTTSubAckInfo(reasons: [])
             return MQTTSubAckPacket(type: packet.type, packetId: packetId, ack: ack)
         case .v5_0:
             let properties = try MQTTProperties.read(from: &remainingData)
@@ -417,7 +415,7 @@ struct MQTTSubAckPacket: MQTTPacket {
 
     func packetSize(version: MQTTClient.Version) -> Int {
         if version == .v5_0 {
-            let propertiesPacketSize = self.ack.properties?.packetSize ?? 0
+            let propertiesPacketSize = self.ack.properties.packetSize
             return 2 + MQTTSerializer.variableLengthIntegerPacketSize(propertiesPacketSize) + propertiesPacketSize
         }
         return 2
@@ -466,6 +464,7 @@ struct MQTTDisconnectPacket: MQTTPacket {
         writeFixedHeader(packetType: self.type, size: self.packetSize(version: version), to: &byteBuffer)
         if version == .v5_0 {
             byteBuffer.writeInteger(self.disconnect.reason.rawValue)
+            try self.disconnect.properties.write(to: &byteBuffer)
         }
     }
 
@@ -487,7 +486,7 @@ struct MQTTDisconnectPacket: MQTTPacket {
 
     func packetSize(version: MQTTClient.Version) -> Int {
         if version == .v5_0 {
-            let propertiesPacketSize = self.disconnect.properties?.packetSize ?? 0
+            let propertiesPacketSize = self.disconnect.properties.packetSize
             return 1 + MQTTSerializer.variableLengthIntegerPacketSize(propertiesPacketSize) + propertiesPacketSize
         }
         return 0
