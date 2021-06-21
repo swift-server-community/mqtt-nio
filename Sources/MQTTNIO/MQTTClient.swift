@@ -222,7 +222,10 @@ public final class MQTTClient {
         }
 
         let packetId = self.updatePacketId()
-        return connection.sendMessageWithRetry(MQTTPublishPacket(publish: info, packetId: packetId), maxRetryAttempts: self.configuration.maxRetryAttempts) { message in
+        return connection.sendMessageWithRetry(
+            MQTTPublishPacket(publish: info, packetId: packetId),
+            maxRetryAttempts: self.configuration.maxRetryAttempts
+        ) { message in
             guard message.packetId == packetId else { return false }
             if info.qos == .atLeastOnce {
                 guard message.type == .PUBACK else {
@@ -233,15 +236,29 @@ public final class MQTTClient {
                     throw MQTTError.unexpectedMessage
                 }
             }
+            if let pubAckPacket = message as? MQTTPubAckPacket {
+                if pubAckPacket.ack.reason.rawValue > 0x7f {
+                    throw MQTTError.reasonError(pubAckPacket.ack.reason)
+                }
+            }
             return true
         }
         .flatMap { _ in
             if info.qos == .exactlyOnce {
-                return connection.sendMessageWithRetry(MQTTAckPacket(type: .PUBREL, packetId: packetId), maxRetryAttempts: self.configuration.maxRetryAttempts) { message in
+                let ack = MQTTAckInfo(reason: .success, properties: .init())
+                return connection.sendMessageWithRetry(
+                    MQTTPubAckPacket(type: .PUBREL, packetId: packetId, ack: ack),
+                    maxRetryAttempts: self.configuration.maxRetryAttempts
+                ) { message in
                     guard message.packetId == packetId else { return false }
                     guard message.type != .PUBREC else { return false }
                     guard message.type == .PUBCOMP else {
                         throw MQTTError.unexpectedMessage
+                    }
+                    if let pubAckPacket = message as? MQTTPubAckPacket {
+                        if pubAckPacket.ack.reason.rawValue > 0x7f {
+                            throw MQTTError.reasonError(pubAckPacket.ack.reason)
+                        }
                     }
                     return true
                 }.map { _ in }
@@ -303,7 +320,7 @@ public final class MQTTClient {
     public func disconnect() -> EventLoopFuture<Void> {
         guard let connection = self.connection else { return self.eventLoopGroup.next().makeFailedFuture(MQTTError.noConnection) }
 
-        return connection.sendMessageNoWait(MQTTDisconnectPacket(disconnectInfo: .init()))
+        return connection.sendMessageNoWait(MQTTDisconnectPacket(disconnect: .init()))
             .flatMap {
                 let future = self.connection?.close()
                 self.connection = nil

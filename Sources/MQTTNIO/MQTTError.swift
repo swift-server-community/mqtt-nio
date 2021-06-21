@@ -16,12 +16,12 @@ enum MQTTError: Error {
     case failedToConnect
     /// We received an unsuccessful connection return value
     case connectionError(ConnectionReturnValue)
-    /// We received an unsuccessful connection return value
+    /// We received an unsuccessful return value from either a connect or publish
     case reasonError(MQTTReasonCode)
     /// client in not connected
     case noConnection
     /// the server disconnected
-    case serverDisconnection(MQTTDisconnectInfo)
+    case serverDisconnection(MQTTAckInfo)
     /// the server closed the connection
     case serverClosedConnection
     /// received unexpected message from broker

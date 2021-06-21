@@ -93,8 +93,8 @@ public struct MQTTSubscribeInfo {
     }
 }
 
-/// MQTT DISCONNECT packet parameters
-public struct MQTTDisconnectInfo {
+/// MQTT ACK information
+public struct MQTTAckInfo {
     /// MQTT v5 disconnection reason
     public var reason: MQTTReasonCode
     /// MQTT v5 properties
@@ -102,6 +102,21 @@ public struct MQTTDisconnectInfo {
 
     init(reason: MQTTReasonCode = .success, properties: MQTTProperties? = nil) {
         self.reason = reason
+        self.properties = nil
+    }
+}
+
+/// MQTT Sub ACK
+///
+/// Contains data returned in subscribe/unsubscribe ack packets
+public struct MQTTSubAckInfo {
+    /// MQTT v5 disconnection reason
+    public var reasons: [MQTTReasonCode]
+    /// MQTT v5 properties
+    public var properties: MQTTProperties?
+
+    init(reasons: [MQTTReasonCode], properties: MQTTProperties? = nil) {
+        self.reasons = reasons
         self.properties = nil
     }
 }

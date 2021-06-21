@@ -61,21 +61,23 @@ struct ByteToMQTTMessageDecoder: ByteToMessageDecoder {
                 return .continue
             case .CONNACK:
                 message = try MQTTConnAckPacket.read(version: client.configuration.version, from: packet)
-            case .PUBACK, .PUBREC, .PUBREL, .PUBCOMP, .SUBACK, .UNSUBACK:
-                message = try MQTTAckPacket.read(version: client.configuration.version, from: packet)
+            case .PUBACK, .PUBREC, .PUBREL, .PUBCOMP:
+                message = try MQTTPubAckPacket.read(version: client.configuration.version, from: packet)
                 if packet.type == .PUBREL {
                     self.respondToPubrel(message)
                 }
+            case .SUBACK, .UNSUBACK:
+                message = try MQTTSubAckPacket.read(version: client.configuration.version, from: packet)
             case .PINGRESP:
                 message = try MQTTPingrespPacket.read(version: client.configuration.version, from: packet)
             case .DISCONNECT:
                 let disconnectMessage = try MQTTDisconnectPacket.read(version: client.configuration.version, from: packet)
-                context.fireErrorCaught(MQTTError.serverDisconnection(disconnectMessage.disconnectInfo))
+                context.fireErrorCaught(MQTTError.serverDisconnection(disconnectMessage.disconnect))
                 message = disconnectMessage
             default:
                 throw MQTTError.decodeError
             }
-            self.client.logger.debug("MQTT Out", metadata: ["mqtt_message": .string("\(message)"), "mqtt_packet_id": .string("\(message.packetId)")])
+            self.client.logger.debug("MQTT In", metadata: ["mqtt_message": .string("\(message)"), "mqtt_packet_id": .string("\(message.packetId)")])
             context.fireChannelRead(wrapInboundOut(message))
         } catch InternalError.incompletePacket {
             return .needMoreData
@@ -94,13 +96,18 @@ struct ByteToMQTTMessageDecoder: ByteToMessageDecoder {
             self.client.publishListeners.notify(.success(message.publish))
 
         case .atLeastOnce:
-            connection.sendMessageNoWait(MQTTAckPacket(type: .PUBACK, packetId: message.packetId))
+            let ack = MQTTAckInfo(reason: .success, properties: nil)
+            connection.sendMessageNoWait(MQTTPubAckPacket(type: .PUBACK, packetId: message.packetId, ack: ack))
                 .map { _ in return message.publish }
                 .whenComplete { self.client.publishListeners.notify($0) }
 
         case .exactlyOnce:
             var publish = message.publish
-            connection.sendMessageWithRetry(MQTTAckPacket(type: .PUBREC, packetId: message.packetId), maxRetryAttempts: self.client.configuration.maxRetryAttempts) { newMessage in
+            let ack = MQTTAckInfo(reason: .success, properties: nil)
+            connection.sendMessageWithRetry(
+                MQTTPubAckPacket(type: .PUBREC, packetId: message.packetId, ack: ack),
+                maxRetryAttempts: self.client.configuration.maxRetryAttempts
+            ) { newMessage in
                 guard newMessage.packetId == message.packetId else { return false }
                 // if we receive a publish message while waiting for a PUBREL from broker then replace data to be published and retry PUBREC
                 if newMessage.type == .PUBLISH, let publishMessage = newMessage as? MQTTPublishPacket {
@@ -127,6 +134,7 @@ struct ByteToMQTTMessageDecoder: ByteToMessageDecoder {
     /// multiple PUBREL messages, if the client is slow to respond
     func respondToPubrel(_ message: MQTTPacket) {
         guard let connection = client.connection else { return }
-        _ = connection.sendMessageNoWait(MQTTAckPacket(type: .PUBCOMP, packetId: message.packetId))
+        let ack = MQTTAckInfo(reason: .success, properties: nil)
+        _ = connection.sendMessageNoWait(MQTTPubAckPacket(type: .PUBCOMP, packetId: message.packetId, ack: ack))
     }
 }

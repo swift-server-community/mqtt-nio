@@ -97,7 +97,6 @@ final class MQTTNIOTests: XCTestCase {
         let client = self.createClient(identifier: "testMQTTSubscribe")
         _ = try client.connect().wait()
         try client.subscribe(to: [.init(topicFilter: "iphone", qos: .atLeastOnce)]).wait()
-        Thread.sleep(forTimeInterval: 5)
         try client.disconnect().wait()
         try client.syncShutdownGracefully()
     }
