@@ -159,7 +159,10 @@ public final class MQTTClient {
                     }
                     self.closeListeners.notify(result)
                 }
-                return connection.sendMessageWithRetry(MQTTConnectPacket(connect: info, will: publish), maxRetryAttempts: self.configuration.maxRetryAttempts) { message in
+                return connection.sendMessageWithRetry(
+                    MQTTConnectPacket(connect: info, will: publish),
+                    maxRetryAttempts: self.configuration.maxRetryAttempts
+                ) { message -> Bool in
                     guard message.type == .CONNACK else { throw MQTTError.failedToConnect }
                     return true
                 }
@@ -168,9 +171,17 @@ public final class MQTTClient {
                 guard let connack = message as? MQTTConnAckPacket else { return false }
                 // connack doesn't return a packet id so this is alway 32767. Need a better way to choose first packet id
                 _ = self.globalPacketId.exchange(with: connack.packetId + 32767)
-                if connack.returnCode != 0 {
-                    let returnCode = MQTTError.ConnectionReturnValue(rawValue: connack.returnCode) ?? .unrecognizedReturnValue
-                    throw MQTTError.connectionError(returnCode)
+                switch self.configuration.version {
+                case .v3_1_1:
+                    if connack.returnCode != 0 {
+                        let returnCode = MQTTError.ConnectionReturnValue(rawValue: connack.returnCode) ?? .unrecognizedReturnValue
+                        throw MQTTError.connectionError(returnCode)
+                    }
+                case .v5_0:
+                    if connack.returnCode > 0x7f {
+                        let returnCode = MQTTReasonCode(rawValue: connack.returnCode) ?? .unrecognisedReason
+                        throw MQTTError.reasonError(returnCode)
+                    }
                 }
                 return connack.sessionPresent
             }
@@ -276,7 +287,7 @@ public final class MQTTClient {
     public func disconnect() -> EventLoopFuture<Void> {
         guard let connection = self.connection else { return self.eventLoopGroup.next().makeFailedFuture(MQTTError.noConnection) }
 
-        return connection.sendMessageNoWait(MQTTDisconnectPacket())
+        return connection.sendMessageNoWait(MQTTDisconnectPacket(disconnectInfo: .init()))
             .flatMap {
                 let future = self.connection?.close()
                 self.connection = nil

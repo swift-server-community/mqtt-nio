@@ -68,6 +68,10 @@ struct ByteToMQTTMessageDecoder: ByteToMessageDecoder {
                 }
             case .PINGRESP:
                 message = try MQTTPingrespPacket.read(version: client.configuration.version, from: packet)
+            case .DISCONNECT:
+                let disconnectMessage = try MQTTDisconnectPacket.read(version: client.configuration.version, from: packet)
+                context.fireErrorCaught(MQTTError.serverDisconnection(disconnectMessage.disconnectInfo))
+                message = disconnectMessage
             default:
                 throw MQTTError.decodeError
             }

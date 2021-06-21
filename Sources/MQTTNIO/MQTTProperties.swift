@@ -35,10 +35,10 @@ public struct MQTTProperties {
     public enum PropertyValue {
         case byte(UInt8)
         case twoByteInteger(UInt16)
-        case fourByteInteger(UInt)
+        case fourByteInteger(UInt32)
         case variableLengthInteger(UInt)
         case string(String)
-        case stringPair((String, String))
+        case stringPair(String, String)
         case binaryData(ByteBuffer)
         
     }
@@ -61,7 +61,7 @@ public struct MQTTProperties {
             properties[id] = .twoByteInteger(UInt16(value))
         case .fourByteInteger:
             guard (0..<(1<<32)).contains(value) else { throw MQTTError.propertyValueOutOfRange }
-            properties[id] = .fourByteInteger(value)
+            properties[id] = .fourByteInteger(UInt32(value))
         case .variableLengthInteger:
             guard (0..<(1<<28)).contains(value) else { throw MQTTError.propertyValueOutOfRange }
             properties[id] = .variableLengthInteger(value)
@@ -77,7 +77,7 @@ public struct MQTTProperties {
     
     public mutating func addProperty(id: PropertyId, value: (String, String)) throws {
         guard id.definition.type == .stringPair else { throw MQTTError.invalidPropertyValue }
-        properties[id] = .stringPair(value)
+        properties[id] = .stringPair(value.0, value.1)
     }
     
     public mutating func addProperty(id: PropertyId, value: ByteBuffer) throws {
@@ -96,6 +96,9 @@ public struct MQTTProperties {
 
     static func read(from byteBuffer: inout ByteBuffer) throws -> Self {
         var properties: [PropertyId: PropertyValue] = [:]
+        guard byteBuffer.readableBytes > 0 else {
+            return Self(properties)
+        }
         let packetSize = try MQTTSerializer.readVariableLengthInteger(from: &byteBuffer)
         guard var propertyBuffer = byteBuffer.readSlice(length: packetSize) else { throw MQTTError.badResponse }
         while propertyBuffer.readableBytes > 0 {
@@ -173,8 +176,8 @@ extension MQTTProperties.PropertyValue {
             return MQTTSerializer.variableLengthIntegerPacketSize(Int(value))
         case .string(let string):
             return 2 + string.utf8.count
-        case .stringPair(let strings):
-            return 2 + strings.0.utf8.count + 2 + strings.1.utf8.count
+        case .stringPair(let string1, let string2):
+            return 2 + string1.utf8.count + 2 + string2.utf8.count
         case .binaryData(let buffer):
             return 2 + buffer.readableBytes
         }
@@ -192,9 +195,9 @@ extension MQTTProperties.PropertyValue {
             MQTTSerializer.writeVariableLengthInteger(Int(value), to: &byteBuffer)
         case .string(let string):
             try MQTTSerializer.writeString(string, to: &byteBuffer)
-        case .stringPair(let strings):
-            try MQTTSerializer.writeString(strings.0, to: &byteBuffer)
-            try MQTTSerializer.writeString(strings.1, to: &byteBuffer)
+        case .stringPair(let string1, let string2):
+            try MQTTSerializer.writeString(string1, to: &byteBuffer)
+            try MQTTSerializer.writeString(string2, to: &byteBuffer)
         case .binaryData(let buffer):
             try MQTTSerializer.writeBuffer(buffer, to: &byteBuffer)
         }
@@ -213,7 +216,7 @@ extension MQTTProperties.PropertyValue {
             propertyValue = .twoByteInteger(short)
         case .fourByteInteger:
             guard let integer: UInt32 = byteBuffer.readInteger() else { throw MQTTError.badResponse}
-            propertyValue = .fourByteInteger(UInt(integer))
+            propertyValue = .fourByteInteger(integer)
         case .variableLengthInteger:
             let integer = try MQTTSerializer.readVariableLengthInteger(from: &byteBuffer)
             propertyValue = .variableLengthInteger(UInt(integer))
@@ -223,7 +226,7 @@ extension MQTTProperties.PropertyValue {
         case .stringPair:
             let string1 = try MQTTSerializer.readString(from: &byteBuffer)
             let string2 = try MQTTSerializer.readString(from: &byteBuffer)
-            propertyValue = .stringPair((string1, string2))
+            propertyValue = .stringPair(string1, string2)
         case .binaryData:
             let buffer = try MQTTSerializer.readBuffer(from: &byteBuffer)
             propertyValue = .binaryData(buffer)

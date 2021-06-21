@@ -156,7 +156,11 @@ final class MQTTConnection {
         }
     }
 
-    func sendMessageWithRetry(_ message: MQTTPacket, maxRetryAttempts: Int, checkInbound: @escaping (MQTTPacket) throws -> Bool) -> EventLoopFuture<MQTTPacket> {
+    func sendMessageWithRetry(
+        _ message: MQTTPacket,
+        maxRetryAttempts: Int,
+        checkInbound: @escaping (MQTTPacket) throws -> Bool
+    ) -> EventLoopFuture<MQTTPacket> {
         let promise = self.channel.eventLoop.makePromise(of: MQTTPacket.self)
 
         func _sendMessage(_ message: MQTTPacket, attempt: Int) {

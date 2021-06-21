@@ -320,15 +320,42 @@ struct MQTTPingrespPacket: MQTTPacket {
 struct MQTTDisconnectPacket: MQTTPacket {
     var type: MQTTPacketType { .DISCONNECT }
     var description: String { "DISCONNECT" }
+    var disconnectInfo: MQTTDisconnectInfo
+
+    init(disconnectInfo: MQTTDisconnectInfo) {
+        self.disconnectInfo = disconnectInfo
+    }
+
     func write(version: MQTTClient.Version, to byteBuffer: inout ByteBuffer) throws {
-        writeFixedHeader(packetType: self.type, size: self.packetSize, to: &byteBuffer)
+        writeFixedHeader(packetType: self.type, size: self.packetSize(version: version), to: &byteBuffer)
+        if version == .v5_0 {
+            byteBuffer.writeInteger(self.disconnectInfo.reason.rawValue)
+        }
     }
 
     static func read(version: MQTTClient.Version, from packet: MQTTIncomingPacket) throws -> Self {
-        throw InternalError.notImplemented
+        var buffer = packet.remainingData
+        switch version {
+        case .v3_1_1:
+            return MQTTDisconnectPacket(disconnectInfo: .init())
+        case .v5_0:
+            guard let reasonByte: UInt8 = buffer.readInteger(),
+                  let reason = MQTTReasonCode(rawValue: reasonByte) else {
+                throw MQTTError.badResponse
+            }
+            let properties = try MQTTProperties.read(from: &buffer)
+            let disconnectInfo = MQTTDisconnectInfo(reason: reason, properties: properties)
+            return MQTTDisconnectPacket(disconnectInfo: disconnectInfo)
+        }
     }
 
-    var packetSize: Int { 0 }
+    func packetSize(version: MQTTClient.Version) -> Int {
+        if version == .v5_0 {
+            let propertiesPacketSize = self.disconnectInfo.properties?.packetSize ?? 0
+            return 1 + MQTTSerializer.variableLengthIntegerPacketSize(propertiesPacketSize) + propertiesPacketSize
+        }
+        return 0
+    }
 }
 
 struct MQTTConnAckPacket: MQTTPacket {

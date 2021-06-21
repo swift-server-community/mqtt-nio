@@ -1,7 +1,7 @@
 /// MQTT v5.0 reason codes. A reason code is a one byte unsigned value that indicates the result of an operation.
 /// Reason codes less than 128 are considered successful. Codes greater than or equal to 128 are considered
 /// a failure
-enum MQTTReasonCode: UInt8 {
+public enum MQTTReasonCode: UInt8 {
     case success = 0
     case grantedQoS1 = 1
     case grantedQoS2 = 2
@@ -45,4 +45,5 @@ enum MQTTReasonCode: UInt8 {
     case maximumConnectTime = 160
     case subscriptionIdentifiersNotSupported = 161
     case wildcardSubscriptionsNotSupported = 162
+    case unrecognisedReason = 255
 }

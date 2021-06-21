@@ -92,3 +92,16 @@ public struct MQTTSubscribeInfo {
         self.topicFilter = topicFilter
     }
 }
+
+/// MQTT DISCONNECT packet parameters
+public struct MQTTDisconnectInfo {
+    /// MQTT v5 disconnection reason
+    public var reason: MQTTReasonCode
+    /// MQTT v5 properties
+    public var properties: MQTTProperties?
+
+    init(reason: MQTTReasonCode = .success, properties: MQTTProperties? = nil) {
+        self.reason = reason
+        self.properties = nil
+    }
+}
