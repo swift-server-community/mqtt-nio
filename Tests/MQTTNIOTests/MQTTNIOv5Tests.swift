@@ -15,7 +15,7 @@ final class MQTTNIOv5Tests: XCTestCase {
     
     func testConnect() throws {
         let client = self.createClient(identifier: "testConnectV5")
-        _ = try client.connect().wait()
+        try client.v5.connect().wait()
         try client.ping().wait()
         try client.disconnect().wait()
         try client.syncShutdownGracefully()
@@ -24,7 +24,7 @@ final class MQTTNIOv5Tests: XCTestCase {
     func testConnectWithWill() throws {
         let client = self.createClient(identifier: "testConnectWithWill")
         _ = try client.connect(
-            will: (topicName: "MyWillTopic", payload: ByteBufferAllocator().buffer(string: "Test payload"), retain: false)
+            will: (topicName: "MyWillTopic", payload: ByteBufferAllocator().buffer(string: "Test payload"), qos: .atLeastOnce, retain: false)
         ).wait()
         try client.ping().wait()
         try client.disconnect().wait()
@@ -144,7 +144,7 @@ final class MQTTNIOv5Tests: XCTestCase {
 
     func testConnectWithProperty(_ id: MQTTProperties.PropertyId, value: MQTTProperties.PropertyValue) throws {
         let client = self.createClient(identifier: "testConnectV5")
-        _ = try client.connect(properties: .init([id: value])).wait()
+        let connack = try client.v5.connect(properties: .init([id: value])).wait()
         try client.ping().wait()
         try client.disconnect().wait()
         try client.syncShutdownGracefully()

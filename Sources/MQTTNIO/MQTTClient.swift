@@ -131,9 +131,7 @@ public final class MQTTClient {
     /// - Returns: EventLoopFuture to be updated with whether server holds a session for this client
     public func connect(
         cleanSession: Bool = true,
-        will: (topicName: String, payload: ByteBuffer, retain: Bool)? = nil,
-        properties: MQTTProperties = .init(),
-        willProperties: MQTTProperties = .init()
+        will: (topicName: String, payload: ByteBuffer, qos: MQTTQoS, retain: Bool)? = nil
     ) -> EventLoopFuture<Bool> {
 
         let publish = will.map {
@@ -143,60 +141,20 @@ public final class MQTTClient {
                 dup: false,
                 topicName: $0.topicName,
                 payload: $0.payload,
-                properties: willProperties
+                properties: .init()
             )
         }
+        let packet = MQTTConnectPacket(
+            cleanSession: cleanSession,
+            keepAliveSeconds: UInt16(configuration.keepAliveInterval.nanoseconds / 1_000_000_000),
+            clientIdentifier: self.identifier,
+            userName: self.configuration.userName,
+            password: self.configuration.password,
+            properties: .init(),
+            will: publish
+        )
 
-        // work out pingreq interval
-        let keepAliveSeconds = UInt16(configuration.keepAliveInterval.nanoseconds / 1_000_000_000)
-        let pingInterval = self.configuration.pingInterval ?? TimeAmount.seconds(max(Int64(keepAliveSeconds - 5), 5))
-
-        return MQTTConnection.create(client: self, pingInterval: pingInterval)
-            .flatMap { connection -> EventLoopFuture<MQTTPacket> in
-                self.connection = connection
-                connection.closeFuture.whenComplete { result in
-                    // only reset connection if this connection is still set. Stops a reconnect having its connection removed by the
-                    // previous connection
-                    if self.connection === connection {
-                        self.connection = nil
-                    }
-                    self.closeListeners.notify(result)
-                }
-                let packet = MQTTConnectPacket(
-                    cleanSession: cleanSession,
-                    keepAliveSeconds: keepAliveSeconds,
-                    clientIdentifier: self.identifier,
-                    userName: self.configuration.userName,
-                    password: self.configuration.password,
-                    properties: properties,
-                    will: publish
-                )
-                return connection.sendMessageWithRetry(
-                    packet,
-                    maxRetryAttempts: self.configuration.maxRetryAttempts
-                ) { message -> Bool in
-                    guard message.type == .CONNACK else { throw MQTTError.failedToConnect }
-                    return true
-                }
-            }
-            .flatMapThrowing { message in
-                guard let connack = message as? MQTTConnAckPacket else { return false }
-                // connack doesn't return a packet id so this is alway 32767. Need a better way to choose first packet id
-                _ = self.globalPacketId.exchange(with: connack.packetId + 32767)
-                switch self.configuration.version {
-                case .v3_1_1:
-                    if connack.returnCode != 0 {
-                        let returnCode = MQTTError.ConnectionReturnValue(rawValue: connack.returnCode) ?? .unrecognizedReturnValue
-                        throw MQTTError.connectionError(returnCode)
-                    }
-                case .v5_0:
-                    if connack.returnCode > 0x7f {
-                        let returnCode = MQTTReasonCode(rawValue: connack.returnCode) ?? .unrecognisedReason
-                        throw MQTTError.reasonError(returnCode)
-                    }
-                }
-                return connack.sessionPresent
-            }
+        return connect(packet: packet).map { $0.acknowledgeFlags & 0x1 == 0x1 }
     }
 
     /// Publish message to topic
@@ -359,6 +317,49 @@ public final class MQTTClient {
     /// Remove named close listener
     public func removeCloseListener(named name: String) {
         self.closeListeners.removeListener(named: name)
+    }
+
+    /// connect to broker
+    func connect(packet: MQTTConnectPacket) -> EventLoopFuture<MQTTConnAckPacket> {
+        let pingInterval = self.configuration.pingInterval ?? TimeAmount.seconds(max(Int64(packet.keepAliveSeconds - 5), 5))
+
+        return MQTTConnection.create(client: self, pingInterval: pingInterval)
+            .flatMap { connection -> EventLoopFuture<MQTTPacket> in
+                self.connection = connection
+                connection.closeFuture.whenComplete { result in
+                    // only reset connection if this connection is still set. Stops a reconnect having its connection removed by the
+                    // previous connection
+                    if self.connection === connection {
+                        self.connection = nil
+                    }
+                    self.closeListeners.notify(result)
+                }
+                return connection.sendMessageWithRetry(
+                    packet,
+                    maxRetryAttempts: self.configuration.maxRetryAttempts
+                ) { message -> Bool in
+                    guard message.type == .CONNACK else { throw MQTTError.failedToConnect }
+                    return true
+                }
+            }
+            .flatMapThrowing { message in
+                guard let connack = message as? MQTTConnAckPacket else { throw MQTTError.unexpectedMessage }
+                // connack doesn't return a packet id so this is alway 32767. Need a better way to choose first packet id
+                _ = self.globalPacketId.exchange(with: connack.packetId + 32767)
+                switch self.configuration.version {
+                case .v3_1_1:
+                    if connack.returnCode != 0 {
+                        let returnCode = MQTTError.ConnectionReturnValue(rawValue: connack.returnCode) ?? .unrecognizedReturnValue
+                        throw MQTTError.connectionError(returnCode)
+                    }
+                case .v5_0:
+                    if connack.returnCode > 0x7f {
+                        let returnCode = MQTTReasonCode(rawValue: connack.returnCode) ?? .unrecognisedReason
+                        throw MQTTError.reasonError(returnCode)
+                    }
+                }
+                return connack
+            }
     }
 
     private func updatePacketId() -> UInt16 {

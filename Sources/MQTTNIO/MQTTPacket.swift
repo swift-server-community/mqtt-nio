@@ -497,7 +497,8 @@ struct MQTTConnAckPacket: MQTTPacket {
     var type: MQTTPacketType { .CONNACK }
     var description: String { "CONNACK" }
     let returnCode: UInt8
-    let sessionPresent: Bool
+    let acknowledgeFlags: UInt8
+    let properties: MQTTProperties
 
     func write(version: MQTTClient.Version, to: inout ByteBuffer) throws {
         throw InternalError.notImplemented
@@ -506,7 +507,17 @@ struct MQTTConnAckPacket: MQTTPacket {
     static func read(version: MQTTClient.Version, from packet: MQTTIncomingPacket) throws -> Self {
         var remainingData = packet.remainingData
         guard let bytes = remainingData.readBytes(length: 2) else { throw MQTTError.badResponse }
-        return MQTTConnAckPacket(returnCode: bytes[1], sessionPresent: bytes[0] & 0x1 == 0x1)
+        let properties: MQTTProperties
+        if version == .v5_0 {
+            properties = try MQTTProperties.read(from: &remainingData)
+        } else {
+            properties = .init()
+        }
+        return MQTTConnAckPacket(
+            returnCode: bytes[1],
+            acknowledgeFlags: bytes[0],
+            properties: properties
+        )
     }
 }
 

@@ -20,7 +20,7 @@ final class MQTTNIOTests: XCTestCase {
     func testConnectWithWill() throws {
         let client = self.createClient(identifier: "testConnectWithWill")
         _ = try client.connect(
-            will: (topicName: "MyWillTopic", payload: ByteBufferAllocator().buffer(string: "Test payload"), retain: false)
+            will: (topicName: "MyWillTopic", payload: ByteBufferAllocator().buffer(string: "Test payload"), qos: .atLeastOnce, retain: false)
         ).wait()
         try client.ping().wait()
         try client.disconnect().wait()
