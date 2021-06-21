@@ -17,7 +17,8 @@ final class CoreMQTTTests: XCTestCase {
             retain: false,
             dup: false,
             topicName: "MyTopic",
-            payload: ByteBufferAllocator().buffer(string: "Test payload")
+            payload: ByteBufferAllocator().buffer(string: "Test payload"),
+            properties: nil
         )
         var byteBuffer = ByteBufferAllocator().buffer(capacity: 1024)
         let connectPacket = MQTTConnectPacket(connect: connect, will: publish)
@@ -31,7 +32,8 @@ final class CoreMQTTTests: XCTestCase {
             retain: false,
             dup: false,
             topicName: "MyTopic",
-            payload: ByteBufferAllocator().buffer(string: "Test payload")
+            payload: ByteBufferAllocator().buffer(string: "Test payload"),
+            properties: nil
         )
         var byteBuffer = ByteBufferAllocator().buffer(capacity: 1024)
         let publishPacket = MQTTPublishPacket(publish: publish, packetId: 456)

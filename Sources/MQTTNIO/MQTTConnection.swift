@@ -176,7 +176,14 @@ final class MQTTConnection {
                         if let publishMessage = message as? MQTTPublishPacket {
                             let publish = publishMessage.publish
                             let newMessage = MQTTPublishPacket(
-                                publish: .init(qos: publish.qos, retain: publish.retain, dup: true, topicName: publish.topicName, payload: publish.payload),
+                                publish: .init(
+                                    qos: publish.qos,
+                                    retain: publish.retain,
+                                    dup: true,
+                                    topicName: publish.topicName,
+                                    payload: publish.payload,
+                                    properties: publish.properties
+                                ),
                                 packetId: publishMessage.packetId
                             )
                             _sendMessage(newMessage, attempt: attempt + 1)

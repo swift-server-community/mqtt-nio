@@ -131,8 +131,9 @@ public final class MQTTClient {
     /// - Returns: EventLoopFuture to be updated with whether server holds a session for this client
     public func connect(
         cleanSession: Bool = true,
+        will: (topicName: String, payload: ByteBuffer, retain: Bool)? = nil,
         properties: MQTTProperties? = nil,
-        will: (topicName: String, payload: ByteBuffer, retain: Bool)? = nil
+        willProperties: MQTTProperties? = nil
     ) -> EventLoopFuture<Bool> {
 
         let info = MQTTConnectInfo(
@@ -143,7 +144,16 @@ public final class MQTTClient {
             password: self.configuration.password,
             properties: properties
         )
-        let publish = will.map { MQTTPublishInfo(qos: .atMostOnce, retain: $0.retain, dup: false, topicName: $0.topicName, payload: $0.payload) }
+        let publish = will.map {
+            MQTTPublishInfo(
+                qos: .atMostOnce,
+                retain: $0.retain,
+                dup: false,
+                topicName: $0.topicName,
+                payload: $0.payload,
+                properties: willProperties
+            )
+        }
 
         // work out pingreq interval
         let pingInterval = self.configuration.pingInterval ?? TimeAmount.seconds(max(Int64(info.keepAliveSeconds - 5), 5))
@@ -196,10 +206,16 @@ public final class MQTTClient {
     /// - Returns: Future waiting for publish to complete. Depending on QoS setting the future will complete
     ///     when message is sent, when PUBACK is received or when PUBREC and following PUBCOMP are
     ///     received
-    public func publish(to topicName: String, payload: ByteBuffer, qos: MQTTQoS, retain: Bool = false) -> EventLoopFuture<Void> {
+    public func publish(
+        to topicName: String,
+        payload: ByteBuffer,
+        qos: MQTTQoS,
+        retain: Bool = false,
+        properties: MQTTProperties? = nil
+    ) -> EventLoopFuture<Void> {
         guard let connection = self.connection else { return self.eventLoopGroup.next().makeFailedFuture(MQTTError.noConnection) }
 
-        let info = MQTTPublishInfo(qos: qos, retain: retain, dup: false, topicName: topicName, payload: payload)
+        let info = MQTTPublishInfo(qos: qos, retain: retain, dup: false, topicName: topicName, payload: payload, properties: properties)
         if info.qos == .atMostOnce {
             // don't send a packet id if QOS is at most once. (MQTT-2.3.1-5)
             return connection.sendMessageNoWait(MQTTPublishPacket(publish: info, packetId: 0))

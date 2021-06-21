@@ -42,9 +42,24 @@ final class MQTTNIOv5Tests: XCTestCase {
     }
 
     func testPublishQoS1() throws {
-        let client = self.createClient(identifier: "testMQTTPublishQoS0")
+        let client = self.createClient(identifier: "testPublishQoS1V5")
         _ = try client.connect().wait()
         try client.publish(to: "testMQTTPublishQoS", payload: ByteBufferAllocator().buffer(string: "Test payload"), qos: .atLeastOnce).wait()
+        try client.disconnect().wait()
+        try client.syncShutdownGracefully()
+    }
+
+    func testPublishQoS1WithProperty() throws {
+        let client = self.createClient(identifier: "testPublishQoS1V5")
+        _ = try client.connect().wait()
+        var publishProperties = MQTTProperties()
+        try publishProperties.addProperty(id: .contentType, value: "text/plain")
+        try client.publish(
+            to: "testMQTTPublishQoS",
+            payload: ByteBufferAllocator().buffer(string: "Test payload"),
+            qos: .atLeastOnce,
+            properties: publishProperties
+        ).wait()
         try client.disconnect().wait()
         try client.syncShutdownGracefully()
     }

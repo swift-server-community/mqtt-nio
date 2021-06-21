@@ -67,13 +67,13 @@ public struct MQTTPublishInfo {
     /// Message payload.
     public let payload: ByteBuffer
 
-    public init(qos: MQTTQoS, retain: Bool, dup: Bool = false, topicName: String, payload: ByteBuffer) {
+    public init(qos: MQTTQoS, retain: Bool, dup: Bool = false, topicName: String, payload: ByteBuffer, properties: MQTTProperties?) {
         self.qos = qos
         self.retain = retain
         self.dup = dup
         self.topicName = topicName
         self.payload = payload
-        self.properties = nil
+        self.properties = properties
     }
 
     static let emptyByteBuffer = ByteBufferAllocator().buffer(capacity: 0)

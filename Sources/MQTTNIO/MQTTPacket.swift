@@ -154,11 +154,16 @@ struct MQTTPublishPacket: MQTTPacket {
         flags |= self.publish.qos.rawValue << PublishFlags.qosShift
         flags |= self.publish.dup ? PublishFlags.duplicate : 0
 
-        writeFixedHeader(packetType: .PUBLISH, flags: flags, size: self.packetSize, to: &byteBuffer)
+        writeFixedHeader(packetType: .PUBLISH, flags: flags, size: self.packetSize(version: version), to: &byteBuffer)
         // write variable header
         try MQTTSerializer.writeString(self.publish.topicName, to: &byteBuffer)
         if self.publish.qos != .atMostOnce {
             byteBuffer.writeInteger(self.packetId)
+        }
+        // v5 properties
+        if version == .v5_0 {
+            let properties = self.publish.properties ?? MQTTProperties()
+            try properties.write(to: &byteBuffer)
         }
         // write payload
         var payload = self.publish.payload
@@ -176,6 +181,12 @@ struct MQTTPublishPacket: MQTTPacket {
             guard let readPacketId: UInt16 = remainingData.readInteger() else { throw MQTTError.badResponse }
             packetId = readPacketId
         }
+        // read properties
+        var properties: MQTTProperties?
+        if version == .v5_0 {
+            properties = try MQTTProperties.read(from: &remainingData)
+        }
+
         // read payload
         let payload = remainingData.readSlice(length: remainingData.readableBytes) ?? MQTTPublishInfo.emptyByteBuffer
         // create publish info
@@ -184,13 +195,14 @@ struct MQTTPublishPacket: MQTTPacket {
             retain: packet.flags & PublishFlags.retain != 0,
             dup: packet.flags & PublishFlags.duplicate != 0,
             topicName: topicName,
-            payload: payload
+            payload: payload,
+            properties: properties
         )
         return MQTTPublishPacket(publish: publishInfo, packetId: packetId)
     }
 
     /// calculate size of publish packet
-    var packetSize: Int {
+    func packetSize(version: MQTTClient.Version) -> Int {
         // topic name
         var size = self.publish.topicName.utf8.count
         if self.publish.qos != .atMostOnce {
@@ -198,6 +210,11 @@ struct MQTTPublishPacket: MQTTPacket {
         }
         // packet identifier
         size += 2
+        // properties
+        if version == .v5_0 {
+            let propertiesPacketSize = self.publish.properties?.packetSize ?? 0
+            size += MQTTSerializer.variableLengthIntegerPacketSize(propertiesPacketSize) + propertiesPacketSize
+        }
         // payload
         size += self.publish.payload.readableBytes
         return size
