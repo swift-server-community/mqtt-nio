@@ -274,7 +274,10 @@ public final class MQTTClient {
         guard let connection = self.connection else { return self.eventLoopGroup.next().makeFailedFuture(MQTTError.noConnection) }
         let packetId = self.updatePacketId()
 
-        return connection.sendMessageWithRetry(MQTTSubscribePacket(subscriptions: subscriptions, packetId: packetId), maxRetryAttempts: self.configuration.maxRetryAttempts) { message in
+        return connection.sendMessageWithRetry(
+            MQTTSubscribePacket(subscriptions: subscriptions, properties: .init(), packetId: packetId),
+            maxRetryAttempts: self.configuration.maxRetryAttempts
+        ) { message in
             guard message.packetId == packetId else { return false }
             guard message.type == .SUBACK else { throw MQTTError.unexpectedMessage }
             return true
@@ -290,7 +293,10 @@ public final class MQTTClient {
         let packetId = self.updatePacketId()
 
         let subscribeInfos = subscriptions.map { MQTTSubscribeInfo(topicFilter: $0, qos: .atLeastOnce) }
-        return connection.sendMessageWithRetry(MQTTUnsubscribePacket(subscriptions: subscribeInfos, packetId: packetId), maxRetryAttempts: self.configuration.maxRetryAttempts) { message in
+        return connection.sendMessageWithRetry(
+            MQTTUnsubscribePacket(subscriptions: subscribeInfos, properties: .init(), packetId: packetId),
+            maxRetryAttempts: self.configuration.maxRetryAttempts
+        ) { message in
             guard message.packetId == packetId else { return false }
             guard message.type == .UNSUBACK else { throw MQTTError.unexpectedMessage }
             return true

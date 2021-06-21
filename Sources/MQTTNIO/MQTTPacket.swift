@@ -235,12 +235,18 @@ struct MQTTSubscribePacket: MQTTPacket {
     var description: String { "SUBSCRIBE" }
 
     let subscriptions: [MQTTSubscribeInfo]
+    let properties: MQTTProperties?
     let packetId: UInt16
 
     func write(version: MQTTClient.Version, to byteBuffer: inout ByteBuffer) throws {
-        writeFixedHeader(packetType: .SUBSCRIBE, size: self.packetSize, to: &byteBuffer)
+        writeFixedHeader(packetType: .SUBSCRIBE, size: self.packetSize(version: version), to: &byteBuffer)
         // write variable header
         byteBuffer.writeInteger(self.packetId)
+        // v5 properties
+        if version == .v5_0 {
+            let properties = self.properties ?? MQTTProperties()
+            try properties.write(to: &byteBuffer)
+        }
         // write payload
         for info in self.subscriptions {
             try MQTTSerializer.writeString(info.topicFilter, to: &byteBuffer)
@@ -253,9 +259,14 @@ struct MQTTSubscribePacket: MQTTPacket {
     }
 
     /// calculate size of subscribe packet
-    var packetSize: Int {
+    func packetSize(version: MQTTClient.Version) -> Int {
         // packet identifier
-        let size = 2
+        var size = 2
+        // properties
+        if version == .v5_0 {
+            let propertiesPacketSize = self.properties?.packetSize ?? 0
+            size += MQTTSerializer.variableLengthIntegerPacketSize(propertiesPacketSize) + propertiesPacketSize
+        }
         // payload
         return self.subscriptions.reduce(size) {
             $0 + 2 + $1.topicFilter.utf8.count + 1 // topic filter length + topic filter + qos
@@ -268,12 +279,18 @@ struct MQTTUnsubscribePacket: MQTTPacket {
     var description: String { "UNSUBSCRIBE" }
 
     let subscriptions: [MQTTSubscribeInfo]
+    let properties: MQTTProperties?
     let packetId: UInt16
 
     func write(version: MQTTClient.Version, to byteBuffer: inout ByteBuffer) throws {
-        writeFixedHeader(packetType: .UNSUBSCRIBE, size: self.packetSize, to: &byteBuffer)
+        writeFixedHeader(packetType: .UNSUBSCRIBE, size: self.packetSize(version: version), to: &byteBuffer)
         // write variable header
         byteBuffer.writeInteger(self.packetId)
+        // v5 properties
+        if version == .v5_0 {
+            let properties = self.properties ?? MQTTProperties()
+            try properties.write(to: &byteBuffer)
+        }
         // write payload
         for info in self.subscriptions {
             try MQTTSerializer.writeString(info.topicFilter, to: &byteBuffer)
@@ -285,9 +302,14 @@ struct MQTTUnsubscribePacket: MQTTPacket {
     }
 
     /// calculate size of subscribe packet
-    var packetSize: Int {
+    func packetSize(version: MQTTClient.Version) -> Int {
         // packet identifier
-        let size = 2
+        var size = 2
+        // properties
+        if version == .v5_0 {
+            let propertiesPacketSize = self.properties?.packetSize ?? 0
+            size += MQTTSerializer.variableLengthIntegerPacketSize(propertiesPacketSize) + propertiesPacketSize
+        }
         // payload
         return self.subscriptions.reduce(size) {
             $0 + 2 + $1.topicFilter.utf8.count // topic filter length + topic filter

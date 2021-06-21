@@ -50,7 +50,7 @@ final class CoreMQTTTests: XCTestCase {
             .init(topicFilter: "topic/buses", qos: .atLeastOnce),
         ]
         var byteBuffer = ByteBufferAllocator().buffer(capacity: 1024)
-        let subscribePacket = MQTTSubscribePacket(subscriptions: subscriptions, packetId: 456)
+        let subscribePacket = MQTTSubscribePacket(subscriptions: subscriptions, properties: nil, packetId: 456)
         try subscribePacket.write(version: .v3_1_1, to: &byteBuffer)
         let packet = try MQTTIncomingPacket.read(from: &byteBuffer)
         XCTAssertEqual(packet.remainingData.readableBytes, 29)
