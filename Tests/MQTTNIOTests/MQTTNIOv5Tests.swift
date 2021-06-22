@@ -229,7 +229,8 @@ final class MQTTNIOv5Tests: XCTestCase {
 
         var connack = try client.v5.connect(cleanStart: true, properties: properties).wait()
         XCTAssertEqual(connack.sessionPresent, false)
-        connack = try client.v5.connect(cleanStart: false, properties: properties).wait()
+        try client.v5.disconnect(properties: properties).wait()
+        connack = try client.v5.connect(cleanStart: false).wait()
         XCTAssertEqual(connack.sessionPresent, true)
         try client.disconnect().wait()
     }

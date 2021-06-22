@@ -16,7 +16,7 @@ extension MQTTClient {
         ///   - cleanSession: should we start with a new session
         ///   - properties: properties to attach to connect message
         ///   - will: Publish message to be posted as soon as connection is made
-        /// - Returns: EventLoopFuture to be updated with whether server holds a session for this client
+        /// - Returns: EventLoopFuture to be updated with connack
         public func connect(
             cleanStart: Bool = true,
             properties: MQTTProperties = .init(),
@@ -61,7 +61,7 @@ extension MQTTClient {
         ///     - properties: properties to attach to publish message
         /// - Returns: Future waiting for publish to complete. Depending on QoS setting the future will complete
         ///     when message is sent, when PUBACK is received or when PUBREC and following PUBCOMP are
-        ///     received
+        ///     received. QoS1 and above return an `MQTTAckV5` which contains a `reason` and `properties`
         public func publish(
             to topicName: String,
             payload: ByteBuffer,
@@ -76,8 +76,11 @@ extension MQTTClient {
         }
 
         /// Subscribe to topic
-        /// - Parameter subscriptions: Subscription infos
-        /// - Returns: Future waiting for subscribe to complete. Will wait for SUBACK message from server
+        /// - Parameters:
+        ///     - subscriptions: Subscription infos
+        ///     - properties: properties to attach to subscribe message
+        /// - Returns: Future waiting for subscribe to complete. Will wait for SUBACK message from server and
+        ///     return its contents
         public func subscribe(
             to subscriptions: [MQTTSubscribeInfoV5],
             properties: MQTTProperties = .init()
@@ -91,8 +94,11 @@ extension MQTTClient {
         }
 
         /// Unsubscribe from topic
-        /// - Parameter subscriptions: List of subscriptions to unsubscribe from
-        /// - Returns: Future waiting for unsubscribe to complete. Will wait for UNSUBACK message from server
+        /// - Parameters:
+        ///   - subscriptions: List of subscriptions to unsubscribe from
+        ///   - properties: properties to attach to unsubscribe message
+        /// - Returns: Future waiting for unsubscribe to complete. Will wait for UNSUBACK message from server and
+        ///     return its contents
         public func unsubscribe(
             from subscriptions: [String],
             properties: MQTTProperties = .init()
@@ -103,6 +109,13 @@ extension MQTTClient {
                 .map { message in
                     return MQTTSubackV5(reasons: message.reasons, properties: message.properties)
                 }
+        }
+
+        /// Disconnect from server
+        /// - Parameter properties: properties to attach to disconnect message
+        /// - Returns: Future waiting on disconnect message to be sent
+        public func disconnect(properties: MQTTProperties = .init()) -> EventLoopFuture<Void> {
+            return client.disconnect(packet: MQTTDisconnectPacket(reason: .success, properties: properties))
         }
 
     }

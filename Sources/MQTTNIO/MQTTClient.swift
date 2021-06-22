@@ -223,14 +223,7 @@ public final class MQTTClient {
     /// Disconnect from server
     /// - Returns: Future waiting on disconnect message to be sent
     public func disconnect() -> EventLoopFuture<Void> {
-        guard let connection = self.connection else { return self.eventLoopGroup.next().makeFailedFuture(MQTTError.noConnection) }
-
-        return connection.sendMessageNoWait(MQTTDisconnectPacket())
-            .flatMap {
-                let future = self.connection?.close()
-                self.connection = nil
-                return future ?? self.eventLoopGroup.next().makeSucceededFuture(())
-            }
+        return self.disconnect(packet: MQTTDisconnectPacket())
     }
 
     /// Return is client has an active connection to broker
@@ -414,7 +407,18 @@ extension MQTTClient {
         }
     }
 
+    /// Disconnect from server
+    /// - Returns: Future waiting on disconnect message to be sent
+    func disconnect(packet: MQTTDisconnectPacket) -> EventLoopFuture<Void> {
+        guard let connection = self.connection else { return self.eventLoopGroup.next().makeFailedFuture(MQTTError.noConnection) }
 
+        return connection.sendMessageNoWait(packet)
+            .flatMap {
+                let future = self.connection?.close()
+                self.connection = nil
+                return future ?? self.eventLoopGroup.next().makeSucceededFuture(())
+            }
+    }
 }
 
 extension Logger {
