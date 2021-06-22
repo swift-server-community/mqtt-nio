@@ -182,19 +182,14 @@ public final class MQTTClient {
     /// Subscribe to topic
     /// - Parameter subscriptions: Subscription infos
     /// - Returns: Future waiting for subscribe to complete. Will wait for SUBACK message from server
-    public func subscribe(to subscriptions: [MQTTSubscribeInfo]) -> EventLoopFuture<Void> {
-        guard let connection = self.connection else { return self.eventLoopGroup.next().makeFailedFuture(MQTTError.noConnection) }
+    public func subscribe(to subscriptions: [MQTTSubscribeInfo]) -> EventLoopFuture<MQTTSubAckInfo> {
         let packetId = self.updatePacketId()
-
-        return connection.sendMessageWithRetry(
-            MQTTSubscribePacket(subscriptions: subscriptions, properties: .init(), packetId: packetId),
-            maxRetryAttempts: self.configuration.maxRetryAttempts
-        ) { message in
-            guard message.packetId == packetId else { return false }
-            guard message.type == .SUBACK else { throw MQTTError.unexpectedMessage }
-            return true
-        }
-        .map { _ in }
+        let packet = MQTTSubscribePacket(subscriptions: subscriptions, properties: .init(), packetId: packetId)
+        return subscribe(packet: packet)
+            .map { message in
+                let returnCodes = message.reasons.map { MQTTSubAckInfo.ReturnCode(rawValue: $0.rawValue) ?? .failure }
+                return MQTTSubAckInfo(returnCodes: returnCodes)
+            }
     }
 
     /// Unsubscribe from topic
@@ -316,14 +311,8 @@ public final class MQTTClient {
 
     /// Publish message to topic
     /// - Parameters:
-    ///     - topicName: Topic name on which the message is published
-    ///     - payload: Message payload
-    ///     - qos: Quality of Service for message.
-    ///     - retain: Whether this is a retained message.
-    /// - Returns: Future waiting for publish to complete. Depending on QoS setting the future will complete
-    ///     when message is sent, when PUBACK is received or when PUBREC and following PUBCOMP are
-    ///     received
-    func publish(packet: MQTTPublishPacket) -> EventLoopFuture<MQTTAckInfo?> {
+    ///     - packet: Publish packet
+    func publish(packet: MQTTPublishPacket) -> EventLoopFuture<MQTTAckV5?> {
         guard let connection = self.connection else { return self.eventLoopGroup.next().makeFailedFuture(MQTTError.noConnection) }
 
         if packet.publish.qos == .atMostOnce {
@@ -354,7 +343,7 @@ public final class MQTTClient {
         }
         .flatMap { ackPacket in
             let ackPacket = ackPacket as? MQTTPubAckPacket
-            let ackInfo = ackPacket.map { MQTTAckInfo(reason: $0.reason, properties: $0.properties) }
+            let ackInfo = ackPacket.map { MQTTAckV5(reason: $0.reason, properties: $0.properties) }
             if packet.publish.qos == .exactlyOnce {
                 return connection.sendMessageWithRetry(
                     MQTTPubAckPacket(type: .PUBREL, packetId: packet.packetId),
@@ -374,6 +363,26 @@ public final class MQTTClient {
                 }.map { _ in ackInfo }
             }
             return self.eventLoopGroup.next().makeSucceededFuture(ackInfo)
+        }
+    }
+
+    /// Subscribe to topic
+    /// - Parameter packet: Subscription packet
+    /// - Returns: Future waiting for subscribe to complete. Will wait for SUBACK message from server
+    func subscribe(packet: MQTTSubscribePacket) -> EventLoopFuture<MQTTSubAckPacket> {
+        guard let connection = self.connection else { return self.eventLoopGroup.next().makeFailedFuture(MQTTError.noConnection) }
+
+        return connection.sendMessageWithRetry(
+            packet,
+            maxRetryAttempts: self.configuration.maxRetryAttempts
+        ) { message in
+            guard message.packetId == packet.packetId else { return false }
+            guard message.type == .SUBACK else { throw MQTTError.unexpectedMessage }
+            return true
+        }
+        .flatMapThrowing { message in
+            guard let suback = message as? MQTTSubAckPacket else { throw MQTTError.unexpectedMessage }
+            return suback
         }
     }
 

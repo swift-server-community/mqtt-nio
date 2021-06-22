@@ -96,7 +96,14 @@ final class MQTTNIOTests: XCTestCase {
     func testMQTTSubscribe() throws {
         let client = self.createClient(identifier: "testMQTTSubscribe")
         _ = try client.connect().wait()
-        try client.subscribe(to: [.init(topicFilter: "iphone", qos: .atLeastOnce)]).wait()
+        let sub = try client.subscribe(
+            to: [
+                .init(topicFilter: "iphone", qos: .atLeastOnce),
+                .init(topicFilter: "iphone2", qos: .exactlyOnce)
+            ]
+        ).wait()
+        XCTAssertEqual(sub.returnCodes[0], .grantedQoS1)
+        XCTAssertEqual(sub.returnCodes[1], .grantedQoS2)
         try client.disconnect().wait()
         try client.syncShutdownGracefully()
     }
@@ -148,8 +155,8 @@ final class MQTTNIOTests: XCTestCase {
             }
         }
         _ = try client2.connect().wait()
-        try client2.subscribe(to: [.init(topicFilter: "testMQTTAtLeastOnce", qos: .atLeastOnce)]).wait()
-        try client2.subscribe(to: [.init(topicFilter: "testMQTTExactlyOnce", qos: .exactlyOnce)]).wait()
+        _ = try client2.subscribe(to: [.init(topicFilter: "testMQTTAtLeastOnce", qos: .atLeastOnce)]).wait()
+        _ = try client2.subscribe(to: [.init(topicFilter: "testMQTTExactlyOnce", qos: .exactlyOnce)]).wait()
         try client.publish(to: "testMQTTAtLeastOnce", payload: payload, qos: .atLeastOnce).wait()
         try client.publish(to: "testMQTTExactlyOnce", payload: payload, qos: .exactlyOnce).wait()
         Thread.sleep(forTimeInterval: 2)
@@ -185,7 +192,7 @@ final class MQTTNIOTests: XCTestCase {
             }
         }
         _ = try client2.connect().wait()
-        try client2.subscribe(to: [.init(topicFilter: "testUnsubscribe", qos: .atLeastOnce)]).wait()
+        _ = try client2.subscribe(to: [.init(topicFilter: "testUnsubscribe", qos: .atLeastOnce)]).wait()
         try client.publish(to: "testUnsubscribe", payload: payload, qos: .atLeastOnce).wait()
         try client2.unsubscribe(from: ["testUnsubscribe"]).wait()
         try client.publish(to: "testUnsubscribe", payload: payload, qos: .atLeastOnce).wait()
@@ -224,7 +231,7 @@ final class MQTTNIOTests: XCTestCase {
             }
         }
         _ = try client2.connect().wait()
-        try client2.subscribe(to: [.init(topicFilter: "testMQTTAtLeastOnce", qos: .atLeastOnce)]).wait()
+        _ = try client2.subscribe(to: [.init(topicFilter: "testMQTTAtLeastOnce", qos: .atLeastOnce)]).wait()
         try client.publish(to: "testMQTTAtLeastOnce", payload: payload, qos: .atLeastOnce).wait()
         Thread.sleep(forTimeInterval: 2)
         lock.withLock {
@@ -318,7 +325,7 @@ final class MQTTNIOTests: XCTestCase {
         }
         _ = try client2.connect().wait()
         try client2.connection?.channel.pipeline.addHandler(stallHandler, position: .first).wait()
-        try client2.subscribe(to: [.init(topicFilter: "testMQTTSubscribeQoS2WithStall", qos: .exactlyOnce)]).wait()
+        _ = try client2.subscribe(to: [.init(topicFilter: "testMQTTSubscribeQoS2WithStall", qos: .exactlyOnce)]).wait()
         try client.publish(to: "testMQTTSubscribeQoS2WithStall", payload: payload, qos: .exactlyOnce).wait()
 
         Thread.sleep(forTimeInterval: 20)
@@ -355,7 +362,7 @@ final class MQTTNIOTests: XCTestCase {
         }
         _ = try client2.connect(cleanSession: true).wait()
         _ = try client2.connect(cleanSession: false).wait()
-        try client2.subscribe(to: [.init(topicFilter: "testMQTTAtLeastOnce", qos: .atLeastOnce)]).wait()
+        _ = try client2.subscribe(to: [.init(topicFilter: "testMQTTAtLeastOnce", qos: .atLeastOnce)]).wait()
         try client.publish(to: "testMQTTAtLeastOnce", payload: payload, qos: .atLeastOnce).wait()
         Thread.sleep(forTimeInterval: 1)
         try client2.disconnect().wait()
@@ -391,7 +398,7 @@ final class MQTTNIOTests: XCTestCase {
             logger: self.logger
         )
         _ = try client.connect().wait()
-        try client.subscribe(to: [.init(topicFilter: "#", qos: .exactlyOnce)]).wait()
+        _ = try client.subscribe(to: [.init(topicFilter: "#", qos: .exactlyOnce)]).wait()
         Thread.sleep(forTimeInterval: 5)
         try client.disconnect().wait()
         try client.syncShutdownGracefully()

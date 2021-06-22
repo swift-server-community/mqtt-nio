@@ -72,30 +72,21 @@ public struct MQTTSubscribeInfo {
     }
 }
 
-/// MQTT ACK information
-public struct MQTTAckInfo {
-    /// MQTT v5 disconnection reason
-    public var reason: MQTTReasonCode
-    /// MQTT v5 properties
-    public var properties: MQTTProperties
-
-    init(reason: MQTTReasonCode = .success, properties: MQTTProperties = .init()) {
-        self.reason = reason
-        self.properties = properties
-    }
-}
-
 /// MQTT Sub ACK
 ///
-/// Contains data returned in subscribe/unsubscribe ack packets
+/// Contains data returned in subscribe ack packets
 public struct MQTTSubAckInfo {
-    /// MQTT v5 disconnection reason
-    public var reasons: [MQTTReasonCode]
-    /// MQTT v5 properties
-    public var properties: MQTTProperties
+    public enum ReturnCode: UInt8 {
+        case grantedQoS0 = 0
+        case grantedQoS1 = 1
+        case grantedQoS2 = 2
+        case failure = 0x80
+    }
+    
+    /// MQTT v5 subscribute return codes
+    public var returnCodes: [ReturnCode]
 
-    init(reasons: [MQTTReasonCode], properties: MQTTProperties = .init()) {
-        self.reasons = reasons
-        self.properties = properties
+    init(returnCodes: [MQTTSubAckInfo.ReturnCode]) {
+        self.returnCodes = returnCodes
     }
 }

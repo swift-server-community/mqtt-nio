@@ -67,11 +67,23 @@ extension MQTTClient {
             qos: MQTTQoS,
             retain: Bool = false,
             properties: MQTTProperties = .init()
-        ) -> EventLoopFuture<MQTTAckInfo?> {
+        ) -> EventLoopFuture<MQTTAckV5?> {
             let info = MQTTPublishInfo(qos: qos, retain: retain, dup: false, topicName: topicName, payload: payload, properties: properties)
             let packetId = client.updatePacketId()
             let packet = MQTTPublishPacket(publish: info, packetId: packetId)
             return client.publish(packet: packet)
+        }
+
+        /// Subscribe to topic
+        /// - Parameter subscriptions: Subscription infos
+        /// - Returns: Future waiting for subscribe to complete. Will wait for SUBACK message from server
+        public func subscribe(to subscriptions: [MQTTSubscribeInfo]) -> EventLoopFuture<MQTTSubAckInfoV5> {
+            let packetId = client.updatePacketId()
+            let packet = MQTTSubscribePacket(subscriptions: subscriptions, properties: .init(), packetId: packetId)
+            return client.subscribe(packet: packet)
+                .map { message in
+                    return MQTTSubAckInfoV5(reasons: message.reasons, properties: message.properties)
+                }
         }
 
     }

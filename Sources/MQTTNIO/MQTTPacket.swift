@@ -394,7 +394,15 @@ struct MQTTSubAckPacket: MQTTPacket {
     var description: String { "ACK \(self.type)" }
     let type: MQTTPacketType
     let packetId: UInt16
-    let ack: MQTTSubAckInfo
+    let reasons: [MQTTReasonCode]
+    let properties: MQTTProperties
+
+    init(type: MQTTPacketType, packetId: UInt16, reasons: [MQTTReasonCode], properties: MQTTProperties = .init()) {
+        self.type = type
+        self.packetId = packetId
+        self.reasons = reasons
+        self.properties = properties
+    }
 
     func write(version: MQTTClient.Version, to byteBuffer: inout ByteBuffer) throws {
         throw InternalError.notImplemented
@@ -405,8 +413,7 @@ struct MQTTSubAckPacket: MQTTPacket {
         guard let packetId: UInt16 = remainingData.readInteger() else { throw MQTTError.badResponse }
         switch version {
         case .v3_1_1:
-            let ack = MQTTSubAckInfo(reasons: [])
-            return MQTTSubAckPacket(type: packet.type, packetId: packetId, ack: ack)
+            return MQTTSubAckPacket(type: packet.type, packetId: packetId, reasons: [])
         case .v5_0:
             let properties = try MQTTProperties.read(from: &remainingData)
             var reasons: [MQTTReasonCode]?
@@ -418,14 +425,13 @@ struct MQTTSubAckPacket: MQTTPacket {
                     return reason
                 }
             }
-            let ack = MQTTSubAckInfo(reasons: reasons ?? [], properties: properties)
-            return MQTTSubAckPacket(type: packet.type, packetId: packetId, ack: ack)
+            return MQTTSubAckPacket(type: packet.type, packetId: packetId, reasons: reasons ?? [], properties: properties)
         }
     }
 
     func packetSize(version: MQTTClient.Version) -> Int {
         if version == .v5_0 {
-            let propertiesPacketSize = self.ack.properties.packetSize
+            let propertiesPacketSize = self.properties.packetSize
             return 2 + MQTTSerializer.variableLengthIntegerPacketSize(propertiesPacketSize) + propertiesPacketSize
         }
         return 2

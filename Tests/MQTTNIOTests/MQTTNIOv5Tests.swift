@@ -85,7 +85,14 @@ final class MQTTNIOv5Tests: XCTestCase {
     func testMQTTSubscribe() throws {
         let client = self.createClient(identifier: "testMQTTSubscribeV5")
         _ = try client.connect().wait()
-        try client.subscribe(to: [.init(topicFilter: "iphone", qos: .atLeastOnce)]).wait()
+        let sub = try client.v5.subscribe(
+            to: [
+                .init(topicFilter: "iphone", qos: .atLeastOnce),
+                .init(topicFilter: "iphone2", qos: .exactlyOnce)
+            ]
+        ).wait()
+        XCTAssertEqual(sub.reasons[0], .grantedQoS1)
+        XCTAssertEqual(sub.reasons[1], .grantedQoS2)
         try client.disconnect().wait()
         try client.syncShutdownGracefully()
     }
@@ -113,7 +120,7 @@ final class MQTTNIOv5Tests: XCTestCase {
             }
         }
         _ = try client2.connect().wait()
-        try client2.subscribe(to: [.init(topicFilter: "testUnsubscribe", qos: .atLeastOnce)]).wait()
+        _ = try client2.subscribe(to: [.init(topicFilter: "testUnsubscribe", qos: .atLeastOnce)]).wait()
         try client.publish(to: "testUnsubscribe", payload: payload, qos: .atLeastOnce).wait()
         try client2.unsubscribe(from: ["testUnsubscribe"]).wait()
         try client.publish(to: "testUnsubscribe", payload: payload, qos: .atLeastOnce).wait()

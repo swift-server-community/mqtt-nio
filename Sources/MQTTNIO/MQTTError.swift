@@ -21,7 +21,7 @@ enum MQTTError: Error {
     /// client in not connected
     case noConnection
     /// the server disconnected
-    case serverDisconnection(MQTTAckInfo)
+    case serverDisconnection(MQTTAckV5)
     /// the server closed the connection
     case serverClosedConnection
     /// received unexpected message from broker
