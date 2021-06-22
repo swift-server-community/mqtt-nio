@@ -295,7 +295,7 @@ struct MQTTUnsubscribePacket: MQTTPacket {
     var type: MQTTPacketType { .UNSUBSCRIBE }
     var description: String { "UNSUBSCRIBE" }
 
-    let subscriptions: [MQTTSubscribeInfo]
+    let subscriptions: [String]
     let properties: MQTTProperties?
     let packetId: UInt16
 
@@ -309,8 +309,8 @@ struct MQTTUnsubscribePacket: MQTTPacket {
             try properties.write(to: &byteBuffer)
         }
         // write payload
-        for info in self.subscriptions {
-            try MQTTSerializer.writeString(info.topicFilter, to: &byteBuffer)
+        for sub in self.subscriptions {
+            try MQTTSerializer.writeString(sub, to: &byteBuffer)
         }
     }
 
@@ -329,7 +329,7 @@ struct MQTTUnsubscribePacket: MQTTPacket {
         }
         // payload
         return self.subscriptions.reduce(size) {
-            $0 + 2 + $1.topicFilter.utf8.count // topic filter length + topic filter
+            $0 + 2 + $1.utf8.count // topic filter length + topic filter
         }
     }
 }

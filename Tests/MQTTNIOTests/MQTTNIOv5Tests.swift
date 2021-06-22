@@ -122,7 +122,9 @@ final class MQTTNIOv5Tests: XCTestCase {
         _ = try client2.connect().wait()
         _ = try client2.subscribe(to: [.init(topicFilter: "testUnsubscribe", qos: .atLeastOnce)]).wait()
         try client.publish(to: "testUnsubscribe", payload: payload, qos: .atLeastOnce).wait()
-        try client2.unsubscribe(from: ["testUnsubscribe"]).wait()
+        let unsub = try client2.v5.unsubscribe(from: ["testUnsubscribe", "notsubscribed"]).wait()
+        XCTAssertEqual(unsub.reasons[0], .success)
+        XCTAssertEqual(unsub.reasons[1], .noSubscriptionExisted)
         try client.publish(to: "testUnsubscribe", payload: payload, qos: .atLeastOnce).wait()
 
         Thread.sleep(forTimeInterval: 2)
