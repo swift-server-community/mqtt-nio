@@ -32,7 +32,7 @@ public struct MQTTProperties {
         case sharedSubscriptionAvailable = 42
     }
     
-    public enum PropertyValue {
+    public enum PropertyValue: Equatable {
         case byte(UInt8)
         case twoByteInteger(UInt16)
         case fourByteInteger(UInt32)
@@ -99,6 +99,10 @@ public struct MQTTProperties {
         properties[id] = .binaryData(value)
     }
 
+    public subscript(_ id: PropertyId) -> PropertyValue? {
+        return properties[id]
+    }
+    
     func write(to byteBuffer: inout ByteBuffer) throws {
         MQTTSerializer.writeVariableLengthInteger(self.packetSize, to: &byteBuffer)
         

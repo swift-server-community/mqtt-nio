@@ -142,6 +142,46 @@ final class MQTTNIOv5Tests: XCTestCase {
         try client.syncShutdownGracefully()
     }
 
+    func testMQTTContentType() throws {
+        let lock = Lock()
+        var publishReceived: [MQTTPublishInfo] = []
+        let payloadString = #"{"test":1000000}"#
+        let payload = ByteBufferAllocator().buffer(string: payloadString)
+
+        let client = self.createClient(identifier: "testMQTTContentType")
+        _ = try client.connect().wait()
+        client.addPublishListener(named: "test") { result in
+            switch result {
+            case .success(let publish):
+                var buffer = publish.payload
+                let string = buffer.readString(length: buffer.readableBytes)
+                XCTAssertEqual(string, payloadString)
+                let contentType = publish.properties[.contentType]
+                XCTAssertEqual(contentType, .string("application/json"))
+                lock.withLock {
+                    publishReceived.append(publish)
+                }
+            case .failure(let error):
+                XCTFail("\(error)")
+            }
+        }
+        let sub = try client.v5.subscribe(
+            to: [.init(topicFilter: "testMQTTContentType", qos: .atLeastOnce),]
+        ).wait()
+        XCTAssert(sub.reasons.count == 1)
+        
+        var properties = MQTTProperties()
+        try properties.add(.contentType, "application/json")
+        _ = try client.v5.publish(to: "testMQTTContentType", payload: payload, qos: .atLeastOnce, retain: false, properties: properties).wait()
+        
+        Thread.sleep(forTimeInterval: 2)
+        lock.withLock {
+            XCTAssertEqual(publishReceived.count, 1)
+        }
+        try client.disconnect().wait()
+        try client.syncShutdownGracefully()
+    }
+
     func testUnsubscribe() throws {
         let lock = Lock()
         var publishReceived: [MQTTPublishInfo] = []
