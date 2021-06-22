@@ -105,5 +105,8 @@ extension MQTTClient {
     }
 
     /// v5 client
-    public var v5: V5 { .init(client: self) }
+    public var v5: V5 {
+        precondition(self.configuration.version == .v5_0, "Cannot use v5 functions with v3.1 client")
+        return V5(client: self)
+    }
 }

@@ -13,10 +13,6 @@ import NIOSSL
 final class MQTTNIOTests: XCTestCase {
     static let hostname = ProcessInfo.processInfo.environment["MOSQUITTO_SERVER"] ?? "localhost"
 
-    func connect(to client: MQTTClient) throws {
-        _ = try client.connect().wait()
-    }
-
     func testConnectWithWill() throws {
         let client = self.createClient(identifier: "testConnectWithWill")
         _ = try client.connect(
@@ -186,10 +182,10 @@ final class MQTTNIOTests: XCTestCase {
             }
         }
         _ = try client2.connect().wait()
-        _ = try client2.subscribe(to: [.init(topicFilter: "testMQTTAtLeastOnce", qos: .atLeastOnce)]).wait()
-        _ = try client2.subscribe(to: [.init(topicFilter: "testMQTTExactlyOnce", qos: .exactlyOnce)]).wait()
-        try client.publish(to: "testMQTTAtLeastOnce", payload: payload, qos: .atLeastOnce).wait()
-        try client.publish(to: "testMQTTExactlyOnce", payload: payload, qos: .exactlyOnce).wait()
+        _ = try client2.subscribe(to: [.init(topicFilter: "testAtLeastOnce", qos: .atLeastOnce)]).wait()
+        _ = try client2.subscribe(to: [.init(topicFilter: "testExactlyOnce", qos: .exactlyOnce)]).wait()
+        try client.publish(to: "testAtLeastOnce", payload: payload, qos: .atLeastOnce).wait()
+        try client.publish(to: "testExactlyOnce", payload: payload, qos: .exactlyOnce).wait()
         Thread.sleep(forTimeInterval: 2)
         lock.withLock {
             XCTAssertEqual(publishReceived.count, 2)
@@ -262,8 +258,8 @@ final class MQTTNIOTests: XCTestCase {
             }
         }
         _ = try client2.connect().wait()
-        _ = try client2.subscribe(to: [.init(topicFilter: "testMQTTAtLeastOnce", qos: .atLeastOnce)]).wait()
-        try client.publish(to: "testMQTTAtLeastOnce", payload: payload, qos: .atLeastOnce).wait()
+        _ = try client2.subscribe(to: [.init(topicFilter: "testLargeAtLeastOnce", qos: .atLeastOnce)]).wait()
+        try client.publish(to: "testLargeAtLeastOnce", payload: payload, qos: .atLeastOnce).wait()
         Thread.sleep(forTimeInterval: 2)
         lock.withLock {
             XCTAssertEqual(publishReceived.count, 1)
@@ -393,11 +389,11 @@ final class MQTTNIOTests: XCTestCase {
         }
         _ = try client2.connect(cleanSession: true).wait()
         _ = try client2.connect(cleanSession: false).wait()
-        _ = try client2.subscribe(to: [.init(topicFilter: "testMQTTAtLeastOnce", qos: .atLeastOnce)]).wait()
-        try client.publish(to: "testMQTTAtLeastOnce", payload: payload, qos: .atLeastOnce).wait()
+        _ = try client2.subscribe(to: [.init(topicFilter: "testPersistentAtLeastOnce", qos: .atLeastOnce)]).wait()
+        try client.publish(to: "testPersistentAtLeastOnce", payload: payload, qos: .atLeastOnce).wait()
         Thread.sleep(forTimeInterval: 1)
         try client2.disconnect().wait()
-        try client.publish(to: "testMQTTAtLeastOnce", payload: payload, qos: .atLeastOnce).wait()
+        try client.publish(to: "testPersistentAtLeastOnce", payload: payload, qos: .atLeastOnce).wait()
         Thread.sleep(forTimeInterval: 1)
         // should receive previous publish on new connect as this is not a cleanSession
         _ = try client2.connect(cleanSession: false).wait()
