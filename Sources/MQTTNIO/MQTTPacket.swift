@@ -555,6 +555,34 @@ struct MQTTConnAckPacket: MQTTPacket {
     }
 }
 
+struct MQTTAuthPacket: MQTTPacket {
+    var type: MQTTPacketType { .AUTH }
+    var description: String { "AUTH" }
+    let reason: MQTTReasonCode
+    let properties: MQTTProperties
+
+    func write(version: MQTTClient.Version, to byteBuffer: inout ByteBuffer) throws {
+        writeFixedHeader(packetType: self.type, size: self.packetSize, to: &byteBuffer)
+        byteBuffer.writeInteger(self.reason.rawValue)
+        try self.properties.write(to: &byteBuffer)
+    }
+
+    static func read(version: MQTTClient.Version, from packet: MQTTIncomingPacket) throws -> Self {
+        var remainingData = packet.remainingData
+        guard let reasonByte: UInt8 = remainingData.readInteger(),
+              let reason = MQTTReasonCode(rawValue: reasonByte) else {
+            throw MQTTError.badResponse
+        }
+        let properties = try MQTTProperties.read(from: &remainingData)
+        return MQTTAuthPacket(reason: reason, properties: properties)
+    }
+
+    var packetSize: Int {
+        let propertiesPacketSize = self.properties.packetSize
+        return 1 + MQTTSerializer.variableLengthIntegerPacketSize(propertiesPacketSize) + propertiesPacketSize
+    }
+}
+
 /// MQTT incoming packet parameters.
 struct MQTTIncomingPacket: MQTTPacket {
     var description: String { "Incoming Packet 0x\(String(format: "%x", self.type.rawValue))" }
