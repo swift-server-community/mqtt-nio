@@ -111,7 +111,7 @@ let client = MQTTClient(
 ```
 You can find out more about connecting to AWS brokers [here](https://docs.aws.amazon.com/iot/latest/developerguide/protocols.html)
 
-## Version 5.0
+## MQTT Version 5.0
 
 Version 2.0 of MQTTNIO added support for MQTT v5.0. To create a client that will connect to a v5 MQTT broker you need to set the version in the configuration as follows
 
@@ -124,12 +124,17 @@ let client = MQTTClient(
 )
 ```
 
-You can then use the same functions available to the v3.1.1 client but there are also v5.0 versions of `connect`, `publish`, `subscribe` and `unsubscribe`. These can be accessed via the variable `MQTTClient.v5`. The v5.0 functions add support for MQTT properties in both function parameters and return types and the additional subscription parameters. For example here is a `publish` call adding the `contentType` property.
+You can then use the same functions available to the v3.1.1 client but there are also v5.0 specific versions of `connect`, `publish`, `subscribe`, `unsubscribe` and `disconnect`. These can be accessed via the variable `MQTTClient.v5`. The v5.0 functions add support for MQTT properties in both function parameters and return types and the additional subscription parameters. For example here is a `publish` call adding the `contentType` property.
 
 ```swift
 var properties = MQTTProperties()
 try properties.add(.contentType, "application/json")
-let futureResponse = client.v5.publish(to: "JSONTest", payload: payload, qos: .atLeastOnce, properties: properties)
+let futureResponse = client.v5.publish(
+    to: "JSONTest", 
+    payload: payload, 
+    qos: .atLeastOnce, 
+    properties: properties
+)
 ```
 
 Whoever subscribes to the "JSONTest" topic with a v5.0 client will also receive the `.contentType` property along with the payload.
