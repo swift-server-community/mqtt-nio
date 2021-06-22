@@ -222,6 +222,67 @@ final class MQTTNIOv5Tests: XCTestCase {
         try client2.syncShutdownGracefully()
     }
 
+    func testSessionPresent() throws {
+        let client = self.createClient(identifier: "testSessionPresent")
+        var properties = MQTTProperties()
+        try properties.add(.sessionExpiryInterval, 3600)
+
+        var connack = try client.v5.connect(cleanStart: true, properties: properties).wait()
+        XCTAssertEqual(connack.sessionPresent, false)
+        connack = try client.v5.connect(cleanStart: false, properties: properties).wait()
+        XCTAssertEqual(connack.sessionPresent, true)
+        try client.disconnect().wait()
+    }
+    
+    func testPersistentSession() throws {
+        let lock = Lock()
+        var publishReceived: [MQTTPublishInfo] = []
+        let payloadString = #"{"from":1000000,"to":1234567,"type":1,"content":"I am a beginner in swift and I am studying hard!!测试\n\n test, message","timestamp":1607243024,"nonce":"pAx2EsUuXrVuiIU3GGOGHNbUjzRRdT5b","sign":"ff902e31a6a5f5343d70a3a93ac9f946adf1caccab539c6f3a6"}"#
+        let payload = ByteBufferAllocator().buffer(string: payloadString)
+
+        let client = self.createClient(identifier: "testPersistentSession_publisher")
+        _ = try client.v5.connect().wait()
+        let client2 = self.createClient(identifier: "testPersistentSession_subscriber")
+        client2.addPublishListener(named: "test") { result in
+            switch result {
+            case .success(let publish):
+                var buffer = publish.payload
+                let string = buffer.readString(length: buffer.readableBytes)
+                XCTAssertEqual(string, payloadString)
+                lock.withLock {
+                    publishReceived.append(publish)
+                }
+            case .failure(let error):
+                XCTFail("\(error)")
+            }
+        }
+        var properties = MQTTProperties()
+        try properties.add(.sessionExpiryInterval, 3600)
+        _ = try client2.v5.connect(cleanStart: true).wait()
+        _ = try client2.v5.connect(cleanStart: false, properties: properties).wait()
+        _ = try client2.subscribe(to: [.init(topicFilter: "testPersistentAtLeastOnceV5", qos: .atLeastOnce)]).wait()
+        try client.publish(to: "testPersistentAtLeastOnceV5", payload: payload, qos: .atLeastOnce).wait()
+        Thread.sleep(forTimeInterval: 1)
+        try client2.disconnect().wait()
+        try client.publish(to: "testPersistentAtLeastOnceV5", payload: payload, qos: .atLeastOnce).wait()
+        // should receive previous publish on new connect as this is not a cleanSession
+        _ = try client2.v5.connect(cleanStart: false, properties: properties).wait()
+        Thread.sleep(forTimeInterval: 1)
+        try client2.disconnect().wait()
+        Thread.sleep(forTimeInterval: 1)
+        try client.publish(to: "testPersistentAtLeastOnceV5", payload: payload, qos: .atLeastOnce).wait()
+        // should not receive previous publish on connect as this is a cleanSession
+        _ = try client2.v5.connect(cleanStart: true).wait()
+        Thread.sleep(forTimeInterval: 1)
+        lock.withLock {
+            XCTAssertEqual(publishReceived.count, 2)
+        }
+        try client.disconnect().wait()
+        try client2.disconnect().wait()
+        try client.syncShutdownGracefully()
+        try client2.syncShutdownGracefully()
+    }
+
 
     // MARK: Helper variables and functions
 

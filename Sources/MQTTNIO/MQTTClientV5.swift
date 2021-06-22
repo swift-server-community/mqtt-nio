@@ -18,7 +18,7 @@ extension MQTTClient {
         ///   - will: Publish message to be posted as soon as connection is made
         /// - Returns: EventLoopFuture to be updated with whether server holds a session for this client
         public func connect(
-            cleanSession: Bool = true,
+            cleanStart: Bool = true,
             properties: MQTTProperties = .init(),
             will: (topicName: String, payload: ByteBuffer, qos: MQTTQoS, retain: Bool, properties: MQTTProperties)? = nil
         ) -> EventLoopFuture<MQTTConnackV5> {
@@ -30,16 +30,16 @@ extension MQTTClient {
                     dup: false,
                     topicName: $0.topicName,
                     payload: $0.payload,
-                    properties: .init()
+                    properties: $0.properties
                 )
             }
             let packet = MQTTConnectPacket(
-                cleanSession: cleanSession,
+                cleanSession: cleanStart,
                 keepAliveSeconds: UInt16(client.configuration.keepAliveInterval.nanoseconds / 1_000_000_000),
                 clientIdentifier: client.identifier,
                 userName: client.configuration.userName,
                 password: client.configuration.password,
-                properties: .init(),
+                properties: properties,
                 will: publish
             )
 
@@ -93,7 +93,10 @@ extension MQTTClient {
         /// Unsubscribe from topic
         /// - Parameter subscriptions: List of subscriptions to unsubscribe from
         /// - Returns: Future waiting for unsubscribe to complete. Will wait for UNSUBACK message from server
-        public func unsubscribe(from subscriptions: [String]) -> EventLoopFuture<MQTTSubackV5> {
+        public func unsubscribe(
+            from subscriptions: [String],
+            properties: MQTTProperties = .init()
+        ) -> EventLoopFuture<MQTTSubackV5> {
             let packetId = client.updatePacketId()
             let packet = MQTTUnsubscribePacket(subscriptions: subscriptions, properties: .init(), packetId: packetId)
             return client.unsubscribe(packet: packet)

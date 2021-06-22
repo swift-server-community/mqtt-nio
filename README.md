@@ -3,7 +3,7 @@
 [<img src="http://img.shields.io/badge/swift-5.3-brightgreen.svg" alt="Swift 5.3" />](https://swift.org)
 [<img src="https://github.com/adam-fowler/mqtt-nio/workflows/CI/badge.svg" />](https://github.com/adam-fowler/mqtt-nio/workflows/CI/badge.svg)
 
-A Swift NIO based MQTT 3.1.1 client supporting NIOTransportServices (required for iOS), WebSocket connections and TLS through both NIOSSL and NIOTransportServices.
+A Swift NIO based MQTT v3.1.1 and v5.0 client supporting NIOTransportServices (required for iOS), WebSocket connections and TLS through both NIOSSL and NIOTransportServices.
 
 MQTT (Message Queuing Telemetry Transport) is a lightweight messaging protocol that was developed by IBM and first released in 1999. It uses the pub/sub pattern and translates messages between devices, servers, and applications. It is commonly used in Internet of things (IoT) technologies.
 
@@ -110,3 +110,28 @@ let client = MQTTClient(
 )
 ```
 You can find out more about connecting to AWS brokers [here](https://docs.aws.amazon.com/iot/latest/developerguide/protocols.html)
+
+## Version 5.0
+
+Version 2.0 of MQTTNIO added support for MQTT v5.0. To create a client that will connect to a v5 MQTT broker you need to set the version in the configuration as follows
+
+```swift
+let client = MQTTClient(
+    host: host,
+    identifier: "MyAWSClient",
+    eventLoopGroupProvider: .createNew,
+    configuration: .init(version: .v5_0)
+)
+```
+
+You can then use the same functions available to the v3.1.1 client but there are also v5.0 versions of `connect`, `publish`, `subscribe` and `unsubscribe`. These can be accessed via the variable `MQTTClient.v5`. The v5.0 functions add support for MQTT properties in both function parameters and return types and the additional subscription parameters. For example here is a `publish` call adding the `contentType` property.
+
+```swift
+var properties = MQTTProperties()
+try properties.add(.contentType, "application/json")
+let futureResponse = client.v5.publish(to: "JSONTest", payload: payload, qos: .atLeastOnce, properties: properties)
+```
+
+Whoever subscribes to the "JSONTest" topic with a v5.0 client will also receive the `.contentType` property along with the payload.
+
+

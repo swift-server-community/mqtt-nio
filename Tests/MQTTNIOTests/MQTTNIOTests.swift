@@ -365,6 +365,17 @@ final class MQTTNIOTests: XCTestCase {
         try client2.syncShutdownGracefully()
     }
 
+    func testSessionPresent() throws {
+        let client = self.createClient(identifier: "testSessionPresent")
+
+        _ = try client.connect(cleanSession: true).wait()
+        var connack = try client.connect(cleanSession: false).wait()
+        XCTAssertEqual(connack, false)
+        try client.disconnect().wait()
+        connack = try client.connect(cleanSession: false).wait()
+        XCTAssertEqual(connack, true)
+    }
+    
     func testPersistentSession() throws {
         let lock = Lock()
         var publishReceived: [MQTTPublishInfo] = []
@@ -400,7 +411,7 @@ final class MQTTNIOTests: XCTestCase {
         Thread.sleep(forTimeInterval: 1)
         try client2.disconnect().wait()
         Thread.sleep(forTimeInterval: 1)
-        try client.publish(to: "testMQTTAtLeastOnce", payload: payload, qos: .atLeastOnce).wait()
+        try client.publish(to: "testPersistentAtLeastOnce", payload: payload, qos: .atLeastOnce).wait()
         // should not receive previous publish on connect as this is a cleanSession
         _ = try client2.connect(cleanSession: true).wait()
         Thread.sleep(forTimeInterval: 1)
