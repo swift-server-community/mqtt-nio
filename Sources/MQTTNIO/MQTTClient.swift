@@ -184,6 +184,7 @@ public final class MQTTClient {
     /// - Returns: Future waiting for subscribe to complete. Will wait for SUBACK message from server
     public func subscribe(to subscriptions: [MQTTSubscribeInfo]) -> EventLoopFuture<MQTTSuback> {
         let packetId = self.updatePacketId()
+        let subscriptions: [MQTTSubscribeInfoV5] = subscriptions.map { .init(topicFilter: $0.topicFilter, qos: $0.qos) }
         let packet = MQTTSubscribePacket(subscriptions: subscriptions, properties: .init(), packetId: packetId)
         return subscribe(packet: packet)
             .map { message in

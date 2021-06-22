@@ -97,6 +97,51 @@ final class MQTTNIOv5Tests: XCTestCase {
         try client.syncShutdownGracefully()
     }
 
+    func testMQTTSubscribeFlags() throws {
+        let lock = Lock()
+        var publishReceived: [MQTTPublishInfo] = []
+        let payloadString = #"{"test":1000000}"#
+        let payload = ByteBufferAllocator().buffer(string: payloadString)
+
+        let client = self.createClient(identifier: "testMQTTPublishToClient_publisher")
+        _ = try client.connect().wait()
+        client.addPublishListener(named: "test") { result in
+            switch result {
+            case .success(let publish):
+                var buffer = publish.payload
+                let string = buffer.readString(length: buffer.readableBytes)
+                XCTAssertEqual(string, payloadString)
+                lock.withLock {
+                    publishReceived.append(publish)
+                }
+            case .failure(let error):
+                XCTFail("\(error)")
+            }
+        }
+        // only one of these publish messages should make it through as the subscription for "testMQTTSubscribeFlags1"
+        // does not allow locally published messages and the subscription for "testMQTTSubscribeFlags3" does not
+        // allow for retain messages to be sent
+        try client.publish(to: "testMQTTSubscribeFlags3", payload: payload, qos: .atLeastOnce, retain: true).wait()
+        try client.publish(to: "testMQTTSubscribeFlags2", payload: payload, qos: .atLeastOnce, retain: true).wait()
+        let sub = try client.v5.subscribe(
+            to: [
+                .init(topicFilter: "testMQTTSubscribeFlags1", qos: .atLeastOnce, noLocal: true),
+                .init(topicFilter: "testMQTTSubscribeFlags2", qos: .atLeastOnce, retainAsPublished: false, retainHandling: .sendAlways),
+                .init(topicFilter: "testMQTTSubscribeFlags3", qos: .atLeastOnce, retainHandling: .doNotSend),
+            ]
+        ).wait()
+        XCTAssert(sub.reasons.count == 3)
+        
+        try client.publish(to: "testMQTTSubscribeFlags1", payload: payload, qos: .atLeastOnce, retain: false).wait()
+        
+        Thread.sleep(forTimeInterval: 2)
+        lock.withLock {
+            XCTAssertEqual(publishReceived.count, 1)
+        }
+        try client.disconnect().wait()
+        try client.syncShutdownGracefully()
+    }
+
     func testUnsubscribe() throws {
         let lock = Lock()
         var publishReceived: [MQTTPublishInfo] = []

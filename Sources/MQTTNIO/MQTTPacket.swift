@@ -248,10 +248,17 @@ struct MQTTPublishPacket: MQTTPacket {
 }
 
 struct MQTTSubscribePacket: MQTTPacket {
+    enum SubscribeFlags {
+        static let qosMask: UInt8 = 3
+        static let noLocal: UInt8 = 4
+        static let retainAsPublished: UInt8 = 8
+        static let retainHandlingShift: UInt8 = 4
+        static let retainHandlingMask: UInt8 = 48
+    }
     var type: MQTTPacketType { .SUBSCRIBE }
     var description: String { "SUBSCRIBE" }
 
-    let subscriptions: [MQTTSubscribeInfo]
+    let subscriptions: [MQTTSubscribeInfoV5]
     let properties: MQTTProperties?
     let packetId: UInt16
 
@@ -267,7 +274,17 @@ struct MQTTSubscribePacket: MQTTPacket {
         // write payload
         for info in self.subscriptions {
             try MQTTSerializer.writeString(info.topicFilter, to: &byteBuffer)
-            byteBuffer.writeInteger(info.qos.rawValue)
+            switch version {
+            case .v3_1_1:
+                byteBuffer.writeInteger(info.qos.rawValue)
+            case .v5_0:
+                var flags = info.qos.rawValue & SubscribeFlags.qosMask
+                flags |= info.noLocal ? SubscribeFlags.noLocal : 0
+                flags |= info.retainAsPublished ? SubscribeFlags.retainAsPublished : 0
+                flags |= (info.retainHandling.rawValue << SubscribeFlags.retainHandlingShift) & SubscribeFlags.retainHandlingMask
+                byteBuffer.writeInteger(flags)
+                
+            }
         }
     }
 

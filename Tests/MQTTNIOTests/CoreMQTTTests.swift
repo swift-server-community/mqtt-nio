@@ -45,7 +45,7 @@ final class CoreMQTTTests: XCTestCase {
     }
 
     func testSubscribe() throws {
-        let subscriptions: [MQTTSubscribeInfo] = [
+        let subscriptions: [MQTTSubscribeInfoV5] = [
             .init(topicFilter: "topic/cars", qos: .atLeastOnce),
             .init(topicFilter: "topic/buses", qos: .atLeastOnce),
         ]
