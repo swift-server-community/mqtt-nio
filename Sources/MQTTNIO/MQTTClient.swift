@@ -144,13 +144,17 @@ public final class MQTTClient {
                 properties: .init()
             )
         }
+        var properties = MQTTProperties()
+        if configuration.version == .v5_0, cleanSession == false {
+            try! properties.add(.sessionExpiryInterval, 0xffffffff)
+        }
         let packet = MQTTConnectPacket(
             cleanSession: cleanSession,
             keepAliveSeconds: UInt16(configuration.keepAliveInterval.nanoseconds / 1_000_000_000),
             clientIdentifier: self.identifier,
             userName: self.configuration.userName,
             password: self.configuration.password,
-            properties: .init(),
+            properties: properties,
             will: publish
         )
 
