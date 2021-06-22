@@ -75,6 +75,8 @@ struct ByteToMQTTMessageDecoder: ByteToMessageDecoder {
                 let ack = MQTTAckV5(reason: disconnectMessage.reason, properties: disconnectMessage.properties)
                 context.fireErrorCaught(MQTTError.serverDisconnection(ack))
                 message = disconnectMessage
+            case .AUTH:
+                message = try MQTTAuthPacket.read(version: client.configuration.version, from: packet)
             default:
                 throw MQTTError.decodeError
             }
