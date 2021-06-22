@@ -75,7 +75,7 @@ public struct MQTTSubscribeInfo {
 /// MQTT Sub ACK
 ///
 /// Contains data returned in subscribe ack packets
-public struct MQTTSubAckInfo {
+public struct MQTTSuback {
     public enum ReturnCode: UInt8 {
         case grantedQoS0 = 0
         case grantedQoS1 = 1
@@ -84,9 +84,9 @@ public struct MQTTSubAckInfo {
     }
     
     /// MQTT v5 subscribute return codes
-    public var returnCodes: [ReturnCode]
+    public let returnCodes: [ReturnCode]
 
-    init(returnCodes: [MQTTSubAckInfo.ReturnCode]) {
+    init(returnCodes: [MQTTSuback.ReturnCode]) {
         self.returnCodes = returnCodes
     }
 }

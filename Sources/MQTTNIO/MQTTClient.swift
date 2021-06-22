@@ -182,13 +182,13 @@ public final class MQTTClient {
     /// Subscribe to topic
     /// - Parameter subscriptions: Subscription infos
     /// - Returns: Future waiting for subscribe to complete. Will wait for SUBACK message from server
-    public func subscribe(to subscriptions: [MQTTSubscribeInfo]) -> EventLoopFuture<MQTTSubAckInfo> {
+    public func subscribe(to subscriptions: [MQTTSubscribeInfo]) -> EventLoopFuture<MQTTSuback> {
         let packetId = self.updatePacketId()
         let packet = MQTTSubscribePacket(subscriptions: subscriptions, properties: .init(), packetId: packetId)
         return subscribe(packet: packet)
             .map { message in
-                let returnCodes = message.reasons.map { MQTTSubAckInfo.ReturnCode(rawValue: $0.rawValue) ?? .failure }
-                return MQTTSubAckInfo(returnCodes: returnCodes)
+                let returnCodes = message.reasons.map { MQTTSuback.ReturnCode(rawValue: $0.rawValue) ?? .failure }
+                return MQTTSuback(returnCodes: returnCodes)
             }
     }
 
@@ -266,6 +266,22 @@ public final class MQTTClient {
         self.closeListeners.removeListener(named: name)
     }
 
+    internal func updatePacketId() -> UInt16 {
+        // packet id must be non-zero
+        if self.globalPacketId.compareAndExchange(expected: 0, desired: 1) {
+            return 1
+        } else {
+            return self.globalPacketId.add(1)
+        }
+    }
+
+    var publishListeners = MQTTListeners<MQTTPublishInfo>()
+    var closeListeners = MQTTListeners<Void>()
+    private var _connection: MQTTConnection?
+    private var lock = Lock()
+}
+
+extension MQTTClient {
     /// connect to broker
     func connect(packet: MQTTConnectPacket) -> EventLoopFuture<MQTTConnAckPacket> {
         let pingInterval = self.configuration.pingInterval ?? TimeAmount.seconds(max(Int64(packet.keepAliveSeconds - 5), 5))
@@ -385,20 +401,6 @@ public final class MQTTClient {
             return suback
         }
     }
-
-    internal func updatePacketId() -> UInt16 {
-        // packet id must be non-zero
-        if self.globalPacketId.compareAndExchange(expected: 0, desired: 1) {
-            return 1
-        } else {
-            return self.globalPacketId.add(1)
-        }
-    }
-
-    var publishListeners = MQTTListeners<MQTTPublishInfo>()
-    var closeListeners = MQTTListeners<Void>()
-    private var _connection: MQTTConnection?
-    private var lock = Lock()
 }
 
 extension Logger {

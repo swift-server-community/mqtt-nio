@@ -411,22 +411,22 @@ struct MQTTSubAckPacket: MQTTPacket {
     static func read(version: MQTTClient.Version, from packet: MQTTIncomingPacket) throws -> Self {
         var remainingData = packet.remainingData
         guard let packetId: UInt16 = remainingData.readInteger() else { throw MQTTError.badResponse }
-        switch version {
-        case .v3_1_1:
-            return MQTTSubAckPacket(type: packet.type, packetId: packetId, reasons: [])
-        case .v5_0:
-            let properties = try MQTTProperties.read(from: &remainingData)
-            var reasons: [MQTTReasonCode]?
-            if let reasonBytes = remainingData.readBytes(length: remainingData.readableBytes) {
-                reasons = try reasonBytes.map { byte -> MQTTReasonCode in
-                    guard let reason = MQTTReasonCode(rawValue: byte) else {
-                        throw MQTTError.badResponse
-                    }
-                    return reason
-                }
-            }
-            return MQTTSubAckPacket(type: packet.type, packetId: packetId, reasons: reasons ?? [], properties: properties)
+        var properties: MQTTProperties
+        if version == .v5_0 {
+            properties = try MQTTProperties.read(from: &remainingData)
+        } else {
+            properties = .init()
         }
+        var reasons: [MQTTReasonCode]?
+        if let reasonBytes = remainingData.readBytes(length: remainingData.readableBytes) {
+            reasons = try reasonBytes.map { byte -> MQTTReasonCode in
+                guard let reason = MQTTReasonCode(rawValue: byte) else {
+                    throw MQTTError.badResponse
+                }
+                return reason
+            }
+        }
+        return MQTTSubAckPacket(type: packet.type, packetId: packetId, reasons: reasons ?? [], properties: properties)
     }
 
     func packetSize(version: MQTTClient.Version) -> Int {

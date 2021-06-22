@@ -77,12 +77,12 @@ extension MQTTClient {
         /// Subscribe to topic
         /// - Parameter subscriptions: Subscription infos
         /// - Returns: Future waiting for subscribe to complete. Will wait for SUBACK message from server
-        public func subscribe(to subscriptions: [MQTTSubscribeInfo]) -> EventLoopFuture<MQTTSubAckInfoV5> {
+        public func subscribe(to subscriptions: [MQTTSubscribeInfo]) -> EventLoopFuture<MQTTSubackV5> {
             let packetId = client.updatePacketId()
             let packet = MQTTSubscribePacket(subscriptions: subscriptions, properties: .init(), packetId: packetId)
             return client.subscribe(packet: packet)
                 .map { message in
-                    return MQTTSubAckInfoV5(reasons: message.reasons, properties: message.properties)
+                    return MQTTSubackV5(reasons: message.reasons, properties: message.properties)
                 }
         }
 
