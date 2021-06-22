@@ -238,7 +238,7 @@ public final class MQTTClient {
     public func disconnect() -> EventLoopFuture<Void> {
         guard let connection = self.connection else { return self.eventLoopGroup.next().makeFailedFuture(MQTTError.noConnection) }
 
-        return connection.sendMessageNoWait(MQTTDisconnectPacket(disconnect: .init()))
+        return connection.sendMessageNoWait(MQTTDisconnectPacket())
             .flatMap {
                 let future = self.connection?.close()
                 self.connection = nil
@@ -346,18 +346,18 @@ public final class MQTTClient {
                 }
             }
             if let pubAckPacket = message as? MQTTPubAckPacket {
-                if pubAckPacket.ack.reason.rawValue > 0x7f {
-                    throw MQTTError.reasonError(pubAckPacket.ack.reason)
+                if pubAckPacket.reason.rawValue > 0x7f {
+                    throw MQTTError.reasonError(pubAckPacket.reason)
                 }
             }
             return true
         }
         .flatMap { ackPacket in
             let ackPacket = ackPacket as? MQTTPubAckPacket
+            let ackInfo = ackPacket.map { MQTTAckInfo(reason: $0.reason, properties: $0.properties) }
             if packet.publish.qos == .exactlyOnce {
-                let ack = MQTTAckInfo(reason: .success, properties: .init())
                 return connection.sendMessageWithRetry(
-                    MQTTPubAckPacket(type: .PUBREL, packetId: packet.packetId, ack: ack),
+                    MQTTPubAckPacket(type: .PUBREL, packetId: packet.packetId),
                     maxRetryAttempts: self.configuration.maxRetryAttempts
                 ) { message in
                     guard message.packetId == packet.packetId else { return false }
@@ -366,14 +366,14 @@ public final class MQTTClient {
                         throw MQTTError.unexpectedMessage
                     }
                     if let pubAckPacket = message as? MQTTPubAckPacket {
-                        if pubAckPacket.ack.reason.rawValue > 0x7f {
-                            throw MQTTError.reasonError(pubAckPacket.ack.reason)
+                        if pubAckPacket.reason.rawValue > 0x7f {
+                            throw MQTTError.reasonError(pubAckPacket.reason)
                         }
                     }
                     return true
-                }.map { _ in ackPacket?.ack }
+                }.map { _ in ackInfo }
             }
-            return self.eventLoopGroup.next().makeSucceededFuture(ackPacket?.ack)
+            return self.eventLoopGroup.next().makeSucceededFuture(ackInfo)
         }
     }
 

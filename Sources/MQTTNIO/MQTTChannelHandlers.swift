@@ -72,7 +72,8 @@ struct ByteToMQTTMessageDecoder: ByteToMessageDecoder {
                 message = try MQTTPingrespPacket.read(version: client.configuration.version, from: packet)
             case .DISCONNECT:
                 let disconnectMessage = try MQTTDisconnectPacket.read(version: client.configuration.version, from: packet)
-                context.fireErrorCaught(MQTTError.serverDisconnection(disconnectMessage.disconnect))
+                let ack = MQTTAckInfo(reason: disconnectMessage.reason, properties: disconnectMessage.properties)
+                context.fireErrorCaught(MQTTError.serverDisconnection(ack))
                 message = disconnectMessage
             default:
                 throw MQTTError.decodeError
@@ -96,16 +97,14 @@ struct ByteToMQTTMessageDecoder: ByteToMessageDecoder {
             self.client.publishListeners.notify(.success(message.publish))
 
         case .atLeastOnce:
-            let ack = MQTTAckInfo(reason: .success)
-            connection.sendMessageNoWait(MQTTPubAckPacket(type: .PUBACK, packetId: message.packetId, ack: ack))
+            connection.sendMessageNoWait(MQTTPubAckPacket(type: .PUBACK, packetId: message.packetId))
                 .map { _ in return message.publish }
                 .whenComplete { self.client.publishListeners.notify($0) }
 
         case .exactlyOnce:
             var publish = message.publish
-            let ack = MQTTAckInfo(reason: .success)
             connection.sendMessageWithRetry(
-                MQTTPubAckPacket(type: .PUBREC, packetId: message.packetId, ack: ack),
+                MQTTPubAckPacket(type: .PUBREC, packetId: message.packetId),
                 maxRetryAttempts: self.client.configuration.maxRetryAttempts
             ) { newMessage in
                 guard newMessage.packetId == message.packetId else { return false }
@@ -134,7 +133,6 @@ struct ByteToMQTTMessageDecoder: ByteToMessageDecoder {
     /// multiple PUBREL messages, if the client is slow to respond
     func respondToPubrel(_ message: MQTTPacket) {
         guard let connection = client.connection else { return }
-        let ack = MQTTAckInfo(reason: .success)
-        _ = connection.sendMessageNoWait(MQTTPubAckPacket(type: .PUBCOMP, packetId: message.packetId, ack: ack))
+        _ = connection.sendMessageNoWait(MQTTPubAckPacket(type: .PUBCOMP, packetId: message.packetId))
     }
 }
