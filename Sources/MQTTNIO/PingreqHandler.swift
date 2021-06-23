@@ -36,11 +36,6 @@ final class PingreqHandler: ChannelDuplexHandler {
         context.fireChannelActive()
     }
 
-    func channelRead(context: ChannelHandlerContext, data: NIOAny) {
-        self.lastEventTime = .now()
-        context.fireChannelRead(data)
-    }
-
     func write(context: ChannelHandlerContext, data: NIOAny, promise: EventLoopPromise<Void>?) {
         self.lastEventTime = .now()
         context.write(data, promise: promise)
