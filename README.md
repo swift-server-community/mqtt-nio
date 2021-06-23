@@ -113,7 +113,7 @@ You can find out more about connecting to AWS brokers [here](https://docs.aws.am
 
 ## MQTT Version 5.0
 
-Version 2.0 of MQTTNIO added support for MQTT v5.0. To create a client that will connect to a v5 MQTT broker you need to set the version in the configuration as follows
+The main branch of MQTTNIO (will be released shortly as version 2.0) has support for MQTT v5.0. To create a client that will connect to a v5 MQTT broker you need to set the version in the configuration as follows
 
 ```swift
 let client = MQTTClient(
