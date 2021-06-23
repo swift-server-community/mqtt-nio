@@ -134,7 +134,9 @@ final class MQTTConnection {
         // create random key for request key
         let requestKey = (0..<16).map { _ in UInt8.random(in: .min ..< .max) }
         let websocketUpgrader = NIOWebSocketClientUpgrader(
-            requestKey: Data(requestKey).base64EncodedString()) { channel, _ in
+            requestKey: Data(requestKey).base64EncodedString(),
+            maxFrameSize: client.configuration.webSocketMaxFrameSize
+        ) { channel, _ in
             let future = channel.pipeline.addHandler(WebSocketHandler())
                 .flatMap { _ in
                     afterHandlerAdded()

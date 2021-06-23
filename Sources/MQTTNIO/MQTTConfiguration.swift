@@ -38,7 +38,8 @@ extension MQTTClient {
             useWebSockets: Bool = false,
             tlsConfiguration: TLSConfigurationType? = nil,
             sniServerName: String? = nil,
-            webSocketURLPath: String? = nil
+            webSocketURLPath: String? = nil,
+            webSocketMaxFrameSize: Int = 1 << 14
         ) {
             self.version = version
             self.disablePing = disablePing
@@ -53,6 +54,7 @@ extension MQTTClient {
             self.tlsConfiguration = tlsConfiguration
             self.sniServerName = sniServerName
             self.webSocketURLPath = webSocketURLPath
+            self.webSocketMaxFrameSize = webSocketMaxFrameSize
         }
 
         /// disable the sending of pingreq messages
@@ -81,5 +83,7 @@ extension MQTTClient {
         public let sniServerName: String?
         /// URL Path for web socket. Defaults to "/mqtt"
         public let webSocketURLPath: String?
+        /// Maximum frame size for a web socket connection
+        public let webSocketMaxFrameSize: Int
     }
 }
