@@ -36,7 +36,7 @@ final class MQTTConnection {
                 .channelInitializer { channel in
                     // Work out what handlers to add
                     var handlers: [ChannelHandler] = [
-                        MQTTEncodeHandler(logger: client.logger),
+                        MQTTEncodeHandler(client: client),
                         ByteToMessageHandler(ByteToMQTTMessageDecoder(client: client)),
                     ]
                     if !client.configuration.disablePing {
@@ -156,7 +156,11 @@ final class MQTTConnection {
         }
     }
 
-    func sendMessageWithRetry(_ message: MQTTPacket, maxRetryAttempts: Int, checkInbound: @escaping (MQTTPacket) throws -> Bool) -> EventLoopFuture<MQTTPacket> {
+    func sendMessageWithRetry(
+        _ message: MQTTPacket,
+        maxRetryAttempts: Int,
+        checkInbound: @escaping (MQTTPacket) throws -> Bool
+    ) -> EventLoopFuture<MQTTPacket> {
         let promise = self.channel.eventLoop.makePromise(of: MQTTPacket.self)
 
         func _sendMessage(_ message: MQTTPacket, attempt: Int) {
@@ -172,7 +176,14 @@ final class MQTTConnection {
                         if let publishMessage = message as? MQTTPublishPacket {
                             let publish = publishMessage.publish
                             let newMessage = MQTTPublishPacket(
-                                publish: .init(qos: publish.qos, retain: publish.retain, dup: true, topicName: publish.topicName, payload: publish.payload),
+                                publish: .init(
+                                    qos: publish.qos,
+                                    retain: publish.retain,
+                                    dup: true,
+                                    topicName: publish.topicName,
+                                    payload: publish.payload,
+                                    properties: publish.properties
+                                ),
                                 packetId: publishMessage.packetId
                             )
                             _sendMessage(newMessage, attempt: attempt + 1)

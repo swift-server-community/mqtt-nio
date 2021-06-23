@@ -24,24 +24,7 @@ public enum MQTTPacketType: UInt8 {
     case PINGREQ = 0xC0
     case PINGRESP = 0xD0
     case DISCONNECT = 0xE0
-}
-
-/// MQTT CONNECT packet parameters
-struct MQTTConnectInfo {
-    /// Whether to establish a new, clean session or resume a previous session.
-    let cleanSession: Bool
-
-    /// MQTT keep alive period.
-    let keepAliveSeconds: UInt16
-
-    /// MQTT client identifier. Must be unique per client.
-    let clientIdentifier: String
-
-    /// MQTT user name.
-    let userName: String?
-
-    /// MQTT password.
-    let password: String?
+    case AUTH = 0xF0
 }
 
 /// MQTT PUBLISH packet parameters.
@@ -57,16 +40,20 @@ public struct MQTTPublishInfo {
 
     /// Topic name on which the message is published.
     public let topicName: String
+    
+    /// MQTT v5 properties
+    public let properties: MQTTProperties
 
     /// Message payload.
     public let payload: ByteBuffer
 
-    public init(qos: MQTTQoS, retain: Bool, dup: Bool = false, topicName: String, payload: ByteBuffer) {
+    public init(qos: MQTTQoS, retain: Bool, dup: Bool = false, topicName: String, payload: ByteBuffer, properties: MQTTProperties) {
         self.qos = qos
         self.retain = retain
         self.dup = dup
         self.topicName = topicName
         self.payload = payload
+        self.properties = properties
     }
 
     static let emptyByteBuffer = ByteBufferAllocator().buffer(capacity: 0)
@@ -83,5 +70,24 @@ public struct MQTTSubscribeInfo {
     public init(topicFilter: String, qos: MQTTQoS) {
         self.qos = qos
         self.topicFilter = topicFilter
+    }
+}
+
+/// MQTT Sub ACK
+///
+/// Contains data returned in subscribe ack packets
+public struct MQTTSuback {
+    public enum ReturnCode: UInt8 {
+        case grantedQoS0 = 0
+        case grantedQoS1 = 1
+        case grantedQoS2 = 2
+        case failure = 0x80
+    }
+    
+    /// MQTT v5 subscribute return codes
+    public let returnCodes: [ReturnCode]
+
+    init(returnCodes: [MQTTSuback.ReturnCode]) {
+        self.returnCodes = returnCodes
     }
 }

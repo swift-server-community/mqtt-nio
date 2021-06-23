@@ -13,14 +13,10 @@ import NIOSSL
 final class MQTTNIOTests: XCTestCase {
     static let hostname = ProcessInfo.processInfo.environment["MOSQUITTO_SERVER"] ?? "localhost"
 
-    func connect(to client: MQTTClient) throws {
-        _ = try client.connect().wait()
-    }
-
     func testConnectWithWill() throws {
         let client = self.createClient(identifier: "testConnectWithWill")
         _ = try client.connect(
-            will: (topicName: "MyWillTopic", payload: ByteBufferAllocator().buffer(string: "Test payload"), retain: false)
+            will: (topicName: "MyWillTopic", payload: ByteBufferAllocator().buffer(string: "Test payload"), qos: .atLeastOnce, retain: false)
         ).wait()
         try client.ping().wait()
         try client.disconnect().wait()
@@ -96,8 +92,14 @@ final class MQTTNIOTests: XCTestCase {
     func testMQTTSubscribe() throws {
         let client = self.createClient(identifier: "testMQTTSubscribe")
         _ = try client.connect().wait()
-        try client.subscribe(to: [.init(topicFilter: "iphone", qos: .atLeastOnce)]).wait()
-        Thread.sleep(forTimeInterval: 5)
+        let sub = try client.subscribe(
+            to: [
+                .init(topicFilter: "iphone", qos: .atLeastOnce),
+                .init(topicFilter: "iphone2", qos: .exactlyOnce)
+            ]
+        ).wait()
+        XCTAssertEqual(sub.returnCodes[0], .grantedQoS1)
+        XCTAssertEqual(sub.returnCodes[1], .grantedQoS2)
         try client.disconnect().wait()
         try client.syncShutdownGracefully()
     }
@@ -107,13 +109,13 @@ final class MQTTNIOTests: XCTestCase {
             var type: MQTTPacketType { .PUBLISH }
             var description: String { "FORCEDISCONNECT" }
 
-            func write(to byteBuffer: inout ByteBuffer) throws {
+            func write(version: MQTTClient.Version, to byteBuffer: inout ByteBuffer) throws {
                 // writing publish header with no content will cause a disconnect from the server
                 byteBuffer.writeInteger(UInt8(0x30))
                 byteBuffer.writeInteger(UInt8(0x0))
             }
 
-            static func read(from packet: MQTTIncomingPacket) throws -> Self {
+            static func read(version: MQTTClient.Version, from packet: MQTTIncomingPacket) throws -> Self {
                 throw InternalError.notImplemented
             }
         }
@@ -123,6 +125,37 @@ final class MQTTNIOTests: XCTestCase {
         try client.connection?.sendMessageNoWait(MQTTForceDisconnectMessage()).wait()
         Thread.sleep(forTimeInterval: 2)
         XCTAssertFalse(client.isActive())
+        try client.syncShutdownGracefully()
+    }
+
+    func testMQTTPublishRetain() throws {
+        let lock = Lock()
+        var publishReceived: [MQTTPublishInfo] = []
+        let payloadString = #"{"from":1000000,"to":1234567,"type":1,"content":"I am a beginner in swift and I am studying hard!!测试\n\n test, message","timestamp":1607243024,"nonce":"pAx2EsUuXrVuiIU3GGOGHNbUjzRRdT5b","sign":"ff902e31a6a5f5343d70a3a93ac9f946adf1caccab539c6f3a6"}"#
+        let payload = ByteBufferAllocator().buffer(string: payloadString)
+
+        let client = self.createWebSocketClient(identifier: "testMQTTPublishToClient_publisher")
+        _ = try client.connect().wait()
+        client.addPublishListener(named: "test") { result in
+            switch result {
+            case .success(let publish):
+                var buffer = publish.payload
+                let string = buffer.readString(length: buffer.readableBytes)
+                XCTAssertEqual(string, payloadString)
+                lock.withLock {
+                    publishReceived.append(publish)
+                }
+            case .failure(let error):
+                XCTFail("\(error)")
+            }
+        }
+        try client.publish(to: "testMQTTPublishRetain", payload: payload, qos: .atLeastOnce, retain: true).wait()
+        _ = try client.subscribe(to: [.init(topicFilter: "testMQTTPublishRetain", qos: .atLeastOnce)]).wait()
+        Thread.sleep(forTimeInterval: 2)
+        lock.withLock {
+            XCTAssertEqual(publishReceived.count, 1)
+        }
+        try client.disconnect().wait()
         try client.syncShutdownGracefully()
     }
 
@@ -149,10 +182,10 @@ final class MQTTNIOTests: XCTestCase {
             }
         }
         _ = try client2.connect().wait()
-        try client2.subscribe(to: [.init(topicFilter: "testMQTTAtLeastOnce", qos: .atLeastOnce)]).wait()
-        try client2.subscribe(to: [.init(topicFilter: "testMQTTExactlyOnce", qos: .exactlyOnce)]).wait()
-        try client.publish(to: "testMQTTAtLeastOnce", payload: payload, qos: .atLeastOnce).wait()
-        try client.publish(to: "testMQTTExactlyOnce", payload: payload, qos: .exactlyOnce).wait()
+        _ = try client2.subscribe(to: [.init(topicFilter: "testAtLeastOnce", qos: .atLeastOnce)]).wait()
+        _ = try client2.subscribe(to: [.init(topicFilter: "testExactlyOnce", qos: .exactlyOnce)]).wait()
+        try client.publish(to: "testAtLeastOnce", payload: payload, qos: .atLeastOnce).wait()
+        try client.publish(to: "testExactlyOnce", payload: payload, qos: .exactlyOnce).wait()
         Thread.sleep(forTimeInterval: 2)
         lock.withLock {
             XCTAssertEqual(publishReceived.count, 2)
@@ -186,7 +219,7 @@ final class MQTTNIOTests: XCTestCase {
             }
         }
         _ = try client2.connect().wait()
-        try client2.subscribe(to: [.init(topicFilter: "testUnsubscribe", qos: .atLeastOnce)]).wait()
+        _ = try client2.subscribe(to: [.init(topicFilter: "testUnsubscribe", qos: .atLeastOnce)]).wait()
         try client.publish(to: "testUnsubscribe", payload: payload, qos: .atLeastOnce).wait()
         try client2.unsubscribe(from: ["testUnsubscribe"]).wait()
         try client.publish(to: "testUnsubscribe", payload: payload, qos: .atLeastOnce).wait()
@@ -225,8 +258,8 @@ final class MQTTNIOTests: XCTestCase {
             }
         }
         _ = try client2.connect().wait()
-        try client2.subscribe(to: [.init(topicFilter: "testMQTTAtLeastOnce", qos: .atLeastOnce)]).wait()
-        try client.publish(to: "testMQTTAtLeastOnce", payload: payload, qos: .atLeastOnce).wait()
+        _ = try client2.subscribe(to: [.init(topicFilter: "testLargeAtLeastOnce", qos: .atLeastOnce)]).wait()
+        try client.publish(to: "testLargeAtLeastOnce", payload: payload, qos: .atLeastOnce).wait()
         Thread.sleep(forTimeInterval: 2)
         lock.withLock {
             XCTAssertEqual(publishReceived.count, 1)
@@ -319,7 +352,7 @@ final class MQTTNIOTests: XCTestCase {
         }
         _ = try client2.connect().wait()
         try client2.connection?.channel.pipeline.addHandler(stallHandler, position: .first).wait()
-        try client2.subscribe(to: [.init(topicFilter: "testMQTTSubscribeQoS2WithStall", qos: .exactlyOnce)]).wait()
+        _ = try client2.subscribe(to: [.init(topicFilter: "testMQTTSubscribeQoS2WithStall", qos: .exactlyOnce)]).wait()
         try client.publish(to: "testMQTTSubscribeQoS2WithStall", payload: payload, qos: .exactlyOnce).wait()
 
         Thread.sleep(forTimeInterval: 20)
@@ -332,6 +365,17 @@ final class MQTTNIOTests: XCTestCase {
         try client2.syncShutdownGracefully()
     }
 
+    func testSessionPresent() throws {
+        let client = self.createClient(identifier: "testSessionPresent")
+
+        _ = try client.connect(cleanSession: true).wait()
+        var connack = try client.connect(cleanSession: false).wait()
+        XCTAssertEqual(connack, false)
+        try client.disconnect().wait()
+        connack = try client.connect(cleanSession: false).wait()
+        XCTAssertEqual(connack, true)
+    }
+    
     func testPersistentSession() throws {
         let lock = Lock()
         var publishReceived: [MQTTPublishInfo] = []
@@ -356,18 +400,18 @@ final class MQTTNIOTests: XCTestCase {
         }
         _ = try client2.connect(cleanSession: true).wait()
         _ = try client2.connect(cleanSession: false).wait()
-        try client2.subscribe(to: [.init(topicFilter: "testMQTTAtLeastOnce", qos: .atLeastOnce)]).wait()
-        try client.publish(to: "testMQTTAtLeastOnce", payload: payload, qos: .atLeastOnce).wait()
+        _ = try client2.subscribe(to: [.init(topicFilter: "testPersistentAtLeastOnce", qos: .atLeastOnce)]).wait()
+        try client.publish(to: "testPersistentAtLeastOnce", payload: payload, qos: .atLeastOnce).wait()
         Thread.sleep(forTimeInterval: 1)
         try client2.disconnect().wait()
-        try client.publish(to: "testMQTTAtLeastOnce", payload: payload, qos: .atLeastOnce).wait()
+        try client.publish(to: "testPersistentAtLeastOnce", payload: payload, qos: .atLeastOnce).wait()
         Thread.sleep(forTimeInterval: 1)
         // should receive previous publish on new connect as this is not a cleanSession
         _ = try client2.connect(cleanSession: false).wait()
         Thread.sleep(forTimeInterval: 1)
         try client2.disconnect().wait()
         Thread.sleep(forTimeInterval: 1)
-        try client.publish(to: "testMQTTAtLeastOnce", payload: payload, qos: .atLeastOnce).wait()
+        try client.publish(to: "testPersistentAtLeastOnce", payload: payload, qos: .atLeastOnce).wait()
         // should not receive previous publish on connect as this is a cleanSession
         _ = try client2.connect(cleanSession: true).wait()
         Thread.sleep(forTimeInterval: 1)
@@ -392,7 +436,7 @@ final class MQTTNIOTests: XCTestCase {
             logger: self.logger
         )
         _ = try client.connect().wait()
-        try client.subscribe(to: [.init(topicFilter: "#", qos: .exactlyOnce)]).wait()
+        _ = try client.subscribe(to: [.init(topicFilter: "#", qos: .exactlyOnce)]).wait()
         Thread.sleep(forTimeInterval: 5)
         try client.disconnect().wait()
         try client.syncShutdownGracefully()

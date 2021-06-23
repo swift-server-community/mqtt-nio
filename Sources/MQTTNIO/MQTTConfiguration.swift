@@ -6,6 +6,7 @@ import NIOSSL
 extension MQTTClient {
     public enum Version {
         case v3_1_1
+        case v5_0
     }
 
     /// Enum for different TLS Configuration types. The TLS Configuration type to use if defined by the EventLoopGroup the
