@@ -23,7 +23,6 @@ extension MQTTClient {
             will: (topicName: String, payload: ByteBuffer, qos: MQTTQoS, retain: Bool, properties: MQTTProperties)? = nil,
             authWorkflow: ((MQTTAuthV5, EventLoop) -> EventLoopFuture<MQTTAuthV5>)? = nil
         ) -> EventLoopFuture<MQTTConnackV5> {
-
             let publish = will.map {
                 MQTTPublishInfo(
                     qos: .atMostOnce,
@@ -37,14 +36,14 @@ extension MQTTClient {
             let packet = MQTTConnectPacket(
                 cleanSession: cleanStart,
                 keepAliveSeconds: UInt16(client.configuration.keepAliveInterval.nanoseconds / 1_000_000_000),
-                clientIdentifier: client.identifier,
-                userName: client.configuration.userName,
-                password: client.configuration.password,
+                clientIdentifier: self.client.identifier,
+                userName: self.client.configuration.userName,
+                password: self.client.configuration.password,
                 properties: properties,
                 will: publish
             )
 
-            return client.connect(packet: packet).map {
+            return self.client.connect(packet: packet).map {
                 .init(
                     sessionPresent: $0.sessionPresent,
                     reason: MQTTReasonCode(rawValue: $0.returnCode) ?? .unrecognisedReason,
@@ -71,9 +70,9 @@ extension MQTTClient {
             properties: MQTTProperties = .init()
         ) -> EventLoopFuture<MQTTAckV5?> {
             let info = MQTTPublishInfo(qos: qos, retain: retain, dup: false, topicName: topicName, payload: payload, properties: properties)
-            let packetId = client.updatePacketId()
+            let packetId = self.client.updatePacketId()
             let packet = MQTTPublishPacket(publish: info, packetId: packetId)
-            return client.publish(packet: packet)
+            return self.client.publish(packet: packet)
         }
 
         /// Subscribe to topic
@@ -86,9 +85,9 @@ extension MQTTClient {
             to subscriptions: [MQTTSubscribeInfoV5],
             properties: MQTTProperties = .init()
         ) -> EventLoopFuture<MQTTSubackV5> {
-            let packetId = client.updatePacketId()
+            let packetId = self.client.updatePacketId()
             let packet = MQTTSubscribePacket(subscriptions: subscriptions, properties: properties, packetId: packetId)
-            return client.subscribe(packet: packet)
+            return self.client.subscribe(packet: packet)
                 .map { message in
                     return MQTTSubackV5(reasons: message.reasons, properties: message.properties)
                 }
@@ -104,9 +103,9 @@ extension MQTTClient {
             from subscriptions: [String],
             properties: MQTTProperties = .init()
         ) -> EventLoopFuture<MQTTSubackV5> {
-            let packetId = client.updatePacketId()
+            let packetId = self.client.updatePacketId()
             let packet = MQTTUnsubscribePacket(subscriptions: subscriptions, properties: .init(), packetId: packetId)
-            return client.unsubscribe(packet: packet)
+            return self.client.unsubscribe(packet: packet)
                 .map { message in
                     return MQTTSubackV5(reasons: message.reasons, properties: message.properties)
                 }
@@ -116,9 +115,8 @@ extension MQTTClient {
         /// - Parameter properties: properties to attach to disconnect message
         /// - Returns: Future waiting on disconnect message to be sent
         public func disconnect(properties: MQTTProperties = .init()) -> EventLoopFuture<Void> {
-            return client.disconnect(packet: MQTTDisconnectPacket(reason: .success, properties: properties))
+            return self.client.disconnect(packet: MQTTDisconnectPacket(reason: .success, properties: properties))
         }
-
     }
 
     /// v5 client

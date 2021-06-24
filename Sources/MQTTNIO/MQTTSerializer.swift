@@ -24,7 +24,7 @@ enum MQTTSerializer {
         } while value != 0
         return size
     }
-    
+
     /// write string to byte buffer
     static func writeString(_ string: String, to byteBuffer: inout ByteBuffer) throws {
         let length = string.utf8.count

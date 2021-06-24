@@ -17,7 +17,7 @@ final class MQTTEncodeHandler: ChannelOutboundHandler {
         self.client.logger.debug("MQTT Out", metadata: ["mqtt_message": .string("\(message)"), "mqtt_packet_id": .string("\(message.packetId)")])
         var bb = context.channel.allocator.buffer(capacity: 0)
         do {
-            try message.write(version: client.configuration.version, to: &bb)
+            try message.write(version: self.client.configuration.version, to: &bb)
             context.write(wrapOutboundOut(bb), promise: promise)
         } catch {
             promise?.fail(error)
@@ -43,7 +43,7 @@ struct ByteToMQTTMessageDecoder: ByteToMessageDecoder {
             switch packet.type {
             case .PUBLISH:
                 do {
-                    let publishMessage = try MQTTPublishPacket.read(version: client.configuration.version, from: packet)
+                    let publishMessage = try MQTTPublishPacket.read(version: self.client.configuration.version, from: packet)
                     // let publish = try MQTTSerializer.readPublish(from: packet)
                     // let publishMessage = MQTTPublishPacket(publish: publish.publishInfo, packetId: publish.packetId)
                     self.client.logger.debug("MQTT In", metadata: [
@@ -60,23 +60,23 @@ struct ByteToMQTTMessageDecoder: ByteToMessageDecoder {
                 buffer = readBuffer
                 return .continue
             case .CONNACK:
-                message = try MQTTConnAckPacket.read(version: client.configuration.version, from: packet)
+                message = try MQTTConnAckPacket.read(version: self.client.configuration.version, from: packet)
             case .PUBACK, .PUBREC, .PUBREL, .PUBCOMP:
-                message = try MQTTPubAckPacket.read(version: client.configuration.version, from: packet)
+                message = try MQTTPubAckPacket.read(version: self.client.configuration.version, from: packet)
                 if packet.type == .PUBREL {
                     self.respondToPubrel(message)
                 }
             case .SUBACK, .UNSUBACK:
-                message = try MQTTSubAckPacket.read(version: client.configuration.version, from: packet)
+                message = try MQTTSubAckPacket.read(version: self.client.configuration.version, from: packet)
             case .PINGRESP:
-                message = try MQTTPingrespPacket.read(version: client.configuration.version, from: packet)
+                message = try MQTTPingrespPacket.read(version: self.client.configuration.version, from: packet)
             case .DISCONNECT:
-                let disconnectMessage = try MQTTDisconnectPacket.read(version: client.configuration.version, from: packet)
+                let disconnectMessage = try MQTTDisconnectPacket.read(version: self.client.configuration.version, from: packet)
                 let ack = MQTTAckV5(reason: disconnectMessage.reason, properties: disconnectMessage.properties)
                 context.fireErrorCaught(MQTTError.serverDisconnection(ack))
                 message = disconnectMessage
             case .AUTH:
-                message = try MQTTAuthPacket.read(version: client.configuration.version, from: packet)
+                message = try MQTTAuthPacket.read(version: self.client.configuration.version, from: packet)
             default:
                 throw MQTTError.decodeError
             }

@@ -136,7 +136,6 @@ public final class MQTTClient {
         cleanSession: Bool = true,
         will: (topicName: String, payload: ByteBuffer, qos: MQTTQoS, retain: Bool)? = nil
     ) -> EventLoopFuture<Bool> {
-
         let publish = will.map {
             MQTTPublishInfo(
                 qos: .atMostOnce,
@@ -148,8 +147,8 @@ public final class MQTTClient {
             )
         }
         var properties = MQTTProperties()
-        if configuration.version == .v5_0, cleanSession == false {
-            try! properties.add(.sessionExpiryInterval, 0xffffffff)
+        if self.configuration.version == .v5_0, cleanSession == false {
+            try! properties.add(.sessionExpiryInterval, 0xFFFF_FFFF)
         }
         let packet = MQTTConnectPacket(
             cleanSession: cleanSession,
@@ -161,7 +160,7 @@ public final class MQTTClient {
             will: publish
         )
 
-        return connect(packet: packet).map { $0.sessionPresent }
+        return self.connect(packet: packet).map { $0.sessionPresent }
     }
 
     /// Publish message to topic
@@ -183,7 +182,7 @@ public final class MQTTClient {
         let info = MQTTPublishInfo(qos: qos, retain: retain, dup: false, topicName: topicName, payload: payload, properties: properties)
         let packetId = self.updatePacketId()
         let packet = MQTTPublishPacket(publish: info, packetId: packetId)
-        return publish(packet: packet).map { _ in }
+        return self.publish(packet: packet).map { _ in }
     }
 
     /// Subscribe to topic
@@ -193,7 +192,7 @@ public final class MQTTClient {
         let packetId = self.updatePacketId()
         let subscriptions: [MQTTSubscribeInfoV5] = subscriptions.map { .init(topicFilter: $0.topicFilter, qos: $0.qos) }
         let packet = MQTTSubscribePacket(subscriptions: subscriptions, properties: .init(), packetId: packetId)
-        return subscribe(packet: packet)
+        return self.subscribe(packet: packet)
             .map { message in
                 let returnCodes = message.reasons.map { MQTTSuback.ReturnCode(rawValue: $0.rawValue) ?? .failure }
                 return MQTTSuback(returnCodes: returnCodes)
@@ -206,7 +205,7 @@ public final class MQTTClient {
     public func unsubscribe(from subscriptions: [String]) -> EventLoopFuture<Void> {
         let packetId = self.updatePacketId()
         let packet = MQTTUnsubscribePacket(subscriptions: subscriptions, properties: .init(), packetId: packetId)
-        return unsubscribe(packet: packet)
+        return self.unsubscribe(packet: packet)
             .map { _ in }
     }
 
@@ -289,7 +288,7 @@ extension MQTTClient {
                     throw MQTTError.connectionError(returnCode)
                 }
             case .v5_0:
-                if connack.returnCode > 0x7f {
+                if connack.returnCode > 0x7F {
                     let returnCode = MQTTReasonCode(rawValue: connack.returnCode) ?? .unrecognisedReason
                     throw MQTTError.reasonError(returnCode)
                 }
@@ -381,7 +380,7 @@ extension MQTTClient {
         func workflow(_ packet: MQTTAuthPacket) {
             let auth = MQTTAuthV5(reason: packet.reason, properties: packet.properties)
             authWorkflow(auth, eventLoop)
-                .flatMap { response -> EventLoopFuture<MQTTPacket> in
+                .flatMap { _ -> EventLoopFuture<MQTTPacket> in
                     let responsePacket = MQTTAuthPacket(reason: packet.reason, properties: packet.properties)
                     return self.auth(packet: responsePacket)
                 }
@@ -415,7 +414,6 @@ extension MQTTClient {
             guard message.type == .CONNACK || message.type == .AUTH else { throw MQTTError.failedToConnect }
             return true
         }
-
     }
 
     /// Publish message to topic
@@ -443,7 +441,7 @@ extension MQTTClient {
                 }
             }
             if let pubAckPacket = message as? MQTTPubAckPacket {
-                if pubAckPacket.reason.rawValue > 0x7f {
+                if pubAckPacket.reason.rawValue > 0x7F {
                     throw MQTTError.reasonError(pubAckPacket.reason)
                 }
             }
@@ -472,7 +470,7 @@ extension MQTTClient {
                 throw MQTTError.unexpectedMessage
             }
             if let pubAckPacket = message as? MQTTPubAckPacket {
-                if pubAckPacket.reason.rawValue > 0x7f {
+                if pubAckPacket.reason.rawValue > 0x7F {
                     throw MQTTError.reasonError(pubAckPacket.reason)
                 }
             }

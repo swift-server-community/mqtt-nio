@@ -10,14 +10,14 @@ struct MQTTInflight {
 
     /// add packet
     mutating func add(packet: MQTTPacket) {
-        lock.withLock {
+        self.lock.withLock {
             packets.append(packet)
         }
     }
 
     /// remove packert
     mutating func remove(id: UInt16) {
-        lock.withLock {
+        self.lock.withLock {
             guard let first = packets.firstIndex(where: { $0.packetId == id }) else { return }
             packets.remove(at: first)
         }
@@ -25,7 +25,7 @@ struct MQTTInflight {
 
     /// remove all packets
     mutating func clear() {
-        lock.withLock {
+        self.lock.withLock {
             packets = []
         }
     }

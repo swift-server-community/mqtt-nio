@@ -30,7 +30,7 @@ public struct MQTTSubscribeInfoV5 {
         case sendIfNew = 1
         case doNotSend = 2
     }
-    
+
     /// Topic filter to subscribe to.
     public let topicFilter: String
 
@@ -39,13 +39,13 @@ public struct MQTTSubscribeInfoV5 {
 
     /// Don't forward message published by this client
     public let noLocal: Bool
-    
+
     /// Keep retain flag message was published with
     public let retainAsPublished: Bool
-    
+
     /// Retain handing
     public let retainHandling: RetainHandling
-    
+
     public init(
         topicFilter: String,
         qos: MQTTQoS,
@@ -90,4 +90,3 @@ public struct MQTTAuthV5 {
         self.properties = properties
     }
 }
-

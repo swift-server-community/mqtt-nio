@@ -40,7 +40,7 @@ public struct MQTTPublishInfo {
 
     /// Topic name on which the message is published.
     public let topicName: String
-    
+
     /// MQTT v5 properties
     public let properties: MQTTProperties
 
@@ -83,7 +83,7 @@ public struct MQTTSuback {
         case grantedQoS2 = 2
         case failure = 0x80
     }
-    
+
     /// MQTT v5 subscribute return codes
     public let returnCodes: [ReturnCode]
 

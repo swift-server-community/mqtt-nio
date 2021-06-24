@@ -12,7 +12,7 @@ import NIOSSL
 
 final class MQTTNIOv5Tests: XCTestCase {
     static let hostname = ProcessInfo.processInfo.environment["MOSQUITTO_SERVER"] ?? "localhost"
-    
+
     func testConnect() throws {
         let client = self.createClient(identifier: "testConnectV5")
         _ = try client.v5.connect().wait()
@@ -32,23 +32,23 @@ final class MQTTNIOv5Tests: XCTestCase {
     }
 
     func testConnectWithUInt8Property() throws {
-        try testConnectWithProperty(.requestResponseInformation, value: .byte(1))
+        try self.testConnectWithProperty(.requestResponseInformation, value: .byte(1))
     }
 
     func testConnectWithUInt16Property() throws {
-        try testConnectWithProperty(.topicAliasMaximum, value: .twoByteInteger(1024))
+        try self.testConnectWithProperty(.topicAliasMaximum, value: .twoByteInteger(1024))
     }
 
     func testConnectWithUInt32Property() throws {
-        try testConnectWithProperty(.sessionExpiryInterval, value: .fourByteInteger(15))
+        try self.testConnectWithProperty(.sessionExpiryInterval, value: .fourByteInteger(15))
     }
 
     func testConnectWithStringPairProperty() throws {
-        try testConnectWithProperty(.userProperty, value: .stringPair("test", "value"))
+        try self.testConnectWithProperty(.userProperty, value: .stringPair("test", "value"))
     }
 
     func testConnectWithBinaryDataProperty() throws {
-        try testConnectWithProperty(.authenticationData, value: .binaryData(ByteBufferAllocator().buffer(string: "TestBuffer")))
+        try self.testConnectWithProperty(.authenticationData, value: .binaryData(ByteBufferAllocator().buffer(string: "TestBuffer")))
     }
 
     func testPublishQoS1() throws {
@@ -88,7 +88,7 @@ final class MQTTNIOv5Tests: XCTestCase {
         let sub = try client.v5.subscribe(
             to: [
                 .init(topicFilter: "iphone", qos: .atLeastOnce),
-                .init(topicFilter: "iphone2", qos: .exactlyOnce)
+                .init(topicFilter: "iphone2", qos: .exactlyOnce),
             ]
         ).wait()
         XCTAssertEqual(sub.reasons[0], .grantedQoS1)
@@ -131,9 +131,9 @@ final class MQTTNIOv5Tests: XCTestCase {
             ]
         ).wait()
         XCTAssert(sub.reasons.count == 3)
-        
+
         try client.publish(to: "testMQTTSubscribeFlags1", payload: payload, qos: .atLeastOnce, retain: false).wait()
-        
+
         Thread.sleep(forTimeInterval: 2)
         lock.withLock {
             XCTAssertEqual(publishReceived.count, 1)
@@ -166,14 +166,14 @@ final class MQTTNIOv5Tests: XCTestCase {
             }
         }
         let sub = try client.v5.subscribe(
-            to: [.init(topicFilter: "testMQTTContentType", qos: .atLeastOnce),]
+            to: [.init(topicFilter: "testMQTTContentType", qos: .atLeastOnce)]
         ).wait()
         XCTAssert(sub.reasons.count == 1)
-        
+
         var properties = MQTTProperties()
         try properties.add(.contentType, "application/json")
         _ = try client.v5.publish(to: "testMQTTContentType", payload: payload, qos: .atLeastOnce, retain: false, properties: properties).wait()
-        
+
         Thread.sleep(forTimeInterval: 2)
         lock.withLock {
             XCTAssertEqual(publishReceived.count, 1)
@@ -234,7 +234,7 @@ final class MQTTNIOv5Tests: XCTestCase {
         XCTAssertEqual(connack.sessionPresent, true)
         try client.disconnect().wait()
     }
-    
+
     func testPersistentSession() throws {
         let lock = Lock()
         var publishReceived: [MQTTPublishInfo] = []
@@ -283,7 +283,6 @@ final class MQTTNIOv5Tests: XCTestCase {
         try client.syncShutdownGracefully()
         try client2.syncShutdownGracefully()
     }
-
 
     // MARK: Helper variables and functions
 

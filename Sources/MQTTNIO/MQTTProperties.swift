@@ -31,7 +31,7 @@ public struct MQTTProperties {
         case subscriptionIdentifierAvailable = 41
         case sharedSubscriptionAvailable = 42
     }
-    
+
     public enum PropertyValue: Equatable {
         case byte(UInt8)
         case twoByteInteger(UInt16)
@@ -57,56 +57,56 @@ public struct MQTTProperties {
     public init() {
         self.properties = [:]
     }
-    
+
     public init(_ properties: [PropertyId: PropertyValue]) throws {
         try properties.forEach {
             guard $0.key.definition.type == $0.value.type else { throw MQTTError.invalidPropertyValue }
         }
         self.properties = properties
     }
-    
+
     public mutating func add(_ id: PropertyId, _ value: UInt) throws {
         switch id.definition.type {
         case .byte:
             guard (0...255).contains(value) else { throw MQTTError.propertyValueOutOfRange }
-            properties[id] = .byte(UInt8(value))
+            self.properties[id] = .byte(UInt8(value))
         case .twoByteInteger:
             guard (0...65536).contains(value) else { throw MQTTError.propertyValueOutOfRange }
-            properties[id] = .twoByteInteger(UInt16(value))
+            self.properties[id] = .twoByteInteger(UInt16(value))
         case .fourByteInteger:
-            guard (0..<(1<<32)).contains(value) else { throw MQTTError.propertyValueOutOfRange }
-            properties[id] = .fourByteInteger(UInt32(value))
+            guard (0..<(1 << 32)).contains(value) else { throw MQTTError.propertyValueOutOfRange }
+            self.properties[id] = .fourByteInteger(UInt32(value))
         case .variableLengthInteger:
-            guard (0..<(1<<28)).contains(value) else { throw MQTTError.propertyValueOutOfRange }
-            properties[id] = .variableLengthInteger(value)
+            guard (0..<(1 << 28)).contains(value) else { throw MQTTError.propertyValueOutOfRange }
+            self.properties[id] = .variableLengthInteger(value)
         default:
             throw MQTTError.invalidPropertyValue
         }
     }
-    
+
     public mutating func add(_ id: PropertyId, _ value: String) throws {
         guard id.definition.type == .string else { throw MQTTError.invalidPropertyValue }
-        properties[id] = .string(value)
+        self.properties[id] = .string(value)
     }
-    
+
     public mutating func add(_ id: PropertyId, _ value: (String, String)) throws {
         guard id.definition.type == .stringPair else { throw MQTTError.invalidPropertyValue }
-        properties[id] = .stringPair(value.0, value.1)
+        self.properties[id] = .stringPair(value.0, value.1)
     }
-    
+
     public mutating func add(_ id: PropertyId, _ value: ByteBuffer) throws {
         guard id.definition.type == .binaryData else { throw MQTTError.invalidPropertyValue }
-        properties[id] = .binaryData(value)
+        self.properties[id] = .binaryData(value)
     }
 
     public subscript(_ id: PropertyId) -> PropertyValue? {
-        return properties[id]
+        return self.properties[id]
     }
-    
+
     func write(to byteBuffer: inout ByteBuffer) throws {
         MQTTSerializer.writeVariableLengthInteger(self.packetSize, to: &byteBuffer)
-        
-        for property in properties {
+
+        for property in self.properties {
             byteBuffer.writeInteger(property.key.rawValue)
             try property.value.write(to: &byteBuffer)
         }
@@ -125,10 +125,11 @@ public struct MQTTProperties {
         }
         return try Self(properties)
     }
-    
+
     var packetSize: Int {
-        return properties.reduce(0) { $0 + 1 + $1.value.packetSize }
+        return self.properties.reduce(0) { $0 + 1 + $1.value.packetSize }
     }
+
     var properties: [PropertyId: PropertyValue]
 
     enum PropertyValueType {
@@ -178,7 +179,6 @@ extension MQTTProperties.PropertyId {
         case .sharedSubscriptionAvailable: return .init(type: .byte)
         }
     }
-
 }
 
 extension MQTTProperties.PropertyValue {
@@ -200,7 +200,7 @@ extension MQTTProperties.PropertyValue {
             return 2 + buffer.readableBytes
         }
     }
-    
+
     func write(to byteBuffer: inout ByteBuffer) throws {
         switch self {
         case .byte(let value):
@@ -220,20 +220,20 @@ extension MQTTProperties.PropertyValue {
             try MQTTSerializer.writeBuffer(buffer, to: &byteBuffer)
         }
     }
-    
+
     static func read(from byteBuffer: inout ByteBuffer) throws -> (id: MQTTProperties.PropertyId, value: Self) {
         guard let idValue: UInt8 = byteBuffer.readInteger() else { throw MQTTError.badResponse }
         guard let id = MQTTProperties.PropertyId(rawValue: idValue) else { throw MQTTError.badResponse }
         let propertyValue: Self
         switch id.definition.type {
         case .byte:
-            guard let byte: UInt8 = byteBuffer.readInteger() else { throw MQTTError.badResponse}
+            guard let byte: UInt8 = byteBuffer.readInteger() else { throw MQTTError.badResponse }
             propertyValue = .byte(byte)
         case .twoByteInteger:
-            guard let short: UInt16 = byteBuffer.readInteger() else { throw MQTTError.badResponse}
+            guard let short: UInt16 = byteBuffer.readInteger() else { throw MQTTError.badResponse }
             propertyValue = .twoByteInteger(short)
         case .fourByteInteger:
-            guard let integer: UInt32 = byteBuffer.readInteger() else { throw MQTTError.badResponse}
+            guard let integer: UInt32 = byteBuffer.readInteger() else { throw MQTTError.badResponse }
             propertyValue = .fourByteInteger(integer)
         case .variableLengthInteger:
             let integer = try MQTTSerializer.readVariableLengthInteger(from: &byteBuffer)

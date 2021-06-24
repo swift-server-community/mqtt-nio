@@ -28,7 +28,6 @@ extension MQTTPacket {
         byteBuffer.writeInteger(packetType.rawValue | flags)
         MQTTSerializer.writeVariableLengthInteger(size, to: &byteBuffer)
     }
-
 }
 
 extension MQTTClient.Version {
@@ -255,6 +254,7 @@ struct MQTTSubscribePacket: MQTTPacket {
         static let retainHandlingShift: UInt8 = 4
         static let retainHandlingMask: UInt8 = 48
     }
+
     var type: MQTTPacketType { .SUBSCRIBE }
     var description: String { "SUBSCRIBE" }
 
@@ -283,7 +283,6 @@ struct MQTTSubscribePacket: MQTTPacket {
                 flags |= info.retainAsPublished ? SubscribeFlags.retainAsPublished : 0
                 flags |= (info.retainHandling.rawValue << SubscribeFlags.retainHandlingShift) & SubscribeFlags.retainHandlingMask
                 byteBuffer.writeInteger(flags)
-                
             }
         }
     }
@@ -369,7 +368,7 @@ struct MQTTPubAckPacket: MQTTPacket {
         self.reason = reason
         self.properties = properties
     }
-    
+
     func write(version: MQTTClient.Version, to byteBuffer: inout ByteBuffer) throws {
         writeFixedHeader(packetType: self.type, size: self.packetSize(version: version), to: &byteBuffer)
         byteBuffer.writeInteger(self.packetId)
@@ -390,7 +389,8 @@ struct MQTTPubAckPacket: MQTTPacket {
                 return MQTTPubAckPacket(type: packet.type, packetId: packetId)
             }
             guard let reasonByte: UInt8 = remainingData.readInteger(),
-                  let reason = MQTTReasonCode(rawValue: reasonByte) else {
+                  let reason = MQTTReasonCode(rawValue: reasonByte)
+            else {
                 throw MQTTError.badResponse
             }
             let properties = try MQTTProperties.read(from: &remainingData)
@@ -510,7 +510,8 @@ struct MQTTDisconnectPacket: MQTTPacket {
             return MQTTDisconnectPacket()
         case .v5_0:
             guard let reasonByte: UInt8 = buffer.readInteger(),
-                  let reason = MQTTReasonCode(rawValue: reasonByte) else {
+                  let reason = MQTTReasonCode(rawValue: reasonByte)
+            else {
                 throw MQTTError.badResponse
             }
             let properties = try MQTTProperties.read(from: &buffer)
@@ -534,8 +535,8 @@ struct MQTTConnAckPacket: MQTTPacket {
     let acknowledgeFlags: UInt8
     let properties: MQTTProperties
 
-    var sessionPresent: Bool { acknowledgeFlags & 0x1 == 0x1 }
-    
+    var sessionPresent: Bool { self.acknowledgeFlags & 0x1 == 0x1 }
+
     func write(version: MQTTClient.Version, to: inout ByteBuffer) throws {
         throw InternalError.notImplemented
     }
@@ -576,7 +577,8 @@ struct MQTTAuthPacket: MQTTPacket {
             return MQTTAuthPacket(reason: .success, properties: .init())
         }
         guard let reasonByte: UInt8 = remainingData.readInteger(),
-              let reason = MQTTReasonCode(rawValue: reasonByte) else {
+              let reason = MQTTReasonCode(rawValue: reasonByte)
+        else {
             throw MQTTError.badResponse
         }
         let properties = try MQTTProperties.read(from: &remainingData)

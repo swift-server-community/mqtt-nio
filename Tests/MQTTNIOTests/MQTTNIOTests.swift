@@ -95,7 +95,7 @@ final class MQTTNIOTests: XCTestCase {
         let sub = try client.subscribe(
             to: [
                 .init(topicFilter: "iphone", qos: .atLeastOnce),
-                .init(topicFilter: "iphone2", qos: .exactlyOnce)
+                .init(topicFilter: "iphone2", qos: .exactlyOnce),
             ]
         ).wait()
         XCTAssertEqual(sub.returnCodes[0], .grantedQoS1)
@@ -317,7 +317,7 @@ final class MQTTNIOTests: XCTestCase {
         connack = try client.connect(cleanSession: false).wait()
         XCTAssertEqual(connack, true)
     }
-    
+
     func testPersistentSession() throws {
         let lock = Lock()
         var publishReceived: [MQTTPublishInfo] = []
