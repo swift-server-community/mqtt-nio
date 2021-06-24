@@ -158,7 +158,7 @@ final class MQTTConnection {
         }
     }
 
-    func sendMessageWithRetry(
+    /*func sendMessageWithRetry(
         _ message: MQTTPacket,
         maxRetryAttempts: Int,
         checkInbound: @escaping (MQTTPacket) throws -> Bool
@@ -200,7 +200,7 @@ final class MQTTConnection {
         }
         _sendMessage(message, attempt: 0)
         return promise.futureResult
-    }
+    }*/
 
     func sendMessageNoWait(_ message: MQTTPacket) -> EventLoopFuture<Void> {
         return self.channel.writeAndFlush(message)
@@ -214,7 +214,7 @@ final class MQTTConnection {
         }
     }
 
-    private func sendMessage(_ message: MQTTPacket, checkInbound: @escaping (MQTTPacket) throws -> Bool) -> EventLoopFuture<MQTTPacket> {
+    func sendMessage(_ message: MQTTPacket, checkInbound: @escaping (MQTTPacket) throws -> Bool) -> EventLoopFuture<MQTTPacket> {
         let task = MQTTTask(on: channel.eventLoop, timeout: self.timeout, checkInbound: checkInbound)
         let taskHandler = MQTTTaskHandler(task: task, channel: channel)
 

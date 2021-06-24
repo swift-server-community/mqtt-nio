@@ -105,10 +105,7 @@ struct ByteToMQTTMessageDecoder: ByteToMessageDecoder {
 
         case .exactlyOnce:
             var publish = message.publish
-            connection.sendMessageWithRetry(
-                MQTTPubAckPacket(type: .PUBREC, packetId: message.packetId),
-                maxRetryAttempts: self.client.configuration.maxRetryAttempts
-            ) { newMessage in
+            connection.sendMessage(MQTTPubAckPacket(type: .PUBREC, packetId: message.packetId)) { newMessage in
                 guard newMessage.packetId == message.packetId else { return false }
                 // if we receive a publish message while waiting for a PUBREL from broker then replace data to be published and retry PUBREC
                 if newMessage.type == .PUBLISH, let publishMessage = newMessage as? MQTTPublishPacket {
