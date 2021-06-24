@@ -534,6 +534,8 @@ struct MQTTConnAckPacket: MQTTPacket {
     let acknowledgeFlags: UInt8
     let properties: MQTTProperties
 
+    var sessionPresent: Bool { acknowledgeFlags & 0x1 == 0x1 }
+    
     func write(version: MQTTClient.Version, to: inout ByteBuffer) throws {
         throw InternalError.notImplemented
     }

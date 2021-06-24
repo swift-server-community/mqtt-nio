@@ -45,7 +45,7 @@ extension MQTTClient {
 
             return client.connect(packet: packet).map {
                 .init(
-                    sessionPresent: $0.acknowledgeFlags & 0x1 == 0x1,
+                    sessionPresent: $0.sessionPresent,
                     reason: MQTTReasonCode(rawValue: $0.returnCode) ?? .unrecognisedReason,
                     properties: $0.properties
                 )

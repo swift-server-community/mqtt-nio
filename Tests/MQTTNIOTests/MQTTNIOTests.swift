@@ -307,64 +307,6 @@ final class MQTTNIOTests: XCTestCase {
         try client.syncShutdownGracefully()
     }
 
-    func testMQTTPublishQoS2WithStall() throws {
-        let stallHandler = OutboundStallHandler { message in
-            if message.type == .PUBLISH || message.type == .PUBREL {
-                return .seconds(6)
-            }
-            return nil
-        }
-        let client = self.createClient(identifier: "testMQTTPublishQoS2WithStall", configuration: .init(timeout: .seconds(4)))
-        _ = try client.connect().wait()
-        try client.connection?.channel.pipeline.addHandler(stallHandler).wait()
-        try client.publish(to: "testMQTTPublishQoS2WithStall", payload: ByteBufferAllocator().buffer(string: "Test payload"), qos: .exactlyOnce).wait()
-        try client.disconnect().wait()
-        try client.syncShutdownGracefully()
-    }
-
-    func testMQTTSubscribeQoS2WithStall() throws {
-        let stallHandler = InboundStallHandler { packet in
-            if packet.type == .PUBREL {
-                return .seconds(15)
-            }
-            return nil
-        }
-        let lock = Lock()
-        var publishReceived: [MQTTPublishInfo] = []
-        let payload = ByteBufferAllocator().buffer(string: "This is the Test payload")
-
-        let client = self.createClient(identifier: "testMQTTPublishToClient_publisher", configuration: .init(timeout: .seconds(2)))
-        _ = try client.connect().wait()
-        let client2 = self.createClient(identifier: "testMQTTPublishToClient_subscriber", configuration: .init(timeout: .seconds(10)))
-        client2.addPublishListener(named: "test") { result in
-            switch result {
-            case .success(let publish):
-                var buffer = publish.payload
-                let string = buffer.readString(length: buffer.readableBytes)
-                XCTAssertEqual(string, "This is the Test payload")
-                lock.withLock {
-                    publishReceived.append(publish)
-                }
-                print("Received: \(string!)")
-            case .failure(let error):
-                XCTFail("\(error)")
-            }
-        }
-        _ = try client2.connect().wait()
-        try client2.connection?.channel.pipeline.addHandler(stallHandler, position: .first).wait()
-        _ = try client2.subscribe(to: [.init(topicFilter: "testMQTTSubscribeQoS2WithStall", qos: .exactlyOnce)]).wait()
-        try client.publish(to: "testMQTTSubscribeQoS2WithStall", payload: payload, qos: .exactlyOnce).wait()
-
-        Thread.sleep(forTimeInterval: 20)
-        lock.withLock {
-            XCTAssertEqual(publishReceived.count, 1)
-        }
-        try client.disconnect().wait()
-        try client2.disconnect().wait()
-        try client.syncShutdownGracefully()
-        try client2.syncShutdownGracefully()
-    }
-
     func testSessionPresent() throws {
         let client = self.createClient(identifier: "testSessionPresent")
 
@@ -565,51 +507,4 @@ final class MQTTNIOTests: XCTestCase {
         }
     }
     #endif // canImport(NIOSSL)
-}
-
-class OutboundStallHandler: ChannelOutboundHandler {
-    typealias OutboundIn = MQTTPacket
-    typealias OutboundOut = MQTTPacket
-
-    let callback: (MQTTPacket) -> TimeAmount?
-
-    init(callback: @escaping (MQTTPacket) -> TimeAmount?) {
-        self.callback = callback
-    }
-
-    func write(context: ChannelHandlerContext, data: NIOAny, promise: EventLoopPromise<Void>?) {
-        let message = unwrapOutboundIn(data)
-        if let stallTime = callback(message) {
-            context.eventLoop.scheduleTask(in: stallTime) {
-                context.write(data, promise: promise)
-            }
-        } else {
-            context.write(data, promise: promise)
-        }
-    }
-}
-
-class InboundStallHandler: ChannelInboundHandler {
-    typealias InboundIn = ByteBuffer
-    typealias InboundOut = ByteBuffer
-
-    let callback: (MQTTIncomingPacket) -> TimeAmount?
-
-    init(callback: @escaping (MQTTIncomingPacket) -> TimeAmount?) {
-        self.callback = callback
-    }
-
-    func channelRead(context: ChannelHandlerContext, data: NIOAny) {
-        var bb = unwrapInboundIn(data)
-        do {
-            let packet = try MQTTIncomingPacket.read(from: &bb)
-            if let stallTime = callback(packet) {
-                context.eventLoop.scheduleTask(in: stallTime) {
-                    context.fireChannelRead(data)
-                }
-                return
-            }
-        } catch {}
-        context.fireChannelRead(data)
-    }
 }
