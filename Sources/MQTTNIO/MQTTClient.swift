@@ -161,7 +161,7 @@ public final class MQTTClient {
             will: publish
         )
 
-        return connect(packet: packet).map { $0.acknowledgeFlags & 0x1 == 0x1 }
+        return connect(packet: packet).map { $0.sessionPresent }
     }
 
     /// Publish message to topic
@@ -310,8 +310,41 @@ extension MQTTClient {
                         throw MQTTError.reasonError(returnCode)
                     }
                 }
+                if connack.sessionPresent {
+                    self.resendOnRestart()
+                } else {
+                    self.inflight.clear()
+                }
                 return connack
             }
+    }
+
+    /// Resend PUBLISH and PUBREL messages
+    func resendOnRestart() {
+        let inflight = self.inflight.packets
+        self.inflight.clear()
+        inflight.forEach { packet -> Void in
+            switch packet {
+            case let publish as MQTTPublishPacket:
+                let newPacket = MQTTPublishPacket(
+                    publish: .init(
+                        qos: publish.publish.qos,
+                        retain: publish.publish.retain,
+                        dup: true,
+                        topicName: publish.publish.topicName,
+                        payload: publish.publish.payload,
+                        properties: publish.publish.properties
+                    ),
+                    packetId: publish.packetId
+                )
+                _ = self.publish(packet: newPacket)
+            case let pubRel as MQTTPubAckPacket:
+                _ = self.pubRel(packet: pubRel)
+            default:
+                break
+            }
+        }
+        
     }
 
     /// Publish message to topic
@@ -325,8 +358,10 @@ extension MQTTClient {
             return connection.sendMessageNoWait(packet).map { _ in nil }
         }
 
+        self.inflight.add(packet: packet)
         return connection.sendMessage(packet) { message in
             guard message.packetId == packet.packetId else { return false }
+            self.inflight.remove(id: packet.packetId)
             if packet.publish.qos == .atLeastOnce {
                 guard message.type == .PUBACK else {
                     throw MQTTError.unexpectedMessage
@@ -347,24 +382,33 @@ extension MQTTClient {
             let ackPacket = ackPacket as? MQTTPubAckPacket
             let ackInfo = ackPacket.map { MQTTAckV5(reason: $0.reason, properties: $0.properties) }
             if packet.publish.qos == .exactlyOnce {
-                return connection.sendMessage(MQTTPubAckPacket(type: .PUBREL, packetId: packet.packetId)) { message in
-                    guard message.packetId == packet.packetId else { return false }
-                    guard message.type != .PUBREC else { return false }
-                    guard message.type == .PUBCOMP else {
-                        throw MQTTError.unexpectedMessage
-                    }
-                    if let pubAckPacket = message as? MQTTPubAckPacket {
-                        if pubAckPacket.reason.rawValue > 0x7f {
-                            throw MQTTError.reasonError(pubAckPacket.reason)
-                        }
-                    }
-                    return true
-                }.map { _ in ackInfo }
+                let pubRelPacket = MQTTPubAckPacket(type: .PUBREL, packetId: packet.packetId)
+                return self.pubRel(packet: pubRelPacket)
+                    .map { _ in ackInfo }
             }
             return self.eventLoopGroup.next().makeSucceededFuture(ackInfo)
         }
     }
 
+    func pubRel(packet: MQTTPubAckPacket) -> EventLoopFuture<MQTTPacket> {
+        guard let connection = self.connection else { return self.eventLoopGroup.next().makeFailedFuture(MQTTError.noConnection) }
+        self.inflight.add(packet: packet)
+        return connection.sendMessage(packet) { message in
+            guard message.packetId == packet.packetId else { return false }
+            guard message.type != .PUBREC else { return false }
+            self.inflight.remove(id: packet.packetId)
+            guard message.type == .PUBCOMP else {
+                throw MQTTError.unexpectedMessage
+            }
+            if let pubAckPacket = message as? MQTTPubAckPacket {
+                if pubAckPacket.reason.rawValue > 0x7f {
+                    throw MQTTError.reasonError(pubAckPacket.reason)
+                }
+            }
+            return true
+        }
+    }
+    
     /// Subscribe to topic
     /// - Parameter packet: Subscription packet
     /// - Returns: Future waiting for subscribe to complete. Will wait for SUBACK message from server
