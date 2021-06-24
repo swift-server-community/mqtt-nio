@@ -159,50 +159,6 @@ final class MQTTConnection {
         }
     }
 
-    /*func sendMessageWithRetry(
-        _ message: MQTTPacket,
-        maxRetryAttempts: Int,
-        checkInbound: @escaping (MQTTPacket) throws -> Bool
-    ) -> EventLoopFuture<MQTTPacket> {
-        let promise = self.channel.eventLoop.makePromise(of: MQTTPacket.self)
-
-        func _sendMessage(_ message: MQTTPacket, attempt: Int) {
-            self.sendMessage(message, checkInbound: checkInbound)
-                .map { response in
-                    promise.succeed(response)
-                }
-                .flatMapErrorThrowing { error in
-                    switch error {
-                    case MQTTError.timeout:
-                        guard attempt < maxRetryAttempts else { throw MQTTError.timeout }
-                        // if we have a publish message we have to resend it with `dup` set to true
-                        if let publishMessage = message as? MQTTPublishPacket {
-                            let publish = publishMessage.publish
-                            let newMessage = MQTTPublishPacket(
-                                publish: .init(
-                                    qos: publish.qos,
-                                    retain: publish.retain,
-                                    dup: true,
-                                    topicName: publish.topicName,
-                                    payload: publish.payload,
-                                    properties: publish.properties
-                                ),
-                                packetId: publishMessage.packetId
-                            )
-                            _sendMessage(newMessage, attempt: attempt + 1)
-                        } else {
-                            _sendMessage(message, attempt: attempt + 1)
-                        }
-                    default:
-                        throw error
-                    }
-                }
-                .cascadeFailure(to: promise)
-        }
-        _sendMessage(message, attempt: 0)
-        return promise.futureResult
-    }*/
-
     func sendMessageNoWait(_ message: MQTTPacket) -> EventLoopFuture<Void> {
         return self.channel.writeAndFlush(message)
     }

@@ -1,18 +1,21 @@
 import NIO
 import NIOConcurrencyHelpers
 
+/// Array of inflight packets. Used to resend packets when reconnecting to server
 struct MQTTInflight {
     init() {
         self.lock = Lock()
         self.packets = .init(initialCapacity: 4)
     }
 
+    /// add packet
     mutating func add(packet: MQTTPacket) {
         lock.withLock {
             packets.append(packet)
         }
     }
 
+    /// remove packert
     mutating func remove(id: UInt16) {
         lock.withLock {
             guard let first = packets.firstIndex(where: { $0.packetId == id }) else { return }
@@ -20,6 +23,7 @@ struct MQTTInflight {
         }
     }
 
+    /// remove all packets
     mutating func clear() {
         lock.withLock {
             packets = []
