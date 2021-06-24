@@ -321,6 +321,11 @@ extension MQTTClient {
                 switch message {
                 case let connack as MQTTConnAckPacket:
                     do {
+                        if connack.sessionPresent {
+                            self.resendOnRestart()
+                        } else {
+                            self.inflight.clear()
+                        }
                         return try eventLoop.makeSucceededFuture(processConnack(connack))
                     } catch {
                         return eventLoop.makeFailedFuture(error)
@@ -337,14 +342,7 @@ extension MQTTClient {
                 default:
                     return eventLoop.makeFailedFuture(MQTTError.unexpectedMessage)
                 }
-                if connack.sessionPresent {
-                    self.resendOnRestart()
-                } else {
-                    self.inflight.clear()
-                }
-                return connack
             }
-        }
     }
 
     /// Resend PUBLISH and PUBREL messages
@@ -413,10 +411,7 @@ extension MQTTClient {
     func auth(packet: MQTTAuthPacket) -> EventLoopFuture<MQTTPacket> {
         guard let connection = self.connection else { return self.eventLoopGroup.next().makeFailedFuture(MQTTError.noConnection) }
 
-        return connection.sendMessageWithRetry(
-            packet,
-            maxRetryAttempts: self.configuration.maxRetryAttempts
-        ) { message -> Bool in
+        return connection.sendMessage(packet) { message -> Bool in
             guard message.type == .CONNACK || message.type == .AUTH else { throw MQTTError.failedToConnect }
             return true
         }
