@@ -571,6 +571,10 @@ struct MQTTAuthPacket: MQTTPacket {
 
     static func read(version: MQTTClient.Version, from packet: MQTTIncomingPacket) throws -> Self {
         var remainingData = packet.remainingData
+        // if no data attached then can assume success
+        if remainingData.readableBytes == 0 {
+            return MQTTAuthPacket(reason: .success, properties: .init())
+        }
         guard let reasonByte: UInt8 = remainingData.readInteger(),
               let reason = MQTTReasonCode(rawValue: reasonByte) else {
             throw MQTTError.badResponse

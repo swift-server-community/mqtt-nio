@@ -44,4 +44,6 @@ enum MQTTError: Error {
     case invalidPropertyValue
     /// property value out of range
     case propertyValueOutOfRange
+    /// Auth packets sent without authWorkflow being supplied
+    case authWorkflowRequired
 }
