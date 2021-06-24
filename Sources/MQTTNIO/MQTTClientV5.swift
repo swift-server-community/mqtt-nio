@@ -20,7 +20,8 @@ extension MQTTClient {
         public func connect(
             cleanStart: Bool = true,
             properties: MQTTProperties = .init(),
-            will: (topicName: String, payload: ByteBuffer, qos: MQTTQoS, retain: Bool, properties: MQTTProperties)? = nil
+            will: (topicName: String, payload: ByteBuffer, qos: MQTTQoS, retain: Bool, properties: MQTTProperties)? = nil,
+            authWorkflow: ((MQTTAuthV5, EventLoop) -> EventLoopFuture<MQTTAuthV5>)? = nil
         ) -> EventLoopFuture<MQTTConnackV5> {
 
             let publish = will.map {

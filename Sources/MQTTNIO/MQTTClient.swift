@@ -275,10 +275,32 @@ public final class MQTTClient {
 
 extension MQTTClient {
     /// connect to broker
-    func connect(packet: MQTTConnectPacket) -> EventLoopFuture<MQTTConnAckPacket> {
+    func connect(
+        packet: MQTTConnectPacket,
+        authWorkflow: ((MQTTAuthV5, EventLoop) -> EventLoopFuture<MQTTAuthV5>)? = nil
+    ) -> EventLoopFuture<MQTTConnAckPacket> {
+        func processConnack(_ connack: MQTTConnAckPacket) throws -> MQTTConnAckPacket {
+            // connack doesn't return a packet id so this is alway 32767. Need a better way to choose first packet id
+            _ = self.globalPacketId.exchange(with: connack.packetId + 32767)
+            switch self.configuration.version {
+            case .v3_1_1:
+                if connack.returnCode != 0 {
+                    let returnCode = MQTTError.ConnectionReturnValue(rawValue: connack.returnCode) ?? .unrecognizedReturnValue
+                    throw MQTTError.connectionError(returnCode)
+                }
+            case .v5_0:
+                if connack.returnCode > 0x7f {
+                    let returnCode = MQTTReasonCode(rawValue: connack.returnCode) ?? .unrecognisedReason
+                    throw MQTTError.reasonError(returnCode)
+                }
+            }
+            return connack
+        }
         let pingInterval = self.configuration.pingInterval ?? TimeAmount.seconds(max(Int64(packet.keepAliveSeconds - 5), 5))
 
-        return MQTTConnection.create(client: self, pingInterval: pingInterval)
+        let connectFuture = MQTTConnection.create(client: self, pingInterval: pingInterval)
+        let eventLoop = connectFuture.eventLoop
+        return connectFuture
             .flatMap { connection -> EventLoopFuture<MQTTPacket> in
                 self.connection = connection
                 connection.closeFuture.whenComplete { result in
@@ -290,32 +312,36 @@ extension MQTTClient {
                     self.closeListeners.notify(result)
                 }
                 return connection.sendMessage(packet) { message -> Bool in
-                    guard message.type == .CONNACK else { throw MQTTError.failedToConnect }
+                    guard message.type == .CONNACK || message.type == .AUTH else { throw MQTTError.failedToConnect }
                     return true
                 }
             }
-            .flatMapThrowing { message in
-                guard let connack = message as? MQTTConnAckPacket else { throw MQTTError.unexpectedMessage }
-                // connack doesn't return a packet id so this is alway 32767. Need a better way to choose first packet id
-                _ = self.globalPacketId.exchange(with: connack.packetId + 32767)
-                switch self.configuration.version {
-                case .v3_1_1:
-                    if connack.returnCode != 0 {
-                        let returnCode = MQTTError.ConnectionReturnValue(rawValue: connack.returnCode) ?? .unrecognizedReturnValue
-                        throw MQTTError.connectionError(returnCode)
+            .flatMap { message in
+                // process connack or auth messages
+                switch message {
+                case let connack as MQTTConnAckPacket:
+                    do {
+                        if connack.sessionPresent {
+                            self.resendOnRestart()
+                        } else {
+                            self.inflight.clear()
+                        }
+                        return try eventLoop.makeSucceededFuture(processConnack(connack))
+                    } catch {
+                        return eventLoop.makeFailedFuture(error)
                     }
-                case .v5_0:
-                    if connack.returnCode > 0x7f {
-                        let returnCode = MQTTReasonCode(rawValue: connack.returnCode) ?? .unrecognisedReason
-                        throw MQTTError.reasonError(returnCode)
-                    }
+                case let auth as MQTTAuthPacket:
+                    // auth messages require an auth workflow closure
+                    guard let authWorkflow = authWorkflow else { return eventLoop.makeFailedFuture(MQTTError.authWorkflowRequired) }
+                    return self.processAuth(auth, authWorkflow: authWorkflow, on: eventLoop)
+                        .flatMapThrowing { result -> MQTTConnAckPacket in
+                            // once auth workflow is finished we should receive a connack
+                            guard let result = result as? MQTTConnAckPacket else { throw MQTTError.unexpectedMessage }
+                            return result
+                        }
+                default:
+                    return eventLoop.makeFailedFuture(MQTTError.unexpectedMessage)
                 }
-                if connack.sessionPresent {
-                    self.resendOnRestart()
-                } else {
-                    self.inflight.clear()
-                }
-                return connack
             }
     }
 
@@ -344,7 +370,52 @@ extension MQTTClient {
                 break
             }
         }
-        
+    }
+
+    func processAuth(
+        _ packet: MQTTAuthPacket,
+        authWorkflow: @escaping ((MQTTAuthV5, EventLoop) -> EventLoopFuture<MQTTAuthV5>),
+        on eventLoop: EventLoop
+    ) -> EventLoopFuture<MQTTPacket> {
+        let promise = eventLoop.makePromise(of: MQTTPacket.self)
+        func workflow(_ packet: MQTTAuthPacket) {
+            let auth = MQTTAuthV5(reason: packet.reason, properties: packet.properties)
+            authWorkflow(auth, eventLoop)
+                .flatMap { response -> EventLoopFuture<MQTTPacket> in
+                    let responsePacket = MQTTAuthPacket(reason: packet.reason, properties: packet.properties)
+                    return self.auth(packet: responsePacket)
+                }
+                .map { result in
+                    switch result {
+                    case let connack as MQTTConnAckPacket:
+                        promise.succeed(connack)
+                    case let auth as MQTTAuthPacket:
+                        switch auth.reason {
+                        case .continueAuthentication:
+                            workflow(auth)
+                        case .success:
+                            promise.succeed(auth)
+                        default:
+                            promise.fail(MQTTError.badResponse)
+                        }
+                    default:
+                        promise.fail(MQTTError.unexpectedMessage)
+                    }
+                }
+                .cascadeFailure(to: promise)
+        }
+        workflow(packet)
+        return promise.futureResult
+    }
+
+    func auth(packet: MQTTAuthPacket) -> EventLoopFuture<MQTTPacket> {
+        guard let connection = self.connection else { return self.eventLoopGroup.next().makeFailedFuture(MQTTError.noConnection) }
+
+        return connection.sendMessage(packet) { message -> Bool in
+            guard message.type == .CONNACK || message.type == .AUTH else { throw MQTTError.failedToConnect }
+            return true
+        }
+
     }
 
     /// Publish message to topic
@@ -408,7 +479,7 @@ extension MQTTClient {
             return true
         }
     }
-    
+
     /// Subscribe to topic
     /// - Parameter packet: Subscription packet
     /// - Returns: Future waiting for subscribe to complete. Will wait for SUBACK message from server
@@ -425,7 +496,7 @@ extension MQTTClient {
             return suback
         }
     }
-    
+
     /// Unsubscribe from topic
     /// - Parameter subscriptions: List of subscriptions to unsubscribe from
     /// - Returns: Future waiting for unsubscribe to complete. Will wait for UNSUBACK message from server

@@ -76,3 +76,18 @@ public struct MQTTSubackV5 {
     }
 }
 
+/// MQTT V5 Sub ACK
+///
+/// Contains data returned in subscribe/unsubscribe ack packets
+public struct MQTTAuthV5 {
+    /// MQTT v5 disconnection reason
+    public let reason: MQTTReasonCode
+    /// MQTT v5 properties
+    public let properties: MQTTProperties
+
+    init(reason: MQTTReasonCode, properties: MQTTProperties) {
+        self.reason = reason
+        self.properties = properties
+    }
+}
+
