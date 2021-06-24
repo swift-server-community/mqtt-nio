@@ -30,7 +30,8 @@ extension MQTTClient {
             disablePing: Bool = false,
             keepAliveInterval: TimeAmount = .seconds(90),
             pingInterval: TimeAmount? = nil,
-            timeout: TimeAmount? = .seconds(10),
+            connectTimeout: TimeAmount = .seconds(10),
+            timeout: TimeAmount? = nil,
             maxRetryAttempts: Int = 4,
             userName: String? = nil,
             password: String? = nil,
@@ -45,6 +46,7 @@ extension MQTTClient {
             self.disablePing = disablePing
             self.keepAliveInterval = keepAliveInterval
             self.pingInterval = pingInterval
+            self.connectTimeout = connectTimeout
             self.timeout = timeout
             self.maxRetryAttempts = maxRetryAttempts
             self.userName = userName
@@ -65,6 +67,8 @@ extension MQTTClient {
         public let keepAliveInterval: TimeAmount
         /// override interval between each pingreq message
         public let pingInterval: TimeAmount?
+        /// timeout for connecting to server
+        public let connectTimeout: TimeAmount
         /// timeout for server response
         public let timeout: TimeAmount?
         /// max number of times to send a message
