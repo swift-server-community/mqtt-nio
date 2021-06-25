@@ -278,23 +278,6 @@ extension MQTTClient {
         packet: MQTTConnectPacket,
         authWorkflow: ((MQTTAuthV5, EventLoop) -> EventLoopFuture<MQTTAuthV5>)? = nil
     ) -> EventLoopFuture<MQTTConnAckPacket> {
-        func processConnack(_ connack: MQTTConnAckPacket) throws -> MQTTConnAckPacket {
-            // connack doesn't return a packet id so this is alway 32767. Need a better way to choose first packet id
-            _ = self.globalPacketId.exchange(with: connack.packetId + 32767)
-            switch self.configuration.version {
-            case .v3_1_1:
-                if connack.returnCode != 0 {
-                    let returnCode = MQTTError.ConnectionReturnValue(rawValue: connack.returnCode) ?? .unrecognizedReturnValue
-                    throw MQTTError.connectionError(returnCode)
-                }
-            case .v5_0:
-                if connack.returnCode > 0x7F {
-                    let returnCode = MQTTReasonCode(rawValue: connack.returnCode) ?? .unrecognisedReason
-                    throw MQTTError.reasonError(returnCode)
-                }
-            }
-            return connack
-        }
         let pingInterval = self.configuration.pingInterval ?? TimeAmount.seconds(max(Int64(packet.keepAliveSeconds - 5), 5))
 
         let connectFuture = MQTTConnection.create(client: self, pingInterval: pingInterval)
@@ -325,7 +308,8 @@ extension MQTTClient {
                         } else {
                             self.inflight.clear()
                         }
-                        return try eventLoop.makeSucceededFuture(processConnack(connack))
+                        let ack = try self.processConnack(connack)
+                        return eventLoop.makeSucceededFuture(ack)
                     } catch {
                         return eventLoop.makeFailedFuture(error)
                     }
@@ -369,6 +353,31 @@ extension MQTTClient {
                 break
             }
         }
+    }
+
+    func processConnack(_ connack: MQTTConnAckPacket) throws -> MQTTConnAckPacket {
+        // connack doesn't return a packet id so this is alway 32767. Need a better way to choose first packet id
+        _ = self.globalPacketId.exchange(with: connack.packetId + 32767)
+        switch self.configuration.version {
+        case .v3_1_1:
+            if connack.returnCode != 0 {
+                let returnCode = MQTTError.ConnectionReturnValue(rawValue: connack.returnCode) ?? .unrecognizedReturnValue
+                throw MQTTError.connectionError(returnCode)
+            }
+        case .v5_0:
+            if connack.returnCode > 0x7F {
+                let returnCode = MQTTReasonCode(rawValue: connack.returnCode) ?? .unrecognisedReason
+                throw MQTTError.reasonError(returnCode)
+            }
+        }
+        // alter pingreq interval based on session expiry returned from server
+        if let connection = self.connection {
+            if case .fourByteInteger(let sessionExpiryInterval) = connack.properties[.sessionExpiryInterval] {
+                let pingTimeout = TimeAmount.seconds(max(Int64(sessionExpiryInterval - 5), 5))
+                connection.updatePingreqTimeout(pingTimeout)
+            }
+        }
+        return connack
     }
 
     func processAuth(
