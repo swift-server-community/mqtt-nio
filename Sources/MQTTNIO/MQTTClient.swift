@@ -266,6 +266,14 @@ public final class MQTTClient {
         }
     }
 
+    /// connection parameters. Limits set by either client or server
+    struct ConnectionParameters {
+        var maxQoS: MQTTQoS = .exactlyOnce
+        var maxPacketSize: Int?
+        var retainAvailable: Bool = true
+    }
+    
+    var connectionParameters = ConnectionParameters()
     var publishListeners = MQTTListeners<MQTTPublishInfo>()
     var closeListeners = MQTTListeners<Void>()
     private var _connection: MQTTConnection?
@@ -380,6 +388,18 @@ extension MQTTClient {
         // client identifier
         if case .string(let identifier) = connack.properties[.assignedClientIdentifier] {
             self.identifier = identifier
+        }
+        // max QoS
+        if case .byte(let qosValue) = connack.properties[.maximumQoS], let qos = MQTTQoS(rawValue: qosValue) {
+            self.connectionParameters.maxQoS = qos
+        }
+        // max packet size
+        if case .fourByteInteger(let maxPacketSize) = connack.properties[.maximumPacketSize] {
+            self.connectionParameters.maxPacketSize = Int(maxPacketSize)
+        }
+        // supports retain
+        if case .byte(let retainValue) = connack.properties[.retainAvailable], let retainAvailable = (retainValue != 0 ? true: false) {
+            self.connectionParameters.retainAvailable = retainAvailable
         }
         return connack
     }
