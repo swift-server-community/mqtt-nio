@@ -51,6 +51,14 @@ final class MQTTNIOv5Tests: XCTestCase {
         try self.testConnectWithProperty(.authenticationData, value: .binaryData(ByteBufferAllocator().buffer(string: "TestBuffer")))
     }
 
+    func testConnectWithNoIdentifier() throws {
+        let client = self.createClient(identifier: "")
+        _ = try client.v5.connect().wait()
+        XCTAssertTrue(client.identifier.count > 0)
+        try client.disconnect().wait()
+        try client.syncShutdownGracefully()
+    }
+
     func testPublishQoS1() throws {
         let client = self.createClient(identifier: "testPublishQoS1V5")
         _ = try client.connect().wait()

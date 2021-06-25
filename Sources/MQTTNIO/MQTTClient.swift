@@ -21,7 +21,7 @@ public final class MQTTClient {
     /// Port to connect to
     public let port: Int
     /// client identifier
-    public let identifier: String
+    public private(set) var identifier: String
     /// logger
     public var logger: Logger
     /// Client configuration
@@ -376,6 +376,10 @@ extension MQTTClient {
                 let pingTimeout = TimeAmount.seconds(max(Int64(sessionExpiryInterval - 5), 5))
                 connection.updatePingreqTimeout(pingTimeout)
             }
+        }
+        // client identifier
+        if case .string(let identifier) = connack.properties[.assignedClientIdentifier] {
+            self.identifier = identifier
         }
         return connack
     }
