@@ -67,5 +67,6 @@ struct MQTTPacketError: Error, Equatable {
         case topicAliasOutOfRange
         case invalidTopicName
     }
-    private let error: _Error    
+
+    private let error: _Error
 }

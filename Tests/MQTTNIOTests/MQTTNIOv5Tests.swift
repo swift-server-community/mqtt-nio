@@ -298,7 +298,7 @@ final class MQTTNIOv5Tests: XCTestCase {
         try client.disconnect().wait()
         try client.syncShutdownGracefully()
     }
-    
+
     func testOutOfRangeTopicAlias() throws {
         let client = self.createClient(identifier: "testOutOfRangeTopicAlias")
         _ = try client.connect().wait()
@@ -314,7 +314,7 @@ final class MQTTNIOv5Tests: XCTestCase {
         try client.disconnect().wait()
         try client.syncShutdownGracefully()
     }
-    
+
     // MARK: Helper variables and functions
 
     func createClient(identifier: String) -> MQTTClient {

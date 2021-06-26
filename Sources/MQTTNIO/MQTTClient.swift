@@ -271,7 +271,7 @@ public final class MQTTClient {
         var maxQoS: MQTTQoS = .exactlyOnce
         var maxPacketSize: Int?
         var retainAvailable: Bool = true
-        var maxTopicAlias: UInt16 =  65535
+        var maxTopicAlias: UInt16 = 65535
     }
 
     var connectionParameters = ConnectionParameters()
@@ -475,7 +475,7 @@ extension MQTTClient {
         // check topic alias
         for p in packet.publish.properties {
             if case .topicAlias(let max) = p {
-                guard max <= self.connectionParameters.maxTopicAlias else  {
+                guard max <= self.connectionParameters.maxTopicAlias else {
                     return self.eventLoopGroup.next().makeFailedFuture(MQTTPacketError.topicAliasOutOfRange)
                 }
             }
@@ -484,7 +484,7 @@ extension MQTTClient {
         guard !packet.publish.topicName.contains(where: { $0 == "#" || $0 == "+" }) else {
             return self.eventLoopGroup.next().makeFailedFuture(MQTTPacketError.invalidTopicName)
         }
-        
+
         if packet.publish.qos == .atMostOnce {
             // don't send a packet id if QOS is at most once. (MQTT-2.3.1-5)
             return connection.sendMessageNoWait(packet).map { _ in nil }
