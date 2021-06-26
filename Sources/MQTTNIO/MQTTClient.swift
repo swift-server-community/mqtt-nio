@@ -148,7 +148,7 @@ public final class MQTTClient {
         }
         var properties = MQTTProperties()
         if self.configuration.version == .v5_0, cleanSession == false {
-            try! properties.add(.sessionExpiryInterval, 0xFFFF_FFFF)
+            properties.append(.sessionExpiryInterval(0xFFFF_FFFF))
         }
         let packet = MQTTConnectPacket(
             cleanSession: cleanSession,
@@ -378,28 +378,31 @@ extension MQTTClient {
                 throw MQTTError.reasonError(returnCode)
             }
         }
-        // alter pingreq interval based on session expiry returned from server
-        if let connection = self.connection {
-            if case .fourByteInteger(let sessionExpiryInterval) = connack.properties[.sessionExpiryInterval] {
-                let pingTimeout = TimeAmount.seconds(max(Int64(sessionExpiryInterval - 5), 5))
-                connection.updatePingreqTimeout(pingTimeout)
+        
+        for property in connack.properties.properties {
+            // alter pingreq interval based on session expiry returned from server
+            if let connection = self.connection {
+                if case .sessionExpiryInterval(let sessionExpiryInterval) = property {
+                    let pingTimeout = TimeAmount.seconds(max(Int64(sessionExpiryInterval - 5), 5))
+                    connection.updatePingreqTimeout(pingTimeout)
+                }
             }
-        }
-        // client identifier
-        if case .string(let identifier) = connack.properties[.assignedClientIdentifier] {
-            self.identifier = identifier
-        }
-        // max QoS
-        if case .byte(let qosValue) = connack.properties[.maximumQoS], let qos = MQTTQoS(rawValue: qosValue) {
-            self.connectionParameters.maxQoS = qos
-        }
-        // max packet size
-        if case .fourByteInteger(let maxPacketSize) = connack.properties[.maximumPacketSize] {
-            self.connectionParameters.maxPacketSize = Int(maxPacketSize)
-        }
-        // supports retain
-        if case .byte(let retainValue) = connack.properties[.retainAvailable], let retainAvailable = (retainValue != 0 ? true: false) {
-            self.connectionParameters.retainAvailable = retainAvailable
+            // client identifier
+            if case .assignedClientIdentifier(let identifier) = property {
+                self.identifier = identifier
+            }
+            // max QoS
+            if case .maximumQoS(let qos) = property {
+                self.connectionParameters.maxQoS = qos
+            }
+            // max packet size
+            if case .maximumPacketSize(let maxPacketSize) = property {
+                self.connectionParameters.maxPacketSize = Int(maxPacketSize)
+            }
+            // supports retain
+            if case .retainAvailable(let retainValue) = property, let retainAvailable = (retainValue != 0 ? true: false) {
+                self.connectionParameters.retainAvailable = retainAvailable
+            }
         }
         return connack
     }

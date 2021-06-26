@@ -32,23 +32,23 @@ final class MQTTNIOv5Tests: XCTestCase {
     }
 
     func testConnectWithUInt8Property() throws {
-        try self.testConnectWithProperty(.requestResponseInformation, value: .byte(1))
+        try self.testConnectWithProperty(.requestResponseInformation(1))
     }
 
     func testConnectWithUInt16Property() throws {
-        try self.testConnectWithProperty(.topicAliasMaximum, value: .twoByteInteger(1024))
+        try self.testConnectWithProperty(.topicAliasMaximum(1024))
     }
 
     func testConnectWithUInt32Property() throws {
-        try self.testConnectWithProperty(.sessionExpiryInterval, value: .fourByteInteger(15))
+        try self.testConnectWithProperty(.sessionExpiryInterval(15))
     }
 
     func testConnectWithStringPairProperty() throws {
-        try self.testConnectWithProperty(.userProperty, value: .stringPair("test", "value"))
+        try self.testConnectWithProperty(.userProperty("test", "value"))
     }
 
     func testConnectWithBinaryDataProperty() throws {
-        try self.testConnectWithProperty(.authenticationData, value: .binaryData(ByteBufferAllocator().buffer(string: "TestBuffer")))
+        try self.testConnectWithProperty(.authenticationData(ByteBufferAllocator().buffer(string: "TestBuffer")))
     }
 
     func testConnectWithNoIdentifier() throws {
@@ -70,13 +70,11 @@ final class MQTTNIOv5Tests: XCTestCase {
     func testPublishQoS1WithProperty() throws {
         let client = self.createClient(identifier: "testPublishQoS1V5")
         _ = try client.connect().wait()
-        var publishProperties = MQTTProperties()
-        try publishProperties.add(.contentType, "text/plain")
         _ = try client.v5.publish(
             to: "testMQTTPublishQoS",
             payload: ByteBufferAllocator().buffer(string: "Test payload"),
             qos: .atLeastOnce,
-            properties: publishProperties
+            properties: [.contentType("text/plain")]
         ).wait()
         try client.disconnect().wait()
         try client.syncShutdownGracefully()
@@ -164,8 +162,7 @@ final class MQTTNIOv5Tests: XCTestCase {
                 var buffer = publish.payload
                 let string = buffer.readString(length: buffer.readableBytes)
                 XCTAssertEqual(string, payloadString)
-                let contentType = publish.properties[.contentType]
-                XCTAssertEqual(contentType, .string("application/json"))
+                XCTAssertNotNil(publish.properties.first { $0 == .contentType("application/json") })
                 lock.withLock {
                     publishReceived.append(publish)
                 }
@@ -178,9 +175,13 @@ final class MQTTNIOv5Tests: XCTestCase {
         ).wait()
         XCTAssert(sub.reasons.count == 1)
 
-        var properties = MQTTProperties()
-        try properties.add(.contentType, "application/json")
-        _ = try client.v5.publish(to: "testMQTTContentType", payload: payload, qos: .atLeastOnce, retain: false, properties: properties).wait()
+        _ = try client.v5.publish(
+            to: "testMQTTContentType",
+            payload: payload,
+            qos: .atLeastOnce,
+            retain: false,
+            properties: [.contentType("application/json")]
+        ).wait()
 
         Thread.sleep(forTimeInterval: 2)
         lock.withLock {
@@ -232,12 +233,9 @@ final class MQTTNIOv5Tests: XCTestCase {
 
     func testSessionPresent() throws {
         let client = self.createClient(identifier: "testSessionPresent")
-        var properties = MQTTProperties()
-        try properties.add(.sessionExpiryInterval, 3600)
-
-        var connack = try client.v5.connect(cleanStart: true, properties: properties).wait()
+        var connack = try client.v5.connect(cleanStart: true, properties: [.sessionExpiryInterval(3600)]).wait()
         XCTAssertEqual(connack.sessionPresent, false)
-        try client.v5.disconnect(properties: properties).wait()
+        try client.v5.disconnect(properties: [.sessionExpiryInterval(3600)]).wait()
         connack = try client.v5.connect(cleanStart: false).wait()
         XCTAssertEqual(connack.sessionPresent, true)
         try client.disconnect().wait()
@@ -265,17 +263,15 @@ final class MQTTNIOv5Tests: XCTestCase {
                 XCTFail("\(error)")
             }
         }
-        var properties = MQTTProperties()
-        try properties.add(.sessionExpiryInterval, 3600)
         _ = try client2.v5.connect(cleanStart: true).wait()
-        _ = try client2.v5.connect(cleanStart: false, properties: properties).wait()
+        _ = try client2.v5.connect(cleanStart: false, properties: [.sessionExpiryInterval(3600)]).wait()
         _ = try client2.subscribe(to: [.init(topicFilter: "testPersistentAtLeastOnceV5", qos: .atLeastOnce)]).wait()
         try client.publish(to: "testPersistentAtLeastOnceV5", payload: payload, qos: .atLeastOnce).wait()
         Thread.sleep(forTimeInterval: 1)
         try client2.disconnect().wait()
         try client.publish(to: "testPersistentAtLeastOnceV5", payload: payload, qos: .atLeastOnce).wait()
         // should receive previous publish on new connect as this is not a cleanSession
-        _ = try client2.v5.connect(cleanStart: false, properties: properties).wait()
+        _ = try client2.v5.connect(cleanStart: false, properties: [.sessionExpiryInterval(3600)]).wait()
         Thread.sleep(forTimeInterval: 1)
         try client2.disconnect().wait()
         Thread.sleep(forTimeInterval: 1)
@@ -305,9 +301,9 @@ final class MQTTNIOv5Tests: XCTestCase {
         )
     }
 
-    func testConnectWithProperty(_ id: MQTTProperties.PropertyId, value: MQTTProperties.PropertyValue) throws {
+    func testConnectWithProperty(_ property: MQTTProperties.Property) throws {
         let client = self.createClient(identifier: "testConnectV5")
-        _ = try client.v5.connect(properties: .init([id: value])).wait()
+        _ = try client.v5.connect(properties: .init([property])).wait()
         try client.ping().wait()
         try client.disconnect().wait()
         try client.syncShutdownGracefully()
