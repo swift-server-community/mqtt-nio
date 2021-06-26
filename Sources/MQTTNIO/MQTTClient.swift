@@ -474,8 +474,8 @@ extension MQTTClient {
         }
         // check topic alias
         for p in packet.publish.properties {
-            if case .topicAlias(let max) = p {
-                guard max <= self.connectionParameters.maxTopicAlias else {
+            if case .topicAlias(let alias) = p {
+                guard alias <= self.connectionParameters.maxTopicAlias, alias != 0 else {
                     return self.eventLoopGroup.next().makeFailedFuture(MQTTPacketError.topicAliasOutOfRange)
                 }
             }

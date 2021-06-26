@@ -54,7 +54,7 @@ struct MQTTPacketError: Error, Equatable {
     public static var retainUnavailable: MQTTPacketError { .init(error: .retainUnavailable) }
     /// subscribe/unsubscribe packet requires at least one topic
     public static var atLeastOneTopicRequired: MQTTPacketError { .init(error: .atLeastOneTopicRequired) }
-    /// topic alias is greater than server maximum topic alias
+    /// topic alias is greater than server maximum topic alias or the alias is zero
     public static var topicAliasOutOfRange: MQTTPacketError { .init(error: .topicAliasOutOfRange) }
     /// invalid topic name
     public static var invalidTopicName: MQTTPacketError { .init(error: .invalidTopicName) }
