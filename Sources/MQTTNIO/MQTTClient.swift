@@ -272,7 +272,7 @@ public final class MQTTClient {
         var maxPacketSize: Int?
         var retainAvailable: Bool = true
     }
-    
+
     var connectionParameters = ConnectionParameters()
     var publishListeners = MQTTListeners<MQTTPublishInfo>()
     var closeListeners = MQTTListeners<Void>()
@@ -378,7 +378,7 @@ extension MQTTClient {
                 throw MQTTError.reasonError(returnCode)
             }
         }
-        
+
         for property in connack.properties.properties {
             // alter pingreq interval based on session expiry returned from server
             if let connection = self.connection {
@@ -400,7 +400,7 @@ extension MQTTClient {
                 self.connectionParameters.maxPacketSize = Int(maxPacketSize)
             }
             // supports retain
-            if case .retainAvailable(let retainValue) = property, let retainAvailable = (retainValue != 0 ? true: false) {
+            if case .retainAvailable(let retainValue) = property, let retainAvailable = (retainValue != 0 ? true : false) {
                 self.connectionParameters.retainAvailable = retainAvailable
             }
         }

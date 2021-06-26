@@ -31,7 +31,7 @@ public struct MQTTProperties {
         case subscriptionIdentifierAvailable(UInt8)
         case sharedSubscriptionAvailable(UInt8)
     }
-    
+
     public init() {
         self.properties = []
     }
@@ -43,7 +43,7 @@ public struct MQTTProperties {
     public mutating func append(_ property: Property) {
         self.properties.append(property)
     }
-    
+
     var properties: [Property]
 }
 
@@ -55,7 +55,7 @@ extension MQTTProperties: ExpressibleByArrayLiteral {
 
 extension MQTTProperties: Sequence {
     public __consuming func makeIterator() -> Array<Property>.Iterator {
-        return properties.makeIterator()
+        return self.properties.makeIterator()
     }
 }
 
@@ -198,7 +198,7 @@ extension MQTTProperties.Property {
         case .sharedSubscriptionAvailable(let value): return .byte(value)
         }
     }
-    
+
     var id: MQTTProperties.PropertyId {
         switch self {
         case .payloadFormat: return .payloadFormat
@@ -230,12 +230,12 @@ extension MQTTProperties.Property {
         case .sharedSubscriptionAvailable: return .sharedSubscriptionAvailable
         }
     }
-    
+
     func write(to byteBuffer: inout ByteBuffer) throws {
         byteBuffer.writeInteger(self.id.rawValue)
         try self.value.write(to: &byteBuffer)
     }
-    
+
     static func read(from byteBuffer: inout ByteBuffer) throws -> Self {
         guard let idValue: UInt8 = byteBuffer.readInteger() else { throw MQTTError.badResponse }
         guard let id = MQTTProperties.PropertyId(rawValue: idValue) else { throw MQTTError.badResponse }

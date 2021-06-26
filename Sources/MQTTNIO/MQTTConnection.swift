@@ -186,10 +186,10 @@ final class MQTTConnection {
     }
 
     func updatePingreqTimeout(_ timeout: TimeAmount) {
-        channel.pipeline.handler(type: PingreqHandler.self).whenSuccess { pingreq in
+        self.channel.pipeline.handler(type: PingreqHandler.self).whenSuccess { pingreq in
             pingreq.updateTimeout(timeout)
         }
     }
-    
+
     var closeFuture: EventLoopFuture<Void> { self.channel.closeFuture }
 }

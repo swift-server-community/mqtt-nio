@@ -22,7 +22,7 @@ final class PingreqHandler: ChannelDuplexHandler {
     func updateTimeout(_ timeout: TimeAmount) {
         self.timeout = timeout
     }
-    
+
     public func handlerAdded(context: ChannelHandlerContext) {
         if context.channel.isActive {
             self.scheduleTask(context)
