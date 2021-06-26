@@ -621,7 +621,7 @@ struct MQTTIncomingPacket: MQTTPacket {
     static func read(from byteBuffer: inout ByteBuffer) throws -> MQTTIncomingPacket {
         guard let byte: UInt8 = byteBuffer.readInteger() else { throw InternalError.incompletePacket }
         guard let type = MQTTPacketType(rawValue: byte) ?? MQTTPacketType(rawValue: byte & 0xF0) else {
-            throw MQTTError.badParameter
+            throw MQTTError.unrecognisedPacketType
         }
         let length = try MQTTSerializer.readVariableLengthInteger(from: &byteBuffer)
         guard let bytes = byteBuffer.readSlice(length: length) else { throw InternalError.incompletePacket }

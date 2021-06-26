@@ -69,12 +69,6 @@ extension MQTTClient {
             retain: Bool = false,
             properties: MQTTProperties = .init()
         ) -> EventLoopFuture<MQTTAckV5?> {
-            guard self.client.connectionParameters.maxQoS.rawValue >= qos.rawValue else {
-                return self.client.eventLoopGroup.next().makeFailedFuture(MQTTError.qosInvalid)
-            }
-            guard self.client.connectionParameters.retainAvailable || retain == false else {
-                return self.client.eventLoopGroup.next().makeFailedFuture(MQTTError.retainUnavailable)
-            }
             let info = MQTTPublishInfo(qos: qos, retain: retain, dup: false, topicName: topicName, payload: payload, properties: properties)
             let packetId = self.client.updatePacketId()
             let packet = MQTTPublishPacket(publish: info, packetId: packetId)
