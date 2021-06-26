@@ -331,6 +331,25 @@ final class MQTTNIOv5Tests: XCTestCase {
         try client.syncShutdownGracefully()
     }
 
+    func testSubscribeAll() throws {
+        if ProcessInfo.processInfo.environment["CI"] != nil {
+            return
+        }
+        let client = MQTTClient(
+            host: "test.mosquitto.org",
+            port: 1883,
+            identifier: "testSubscribeAllV5",
+            eventLoopGroupProvider: .createNew,
+            logger: self.logger,
+            configuration: .init(version: .v5_0)
+        )
+        _ = try client.v5.connect().wait()
+        _ = try client.v5.subscribe(to: [.init(topicFilter: "#", qos: .exactlyOnce)]).wait()
+        Thread.sleep(forTimeInterval: 5)
+        try client.v5.disconnect().wait()
+        try client.syncShutdownGracefully()
+    }
+
     // MARK: Helper variables and functions
 
     func createClient(identifier: String) -> MQTTClient {
