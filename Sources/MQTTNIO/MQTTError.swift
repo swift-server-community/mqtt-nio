@@ -40,10 +40,10 @@ enum MQTTError: Error {
     case badParameter
     /// Packet received contained invalid entries
     case badResponse
-    /// invalid property value
-    case invalidPropertyValue
-    /// property value out of range
-    case propertyValueOutOfRange
     /// Auth packets sent without authWorkflow being supplied
     case authWorkflowRequired
+    /// QoS is not accepted by this connection as it is greater than the accepted value
+    case qosInvalid
+    /// publish messages on this connection do not support the retain flag
+    case retainUnavailable
 }
