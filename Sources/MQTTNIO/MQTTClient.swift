@@ -271,6 +271,7 @@ public final class MQTTClient {
         var maxQoS: MQTTQoS = .exactlyOnce
         var maxPacketSize: Int?
         var retainAvailable: Bool = true
+        var maxTopicAlias: UInt16 =  65535
     }
 
     var connectionParameters = ConnectionParameters()
@@ -403,6 +404,10 @@ extension MQTTClient {
             if case .retainAvailable(let retainValue) = property, let retainAvailable = (retainValue != 0 ? true : false) {
                 self.connectionParameters.retainAvailable = retainAvailable
             }
+            // max topic alias
+            if case .topicAliasMaximum(let max) = property {
+                self.connectionParameters.maxTopicAlias = max
+            }
         }
         return connack
     }
@@ -458,6 +463,28 @@ extension MQTTClient {
     func publish(packet: MQTTPublishPacket) -> EventLoopFuture<MQTTAckV5?> {
         guard let connection = self.connection else { return self.eventLoopGroup.next().makeFailedFuture(MQTTError.noConnection) }
 
+        // check publish validity
+        // check qos against server max qos
+        guard self.connectionParameters.maxQoS.rawValue >= packet.publish.qos.rawValue else {
+            return self.eventLoopGroup.next().makeFailedFuture(MQTTPacketError.qosInvalid)
+        }
+        // check if retain is available
+        guard packet.publish.retain == false || self.connectionParameters.retainAvailable else {
+            return self.eventLoopGroup.next().makeFailedFuture(MQTTPacketError.retainUnavailable)
+        }
+        // check topic alias
+        for p in packet.publish.properties {
+            if case .topicAlias(let max) = p {
+                guard max <= self.connectionParameters.maxTopicAlias else  {
+                    return self.eventLoopGroup.next().makeFailedFuture(MQTTPacketError.topicAliasOutOfRange)
+                }
+            }
+        }
+        // check topic name
+        guard !packet.publish.topicName.contains(where: { $0 == "#" || $0 == "+" }) else {
+            return self.eventLoopGroup.next().makeFailedFuture(MQTTPacketError.invalidTopicName)
+        }
+        
         if packet.publish.qos == .atMostOnce {
             // don't send a packet id if QOS is at most once. (MQTT-2.3.1-5)
             return connection.sendMessageNoWait(packet).map { _ in nil }
@@ -519,7 +546,7 @@ extension MQTTClient {
     /// - Returns: Future waiting for subscribe to complete. Will wait for SUBACK message from server
     func subscribe(packet: MQTTSubscribePacket) -> EventLoopFuture<MQTTSubAckPacket> {
         guard let connection = self.connection else { return self.eventLoopGroup.next().makeFailedFuture(MQTTError.noConnection) }
-        guard packet.subscriptions.count > 0 else { return self.eventLoopGroup.next().makeFailedFuture(MQTTError.atLeastOneTopicRequired) }
+        guard packet.subscriptions.count > 0 else { return self.eventLoopGroup.next().makeFailedFuture(MQTTPacketError.atLeastOneTopicRequired) }
 
         return connection.sendMessage(packet) { message in
             guard message.packetId == packet.packetId else { return false }
@@ -537,7 +564,7 @@ extension MQTTClient {
     /// - Returns: Future waiting for unsubscribe to complete. Will wait for UNSUBACK message from server
     func unsubscribe(packet: MQTTUnsubscribePacket) -> EventLoopFuture<MQTTSubAckPacket> {
         guard let connection = self.connection else { return self.eventLoopGroup.next().makeFailedFuture(MQTTError.noConnection) }
-        guard packet.subscriptions.count > 0 else { return self.eventLoopGroup.next().makeFailedFuture(MQTTError.atLeastOneTopicRequired) }
+        guard packet.subscriptions.count > 0 else { return self.eventLoopGroup.next().makeFailedFuture(MQTTPacketError.atLeastOneTopicRequired) }
 
         return connection.sendMessage(packet) { message in
             guard message.packetId == packet.packetId else { return false }

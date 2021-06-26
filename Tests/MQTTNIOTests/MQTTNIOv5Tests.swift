@@ -288,6 +288,33 @@ final class MQTTNIOv5Tests: XCTestCase {
         try client2.syncShutdownGracefully()
     }
 
+    func testInvalidTopicName() throws {
+        let client = self.createClient(identifier: "testInvalidTopicName")
+        _ = try client.connect().wait()
+        do {
+            try client.publish(to: "testInvalidTopicName#", payload: ByteBufferAllocator().buffer(string: "Test payload"), qos: .atLeastOnce).wait()
+            XCTFail("Should have errored")
+        } catch let error as MQTTPacketError where error == .invalidTopicName {}
+        try client.disconnect().wait()
+        try client.syncShutdownGracefully()
+    }
+    
+    func testOutOfRangeTopicAlias() throws {
+        let client = self.createClient(identifier: "testOutOfRangeTopicAlias")
+        _ = try client.connect().wait()
+        do {
+            _ = try client.v5.publish(
+                to: "testOutOfRangeTopicAlias",
+                payload: ByteBufferAllocator().buffer(string: "Test payload"),
+                qos: .atLeastOnce,
+                properties: [.topicAlias(client.connectionParameters.maxTopicAlias + 1)]
+            ).wait()
+            XCTFail("Should have errored")
+        } catch let error as MQTTPacketError where error == .topicAliasOutOfRange {}
+        try client.disconnect().wait()
+        try client.syncShutdownGracefully()
+    }
+    
     // MARK: Helper variables and functions
 
     func createClient(identifier: String) -> MQTTClient {

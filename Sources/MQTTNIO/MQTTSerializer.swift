@@ -28,7 +28,7 @@ enum MQTTSerializer {
     /// write string to byte buffer
     static func writeString(_ string: String, to byteBuffer: inout ByteBuffer) throws {
         let length = string.utf8.count
-        guard length < 65536 else { throw MQTTError.badParameter }
+        guard length < 65536 else { throw MQTTPacketError.badParameter }
         byteBuffer.writeInteger(UInt16(length))
         byteBuffer.writeString(string)
     }
@@ -36,7 +36,7 @@ enum MQTTSerializer {
     /// write buffer to byte buffer
     static func writeBuffer(_ buffer: ByteBuffer, to byteBuffer: inout ByteBuffer) throws {
         let length = buffer.readableBytes
-        guard length < 65536 else { throw MQTTError.badParameter }
+        guard length < 65536 else { throw MQTTPacketError.badParameter }
         var buffer = buffer
         byteBuffer.writeInteger(UInt16(length))
         byteBuffer.writeBuffer(&buffer)
