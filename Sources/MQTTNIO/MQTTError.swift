@@ -58,6 +58,8 @@ struct MQTTPacketError: Error, Equatable {
     public static var topicAliasOutOfRange: MQTTPacketError { .init(error: .topicAliasOutOfRange) }
     /// invalid topic name
     public static var invalidTopicName: MQTTPacketError { .init(error: .invalidTopicName) }
+    /// client to server publish packets cannot include a subscription identifier
+    public static var publishIncludesSubscription: MQTTPacketError { .init(error: .publishIncludesSubscription) }
 
     private enum _Error {
         case badParameter
@@ -66,6 +68,7 @@ struct MQTTPacketError: Error, Equatable {
         case atLeastOneTopicRequired
         case topicAliasOutOfRange
         case invalidTopicName
+        case publishIncludesSubscription
     }
 
     private let error: _Error

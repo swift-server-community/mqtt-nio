@@ -472,12 +472,15 @@ extension MQTTClient {
         guard packet.publish.retain == false || self.connectionParameters.retainAvailable else {
             return self.eventLoopGroup.next().makeFailedFuture(MQTTPacketError.retainUnavailable)
         }
-        // check topic alias
         for p in packet.publish.properties {
+            // check topic alias
             if case .topicAlias(let alias) = p {
                 guard alias <= self.connectionParameters.maxTopicAlias, alias != 0 else {
                     return self.eventLoopGroup.next().makeFailedFuture(MQTTPacketError.topicAliasOutOfRange)
                 }
+            }
+            if case .subscriptionIdentifier = p {
+                return self.eventLoopGroup.next().makeFailedFuture(MQTTPacketError.publishIncludesSubscription)
             }
         }
         // check topic name

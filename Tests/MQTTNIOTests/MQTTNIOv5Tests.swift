@@ -315,6 +315,22 @@ final class MQTTNIOv5Tests: XCTestCase {
         try client.syncShutdownGracefully()
     }
 
+    func testPublishWithSubscription() throws {
+        let client = self.createClient(identifier: "testOutOfRangeTopicAlias")
+        _ = try client.connect().wait()
+        do {
+            _ = try client.v5.publish(
+                to: "testOutOfRangeTopicAlias",
+                payload: ByteBufferAllocator().buffer(string: "Test payload"),
+                qos: .atLeastOnce,
+                properties: [.subscriptionIdentifier(0)]
+            ).wait()
+            XCTFail("Should have errored")
+        } catch let error as MQTTPacketError where error == .publishIncludesSubscription {}
+        try client.disconnect().wait()
+        try client.syncShutdownGracefully()
+    }
+
     // MARK: Helper variables and functions
 
     func createClient(identifier: String) -> MQTTClient {
