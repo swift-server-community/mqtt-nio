@@ -8,7 +8,7 @@ final class PingreqHandler: ChannelDuplexHandler {
     typealias InboundOut = MQTTPacket
 
     let client: MQTTClient
-    let timeout: TimeAmount
+    var timeout: TimeAmount
     var lastEventTime: NIODeadline
     var task: Scheduled<Void>?
 
@@ -17,6 +17,10 @@ final class PingreqHandler: ChannelDuplexHandler {
         self.timeout = timeout
         self.lastEventTime = .now()
         self.task = nil
+    }
+
+    func updateTimeout(_ timeout: TimeAmount) {
+        self.timeout = timeout
     }
 
     public func handlerAdded(context: ChannelHandlerContext) {

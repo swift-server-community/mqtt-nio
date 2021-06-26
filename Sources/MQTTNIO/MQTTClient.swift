@@ -21,7 +21,7 @@ public final class MQTTClient {
     /// Port to connect to
     public let port: Int
     /// client identifier
-    public let identifier: String
+    public private(set) var identifier: String
     /// logger
     public var logger: Logger
     /// Client configuration
@@ -148,7 +148,7 @@ public final class MQTTClient {
         }
         var properties = MQTTProperties()
         if self.configuration.version == .v5_0, cleanSession == false {
-            try! properties.add(.sessionExpiryInterval, 0xFFFF_FFFF)
+            properties.append(.sessionExpiryInterval(0xFFFF_FFFF))
         }
         let packet = MQTTConnectPacket(
             cleanSession: cleanSession,
@@ -266,6 +266,14 @@ public final class MQTTClient {
         }
     }
 
+    /// connection parameters. Limits set by either client or server
+    struct ConnectionParameters {
+        var maxQoS: MQTTQoS = .exactlyOnce
+        var maxPacketSize: Int?
+        var retainAvailable: Bool = true
+    }
+
+    var connectionParameters = ConnectionParameters()
     var publishListeners = MQTTListeners<MQTTPublishInfo>()
     var closeListeners = MQTTListeners<Void>()
     private var _connection: MQTTConnection?
@@ -278,23 +286,6 @@ extension MQTTClient {
         packet: MQTTConnectPacket,
         authWorkflow: ((MQTTAuthV5, EventLoop) -> EventLoopFuture<MQTTAuthV5>)? = nil
     ) -> EventLoopFuture<MQTTConnAckPacket> {
-        func processConnack(_ connack: MQTTConnAckPacket) throws -> MQTTConnAckPacket {
-            // connack doesn't return a packet id so this is alway 32767. Need a better way to choose first packet id
-            _ = self.globalPacketId.exchange(with: connack.packetId + 32767)
-            switch self.configuration.version {
-            case .v3_1_1:
-                if connack.returnCode != 0 {
-                    let returnCode = MQTTError.ConnectionReturnValue(rawValue: connack.returnCode) ?? .unrecognizedReturnValue
-                    throw MQTTError.connectionError(returnCode)
-                }
-            case .v5_0:
-                if connack.returnCode > 0x7F {
-                    let returnCode = MQTTReasonCode(rawValue: connack.returnCode) ?? .unrecognisedReason
-                    throw MQTTError.reasonError(returnCode)
-                }
-            }
-            return connack
-        }
         let pingInterval = self.configuration.pingInterval ?? TimeAmount.seconds(max(Int64(packet.keepAliveSeconds - 5), 5))
 
         let connectFuture = MQTTConnection.create(client: self, pingInterval: pingInterval)
@@ -325,7 +316,8 @@ extension MQTTClient {
                         } else {
                             self.inflight.clear()
                         }
-                        return try eventLoop.makeSucceededFuture(processConnack(connack))
+                        let ack = try self.processConnack(connack)
+                        return eventLoop.makeSucceededFuture(ack)
                     } catch {
                         return eventLoop.makeFailedFuture(error)
                     }
@@ -369,6 +361,50 @@ extension MQTTClient {
                 break
             }
         }
+    }
+
+    func processConnack(_ connack: MQTTConnAckPacket) throws -> MQTTConnAckPacket {
+        // connack doesn't return a packet id so this is alway 32767. Need a better way to choose first packet id
+        _ = self.globalPacketId.exchange(with: connack.packetId + 32767)
+        switch self.configuration.version {
+        case .v3_1_1:
+            if connack.returnCode != 0 {
+                let returnCode = MQTTError.ConnectionReturnValue(rawValue: connack.returnCode) ?? .unrecognizedReturnValue
+                throw MQTTError.connectionError(returnCode)
+            }
+        case .v5_0:
+            if connack.returnCode > 0x7F {
+                let returnCode = MQTTReasonCode(rawValue: connack.returnCode) ?? .unrecognisedReason
+                throw MQTTError.reasonError(returnCode)
+            }
+        }
+
+        for property in connack.properties.properties {
+            // alter pingreq interval based on session expiry returned from server
+            if let connection = self.connection {
+                if case .sessionExpiryInterval(let sessionExpiryInterval) = property {
+                    let pingTimeout = TimeAmount.seconds(max(Int64(sessionExpiryInterval - 5), 5))
+                    connection.updatePingreqTimeout(pingTimeout)
+                }
+            }
+            // client identifier
+            if case .assignedClientIdentifier(let identifier) = property {
+                self.identifier = identifier
+            }
+            // max QoS
+            if case .maximumQoS(let qos) = property {
+                self.connectionParameters.maxQoS = qos
+            }
+            // max packet size
+            if case .maximumPacketSize(let maxPacketSize) = property {
+                self.connectionParameters.maxPacketSize = Int(maxPacketSize)
+            }
+            // supports retain
+            if case .retainAvailable(let retainValue) = property, let retainAvailable = (retainValue != 0 ? true : false) {
+                self.connectionParameters.retainAvailable = retainAvailable
+            }
+        }
+        return connack
     }
 
     func processAuth(
