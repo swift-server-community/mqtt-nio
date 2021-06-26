@@ -519,6 +519,7 @@ extension MQTTClient {
     /// - Returns: Future waiting for subscribe to complete. Will wait for SUBACK message from server
     func subscribe(packet: MQTTSubscribePacket) -> EventLoopFuture<MQTTSubAckPacket> {
         guard let connection = self.connection else { return self.eventLoopGroup.next().makeFailedFuture(MQTTError.noConnection) }
+        guard packet.subscriptions.count > 0 else { return self.eventLoopGroup.next().makeFailedFuture(MQTTError.atLeastOneTopicRequired) }
 
         return connection.sendMessage(packet) { message in
             guard message.packetId == packet.packetId else { return false }
@@ -536,6 +537,7 @@ extension MQTTClient {
     /// - Returns: Future waiting for unsubscribe to complete. Will wait for UNSUBACK message from server
     func unsubscribe(packet: MQTTUnsubscribePacket) -> EventLoopFuture<MQTTSubAckPacket> {
         guard let connection = self.connection else { return self.eventLoopGroup.next().makeFailedFuture(MQTTError.noConnection) }
+        guard packet.subscriptions.count > 0 else { return self.eventLoopGroup.next().makeFailedFuture(MQTTError.atLeastOneTopicRequired) }
 
         return connection.sendMessage(packet) { message in
             guard message.packetId == packet.packetId else { return false }

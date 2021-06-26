@@ -46,4 +46,6 @@ enum MQTTError: Error {
     case qosInvalid
     /// publish messages on this connection do not support the retain flag
     case retainUnavailable
+    /// subscribe/unsubscribe packet requires at least one topic
+    case atLeastOneTopicRequired
 }
