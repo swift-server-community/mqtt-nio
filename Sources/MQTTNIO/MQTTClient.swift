@@ -513,6 +513,13 @@ extension MQTTClient {
             }
             return true
         }
+        .flatMapErrorThrowing { error in
+            // if publish caused server to close the connection then remove from inflight array
+            if case MQTTError.serverClosedConnection = error {
+                self.inflight.remove(id: packet.packetId)
+            }
+            throw error
+        }
         .flatMap { ackPacket in
             let ackPacket = ackPacket as? MQTTPubAckPacket
             let ackInfo = ackPacket.map { MQTTAckV5(reason: $0.reason, properties: $0.properties) }
