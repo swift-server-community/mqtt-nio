@@ -11,6 +11,18 @@ import NIOSSL
 import NIOTransportServices
 
 /// Swift NIO MQTT Client
+///
+/// Main public interface providing methods for connecting to a server, publishing
+/// and subscribing to MQTT topics
+/// ```
+/// let client = MQTTClient(
+///     host: "mqtt.eclipse.org",
+///     port: 1883,
+///     identifier: "My Client",
+///     eventLoopGroupProvider: .createNew
+///     )
+///     try client.connect().wait()
+/// ```
 public final class MQTTClient {
     /// EventLoopGroup used by MQTTCllent
     public let eventLoopGroup: EventLoopGroup
@@ -232,7 +244,7 @@ public final class MQTTClient {
         return self.disconnect(packet: MQTTDisconnectPacket())
     }
 
-    /// Return is client has an active connection to broker
+    /// Return if client has an active connection to broker
     public func isActive() -> Bool {
         return self.connection?.channel.isActive ?? false
     }
@@ -383,8 +395,8 @@ extension MQTTClient {
         for property in connack.properties.properties {
             // alter pingreq interval based on session expiry returned from server
             if let connection = self.connection {
-                if case .sessionExpiryInterval(let sessionExpiryInterval) = property {
-                    let pingTimeout = TimeAmount.seconds(max(Int64(sessionExpiryInterval - 5), 5))
+                if case .serverKeepAlive(let keepAliveInterval) = property {
+                    let pingTimeout = TimeAmount.seconds(max(Int64(keepAliveInterval - 5), 5))
                     connection.updatePingreqTimeout(pingTimeout)
                 }
             }
