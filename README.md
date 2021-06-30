@@ -127,13 +127,11 @@ let client = MQTTClient(
 You can then use the same functions available to the v3.1.1 client but there are also v5.0 specific versions of `connect`, `publish`, `subscribe`, `unsubscribe` and `disconnect`. These can be accessed via the variable `MQTTClient.v5`. The v5.0 functions add support for MQTT properties in both function parameters and return types and the additional subscription parameters. For example here is a `publish` call adding the `contentType` property.
 
 ```swift
-var properties = MQTTProperties()
-try properties.add(.contentType, "application/json")
 let futureResponse = client.v5.publish(
     to: "JSONTest", 
     payload: payload, 
     qos: .atLeastOnce, 
-    properties: properties
+    properties: [.contentType("application/json")]
 )
 ```
 
