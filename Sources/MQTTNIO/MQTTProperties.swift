@@ -2,6 +2,7 @@ import NIO
 
 /// MQTT v5.0 properties. A property consists of a identifier and a value
 public struct MQTTProperties {
+    /// MQTT Property
     public enum Property: Equatable {
         /// Payload format: 0 = bytes, 1 = UTF8 string (available for PUBLISH)
         case payloadFormat(UInt8)

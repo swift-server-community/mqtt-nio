@@ -12,7 +12,7 @@ public struct MQTTConnackV5 {
 
 /// MQTT V5 ACK information. Returned with PUBACK, PUBREL
 public struct MQTTAckV5 {
-    /// MQTT v5 disconnection reason
+    /// MQTT v5 reason code
     public let reason: MQTTReasonCode
     /// MQTT v5 properties
     public let properties: MQTTProperties
@@ -25,9 +25,13 @@ public struct MQTTAckV5 {
 
 /// MQTT SUBSCRIBE packet parameters.
 public struct MQTTSubscribeInfoV5 {
+    /// Retain handling options
     public enum RetainHandling: UInt8 {
+        /// always send retain message
         case sendAlways = 0
+        /// send retain if new
         case sendIfNew = 1
+        /// do not send retain message
         case doNotSend = 2
     }
 
@@ -65,7 +69,7 @@ public struct MQTTSubscribeInfoV5 {
 ///
 /// Contains data returned in subscribe/unsubscribe ack packets
 public struct MQTTSubackV5 {
-    /// MQTT v5 disconnection reason
+    /// MQTT v5 subscription reason code
     public let reasons: [MQTTReasonCode]
     /// MQTT v5 properties
     public let properties: MQTTProperties
@@ -80,7 +84,7 @@ public struct MQTTSubackV5 {
 ///
 /// Contains data returned in subscribe/unsubscribe ack packets
 public struct MQTTAuthV5 {
-    /// MQTT v5 disconnection reason
+    /// MQTT v5 authentication reason code
     public let reason: MQTTReasonCode
     /// MQTT v5 properties
     public let properties: MQTTProperties
