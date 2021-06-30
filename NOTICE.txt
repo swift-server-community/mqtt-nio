@@ -1,6 +1,0 @@
-This project contains a copy of serialization code from coreMQTT by FreeRTOS
-
-  * LICENSE MIT
-    * https://github.com/FreeRTOS/coreMQTT/blob/master/LICENSE
-  * HOMEPAGE
-    * https://github.com/FreeRTOS/coreMQTT
