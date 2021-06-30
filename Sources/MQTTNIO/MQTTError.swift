@@ -1,12 +1,20 @@
 /// MQTTClient errors
 public enum MQTTError: Error {
+    /// Value returned in connection error
     public enum ConnectionReturnValue: UInt8 {
+        /// connection was accepted
         case accepted = 0
+        /// The Server does not support the version of the MQTT protocol requested by the Client.
         case unacceptableProtocolVersion = 1
+        /// The Client Identifier is a valid string but is not allowed by the Server.
         case identifierRejected = 2
+        /// The MQTT Server is not available.
         case serverUnavailable = 3
+        /// The Server does not accept the User Name or Password specified by the Client
         case badUserNameOrPassword = 4
+        /// The client is not authorized to connect
         case notAuthorized = 5
+        /// Return code was unrecognised
         case unrecognizedReturnValue = 0xFF
     }
 

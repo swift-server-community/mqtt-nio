@@ -4,6 +4,7 @@ import NIOSSL
 #endif
 
 extension MQTTClient {
+    /// Version of MQTT server to connect to
     public enum Version {
         case v3_1_1
         case v5_0
@@ -25,6 +26,7 @@ extension MQTTClient {
 
     /// Configuration for MQTTClient
     public struct Configuration {
+        /// Initialize MQTTClient configuration struct
         public init(
             version: Version = .v3_1_1,
             disablePing: Bool = false,
@@ -59,7 +61,7 @@ extension MQTTClient {
             self.webSocketMaxFrameSize = webSocketMaxFrameSize
         }
 
-        /// disable the sending of pingreq messages
+        /// Version of MQTT server client is connecting to
         public let version: Version
         /// disable the sending of pingreq messages
         public let disablePing: Bool

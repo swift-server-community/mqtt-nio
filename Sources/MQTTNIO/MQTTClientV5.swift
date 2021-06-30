@@ -1,6 +1,7 @@
 import NIO
 
 extension MQTTClient {
+    /// Provides implementations of functions that expose MQTT Version 5.0 features
     public struct V5 {
         let client: MQTTClient
 
