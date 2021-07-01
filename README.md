@@ -137,4 +137,6 @@ let futureResponse = client.v5.publish(
 
 Whoever subscribes to the "JSONTest" topic with a v5.0 client will also receive the `.contentType` property along with the payload.
 
+## Documentation
 
+You can find reference documentation for MQTTNIO [here](https://adam-fowler.github.io/mqtt-nio/). There is also a sample demonstrating using MQTTNIO within an iOS app found [here](https://github.com/adam-fowler/EmCuTeeTee)
