@@ -1,0 +1,1354 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <title>MQTTReasonCode Enumeration Reference</title>
+    <link rel="stylesheet" type="text/css" href="../css/jazzy.css" />
+    <link rel="stylesheet" type="text/css" href="../css/highlight.css" />
+    <meta charset='utf-8'>
+    <script src="../js/jquery.min.js" defer></script>
+    <script src="../js/jazzy.js" defer></script>
+    
+    <script src="../js/lunr.min.js" defer></script>
+    <script src="../js/typeahead.jquery.js" defer></script>
+    <script src="../js/jazzy.search.js" defer></script>
+  </head>
+  <body>
+    <a name="//apple_ref/swift/Enum/MQTTReasonCode" class="dashAnchor"></a>
+    <a title="MQTTReasonCode Enumeration Reference"></a>
+    <header>
+      <div class="content-wrapper">
+        <p><a href="../index.html"> 2.0.0 Docs</a> (87% documented)</p>
+        <p class="header-right"><a href="https://github.com/adam-fowler/mqtt-nio"><img src="../img/gh.png"/>View on GitHub</a></p>
+        <p class="header-right">
+          <form role="search" action="../search.json">
+            <input type="text" placeholder="Search documentation" data-typeahead>
+          </form>
+        </p>
+      </div>
+    </header>
+    <div class="content-wrapper">
+      <p id="breadcrumbs">
+        <a href="../index.html"> Reference</a>
+        <img id="carat" src="../img/carat.png" />
+        MQTTReasonCode Enumeration Reference
+      </p>
+    </div>
+    <div class="content-wrapper">
+      <nav class="sidebar">
+        <ul class="nav-groups">
+          <li class="nav-group-name">
+            <a href="../Classes.html">Classes</a>
+            <ul class="nav-group-tasks">
+              <li class="nav-group-task">
+                <a href="../Classes/MQTTClient.html">MQTTClient</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Classes/MQTTClient/V5.html">– V5</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Classes/MQTTClient/Version.html">– Version</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Classes/MQTTClient/TLSConfigurationType.html">– TLSConfigurationType</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Classes/MQTTClient/Configuration.html">– Configuration</a>
+              </li>
+            </ul>
+          </li>
+          <li class="nav-group-name">
+            <a href="../Enums.html">Enumerations</a>
+            <ul class="nav-group-tasks">
+              <li class="nav-group-task">
+                <a href="../Enums/MQTTError.html">MQTTError</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Enums/MQTTError/ConnectionReturnValue.html">– ConnectionReturnValue</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Enums/MQTTPacketType.html">MQTTPacketType</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Enums/MQTTQoS.html">MQTTQoS</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Enums/MQTTReasonCode.html">MQTTReasonCode</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Enums/TSCertificateVerification.html">TSCertificateVerification</a>
+              </li>
+            </ul>
+          </li>
+          <li class="nav-group-name">
+            <a href="../Structs.html">Structures</a>
+            <ul class="nav-group-tasks">
+              <li class="nav-group-task">
+                <a href="../Structs/MQTTAckV5.html">MQTTAckV5</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Structs/MQTTAuthV5.html">MQTTAuthV5</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Structs/MQTTConnackV5.html">MQTTConnackV5</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Structs/MQTTPacketError.html">MQTTPacketError</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Structs/MQTTProperties.html">MQTTProperties</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Structs/MQTTProperties/Property.html">– Property</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Structs/MQTTPublishInfo.html">MQTTPublishInfo</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Structs/MQTTSuback.html">MQTTSuback</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Structs/MQTTSuback/ReturnCode.html">– ReturnCode</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Structs/MQTTSubackV5.html">MQTTSubackV5</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Structs/MQTTSubscribeInfo.html">MQTTSubscribeInfo</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Structs/MQTTSubscribeInfoV5.html">MQTTSubscribeInfoV5</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Structs/MQTTSubscribeInfoV5/RetainHandling.html">– RetainHandling</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Structs/TSTLSConfiguration.html">TSTLSConfiguration</a>
+              </li>
+            </ul>
+          </li>
+        </ul>
+      </nav>
+      <article class="main-content">
+        <section>
+          <section class="section">
+            <h1>MQTTReasonCode</h1>
+              <div class="declaration">
+                <div class="language">
+                  
+                  <pre class="highlight swift"><code><span class="kd">public</span> <span class="kd">enum</span> <span class="kt">MQTTReasonCode</span> <span class="p">:</span> <span class="kt">UInt8</span></code></pre>
+
+                </div>
+              </div>
+            <p>MQTT v5.0 reason codes. A reason code is a one byte unsigned value that indicates the result of an operation.
+Reason codes less than 128 are considered successful. Codes greater than or equal to 128 are considered
+a failure. These are returned by CONNACK, PUBACK, PUBREC, PUBREL, PUBCOMP, DISCONNECT and
+AUTH packets</p>
+
+          </section>
+          <section class="section task-group-section">
+            <div class="task-group">
+              <ul>
+                <li class="item">
+                  <div>
+                    <code>
+                    <a name="/s:7MQTTNIO14MQTTReasonCodeO7successyA2CmF"></a>
+                    <a name="//apple_ref/swift/Element/success" class="dashAnchor"></a>
+                    <a class="token" href="#/s:7MQTTNIO14MQTTReasonCodeO7successyA2CmF">success</a>
+                    </code>
+                  </div>
+                  <div class="height-container">
+                    <div class="pointer-container"></div>
+                    <section class="section">
+                      <div class="pointer"></div>
+                      <div class="abstract">
+                        <p>Success (available for all). For SUBACK mean QoS0 is available</p>
+
+                      </div>
+                      <div class="declaration">
+                        <h4>Declaration</h4>
+                        <div class="language">
+                          <p class="aside-title">Swift</p>
+                          <pre class="highlight swift"><code><span class="k">case</span> <span class="n">success</span> <span class="o">=</span> <span class="mi">0</span></code></pre>
+
+                        </div>
+                      </div>
+                    </section>
+                  </div>
+                </li>
+                <li class="item">
+                  <div>
+                    <code>
+                    <a name="/s:7MQTTNIO14MQTTReasonCodeO11grantedQoS1yA2CmF"></a>
+                    <a name="//apple_ref/swift/Element/grantedQoS1" class="dashAnchor"></a>
+                    <a class="token" href="#/s:7MQTTNIO14MQTTReasonCodeO11grantedQoS1yA2CmF">grantedQoS1</a>
+                    </code>
+                  </div>
+                  <div class="height-container">
+                    <div class="pointer-container"></div>
+                    <section class="section">
+                      <div class="pointer"></div>
+                      <div class="abstract">
+                        <p>The subscription is accepted and the maximum QoS sent will be QoS 1. This might be a lower QoS than was requested.</p>
+
+                      </div>
+                      <div class="declaration">
+                        <h4>Declaration</h4>
+                        <div class="language">
+                          <p class="aside-title">Swift</p>
+                          <pre class="highlight swift"><code><span class="k">case</span> <span class="n">grantedQoS1</span> <span class="o">=</span> <span class="mi">1</span></code></pre>
+
+                        </div>
+                      </div>
+                    </section>
+                  </div>
+                </li>
+                <li class="item">
+                  <div>
+                    <code>
+                    <a name="/s:7MQTTNIO14MQTTReasonCodeO11grantedQoS2yA2CmF"></a>
+                    <a name="//apple_ref/swift/Element/grantedQoS2" class="dashAnchor"></a>
+                    <a class="token" href="#/s:7MQTTNIO14MQTTReasonCodeO11grantedQoS2yA2CmF">grantedQoS2</a>
+                    </code>
+                  </div>
+                  <div class="height-container">
+                    <div class="pointer-container"></div>
+                    <section class="section">
+                      <div class="pointer"></div>
+                      <div class="abstract">
+                        <p>The subscription is accepted and any received QoS will be sent to this subscription.</p>
+
+                      </div>
+                      <div class="declaration">
+                        <h4>Declaration</h4>
+                        <div class="language">
+                          <p class="aside-title">Swift</p>
+                          <pre class="highlight swift"><code><span class="k">case</span> <span class="n">grantedQoS2</span> <span class="o">=</span> <span class="mi">2</span></code></pre>
+
+                        </div>
+                      </div>
+                    </section>
+                  </div>
+                </li>
+                <li class="item">
+                  <div>
+                    <code>
+                    <a name="/s:7MQTTNIO14MQTTReasonCodeO18disconnectWithWillyA2CmF"></a>
+                    <a name="//apple_ref/swift/Element/disconnectWithWill" class="dashAnchor"></a>
+                    <a class="token" href="#/s:7MQTTNIO14MQTTReasonCodeO18disconnectWithWillyA2CmF">disconnectWithWill</a>
+                    </code>
+                  </div>
+                  <div class="height-container">
+                    <div class="pointer-container"></div>
+                    <section class="section">
+                      <div class="pointer"></div>
+                      <div class="abstract">
+                        <p>The Client wishes to disconnect but requires that the Server also publishes its Will Message.</p>
+
+                      </div>
+                      <div class="declaration">
+                        <h4>Declaration</h4>
+                        <div class="language">
+                          <p class="aside-title">Swift</p>
+                          <pre class="highlight swift"><code><span class="k">case</span> <span class="n">disconnectWithWill</span> <span class="o">=</span> <span class="mi">4</span></code></pre>
+
+                        </div>
+                      </div>
+                    </section>
+                  </div>
+                </li>
+                <li class="item">
+                  <div>
+                    <code>
+                    <a name="/s:7MQTTNIO14MQTTReasonCodeO20noMatchingSubscriberyA2CmF"></a>
+                    <a name="//apple_ref/swift/Element/noMatchingSubscriber" class="dashAnchor"></a>
+                    <a class="token" href="#/s:7MQTTNIO14MQTTReasonCodeO20noMatchingSubscriberyA2CmF">noMatchingSubscriber</a>
+                    </code>
+                  </div>
+                  <div class="height-container">
+                    <div class="pointer-container"></div>
+                    <section class="section">
+                      <div class="pointer"></div>
+                      <div class="abstract">
+                        <p>The PUBLISH message is accepted but there are no subscribers. This is sent only by the Server. If the Server knows that
+there are no matching subscribers, it MAY use this Reason Code instead of 0x00 (Success).</p>
+
+                      </div>
+                      <div class="declaration">
+                        <h4>Declaration</h4>
+                        <div class="language">
+                          <p class="aside-title">Swift</p>
+                          <pre class="highlight swift"><code><span class="k">case</span> <span class="n">noMatchingSubscriber</span> <span class="o">=</span> <span class="mi">16</span></code></pre>
+
+                        </div>
+                      </div>
+                    </section>
+                  </div>
+                </li>
+                <li class="item">
+                  <div>
+                    <code>
+                    <a name="/s:7MQTTNIO14MQTTReasonCodeO21noSubscriptionExistedyA2CmF"></a>
+                    <a name="//apple_ref/swift/Element/noSubscriptionExisted" class="dashAnchor"></a>
+                    <a class="token" href="#/s:7MQTTNIO14MQTTReasonCodeO21noSubscriptionExistedyA2CmF">noSubscriptionExisted</a>
+                    </code>
+                  </div>
+                  <div class="height-container">
+                    <div class="pointer-container"></div>
+                    <section class="section">
+                      <div class="pointer"></div>
+                      <div class="abstract">
+                        <p>No matching Topic Filter is being used by the Client.</p>
+
+                      </div>
+                      <div class="declaration">
+                        <h4>Declaration</h4>
+                        <div class="language">
+                          <p class="aside-title">Swift</p>
+                          <pre class="highlight swift"><code><span class="k">case</span> <span class="n">noSubscriptionExisted</span> <span class="o">=</span> <span class="mi">17</span></code></pre>
+
+                        </div>
+                      </div>
+                    </section>
+                  </div>
+                </li>
+                <li class="item">
+                  <div>
+                    <code>
+                    <a name="/s:7MQTTNIO14MQTTReasonCodeO22continueAuthenticationyA2CmF"></a>
+                    <a name="//apple_ref/swift/Element/continueAuthentication" class="dashAnchor"></a>
+                    <a class="token" href="#/s:7MQTTNIO14MQTTReasonCodeO22continueAuthenticationyA2CmF">continueAuthentication</a>
+                    </code>
+                  </div>
+                  <div class="height-container">
+                    <div class="pointer-container"></div>
+                    <section class="section">
+                      <div class="pointer"></div>
+                      <div class="abstract">
+                        <p>Continue the authentication with another step</p>
+
+                      </div>
+                      <div class="declaration">
+                        <h4>Declaration</h4>
+                        <div class="language">
+                          <p class="aside-title">Swift</p>
+                          <pre class="highlight swift"><code><span class="k">case</span> <span class="n">continueAuthentication</span> <span class="o">=</span> <span class="mi">24</span></code></pre>
+
+                        </div>
+                      </div>
+                    </section>
+                  </div>
+                </li>
+                <li class="item">
+                  <div>
+                    <code>
+                    <a name="/s:7MQTTNIO14MQTTReasonCodeO14reAuthenticateyA2CmF"></a>
+                    <a name="//apple_ref/swift/Element/reAuthenticate" class="dashAnchor"></a>
+                    <a class="token" href="#/s:7MQTTNIO14MQTTReasonCodeO14reAuthenticateyA2CmF">reAuthenticate</a>
+                    </code>
+                  </div>
+                  <div class="height-container">
+                    <div class="pointer-container"></div>
+                    <section class="section">
+                      <div class="pointer"></div>
+                      <div class="abstract">
+                        <p>Initiate a re-authentication</p>
+
+                      </div>
+                      <div class="declaration">
+                        <h4>Declaration</h4>
+                        <div class="language">
+                          <p class="aside-title">Swift</p>
+                          <pre class="highlight swift"><code><span class="k">case</span> <span class="n">reAuthenticate</span> <span class="o">=</span> <span class="mi">25</span></code></pre>
+
+                        </div>
+                      </div>
+                    </section>
+                  </div>
+                </li>
+                <li class="item">
+                  <div>
+                    <code>
+                    <a name="/s:7MQTTNIO14MQTTReasonCodeO16unspecifiedErroryA2CmF"></a>
+                    <a name="//apple_ref/swift/Element/unspecifiedError" class="dashAnchor"></a>
+                    <a class="token" href="#/s:7MQTTNIO14MQTTReasonCodeO16unspecifiedErroryA2CmF">unspecifiedError</a>
+                    </code>
+                  </div>
+                  <div class="height-container">
+                    <div class="pointer-container"></div>
+                    <section class="section">
+                      <div class="pointer"></div>
+                      <div class="abstract">
+                        <p>Unaccpeted and the Server either does not wish to reveal the reason or none of the other Reason Codes apply.</p>
+
+                      </div>
+                      <div class="declaration">
+                        <h4>Declaration</h4>
+                        <div class="language">
+                          <p class="aside-title">Swift</p>
+                          <pre class="highlight swift"><code><span class="k">case</span> <span class="n">unspecifiedError</span> <span class="o">=</span> <span class="mi">128</span></code></pre>
+
+                        </div>
+                      </div>
+                    </section>
+                  </div>
+                </li>
+                <li class="item">
+                  <div>
+                    <code>
+                    <a name="/s:7MQTTNIO14MQTTReasonCodeO15malformedPacketyA2CmF"></a>
+                    <a name="//apple_ref/swift/Element/malformedPacket" class="dashAnchor"></a>
+                    <a class="token" href="#/s:7MQTTNIO14MQTTReasonCodeO15malformedPacketyA2CmF">malformedPacket</a>
+                    </code>
+                  </div>
+                  <div class="height-container">
+                    <div class="pointer-container"></div>
+                    <section class="section">
+                      <div class="pointer"></div>
+                      <div class="abstract">
+                        <p>Data within the packet could not be correctly parsed.</p>
+
+                      </div>
+                      <div class="declaration">
+                        <h4>Declaration</h4>
+                        <div class="language">
+                          <p class="aside-title">Swift</p>
+                          <pre class="highlight swift"><code><span class="k">case</span> <span class="n">malformedPacket</span> <span class="o">=</span> <span class="mi">129</span></code></pre>
+
+                        </div>
+                      </div>
+                    </section>
+                  </div>
+                </li>
+                <li class="item">
+                  <div>
+                    <code>
+                    <a name="/s:7MQTTNIO14MQTTReasonCodeO13protocolErroryA2CmF"></a>
+                    <a name="//apple_ref/swift/Element/protocolError" class="dashAnchor"></a>
+                    <a class="token" href="#/s:7MQTTNIO14MQTTReasonCodeO13protocolErroryA2CmF">protocolError</a>
+                    </code>
+                  </div>
+                  <div class="height-container">
+                    <div class="pointer-container"></div>
+                    <section class="section">
+                      <div class="pointer"></div>
+                      <div class="abstract">
+                        <p>Data in the packet does not conform to this specification.</p>
+
+                      </div>
+                      <div class="declaration">
+                        <h4>Declaration</h4>
+                        <div class="language">
+                          <p class="aside-title">Swift</p>
+                          <pre class="highlight swift"><code><span class="k">case</span> <span class="n">protocolError</span> <span class="o">=</span> <span class="mi">130</span></code></pre>
+
+                        </div>
+                      </div>
+                    </section>
+                  </div>
+                </li>
+                <li class="item">
+                  <div>
+                    <code>
+                    <a name="/s:7MQTTNIO14MQTTReasonCodeO27implementationSpecificErroryA2CmF"></a>
+                    <a name="//apple_ref/swift/Element/implementationSpecificError" class="dashAnchor"></a>
+                    <a class="token" href="#/s:7MQTTNIO14MQTTReasonCodeO27implementationSpecificErroryA2CmF">implementationSpecificError</a>
+                    </code>
+                  </div>
+                  <div class="height-container">
+                    <div class="pointer-container"></div>
+                    <section class="section">
+                      <div class="pointer"></div>
+                      <div class="abstract">
+                        <p>Packet is valid but the server does not accept it</p>
+
+                      </div>
+                      <div class="declaration">
+                        <h4>Declaration</h4>
+                        <div class="language">
+                          <p class="aside-title">Swift</p>
+                          <pre class="highlight swift"><code><span class="k">case</span> <span class="n">implementationSpecificError</span> <span class="o">=</span> <span class="mi">131</span></code></pre>
+
+                        </div>
+                      </div>
+                    </section>
+                  </div>
+                </li>
+                <li class="item">
+                  <div>
+                    <code>
+                    <a name="/s:7MQTTNIO14MQTTReasonCodeO26unsupportedProtocolVersionyA2CmF"></a>
+                    <a name="//apple_ref/swift/Element/unsupportedProtocolVersion" class="dashAnchor"></a>
+                    <a class="token" href="#/s:7MQTTNIO14MQTTReasonCodeO26unsupportedProtocolVersionyA2CmF">unsupportedProtocolVersion</a>
+                    </code>
+                  </div>
+                  <div class="height-container">
+                    <div class="pointer-container"></div>
+                    <section class="section">
+                      <div class="pointer"></div>
+                      <div class="abstract">
+                        <p>The Server does not support the version of the MQTT protocol requested by the Client.</p>
+
+                      </div>
+                      <div class="declaration">
+                        <h4>Declaration</h4>
+                        <div class="language">
+                          <p class="aside-title">Swift</p>
+                          <pre class="highlight swift"><code><span class="k">case</span> <span class="n">unsupportedProtocolVersion</span> <span class="o">=</span> <span class="mi">132</span></code></pre>
+
+                        </div>
+                      </div>
+                    </section>
+                  </div>
+                </li>
+                <li class="item">
+                  <div>
+                    <code>
+                    <a name="/s:7MQTTNIO14MQTTReasonCodeO24clientIdentifierNotValidyA2CmF"></a>
+                    <a name="//apple_ref/swift/Element/clientIdentifierNotValid" class="dashAnchor"></a>
+                    <a class="token" href="#/s:7MQTTNIO14MQTTReasonCodeO24clientIdentifierNotValidyA2CmF">clientIdentifierNotValid</a>
+                    </code>
+                  </div>
+                  <div class="height-container">
+                    <div class="pointer-container"></div>
+                    <section class="section">
+                      <div class="pointer"></div>
+                      <div class="abstract">
+                        <p>The Client Identifier is a valid string but is not allowed by the Server.</p>
+
+                      </div>
+                      <div class="declaration">
+                        <h4>Declaration</h4>
+                        <div class="language">
+                          <p class="aside-title">Swift</p>
+                          <pre class="highlight swift"><code><span class="k">case</span> <span class="n">clientIdentifierNotValid</span> <span class="o">=</span> <span class="mi">133</span></code></pre>
+
+                        </div>
+                      </div>
+                    </section>
+                  </div>
+                </li>
+                <li class="item">
+                  <div>
+                    <code>
+                    <a name="/s:7MQTTNIO14MQTTReasonCodeO21badUsernameOrPasswordyA2CmF"></a>
+                    <a name="//apple_ref/swift/Element/badUsernameOrPassword" class="dashAnchor"></a>
+                    <a class="token" href="#/s:7MQTTNIO14MQTTReasonCodeO21badUsernameOrPasswordyA2CmF">badUsernameOrPassword</a>
+                    </code>
+                  </div>
+                  <div class="height-container">
+                    <div class="pointer-container"></div>
+                    <section class="section">
+                      <div class="pointer"></div>
+                      <div class="abstract">
+                        <p>The Server does not accept the User Name or Password specified by the Client</p>
+
+                      </div>
+                      <div class="declaration">
+                        <h4>Declaration</h4>
+                        <div class="language">
+                          <p class="aside-title">Swift</p>
+                          <pre class="highlight swift"><code><span class="k">case</span> <span class="n">badUsernameOrPassword</span> <span class="o">=</span> <span class="mi">134</span></code></pre>
+
+                        </div>
+                      </div>
+                    </section>
+                  </div>
+                </li>
+                <li class="item">
+                  <div>
+                    <code>
+                    <a name="/s:7MQTTNIO14MQTTReasonCodeO13notAuthorizedyA2CmF"></a>
+                    <a name="//apple_ref/swift/Element/notAuthorized" class="dashAnchor"></a>
+                    <a class="token" href="#/s:7MQTTNIO14MQTTReasonCodeO13notAuthorizedyA2CmF">notAuthorized</a>
+                    </code>
+                  </div>
+                  <div class="height-container">
+                    <div class="pointer-container"></div>
+                    <section class="section">
+                      <div class="pointer"></div>
+                      <div class="abstract">
+                        <p>The client is not authorized to do this</p>
+
+                      </div>
+                      <div class="declaration">
+                        <h4>Declaration</h4>
+                        <div class="language">
+                          <p class="aside-title">Swift</p>
+                          <pre class="highlight swift"><code><span class="k">case</span> <span class="n">notAuthorized</span> <span class="o">=</span> <span class="mi">135</span></code></pre>
+
+                        </div>
+                      </div>
+                    </section>
+                  </div>
+                </li>
+                <li class="item">
+                  <div>
+                    <code>
+                    <a name="/s:7MQTTNIO14MQTTReasonCodeO17serverUnavailableyA2CmF"></a>
+                    <a name="//apple_ref/swift/Element/serverUnavailable" class="dashAnchor"></a>
+                    <a class="token" href="#/s:7MQTTNIO14MQTTReasonCodeO17serverUnavailableyA2CmF">serverUnavailable</a>
+                    </code>
+                  </div>
+                  <div class="height-container">
+                    <div class="pointer-container"></div>
+                    <section class="section">
+                      <div class="pointer"></div>
+                      <div class="abstract">
+                        <p>The MQTT Server is not available.</p>
+
+                      </div>
+                      <div class="declaration">
+                        <h4>Declaration</h4>
+                        <div class="language">
+                          <p class="aside-title">Swift</p>
+                          <pre class="highlight swift"><code><span class="k">case</span> <span class="n">serverUnavailable</span> <span class="o">=</span> <span class="mi">136</span></code></pre>
+
+                        </div>
+                      </div>
+                    </section>
+                  </div>
+                </li>
+                <li class="item">
+                  <div>
+                    <code>
+                    <a name="/s:7MQTTNIO14MQTTReasonCodeO10serverBusyyA2CmF"></a>
+                    <a name="//apple_ref/swift/Element/serverBusy" class="dashAnchor"></a>
+                    <a class="token" href="#/s:7MQTTNIO14MQTTReasonCodeO10serverBusyyA2CmF">serverBusy</a>
+                    </code>
+                  </div>
+                  <div class="height-container">
+                    <div class="pointer-container"></div>
+                    <section class="section">
+                      <div class="pointer"></div>
+                      <div class="abstract">
+                        <p>The Server is busy. Try again later.</p>
+
+                      </div>
+                      <div class="declaration">
+                        <h4>Declaration</h4>
+                        <div class="language">
+                          <p class="aside-title">Swift</p>
+                          <pre class="highlight swift"><code><span class="k">case</span> <span class="n">serverBusy</span> <span class="o">=</span> <span class="mi">137</span></code></pre>
+
+                        </div>
+                      </div>
+                    </section>
+                  </div>
+                </li>
+                <li class="item">
+                  <div>
+                    <code>
+                    <a name="/s:7MQTTNIO14MQTTReasonCodeO6bannedyA2CmF"></a>
+                    <a name="//apple_ref/swift/Element/banned" class="dashAnchor"></a>
+                    <a class="token" href="#/s:7MQTTNIO14MQTTReasonCodeO6bannedyA2CmF">banned</a>
+                    </code>
+                  </div>
+                  <div class="height-container">
+                    <div class="pointer-container"></div>
+                    <section class="section">
+                      <div class="pointer"></div>
+                      <div class="abstract">
+                        <p>This Client has been banned by administrative action. Contact the server administrator.</p>
+
+                      </div>
+                      <div class="declaration">
+                        <h4>Declaration</h4>
+                        <div class="language">
+                          <p class="aside-title">Swift</p>
+                          <pre class="highlight swift"><code><span class="k">case</span> <span class="n">banned</span> <span class="o">=</span> <span class="mi">138</span></code></pre>
+
+                        </div>
+                      </div>
+                    </section>
+                  </div>
+                </li>
+                <li class="item">
+                  <div>
+                    <code>
+                    <a name="/s:7MQTTNIO14MQTTReasonCodeO18serverShuttingDownyA2CmF"></a>
+                    <a name="//apple_ref/swift/Element/serverShuttingDown" class="dashAnchor"></a>
+                    <a class="token" href="#/s:7MQTTNIO14MQTTReasonCodeO18serverShuttingDownyA2CmF">serverShuttingDown</a>
+                    </code>
+                  </div>
+                  <div class="height-container">
+                    <div class="pointer-container"></div>
+                    <section class="section">
+                      <div class="pointer"></div>
+                      <div class="abstract">
+                        <p>The Server is shutting down.</p>
+
+                      </div>
+                      <div class="declaration">
+                        <h4>Declaration</h4>
+                        <div class="language">
+                          <p class="aside-title">Swift</p>
+                          <pre class="highlight swift"><code><span class="k">case</span> <span class="n">serverShuttingDown</span> <span class="o">=</span> <span class="mi">139</span></code></pre>
+
+                        </div>
+                      </div>
+                    </section>
+                  </div>
+                </li>
+                <li class="item">
+                  <div>
+                    <code>
+                    <a name="/s:7MQTTNIO14MQTTReasonCodeO23badAuthenticationMethodyA2CmF"></a>
+                    <a name="//apple_ref/swift/Element/badAuthenticationMethod" class="dashAnchor"></a>
+                    <a class="token" href="#/s:7MQTTNIO14MQTTReasonCodeO23badAuthenticationMethodyA2CmF">badAuthenticationMethod</a>
+                    </code>
+                  </div>
+                  <div class="height-container">
+                    <div class="pointer-container"></div>
+                    <section class="section">
+                      <div class="pointer"></div>
+                      <div class="abstract">
+                        <p>The authentication method is not supported or does not match the authentication method currently in use.</p>
+
+                      </div>
+                      <div class="declaration">
+                        <h4>Declaration</h4>
+                        <div class="language">
+                          <p class="aside-title">Swift</p>
+                          <pre class="highlight swift"><code><span class="k">case</span> <span class="n">badAuthenticationMethod</span> <span class="o">=</span> <span class="mi">140</span></code></pre>
+
+                        </div>
+                      </div>
+                    </section>
+                  </div>
+                </li>
+                <li class="item">
+                  <div>
+                    <code>
+                    <a name="/s:7MQTTNIO14MQTTReasonCodeO16keepAliveTimeoutyA2CmF"></a>
+                    <a name="//apple_ref/swift/Element/keepAliveTimeout" class="dashAnchor"></a>
+                    <a class="token" href="#/s:7MQTTNIO14MQTTReasonCodeO16keepAliveTimeoutyA2CmF">keepAliveTimeout</a>
+                    </code>
+                  </div>
+                  <div class="height-container">
+                    <div class="pointer-container"></div>
+                    <section class="section">
+                      <div class="pointer"></div>
+                      <div class="abstract">
+                        <p>The Connection is closed because no packet has been received for 1.5 times the Keepalive time.</p>
+
+                      </div>
+                      <div class="declaration">
+                        <h4>Declaration</h4>
+                        <div class="language">
+                          <p class="aside-title">Swift</p>
+                          <pre class="highlight swift"><code><span class="k">case</span> <span class="n">keepAliveTimeout</span> <span class="o">=</span> <span class="mi">141</span></code></pre>
+
+                        </div>
+                      </div>
+                    </section>
+                  </div>
+                </li>
+                <li class="item">
+                  <div>
+                    <code>
+                    <a name="/s:7MQTTNIO14MQTTReasonCodeO16sessionTakenOveryA2CmF"></a>
+                    <a name="//apple_ref/swift/Element/sessionTakenOver" class="dashAnchor"></a>
+                    <a class="token" href="#/s:7MQTTNIO14MQTTReasonCodeO16sessionTakenOveryA2CmF">sessionTakenOver</a>
+                    </code>
+                  </div>
+                  <div class="height-container">
+                    <div class="pointer-container"></div>
+                    <section class="section">
+                      <div class="pointer"></div>
+                      <div class="abstract">
+                        <p>Another Connection using the same ClientID has connected causing this Connection to be closed.</p>
+
+                      </div>
+                      <div class="declaration">
+                        <h4>Declaration</h4>
+                        <div class="language">
+                          <p class="aside-title">Swift</p>
+                          <pre class="highlight swift"><code><span class="k">case</span> <span class="n">sessionTakenOver</span> <span class="o">=</span> <span class="mi">142</span></code></pre>
+
+                        </div>
+                      </div>
+                    </section>
+                  </div>
+                </li>
+                <li class="item">
+                  <div>
+                    <code>
+                    <a name="/s:7MQTTNIO14MQTTReasonCodeO18topicFilterInvalidyA2CmF"></a>
+                    <a name="//apple_ref/swift/Element/topicFilterInvalid" class="dashAnchor"></a>
+                    <a class="token" href="#/s:7MQTTNIO14MQTTReasonCodeO18topicFilterInvalidyA2CmF">topicFilterInvalid</a>
+                    </code>
+                  </div>
+                  <div class="height-container">
+                    <div class="pointer-container"></div>
+                    <section class="section">
+                      <div class="pointer"></div>
+                      <div class="abstract">
+                        <p>The Topic Filter is correctly formed but is not allowed for this Client.</p>
+
+                      </div>
+                      <div class="declaration">
+                        <h4>Declaration</h4>
+                        <div class="language">
+                          <p class="aside-title">Swift</p>
+                          <pre class="highlight swift"><code><span class="k">case</span> <span class="n">topicFilterInvalid</span> <span class="o">=</span> <span class="mi">143</span></code></pre>
+
+                        </div>
+                      </div>
+                    </section>
+                  </div>
+                </li>
+                <li class="item">
+                  <div>
+                    <code>
+                    <a name="/s:7MQTTNIO14MQTTReasonCodeO16topicNameInvalidyA2CmF"></a>
+                    <a name="//apple_ref/swift/Element/topicNameInvalid" class="dashAnchor"></a>
+                    <a class="token" href="#/s:7MQTTNIO14MQTTReasonCodeO16topicNameInvalidyA2CmF">topicNameInvalid</a>
+                    </code>
+                  </div>
+                  <div class="height-container">
+                    <div class="pointer-container"></div>
+                    <section class="section">
+                      <div class="pointer"></div>
+                      <div class="abstract">
+                        <p>The Topic Name is not malformed, but is not accepted by this Client or Server.</p>
+
+                      </div>
+                      <div class="declaration">
+                        <h4>Declaration</h4>
+                        <div class="language">
+                          <p class="aside-title">Swift</p>
+                          <pre class="highlight swift"><code><span class="k">case</span> <span class="n">topicNameInvalid</span> <span class="o">=</span> <span class="mi">144</span></code></pre>
+
+                        </div>
+                      </div>
+                    </section>
+                  </div>
+                </li>
+                <li class="item">
+                  <div>
+                    <code>
+                    <a name="/s:7MQTTNIO14MQTTReasonCodeO21packetIdentifierInUseyA2CmF"></a>
+                    <a name="//apple_ref/swift/Element/packetIdentifierInUse" class="dashAnchor"></a>
+                    <a class="token" href="#/s:7MQTTNIO14MQTTReasonCodeO21packetIdentifierInUseyA2CmF">packetIdentifierInUse</a>
+                    </code>
+                  </div>
+                  <div class="height-container">
+                    <div class="pointer-container"></div>
+                    <section class="section">
+                      <div class="pointer"></div>
+                      <div class="abstract">
+                        <p>The specified Packet Identifier is already in use. This might indicate a mismatch in the Session State between the Client and Server.</p>
+
+                      </div>
+                      <div class="declaration">
+                        <h4>Declaration</h4>
+                        <div class="language">
+                          <p class="aside-title">Swift</p>
+                          <pre class="highlight swift"><code><span class="k">case</span> <span class="n">packetIdentifierInUse</span> <span class="o">=</span> <span class="mi">145</span></code></pre>
+
+                        </div>
+                      </div>
+                    </section>
+                  </div>
+                </li>
+                <li class="item">
+                  <div>
+                    <code>
+                    <a name="/s:7MQTTNIO14MQTTReasonCodeO24packetIdentifierNotFoundyA2CmF"></a>
+                    <a name="//apple_ref/swift/Element/packetIdentifierNotFound" class="dashAnchor"></a>
+                    <a class="token" href="#/s:7MQTTNIO14MQTTReasonCodeO24packetIdentifierNotFoundyA2CmF">packetIdentifierNotFound</a>
+                    </code>
+                  </div>
+                  <div class="height-container">
+                    <div class="pointer-container"></div>
+                    <section class="section">
+                      <div class="pointer"></div>
+                      <div class="abstract">
+                        <p>The Packet Identifier is not known. This is not an error during recovery, but at other times indicates a mismatch between
+the Session State on the Client and Server.</p>
+
+                      </div>
+                      <div class="declaration">
+                        <h4>Declaration</h4>
+                        <div class="language">
+                          <p class="aside-title">Swift</p>
+                          <pre class="highlight swift"><code><span class="k">case</span> <span class="n">packetIdentifierNotFound</span> <span class="o">=</span> <span class="mi">146</span></code></pre>
+
+                        </div>
+                      </div>
+                    </section>
+                  </div>
+                </li>
+                <li class="item">
+                  <div>
+                    <code>
+                    <a name="/s:7MQTTNIO14MQTTReasonCodeO22receiveMaximumExceededyA2CmF"></a>
+                    <a name="//apple_ref/swift/Element/receiveMaximumExceeded" class="dashAnchor"></a>
+                    <a class="token" href="#/s:7MQTTNIO14MQTTReasonCodeO22receiveMaximumExceededyA2CmF">receiveMaximumExceeded</a>
+                    </code>
+                  </div>
+                  <div class="height-container">
+                    <div class="pointer-container"></div>
+                    <section class="section">
+                      <div class="pointer"></div>
+                      <div class="abstract">
+                        <p>The Client or Server has received more than Receive Maximum publication for which it has not sent PUBACK or PUBCOMP.</p>
+
+                      </div>
+                      <div class="declaration">
+                        <h4>Declaration</h4>
+                        <div class="language">
+                          <p class="aside-title">Swift</p>
+                          <pre class="highlight swift"><code><span class="k">case</span> <span class="n">receiveMaximumExceeded</span> <span class="o">=</span> <span class="mi">147</span></code></pre>
+
+                        </div>
+                      </div>
+                    </section>
+                  </div>
+                </li>
+                <li class="item">
+                  <div>
+                    <code>
+                    <a name="/s:7MQTTNIO14MQTTReasonCodeO17topicAliasInvalidyA2CmF"></a>
+                    <a name="//apple_ref/swift/Element/topicAliasInvalid" class="dashAnchor"></a>
+                    <a class="token" href="#/s:7MQTTNIO14MQTTReasonCodeO17topicAliasInvalidyA2CmF">topicAliasInvalid</a>
+                    </code>
+                  </div>
+                  <div class="height-container">
+                    <div class="pointer-container"></div>
+                    <section class="section">
+                      <div class="pointer"></div>
+                      <div class="abstract">
+                        <p>The Client or Server has received a PUBLISH packet containing a Topic Alias which is greater than the Maximum Topic Alias it
+sent in the CONNECT or CONNACK packet.</p>
+
+                      </div>
+                      <div class="declaration">
+                        <h4>Declaration</h4>
+                        <div class="language">
+                          <p class="aside-title">Swift</p>
+                          <pre class="highlight swift"><code><span class="k">case</span> <span class="n">topicAliasInvalid</span> <span class="o">=</span> <span class="mi">148</span></code></pre>
+
+                        </div>
+                      </div>
+                    </section>
+                  </div>
+                </li>
+                <li class="item">
+                  <div>
+                    <code>
+                    <a name="/s:7MQTTNIO14MQTTReasonCodeO14packetTooLargeyA2CmF"></a>
+                    <a name="//apple_ref/swift/Element/packetTooLarge" class="dashAnchor"></a>
+                    <a class="token" href="#/s:7MQTTNIO14MQTTReasonCodeO14packetTooLargeyA2CmF">packetTooLarge</a>
+                    </code>
+                  </div>
+                  <div class="height-container">
+                    <div class="pointer-container"></div>
+                    <section class="section">
+                      <div class="pointer"></div>
+                      <div class="abstract">
+                        <p>The packet exceeded the maximum permissible size.</p>
+
+                      </div>
+                      <div class="declaration">
+                        <h4>Declaration</h4>
+                        <div class="language">
+                          <p class="aside-title">Swift</p>
+                          <pre class="highlight swift"><code><span class="k">case</span> <span class="n">packetTooLarge</span> <span class="o">=</span> <span class="mi">149</span></code></pre>
+
+                        </div>
+                      </div>
+                    </section>
+                  </div>
+                </li>
+                <li class="item">
+                  <div>
+                    <code>
+                    <a name="/s:7MQTTNIO14MQTTReasonCodeO18messageRateTooHighyA2CmF"></a>
+                    <a name="//apple_ref/swift/Element/messageRateTooHigh" class="dashAnchor"></a>
+                    <a class="token" href="#/s:7MQTTNIO14MQTTReasonCodeO18messageRateTooHighyA2CmF">messageRateTooHigh</a>
+                    </code>
+                  </div>
+                  <div class="height-container">
+                    <div class="pointer-container"></div>
+                    <section class="section">
+                      <div class="pointer"></div>
+                      <div class="abstract">
+                        <p>The received data rate is too high.</p>
+
+                      </div>
+                      <div class="declaration">
+                        <h4>Declaration</h4>
+                        <div class="language">
+                          <p class="aside-title">Swift</p>
+                          <pre class="highlight swift"><code><span class="k">case</span> <span class="n">messageRateTooHigh</span> <span class="o">=</span> <span class="mi">150</span></code></pre>
+
+                        </div>
+                      </div>
+                    </section>
+                  </div>
+                </li>
+                <li class="item">
+                  <div>
+                    <code>
+                    <a name="/s:7MQTTNIO14MQTTReasonCodeO14quotaExceeededyA2CmF"></a>
+                    <a name="//apple_ref/swift/Element/quotaExceeeded" class="dashAnchor"></a>
+                    <a class="token" href="#/s:7MQTTNIO14MQTTReasonCodeO14quotaExceeededyA2CmF">quotaExceeeded</a>
+                    </code>
+                  </div>
+                  <div class="height-container">
+                    <div class="pointer-container"></div>
+                    <section class="section">
+                      <div class="pointer"></div>
+                      <div class="abstract">
+                        <p>An implementation or administrative imposed limit has been exceeded.</p>
+
+                      </div>
+                      <div class="declaration">
+                        <h4>Declaration</h4>
+                        <div class="language">
+                          <p class="aside-title">Swift</p>
+                          <pre class="highlight swift"><code><span class="k">case</span> <span class="n">quotaExceeeded</span> <span class="o">=</span> <span class="mi">151</span></code></pre>
+
+                        </div>
+                      </div>
+                    </section>
+                  </div>
+                </li>
+                <li class="item">
+                  <div>
+                    <code>
+                    <a name="/s:7MQTTNIO14MQTTReasonCodeO20administrativeActionyA2CmF"></a>
+                    <a name="//apple_ref/swift/Element/administrativeAction" class="dashAnchor"></a>
+                    <a class="token" href="#/s:7MQTTNIO14MQTTReasonCodeO20administrativeActionyA2CmF">administrativeAction</a>
+                    </code>
+                  </div>
+                  <div class="height-container">
+                    <div class="pointer-container"></div>
+                    <section class="section">
+                      <div class="pointer"></div>
+                      <div class="abstract">
+                        <p>The Connection is closed due to an administrative action.</p>
+
+                      </div>
+                      <div class="declaration">
+                        <h4>Declaration</h4>
+                        <div class="language">
+                          <p class="aside-title">Swift</p>
+                          <pre class="highlight swift"><code><span class="k">case</span> <span class="n">administrativeAction</span> <span class="o">=</span> <span class="mi">152</span></code></pre>
+
+                        </div>
+                      </div>
+                    </section>
+                  </div>
+                </li>
+                <li class="item">
+                  <div>
+                    <code>
+                    <a name="/s:7MQTTNIO14MQTTReasonCodeO20payloadFormatInvalidyA2CmF"></a>
+                    <a name="//apple_ref/swift/Element/payloadFormatInvalid" class="dashAnchor"></a>
+                    <a class="token" href="#/s:7MQTTNIO14MQTTReasonCodeO20payloadFormatInvalidyA2CmF">payloadFormatInvalid</a>
+                    </code>
+                  </div>
+                  <div class="height-container">
+                    <div class="pointer-container"></div>
+                    <section class="section">
+                      <div class="pointer"></div>
+                      <div class="abstract">
+                        <p>The PUBLISH payload format does not match the one specified in the Payload Format Indicator.</p>
+
+                      </div>
+                      <div class="declaration">
+                        <h4>Declaration</h4>
+                        <div class="language">
+                          <p class="aside-title">Swift</p>
+                          <pre class="highlight swift"><code><span class="k">case</span> <span class="n">payloadFormatInvalid</span> <span class="o">=</span> <span class="mi">153</span></code></pre>
+
+                        </div>
+                      </div>
+                    </section>
+                  </div>
+                </li>
+                <li class="item">
+                  <div>
+                    <code>
+                    <a name="/s:7MQTTNIO14MQTTReasonCodeO18retainNotSupportedyA2CmF"></a>
+                    <a name="//apple_ref/swift/Element/retainNotSupported" class="dashAnchor"></a>
+                    <a class="token" href="#/s:7MQTTNIO14MQTTReasonCodeO18retainNotSupportedyA2CmF">retainNotSupported</a>
+                    </code>
+                  </div>
+                  <div class="height-container">
+                    <div class="pointer-container"></div>
+                    <section class="section">
+                      <div class="pointer"></div>
+                      <div class="abstract">
+                        <p>The Server does not support retained messages, and retain was set to 1.</p>
+
+                      </div>
+                      <div class="declaration">
+                        <h4>Declaration</h4>
+                        <div class="language">
+                          <p class="aside-title">Swift</p>
+                          <pre class="highlight swift"><code><span class="k">case</span> <span class="n">retainNotSupported</span> <span class="o">=</span> <span class="mi">154</span></code></pre>
+
+                        </div>
+                      </div>
+                    </section>
+                  </div>
+                </li>
+                <li class="item">
+                  <div>
+                    <code>
+                    <a name="/s:7MQTTNIO14MQTTReasonCodeO15qosNotSupportedyA2CmF"></a>
+                    <a name="//apple_ref/swift/Element/qosNotSupported" class="dashAnchor"></a>
+                    <a class="token" href="#/s:7MQTTNIO14MQTTReasonCodeO15qosNotSupportedyA2CmF">qosNotSupported</a>
+                    </code>
+                  </div>
+                  <div class="height-container">
+                    <div class="pointer-container"></div>
+                    <section class="section">
+                      <div class="pointer"></div>
+                      <div class="abstract">
+                        <p>The Server does not support the QoS set</p>
+
+                      </div>
+                      <div class="declaration">
+                        <h4>Declaration</h4>
+                        <div class="language">
+                          <p class="aside-title">Swift</p>
+                          <pre class="highlight swift"><code><span class="k">case</span> <span class="n">qosNotSupported</span> <span class="o">=</span> <span class="mi">155</span></code></pre>
+
+                        </div>
+                      </div>
+                    </section>
+                  </div>
+                </li>
+                <li class="item">
+                  <div>
+                    <code>
+                    <a name="/s:7MQTTNIO14MQTTReasonCodeO16useAnotherServeryA2CmF"></a>
+                    <a name="//apple_ref/swift/Element/useAnotherServer" class="dashAnchor"></a>
+                    <a class="token" href="#/s:7MQTTNIO14MQTTReasonCodeO16useAnotherServeryA2CmF">useAnotherServer</a>
+                    </code>
+                  </div>
+                  <div class="height-container">
+                    <div class="pointer-container"></div>
+                    <section class="section">
+                      <div class="pointer"></div>
+                      <div class="abstract">
+                        <p>The Client should temporarily use another server.</p>
+
+                      </div>
+                      <div class="declaration">
+                        <h4>Declaration</h4>
+                        <div class="language">
+                          <p class="aside-title">Swift</p>
+                          <pre class="highlight swift"><code><span class="k">case</span> <span class="n">useAnotherServer</span> <span class="o">=</span> <span class="mi">156</span></code></pre>
+
+                        </div>
+                      </div>
+                    </section>
+                  </div>
+                </li>
+                <li class="item">
+                  <div>
+                    <code>
+                    <a name="/s:7MQTTNIO14MQTTReasonCodeO11serverMovedyA2CmF"></a>
+                    <a name="//apple_ref/swift/Element/serverMoved" class="dashAnchor"></a>
+                    <a class="token" href="#/s:7MQTTNIO14MQTTReasonCodeO11serverMovedyA2CmF">serverMoved</a>
+                    </code>
+                  </div>
+                  <div class="height-container">
+                    <div class="pointer-container"></div>
+                    <section class="section">
+                      <div class="pointer"></div>
+                      <div class="abstract">
+                        <p>The Client should permanently use another server.</p>
+
+                      </div>
+                      <div class="declaration">
+                        <h4>Declaration</h4>
+                        <div class="language">
+                          <p class="aside-title">Swift</p>
+                          <pre class="highlight swift"><code><span class="k">case</span> <span class="n">serverMoved</span> <span class="o">=</span> <span class="mi">157</span></code></pre>
+
+                        </div>
+                      </div>
+                    </section>
+                  </div>
+                </li>
+                <li class="item">
+                  <div>
+                    <code>
+                    <a name="/s:7MQTTNIO14MQTTReasonCodeO31sharedSubscriptionsNotSupportedyA2CmF"></a>
+                    <a name="//apple_ref/swift/Element/sharedSubscriptionsNotSupported" class="dashAnchor"></a>
+                    <a class="token" href="#/s:7MQTTNIO14MQTTReasonCodeO31sharedSubscriptionsNotSupportedyA2CmF">sharedSubscriptionsNotSupported</a>
+                    </code>
+                  </div>
+                  <div class="height-container">
+                    <div class="pointer-container"></div>
+                    <section class="section">
+                      <div class="pointer"></div>
+                      <div class="abstract">
+                        <p>The Server does not support Shared Subscriptions for this Client.</p>
+
+                      </div>
+                      <div class="declaration">
+                        <h4>Declaration</h4>
+                        <div class="language">
+                          <p class="aside-title">Swift</p>
+                          <pre class="highlight swift"><code><span class="k">case</span> <span class="n">sharedSubscriptionsNotSupported</span> <span class="o">=</span> <span class="mi">158</span></code></pre>
+
+                        </div>
+                      </div>
+                    </section>
+                  </div>
+                </li>
+                <li class="item">
+                  <div>
+                    <code>
+                    <a name="/s:7MQTTNIO14MQTTReasonCodeO23connectionRateExceeededyA2CmF"></a>
+                    <a name="//apple_ref/swift/Element/connectionRateExceeeded" class="dashAnchor"></a>
+                    <a class="token" href="#/s:7MQTTNIO14MQTTReasonCodeO23connectionRateExceeededyA2CmF">connectionRateExceeeded</a>
+                    </code>
+                  </div>
+                  <div class="height-container">
+                    <div class="pointer-container"></div>
+                    <section class="section">
+                      <div class="pointer"></div>
+                      <div class="abstract">
+                        <p>The connection rate limit has been exceeded.</p>
+
+                      </div>
+                      <div class="declaration">
+                        <h4>Declaration</h4>
+                        <div class="language">
+                          <p class="aside-title">Swift</p>
+                          <pre class="highlight swift"><code><span class="k">case</span> <span class="n">connectionRateExceeeded</span> <span class="o">=</span> <span class="mi">159</span></code></pre>
+
+                        </div>
+                      </div>
+                    </section>
+                  </div>
+                </li>
+                <li class="item">
+                  <div>
+                    <code>
+                    <a name="/s:7MQTTNIO14MQTTReasonCodeO18maximumConnectTimeyA2CmF"></a>
+                    <a name="//apple_ref/swift/Element/maximumConnectTime" class="dashAnchor"></a>
+                    <a class="token" href="#/s:7MQTTNIO14MQTTReasonCodeO18maximumConnectTimeyA2CmF">maximumConnectTime</a>
+                    </code>
+                  </div>
+                  <div class="height-container">
+                    <div class="pointer-container"></div>
+                    <section class="section">
+                      <div class="pointer"></div>
+                      <div class="abstract">
+                        <p>The maximum connection time authorized for this connection has been exceeded.</p>
+
+                      </div>
+                      <div class="declaration">
+                        <h4>Declaration</h4>
+                        <div class="language">
+                          <p class="aside-title">Swift</p>
+                          <pre class="highlight swift"><code><span class="k">case</span> <span class="n">maximumConnectTime</span> <span class="o">=</span> <span class="mi">160</span></code></pre>
+
+                        </div>
+                      </div>
+                    </section>
+                  </div>
+                </li>
+                <li class="item">
+                  <div>
+                    <code>
+                    <a name="/s:7MQTTNIO14MQTTReasonCodeO35subscriptionIdentifiersNotSupportedyA2CmF"></a>
+                    <a name="//apple_ref/swift/Element/subscriptionIdentifiersNotSupported" class="dashAnchor"></a>
+                    <a class="token" href="#/s:7MQTTNIO14MQTTReasonCodeO35subscriptionIdentifiersNotSupportedyA2CmF">subscriptionIdentifiersNotSupported</a>
+                    </code>
+                  </div>
+                  <div class="height-container">
+                    <div class="pointer-container"></div>
+                    <section class="section">
+                      <div class="pointer"></div>
+                      <div class="abstract">
+                        <p>The Server does not support Subscription Identifiers; the subscription is not accepted.</p>
+
+                      </div>
+                      <div class="declaration">
+                        <h4>Declaration</h4>
+                        <div class="language">
+                          <p class="aside-title">Swift</p>
+                          <pre class="highlight swift"><code><span class="k">case</span> <span class="n">subscriptionIdentifiersNotSupported</span> <span class="o">=</span> <span class="mi">161</span></code></pre>
+
+                        </div>
+                      </div>
+                    </section>
+                  </div>
+                </li>
+                <li class="item">
+                  <div>
+                    <code>
+                    <a name="/s:7MQTTNIO14MQTTReasonCodeO33wildcardSubscriptionsNotSupportedyA2CmF"></a>
+                    <a name="//apple_ref/swift/Element/wildcardSubscriptionsNotSupported" class="dashAnchor"></a>
+                    <a class="token" href="#/s:7MQTTNIO14MQTTReasonCodeO33wildcardSubscriptionsNotSupportedyA2CmF">wildcardSubscriptionsNotSupported</a>
+                    </code>
+                  </div>
+                  <div class="height-container">
+                    <div class="pointer-container"></div>
+                    <section class="section">
+                      <div class="pointer"></div>
+                      <div class="abstract">
+                        <p>The Server does not support Wildcard Subscriptions; the subscription is not accepted.</p>
+
+                      </div>
+                      <div class="declaration">
+                        <h4>Declaration</h4>
+                        <div class="language">
+                          <p class="aside-title">Swift</p>
+                          <pre class="highlight swift"><code><span class="k">case</span> <span class="n">wildcardSubscriptionsNotSupported</span> <span class="o">=</span> <span class="mi">162</span></code></pre>
+
+                        </div>
+                      </div>
+                    </section>
+                  </div>
+                </li>
+                <li class="item">
+                  <div>
+                    <code>
+                    <a name="/s:7MQTTNIO14MQTTReasonCodeO18unrecognisedReasonyA2CmF"></a>
+                    <a name="//apple_ref/swift/Element/unrecognisedReason" class="dashAnchor"></a>
+                    <a class="token" href="#/s:7MQTTNIO14MQTTReasonCodeO18unrecognisedReasonyA2CmF">unrecognisedReason</a>
+                    </code>
+                  </div>
+                  <div class="height-container">
+                    <div class="pointer-container"></div>
+                    <section class="section">
+                      <div class="pointer"></div>
+                      <div class="abstract">
+                        <p>Reason code was unrecognised</p>
+
+                      </div>
+                      <div class="declaration">
+                        <h4>Declaration</h4>
+                        <div class="language">
+                          <p class="aside-title">Swift</p>
+                          <pre class="highlight swift"><code><span class="k">case</span> <span class="n">unrecognisedReason</span> <span class="o">=</span> <span class="mi">255</span></code></pre>
+
+                        </div>
+                      </div>
+                    </section>
+                  </div>
+                </li>
+              </ul>
+            </div>
+          </section>
+        </section>
+        <section id="footer">
+          <p>&copy; 2021 <a class="link" href="https://github.com/adam-fowler" target="_blank" rel="external">Adam Fowler</a>. All rights reserved. (Last updated: 2021-07-01)</p>
+          <p>Generated by <a class="link" href="https://github.com/realm/jazzy" target="_blank" rel="external">jazzy ♪♫ v0.13.6</a>, a <a class="link" href="https://realm.io" target="_blank" rel="external">Realm</a> project.</p>
+        </section>
+      </article>
+    </div>
+  </body>
+</div>
+</html>
