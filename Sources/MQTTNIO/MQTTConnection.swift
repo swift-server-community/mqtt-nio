@@ -110,7 +110,7 @@ final class MQTTConnection {
             case .niossl(let config):
                 tlsConfiguration = config
             default:
-                tlsConfiguration = TLSConfiguration.forClient()
+                tlsConfiguration = TLSConfiguration.makeClientConfiguration()
             }
             let sslContext = try NIOSSLContext(configuration: tlsConfiguration)
             let tlsProvider = try NIOSSLClientTLSProvider<ClientBootstrap>(context: sslContext, serverHostname: serverName)
