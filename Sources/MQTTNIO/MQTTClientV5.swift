@@ -113,10 +113,37 @@ extension MQTTClient {
         }
 
         /// Disconnect from server
-        /// - Parameter properties: properties to attach to disconnect message
+        /// - Parameter properties: properties to attach to disconnect packet
         /// - Returns: Future waiting on disconnect message to be sent
         public func disconnect(properties: MQTTProperties = .init()) -> EventLoopFuture<Void> {
             return self.client.disconnect(packet: MQTTDisconnectPacket(reason: .success, properties: properties))
+        }
+        
+        /// Re-authenticate with server
+        ///
+        /// - Parameters:
+        ///   - properties: properties to attach to auth packet. Must include `authenticationMethod`
+        ///   - authWorkflow: Respond to auth packets from server
+        /// - Returns: final auth packet returned from server
+        public func auth(
+            properties: MQTTProperties,
+            authWorkflow: ((MQTTAuthV5, EventLoop) -> EventLoopFuture<MQTTAuthV5>)? = nil
+        ) -> EventLoopFuture<MQTTAuthV5> {
+            let authPacket = MQTTAuthPacket(reason: .reAuthenticate, properties: properties)
+            let authFuture = client.reAuth(packet: authPacket)
+            let eventLoop = authFuture.eventLoop
+            return authFuture.flatMap { response -> EventLoopFuture<MQTTPacket> in
+                guard let auth = response as? MQTTAuthPacket else { return eventLoop.makeFailedFuture(MQTTError.unexpectedMessage) }
+                if auth.reason == .success {
+                    return eventLoop.makeSucceededFuture(auth)
+                }
+                guard let authWorkflow = authWorkflow else { return eventLoop.makeFailedFuture(MQTTError.authWorkflowRequired) }
+                return client.processAuth(authPacket, authWorkflow: authWorkflow, on: eventLoop)
+            }
+            .flatMapThrowing { response -> MQTTAuthV5 in
+                guard let auth = response as? MQTTAuthPacket else { throw MQTTError.unexpectedMessage }
+                return MQTTAuthV5(reason: auth.reason, properties: auth.properties)
+            }
         }
     }
 

@@ -469,6 +469,15 @@ extension MQTTClient {
         }
     }
 
+    func reAuth(packet: MQTTAuthPacket) -> EventLoopFuture<MQTTPacket> {
+        guard let connection = self.connection else { return self.eventLoopGroup.next().makeFailedFuture(MQTTError.noConnection) }
+
+        return connection.sendMessage(packet) { message -> Bool in
+            guard message.type == .AUTH else { return false }
+            return true
+        }
+    }
+
     /// Publish message to topic
     /// - Parameters:
     ///     - packet: Publish packet
