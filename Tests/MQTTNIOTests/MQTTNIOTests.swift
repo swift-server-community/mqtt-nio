@@ -489,11 +489,11 @@ final class MQTTNIOTests: XCTestCase {
         case .success(let config):
             switch config {
             case .niossl(let config):
-                return .niossl(TLSConfiguration.forClient(
-                    trustRoots: withTrustRoots == true ? (config.trustRoots ?? .default) : .default,
-                    certificateChain: withClientKey ? config.certificateChain : [],
-                    privateKey: withClientKey ? config.privateKey : nil
-                ))
+                var tlsConfig = TLSConfiguration.makeClientConfiguration()
+                tlsConfig.trustRoots = withTrustRoots == true ? (config.trustRoots ?? .default) : .default
+                tlsConfig.certificateChain = withClientKey ? config.certificateChain : []
+                tlsConfig.privateKey = withClientKey ? config.privateKey : nil
+                return .niossl(tlsConfig)
             #if !os(Linux)
             case .ts(let config):
                 return .ts(TSTLSConfiguration(
