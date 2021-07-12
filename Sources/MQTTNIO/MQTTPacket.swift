@@ -372,7 +372,8 @@ struct MQTTPubAckPacket: MQTTPacket {
     func write(version: MQTTClient.Version, to byteBuffer: inout ByteBuffer) throws {
         writeFixedHeader(packetType: self.type, size: self.packetSize(version: version), to: &byteBuffer)
         byteBuffer.writeInteger(self.packetId)
-        if version == .v5_0 {
+        if version == .v5_0,
+           (self.reason != .success || self.properties.count > 0) {
             byteBuffer.writeInteger(self.reason.rawValue)
             try self.properties.write(to: &byteBuffer)
         }
@@ -399,7 +400,8 @@ struct MQTTPubAckPacket: MQTTPacket {
     }
 
     func packetSize(version: MQTTClient.Version) -> Int {
-        if version == .v5_0 {
+        if version == .v5_0,
+           (self.reason != .success || self.properties.count > 0) {
             let propertiesPacketSize = self.properties.packetSize
             return 3 + MQTTSerializer.variableLengthIntegerPacketSize(propertiesPacketSize) + propertiesPacketSize
         }
@@ -497,7 +499,8 @@ struct MQTTDisconnectPacket: MQTTPacket {
 
     func write(version: MQTTClient.Version, to byteBuffer: inout ByteBuffer) throws {
         writeFixedHeader(packetType: self.type, size: self.packetSize(version: version), to: &byteBuffer)
-        if version == .v5_0 {
+        if version == .v5_0,
+           (self.reason != .success || self.properties.count > 0) {
             byteBuffer.writeInteger(self.reason.rawValue)
             try self.properties.write(to: &byteBuffer)
         }
@@ -520,7 +523,8 @@ struct MQTTDisconnectPacket: MQTTPacket {
     }
 
     func packetSize(version: MQTTClient.Version) -> Int {
-        if version == .v5_0 {
+        if version == .v5_0,
+           (self.reason != .success || self.properties.count > 0) {
             let propertiesPacketSize = self.properties.packetSize
             return 1 + MQTTSerializer.variableLengthIntegerPacketSize(propertiesPacketSize) + propertiesPacketSize
         }
@@ -566,8 +570,11 @@ struct MQTTAuthPacket: MQTTPacket {
 
     func write(version: MQTTClient.Version, to byteBuffer: inout ByteBuffer) throws {
         writeFixedHeader(packetType: self.type, size: self.packetSize, to: &byteBuffer)
-        byteBuffer.writeInteger(self.reason.rawValue)
-        try self.properties.write(to: &byteBuffer)
+
+        if self.reason != .success || self.properties.count > 0 {
+            byteBuffer.writeInteger(self.reason.rawValue)
+            try self.properties.write(to: &byteBuffer)
+        }
     }
 
     static func read(version: MQTTClient.Version, from packet: MQTTIncomingPacket) throws -> Self {
@@ -586,6 +593,9 @@ struct MQTTAuthPacket: MQTTPacket {
     }
 
     var packetSize: Int {
+        if self.reason == .success && self.properties.count == 0 {
+            return 0
+        }
         let propertiesPacketSize = self.properties.packetSize
         return 1 + MQTTSerializer.variableLengthIntegerPacketSize(propertiesPacketSize) + propertiesPacketSize
     }

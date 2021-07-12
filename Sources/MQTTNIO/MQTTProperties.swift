@@ -85,9 +85,17 @@ extension MQTTProperties: ExpressibleByArrayLiteral {
     }
 }
 
-extension MQTTProperties: Sequence {
-    public __consuming func makeIterator() -> Array<Property>.Iterator {
-        return self.properties.makeIterator()
+extension MQTTProperties: Collection {
+    public typealias Index = Array<Property>.Index
+    public var startIndex: Index { properties.startIndex }
+    public var endIndex: Index { properties.endIndex }
+
+    public subscript(_ index: Index) -> Property {
+        return properties[index]
+    }
+
+    public func index(after index: Index) -> Index {
+        return properties.index(after: index)
     }
 }
 
