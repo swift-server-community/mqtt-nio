@@ -512,6 +512,9 @@ struct MQTTDisconnectPacket: MQTTPacket {
         case .v3_1_1:
             return MQTTDisconnectPacket()
         case .v5_0:
+            if buffer.readableBytes == 0 {
+                return MQTTDisconnectPacket(reason: .success)
+            }
             guard let reasonByte: UInt8 = buffer.readInteger(),
                   let reason = MQTTReasonCode(rawValue: reasonByte)
             else {
