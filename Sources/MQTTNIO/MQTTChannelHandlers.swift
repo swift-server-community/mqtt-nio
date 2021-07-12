@@ -14,7 +14,7 @@ final class MQTTEncodeHandler: ChannelOutboundHandler {
 
     func write(context: ChannelHandlerContext, data: NIOAny, promise: EventLoopPromise<Void>?) {
         let message = unwrapOutboundIn(data)
-        self.client.logger.debug("MQTT Out", metadata: ["mqtt_message": .string("\(message)"), "mqtt_packet_id": .string("\(message.packetId)")])
+        self.client.logger.trace("MQTT Out", metadata: ["mqtt_message": .string("\(message)"), "mqtt_packet_id": .string("\(message.packetId)")])
         var bb = context.channel.allocator.buffer(capacity: 0)
         do {
             try message.write(version: self.client.configuration.version, to: &bb)
@@ -46,7 +46,7 @@ struct ByteToMQTTMessageDecoder: ByteToMessageDecoder {
                     let publishMessage = try MQTTPublishPacket.read(version: self.client.configuration.version, from: packet)
                     // let publish = try MQTTSerializer.readPublish(from: packet)
                     // let publishMessage = MQTTPublishPacket(publish: publish.publishInfo, packetId: publish.packetId)
-                    self.client.logger.debug("MQTT In", metadata: [
+                    self.client.logger.trace("MQTT In", metadata: [
                         "mqtt_message": .string("\(publishMessage)"),
                         "mqtt_packet_id": .string("\(publishMessage.packetId)"),
                         "mqtt_topicName": .string("\(publishMessage.publish.topicName)"),
@@ -80,7 +80,7 @@ struct ByteToMQTTMessageDecoder: ByteToMessageDecoder {
             default:
                 throw MQTTError.decodeError
             }
-            self.client.logger.debug("MQTT In", metadata: ["mqtt_message": .string("\(message)"), "mqtt_packet_id": .string("\(message.packetId)")])
+            self.client.logger.trace("MQTT In", metadata: ["mqtt_message": .string("\(message)"), "mqtt_packet_id": .string("\(message.packetId)")])
             context.fireChannelRead(wrapInboundOut(message))
         } catch InternalError.incompletePacket {
             return .needMoreData

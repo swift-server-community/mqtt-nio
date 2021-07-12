@@ -312,8 +312,10 @@ extension MQTTClient {
                     if self.connection === connection {
                         self.connection = nil
                     }
+                    self.logger.debug("Network connection closed")
                     self.closeListeners.notify(result)
                 }
+                self.logger.debug("Network connection established")
                 return connection.sendMessage(packet) { message -> Bool in
                     guard message.type == .CONNACK || message.type == .AUTH else { throw MQTTError.failedToConnect }
                     return true
