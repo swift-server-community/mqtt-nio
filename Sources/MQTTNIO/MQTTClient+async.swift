@@ -22,7 +22,7 @@ extension MQTTClient {
     /// - Returns: Whether server holds a session for this client
     @discardableResult public func connect(
         cleanSession: Bool = true,
-        will: (topicName: String, payload: ByteBuffer, retain: Bool)? = nil
+        will: (topicName: String, payload: ByteBuffer, qos: MQTTQoS, retain: Bool)? = nil
     ) async throws -> Bool {
         return try await self.connect(cleanSession: cleanSession, will: will).get()
     }
@@ -48,7 +48,7 @@ extension MQTTClient {
     ///
     /// Completes when SUBACK is received
     /// - Parameter subscriptions: Subscription infos
-    public func subscribe(to subscriptions: [MQTTSubscribeInfo]) async throws {
+    public func subscribe(to subscriptions: [MQTTSubscribeInfo]) async throws -> MQTTSuback {
         return try await self.subscribe(to: subscriptions).get()
     }
 

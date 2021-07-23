@@ -24,7 +24,7 @@ final class AsyncMQTTNIOTests: XCTestCase {
     func XCTRunAsyncAndBlock(_ closure: @escaping () async throws -> Void) {
         let dg = DispatchGroup()
         dg.enter()
-        async {
+        Task {
             do {
                 try await closure()
             } catch {
@@ -61,7 +61,7 @@ final class AsyncMQTTNIOTests: XCTestCase {
         XCTRunAsyncAndBlock {
             try await client.connect()
             try await client2.connect()
-            try await client2.subscribe(to: [.init(topicFilter: "TestSubject", qos: .atLeastOnce)])
+            _ = try await client2.subscribe(to: [.init(topicFilter: "TestSubject", qos: .atLeastOnce)])
             client2.addPublishListener(named: "test") { result in
                 switch result {
                 case .success(let publish):
