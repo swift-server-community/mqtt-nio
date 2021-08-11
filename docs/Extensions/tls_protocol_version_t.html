@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
-    <title>MQTTQoS Enumeration Reference</title>
+    <title>tls_protocol_version_t Extension Reference</title>
     <link rel="stylesheet" type="text/css" href="../css/jazzy.css" />
     <link rel="stylesheet" type="text/css" href="../css/highlight.css" />
     <meta charset='utf-8'>
@@ -10,8 +10,8 @@
     
   </head>
   <body>
-    <a name="//apple_ref/swift/Enum/MQTTQoS" class="dashAnchor"></a>
-    <a title="MQTTQoS Enumeration Reference"></a>
+    <a name="//apple_ref/swift/Extension/tls_protocol_version_t" class="dashAnchor"></a>
+    <a title="tls_protocol_version_t Extension Reference"></a>
     <header>
       <div class="content-wrapper">
         <p><a href="../index.html"> 2.1.0 Docs</a> (73% documented)</p>
@@ -22,7 +22,7 @@
       <p id="breadcrumbs">
         <a href="../index.html"> Reference</a>
         <img id="carat" src="../img/carat.png" />
-        MQTTQoS Enumeration Reference
+        tls_protocol_version_t Extension Reference
       </p>
     </div>
     <div class="content-wrapper">
@@ -143,15 +143,14 @@
       <article class="main-content">
         <section>
           <section class="section">
-            <h1>MQTTQoS</h1>
+            <h1>tls_protocol_version_t</h1>
               <div class="declaration">
                 <div class="language">
-                  <pre class="highlight swift"><code><span class="kd">public</span> <span class="kd">enum</span> <span class="kt">MQTTQoS</span> <span class="p">:</span> <span class="kt">UInt8</span></code></pre>
+                  <pre class="highlight swift"><code><span class="kd">extension</span> <span class="n">tls_protocol_version_t</span></code></pre>
 
                 </div>
               </div>
-            <p>Undocumented</p>
-
+            
           </section>
           <section class="section task-group-section">
             <div class="task-group">
@@ -159,9 +158,9 @@
                 <li class="item">
                   <div>
                     <code>
-                    <a name="/s:7MQTTNIO7MQTTQoSO10atMostOnceyA2CmF"></a>
-                    <a name="//apple_ref/swift/Element/atMostOnce" class="dashAnchor"></a>
-                    <a class="token" href="#/s:7MQTTNIO7MQTTQoSO10atMostOnceyA2CmF">atMostOnce</a>
+                    <a name="/s:So22tls_protocol_version_tV7MQTTNIOE11sslProtocolSo11SSLProtocolVvp"></a>
+                    <a name="//apple_ref/swift/Property/sslProtocol" class="dashAnchor"></a>
+                    <a class="token" href="#/s:So22tls_protocol_version_tV7MQTTNIOE11sslProtocolSo11SSLProtocolVvp">sslProtocol</a>
                     </code>
                   </div>
                   <div class="height-container">
@@ -169,68 +168,14 @@
                     <section class="section">
                       <div class="pointer"></div>
                       <div class="abstract">
-                        <p>fire and forget</p>
+                        <p>Undocumented</p>
 
                       </div>
                       <div class="declaration">
                         <h4>Declaration</h4>
                         <div class="language">
                           <p class="aside-title">Swift</p>
-                          <pre class="highlight swift"><code><span class="k">case</span> <span class="n">atMostOnce</span> <span class="o">=</span> <span class="mi">0</span></code></pre>
-
-                        </div>
-                      </div>
-                    </section>
-                  </div>
-                </li>
-                <li class="item">
-                  <div>
-                    <code>
-                    <a name="/s:7MQTTNIO7MQTTQoSO11atLeastOnceyA2CmF"></a>
-                    <a name="//apple_ref/swift/Element/atLeastOnce" class="dashAnchor"></a>
-                    <a class="token" href="#/s:7MQTTNIO7MQTTQoSO11atLeastOnceyA2CmF">atLeastOnce</a>
-                    </code>
-                  </div>
-                  <div class="height-container">
-                    <div class="pointer-container"></div>
-                    <section class="section">
-                      <div class="pointer"></div>
-                      <div class="abstract">
-                        <p>wait for PUBACK, if you don&rsquo;t receive it after a period of time retry sending</p>
-
-                      </div>
-                      <div class="declaration">
-                        <h4>Declaration</h4>
-                        <div class="language">
-                          <p class="aside-title">Swift</p>
-                          <pre class="highlight swift"><code><span class="k">case</span> <span class="n">atLeastOnce</span> <span class="o">=</span> <span class="mi">1</span></code></pre>
-
-                        </div>
-                      </div>
-                    </section>
-                  </div>
-                </li>
-                <li class="item">
-                  <div>
-                    <code>
-                    <a name="/s:7MQTTNIO7MQTTQoSO11exactlyOnceyA2CmF"></a>
-                    <a name="//apple_ref/swift/Element/exactlyOnce" class="dashAnchor"></a>
-                    <a class="token" href="#/s:7MQTTNIO7MQTTQoSO11exactlyOnceyA2CmF">exactlyOnce</a>
-                    </code>
-                  </div>
-                  <div class="height-container">
-                    <div class="pointer-container"></div>
-                    <section class="section">
-                      <div class="pointer"></div>
-                      <div class="abstract">
-                        <p>wait for PUBREC, send PUBREL and then wait for PUBCOMP</p>
-
-                      </div>
-                      <div class="declaration">
-                        <h4>Declaration</h4>
-                        <div class="language">
-                          <p class="aside-title">Swift</p>
-                          <pre class="highlight swift"><code><span class="k">case</span> <span class="n">exactlyOnce</span> <span class="o">=</span> <span class="mi">2</span></code></pre>
+                          <pre class="highlight swift"><code><span class="k">var</span> <span class="nv">sslProtocol</span><span class="p">:</span> <span class="kt">SSLProtocol</span> <span class="p">{</span> <span class="k">get</span> <span class="p">}</span></code></pre>
 
                         </div>
                       </div>

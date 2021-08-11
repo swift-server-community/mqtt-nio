@@ -1,6 +1,48 @@
 {
   "warnings": [
     {
+      "file": "/Users/adamfowler/Developer/macOS/lib/mqtt-nio/Sources/MQTTNIO/MQTTClient.swift",
+      "line": 381,
+      "symbol": "MQTTClient.processConnack(_:)",
+      "symbol_kind": "source.lang.swift.decl.function.method.instance",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/Users/adamfowler/Developer/macOS/lib/mqtt-nio/Sources/MQTTNIO/MQTTClient.swift",
+      "line": 429,
+      "symbol": "MQTTClient.processAuth(_:authWorkflow:on:)",
+      "symbol_kind": "source.lang.swift.decl.function.method.instance",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/Users/adamfowler/Developer/macOS/lib/mqtt-nio/Sources/MQTTNIO/MQTTClient.swift",
+      "line": 465,
+      "symbol": "MQTTClient.auth(packet:)",
+      "symbol_kind": "source.lang.swift.decl.function.method.instance",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/Users/adamfowler/Developer/macOS/lib/mqtt-nio/Sources/MQTTNIO/MQTTClient.swift",
+      "line": 474,
+      "symbol": "MQTTClient.reAuth(packet:)",
+      "symbol_kind": "source.lang.swift.decl.function.method.instance",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/Users/adamfowler/Developer/macOS/lib/mqtt-nio/Sources/MQTTNIO/MQTTClient.swift",
+      "line": 558,
+      "symbol": "MQTTClient.pubRel(packet:)",
+      "symbol_kind": "source.lang.swift.decl.function.method.instance",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/Users/adamfowler/Developer/macOS/lib/mqtt-nio/Sources/MQTTNIO/MQTTClient.swift",
+      "line": 628,
+      "symbol": "Logger.attachingClientIdentifier(_:)",
+      "symbol_kind": "source.lang.swift.decl.function.method.instance",
+      "warning": "undocumented"
+    },
+    {
       "file": "/Users/adamfowler/Developer/macOS/lib/mqtt-nio/Sources/MQTTNIO/MQTTConfiguration.swift",
       "line": 9,
       "symbol": "MQTTClient.Version.v3_1_1",
@@ -197,6 +239,13 @@
       "warning": "undocumented"
     },
     {
+      "file": "/Users/adamfowler/Developer/macOS/lib/mqtt-nio/Sources/MQTTNIO/MQTTPacket.swift",
+      "line": 34,
+      "symbol": "MQTTClient.Version.versionByte",
+      "symbol_kind": "source.lang.swift.decl.var.instance",
+      "warning": "undocumented"
+    },
+    {
       "file": "/Users/adamfowler/Developer/macOS/lib/mqtt-nio/Sources/MQTTNIO/MQTTProperties.swift",
       "line": 67,
       "symbol": "MQTTProperties.init()",
@@ -214,6 +263,335 @@
       "file": "/Users/adamfowler/Developer/macOS/lib/mqtt-nio/Sources/MQTTNIO/MQTTProperties.swift",
       "line": 75,
       "symbol": "MQTTProperties.append(_:)",
+      "symbol_kind": "source.lang.swift.decl.function.method.instance",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/Users/adamfowler/Developer/macOS/lib/mqtt-nio/Sources/MQTTNIO/MQTTProperties.swift",
+      "line": 103,
+      "symbol": "MQTTProperties.write(to:)",
+      "symbol_kind": "source.lang.swift.decl.function.method.instance",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/Users/adamfowler/Developer/macOS/lib/mqtt-nio/Sources/MQTTNIO/MQTTProperties.swift",
+      "line": 111,
+      "symbol": "MQTTProperties.read(from:)",
+      "symbol_kind": "source.lang.swift.decl.function.method.static",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/Users/adamfowler/Developer/macOS/lib/mqtt-nio/Sources/MQTTNIO/MQTTProperties.swift",
+      "line": 125,
+      "symbol": "MQTTProperties.packetSize",
+      "symbol_kind": "source.lang.swift.decl.var.instance",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/Users/adamfowler/Developer/macOS/lib/mqtt-nio/Sources/MQTTNIO/MQTTProperties.swift",
+      "line": 129,
+      "symbol": "MQTTProperties.PropertyId",
+      "symbol_kind": "source.lang.swift.decl.enum",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/Users/adamfowler/Developer/macOS/lib/mqtt-nio/Sources/MQTTNIO/MQTTProperties.swift",
+      "line": 130,
+      "symbol": "MQTTProperties.PropertyId.payloadFormat",
+      "symbol_kind": "source.lang.swift.decl.enumelement",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/Users/adamfowler/Developer/macOS/lib/mqtt-nio/Sources/MQTTNIO/MQTTProperties.swift",
+      "line": 131,
+      "symbol": "MQTTProperties.PropertyId.messageExpiry",
+      "symbol_kind": "source.lang.swift.decl.enumelement",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/Users/adamfowler/Developer/macOS/lib/mqtt-nio/Sources/MQTTNIO/MQTTProperties.swift",
+      "line": 132,
+      "symbol": "MQTTProperties.PropertyId.contentType",
+      "symbol_kind": "source.lang.swift.decl.enumelement",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/Users/adamfowler/Developer/macOS/lib/mqtt-nio/Sources/MQTTNIO/MQTTProperties.swift",
+      "line": 133,
+      "symbol": "MQTTProperties.PropertyId.responseTopic",
+      "symbol_kind": "source.lang.swift.decl.enumelement",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/Users/adamfowler/Developer/macOS/lib/mqtt-nio/Sources/MQTTNIO/MQTTProperties.swift",
+      "line": 134,
+      "symbol": "MQTTProperties.PropertyId.correlationData",
+      "symbol_kind": "source.lang.swift.decl.enumelement",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/Users/adamfowler/Developer/macOS/lib/mqtt-nio/Sources/MQTTNIO/MQTTProperties.swift",
+      "line": 135,
+      "symbol": "MQTTProperties.PropertyId.subscriptionIdentifier",
+      "symbol_kind": "source.lang.swift.decl.enumelement",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/Users/adamfowler/Developer/macOS/lib/mqtt-nio/Sources/MQTTNIO/MQTTProperties.swift",
+      "line": 136,
+      "symbol": "MQTTProperties.PropertyId.sessionExpiryInterval",
+      "symbol_kind": "source.lang.swift.decl.enumelement",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/Users/adamfowler/Developer/macOS/lib/mqtt-nio/Sources/MQTTNIO/MQTTProperties.swift",
+      "line": 137,
+      "symbol": "MQTTProperties.PropertyId.assignedClientIdentifier",
+      "symbol_kind": "source.lang.swift.decl.enumelement",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/Users/adamfowler/Developer/macOS/lib/mqtt-nio/Sources/MQTTNIO/MQTTProperties.swift",
+      "line": 138,
+      "symbol": "MQTTProperties.PropertyId.serverKeepAlive",
+      "symbol_kind": "source.lang.swift.decl.enumelement",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/Users/adamfowler/Developer/macOS/lib/mqtt-nio/Sources/MQTTNIO/MQTTProperties.swift",
+      "line": 139,
+      "symbol": "MQTTProperties.PropertyId.authenticationMethod",
+      "symbol_kind": "source.lang.swift.decl.enumelement",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/Users/adamfowler/Developer/macOS/lib/mqtt-nio/Sources/MQTTNIO/MQTTProperties.swift",
+      "line": 140,
+      "symbol": "MQTTProperties.PropertyId.authenticationData",
+      "symbol_kind": "source.lang.swift.decl.enumelement",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/Users/adamfowler/Developer/macOS/lib/mqtt-nio/Sources/MQTTNIO/MQTTProperties.swift",
+      "line": 141,
+      "symbol": "MQTTProperties.PropertyId.requestProblemInformation",
+      "symbol_kind": "source.lang.swift.decl.enumelement",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/Users/adamfowler/Developer/macOS/lib/mqtt-nio/Sources/MQTTNIO/MQTTProperties.swift",
+      "line": 142,
+      "symbol": "MQTTProperties.PropertyId.willDelayInterval",
+      "symbol_kind": "source.lang.swift.decl.enumelement",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/Users/adamfowler/Developer/macOS/lib/mqtt-nio/Sources/MQTTNIO/MQTTProperties.swift",
+      "line": 143,
+      "symbol": "MQTTProperties.PropertyId.requestResponseInformation",
+      "symbol_kind": "source.lang.swift.decl.enumelement",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/Users/adamfowler/Developer/macOS/lib/mqtt-nio/Sources/MQTTNIO/MQTTProperties.swift",
+      "line": 144,
+      "symbol": "MQTTProperties.PropertyId.responseInformation",
+      "symbol_kind": "source.lang.swift.decl.enumelement",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/Users/adamfowler/Developer/macOS/lib/mqtt-nio/Sources/MQTTNIO/MQTTProperties.swift",
+      "line": 145,
+      "symbol": "MQTTProperties.PropertyId.serverReference",
+      "symbol_kind": "source.lang.swift.decl.enumelement",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/Users/adamfowler/Developer/macOS/lib/mqtt-nio/Sources/MQTTNIO/MQTTProperties.swift",
+      "line": 146,
+      "symbol": "MQTTProperties.PropertyId.reasonString",
+      "symbol_kind": "source.lang.swift.decl.enumelement",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/Users/adamfowler/Developer/macOS/lib/mqtt-nio/Sources/MQTTNIO/MQTTProperties.swift",
+      "line": 147,
+      "symbol": "MQTTProperties.PropertyId.receiveMaximum",
+      "symbol_kind": "source.lang.swift.decl.enumelement",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/Users/adamfowler/Developer/macOS/lib/mqtt-nio/Sources/MQTTNIO/MQTTProperties.swift",
+      "line": 148,
+      "symbol": "MQTTProperties.PropertyId.topicAliasMaximum",
+      "symbol_kind": "source.lang.swift.decl.enumelement",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/Users/adamfowler/Developer/macOS/lib/mqtt-nio/Sources/MQTTNIO/MQTTProperties.swift",
+      "line": 149,
+      "symbol": "MQTTProperties.PropertyId.topicAlias",
+      "symbol_kind": "source.lang.swift.decl.enumelement",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/Users/adamfowler/Developer/macOS/lib/mqtt-nio/Sources/MQTTNIO/MQTTProperties.swift",
+      "line": 150,
+      "symbol": "MQTTProperties.PropertyId.maximumQoS",
+      "symbol_kind": "source.lang.swift.decl.enumelement",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/Users/adamfowler/Developer/macOS/lib/mqtt-nio/Sources/MQTTNIO/MQTTProperties.swift",
+      "line": 151,
+      "symbol": "MQTTProperties.PropertyId.retainAvailable",
+      "symbol_kind": "source.lang.swift.decl.enumelement",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/Users/adamfowler/Developer/macOS/lib/mqtt-nio/Sources/MQTTNIO/MQTTProperties.swift",
+      "line": 152,
+      "symbol": "MQTTProperties.PropertyId.userProperty",
+      "symbol_kind": "source.lang.swift.decl.enumelement",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/Users/adamfowler/Developer/macOS/lib/mqtt-nio/Sources/MQTTNIO/MQTTProperties.swift",
+      "line": 153,
+      "symbol": "MQTTProperties.PropertyId.maximumPacketSize",
+      "symbol_kind": "source.lang.swift.decl.enumelement",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/Users/adamfowler/Developer/macOS/lib/mqtt-nio/Sources/MQTTNIO/MQTTProperties.swift",
+      "line": 154,
+      "symbol": "MQTTProperties.PropertyId.wildcardSubscriptionAvailable",
+      "symbol_kind": "source.lang.swift.decl.enumelement",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/Users/adamfowler/Developer/macOS/lib/mqtt-nio/Sources/MQTTNIO/MQTTProperties.swift",
+      "line": 155,
+      "symbol": "MQTTProperties.PropertyId.subscriptionIdentifierAvailable",
+      "symbol_kind": "source.lang.swift.decl.enumelement",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/Users/adamfowler/Developer/macOS/lib/mqtt-nio/Sources/MQTTNIO/MQTTProperties.swift",
+      "line": 156,
+      "symbol": "MQTTProperties.PropertyId.sharedSubscriptionAvailable",
+      "symbol_kind": "source.lang.swift.decl.enumelement",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/Users/adamfowler/Developer/macOS/lib/mqtt-nio/Sources/MQTTNIO/MQTTProperties.swift",
+      "line": 159,
+      "symbol": "MQTTProperties.PropertyValue",
+      "symbol_kind": "source.lang.swift.decl.enum",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/Users/adamfowler/Developer/macOS/lib/mqtt-nio/Sources/MQTTNIO/MQTTProperties.swift",
+      "line": 160,
+      "symbol": "MQTTProperties.PropertyValue.byte(_:)",
+      "symbol_kind": "source.lang.swift.decl.enumelement",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/Users/adamfowler/Developer/macOS/lib/mqtt-nio/Sources/MQTTNIO/MQTTProperties.swift",
+      "line": 161,
+      "symbol": "MQTTProperties.PropertyValue.twoByteInteger(_:)",
+      "symbol_kind": "source.lang.swift.decl.enumelement",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/Users/adamfowler/Developer/macOS/lib/mqtt-nio/Sources/MQTTNIO/MQTTProperties.swift",
+      "line": 162,
+      "symbol": "MQTTProperties.PropertyValue.fourByteInteger(_:)",
+      "symbol_kind": "source.lang.swift.decl.enumelement",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/Users/adamfowler/Developer/macOS/lib/mqtt-nio/Sources/MQTTNIO/MQTTProperties.swift",
+      "line": 163,
+      "symbol": "MQTTProperties.PropertyValue.variableLengthInteger(_:)",
+      "symbol_kind": "source.lang.swift.decl.enumelement",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/Users/adamfowler/Developer/macOS/lib/mqtt-nio/Sources/MQTTNIO/MQTTProperties.swift",
+      "line": 164,
+      "symbol": "MQTTProperties.PropertyValue.string(_:)",
+      "symbol_kind": "source.lang.swift.decl.enumelement",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/Users/adamfowler/Developer/macOS/lib/mqtt-nio/Sources/MQTTNIO/MQTTProperties.swift",
+      "line": 165,
+      "symbol": "MQTTProperties.PropertyValue.stringPair(_:_:)",
+      "symbol_kind": "source.lang.swift.decl.enumelement",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/Users/adamfowler/Developer/macOS/lib/mqtt-nio/Sources/MQTTNIO/MQTTProperties.swift",
+      "line": 166,
+      "symbol": "MQTTProperties.PropertyValue.binaryData(_:)",
+      "symbol_kind": "source.lang.swift.decl.enumelement",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/Users/adamfowler/Developer/macOS/lib/mqtt-nio/Sources/MQTTNIO/MQTTProperties.swift",
+      "line": 210,
+      "symbol": "MQTTProperties.Property.value",
+      "symbol_kind": "source.lang.swift.decl.var.instance",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/Users/adamfowler/Developer/macOS/lib/mqtt-nio/Sources/MQTTNIO/MQTTProperties.swift",
+      "line": 242,
+      "symbol": "MQTTProperties.Property.id",
+      "symbol_kind": "source.lang.swift.decl.var.instance",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/Users/adamfowler/Developer/macOS/lib/mqtt-nio/Sources/MQTTNIO/MQTTProperties.swift",
+      "line": 274,
+      "symbol": "MQTTProperties.Property.write(to:)",
+      "symbol_kind": "source.lang.swift.decl.function.method.instance",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/Users/adamfowler/Developer/macOS/lib/mqtt-nio/Sources/MQTTNIO/MQTTProperties.swift",
+      "line": 279,
+      "symbol": "MQTTProperties.Property.read(from:)",
+      "symbol_kind": "source.lang.swift.decl.function.method.static",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/Users/adamfowler/Developer/macOS/lib/mqtt-nio/Sources/MQTTNIO/MQTTProperties.swift",
+      "line": 369,
+      "symbol": "MQTTProperties.Property.packetSize",
+      "symbol_kind": "source.lang.swift.decl.var.instance",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/Users/adamfowler/Developer/macOS/lib/mqtt-nio/Sources/MQTTNIO/TSTLSConfiguration.swift",
+      "line": 12,
+      "symbol": "tls_protocol_version_t.sslProtocol",
+      "symbol_kind": "source.lang.swift.decl.var.instance",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/Users/adamfowler/Developer/macOS/lib/mqtt-nio/Sources/MQTTNIO/TSTLSConfiguration.swift",
+      "line": 82,
+      "symbol": "TSTLSConfiguration.getNWProtocolTLSOptions()",
+      "symbol_kind": "source.lang.swift.decl.function.method.instance",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/Users/adamfowler/Developer/macOS/lib/mqtt-nio/Sources/MQTTNIO/WebSocketHandler.swift",
+      "line": 220,
+      "symbol": "WebSocketErrorCode.init(_:)",
       "symbol_kind": "source.lang.swift.decl.function.method.instance",
       "warning": "undocumented"
     }

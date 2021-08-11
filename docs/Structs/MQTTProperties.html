@@ -8,22 +8,14 @@
     <script src="../js/jquery.min.js" defer></script>
     <script src="../js/jazzy.js" defer></script>
     
-    <script src="../js/lunr.min.js" defer></script>
-    <script src="../js/typeahead.jquery.js" defer></script>
-    <script src="../js/jazzy.search.js" defer></script>
   </head>
   <body>
     <a name="//apple_ref/swift/Struct/MQTTProperties" class="dashAnchor"></a>
     <a title="MQTTProperties Structure Reference"></a>
     <header>
       <div class="content-wrapper">
-        <p><a href="../index.html"> 2.0.0 Docs</a> (87% documented)</p>
+        <p><a href="../index.html"> 2.1.0 Docs</a> (73% documented)</p>
         <p class="header-right"><a href="https://github.com/adam-fowler/mqtt-nio"><img src="../img/gh.png"/>View on GitHub</a></p>
-        <p class="header-right">
-          <form role="search" action="../search.json">
-            <input type="text" placeholder="Search documentation" data-typeahead>
-          </form>
-        </p>
       </div>
     </header>
     <div class="content-wrapper">
@@ -80,6 +72,20 @@
             </ul>
           </li>
           <li class="nav-group-name">
+            <a href="../Extensions.html">Extensions</a>
+            <ul class="nav-group-tasks">
+              <li class="nav-group-task">
+                <a href="../Extensions/Logger.html">Logger</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Extensions/WebSocketErrorCode.html">WebSocketErrorCode</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Extensions/tls_protocol_version_t.html">tls_protocol_version_t</a>
+              </li>
+            </ul>
+          </li>
+          <li class="nav-group-name">
             <a href="../Structs.html">Structures</a>
             <ul class="nav-group-tasks">
               <li class="nav-group-task">
@@ -99,6 +105,12 @@
               </li>
               <li class="nav-group-task">
                 <a href="../Structs/MQTTProperties/Property.html">– Property</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Structs/MQTTProperties/PropertyId.html">– PropertyId</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Structs/MQTTProperties/PropertyValue.html">– PropertyValue</a>
               </li>
               <li class="nav-group-task">
                 <a href="../Structs/MQTTPublishInfo.html">MQTTPublishInfo</a>
@@ -134,10 +146,9 @@
             <h1>MQTTProperties</h1>
               <div class="declaration">
                 <div class="language">
-                  
                   <pre class="highlight swift"><code><span class="kd">public</span> <span class="kd">struct</span> <span class="kt">MQTTProperties</span></code></pre>
 <pre class="highlight swift"><code><span class="kd">extension</span> <span class="kt">MQTTProperties</span><span class="p">:</span> <span class="kt">ExpressibleByArrayLiteral</span></code></pre>
-<pre class="highlight swift"><code><span class="kd">extension</span> <span class="kt">MQTTProperties</span><span class="p">:</span> <span class="kt">Sequence</span></code></pre>
+<pre class="highlight swift"><code><span class="kd">extension</span> <span class="kt">MQTTProperties</span><span class="p">:</span> <span class="kt">Collection</span></code></pre>
 
                 </div>
               </div>
@@ -207,7 +218,7 @@
                     <code>
                     <a name="/s:7MQTTNIO14MQTTPropertiesVyACSayAC8PropertyOGcfc"></a>
                     <a name="//apple_ref/swift/Method/init(_:)" class="dashAnchor"></a>
-                    <a class="token" href="#/s:7MQTTNIO14MQTTPropertiesVyACSayAC8PropertyOGcfc">init(_:<wbr>)</a>
+                    <a class="token" href="#/s:7MQTTNIO14MQTTPropertiesVyACSayAC8PropertyOGcfc">init(_:)</a>
                     </code>
                   </div>
                   <div class="height-container">
@@ -234,7 +245,7 @@
                     <code>
                     <a name="/s:7MQTTNIO14MQTTPropertiesV6appendyyAC8PropertyOF"></a>
                     <a name="//apple_ref/swift/Method/append(_:)" class="dashAnchor"></a>
-                    <a class="token" href="#/s:7MQTTNIO14MQTTPropertiesV6appendyyAC8PropertyOF">append(_:<wbr>)</a>
+                    <a class="token" href="#/s:7MQTTNIO14MQTTPropertiesV6appendyyAC8PropertyOF">append(_:)</a>
                     </code>
                   </div>
                   <div class="height-container">
@@ -261,7 +272,7 @@
                     <code>
                     <a name="/s:s25ExpressibleByArrayLiteralP05arrayD0x0cD7ElementQzd_tcfc"></a>
                     <a name="//apple_ref/swift/Method/init(arrayLiteral:)" class="dashAnchor"></a>
-                    <a class="token" href="#/s:s25ExpressibleByArrayLiteralP05arrayD0x0cD7ElementQzd_tcfc">init(arrayLiteral:<wbr>)</a>
+                    <a class="token" href="#/s:s25ExpressibleByArrayLiteralP05arrayD0x0cD7ElementQzd_tcfc">init(arrayLiteral:)</a>
                     </code>
                   </div>
                   <div class="height-container">
@@ -285,9 +296,9 @@
                 <li class="item">
                   <div>
                     <code>
-                    <a name="/s:ST12makeIterator0B0QzyF"></a>
-                    <a name="//apple_ref/swift/Method/makeIterator()" class="dashAnchor"></a>
-                    <a class="token" href="#/s:ST12makeIterator0B0QzyF">makeIterator()</a>
+                    <a name="/s:Sl5IndexQa"></a>
+                    <a name="//apple_ref/swift/Alias/Index" class="dashAnchor"></a>
+                    <a class="token" href="#/s:Sl5IndexQa">Index</a>
                     </code>
                   </div>
                   <div class="height-container">
@@ -301,7 +312,248 @@
                         <h4>Declaration</h4>
                         <div class="language">
                           <p class="aside-title">Swift</p>
-                          <pre class="highlight swift"><code><span class="kd">public</span>  <span class="kd">func</span> <span class="nf">makeIterator</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="kt">Array</span><span class="o">&lt;</span><span class="kt"><a href="../Structs/MQTTProperties/Property.html">Property</a></span><span class="o">&gt;.</span><span class="kt">Iterator</span></code></pre>
+                          <pre class="highlight swift"><code><span class="kd">public</span> <span class="kd">typealias</span> <span class="kt">Index</span> <span class="o">=</span> <span class="kt">Array</span><span class="o">&lt;</span><span class="kt"><a href="../Structs/MQTTProperties/Property.html">Property</a></span><span class="o">&gt;.</span><span class="kt">Index</span></code></pre>
+
+                        </div>
+                      </div>
+                    </section>
+                  </div>
+                </li>
+                <li class="item">
+                  <div>
+                    <code>
+                    <a name="/s:Sl10startIndex0B0Qzvp"></a>
+                    <a name="//apple_ref/swift/Property/startIndex" class="dashAnchor"></a>
+                    <a class="token" href="#/s:Sl10startIndex0B0Qzvp">startIndex</a>
+                    </code>
+                  </div>
+                  <div class="height-container">
+                    <div class="pointer-container"></div>
+                    <section class="section">
+                      <div class="pointer"></div>
+                      <div class="abstract">
+                        
+                      </div>
+                      <div class="declaration">
+                        <h4>Declaration</h4>
+                        <div class="language">
+                          <p class="aside-title">Swift</p>
+                          <pre class="highlight swift"><code><span class="kd">public</span> <span class="k">var</span> <span class="nv">startIndex</span><span class="p">:</span> <span class="kt"><a href="../Structs/MQTTProperties.html#/s:Sl5IndexQa">Index</a></span> <span class="p">{</span> <span class="k">get</span> <span class="p">}</span></code></pre>
+
+                        </div>
+                      </div>
+                    </section>
+                  </div>
+                </li>
+                <li class="item">
+                  <div>
+                    <code>
+                    <a name="/s:Sl8endIndex0B0Qzvp"></a>
+                    <a name="//apple_ref/swift/Property/endIndex" class="dashAnchor"></a>
+                    <a class="token" href="#/s:Sl8endIndex0B0Qzvp">endIndex</a>
+                    </code>
+                  </div>
+                  <div class="height-container">
+                    <div class="pointer-container"></div>
+                    <section class="section">
+                      <div class="pointer"></div>
+                      <div class="abstract">
+                        
+                      </div>
+                      <div class="declaration">
+                        <h4>Declaration</h4>
+                        <div class="language">
+                          <p class="aside-title">Swift</p>
+                          <pre class="highlight swift"><code><span class="kd">public</span> <span class="k">var</span> <span class="nv">endIndex</span><span class="p">:</span> <span class="kt"><a href="../Structs/MQTTProperties.html#/s:Sl5IndexQa">Index</a></span> <span class="p">{</span> <span class="k">get</span> <span class="p">}</span></code></pre>
+
+                        </div>
+                      </div>
+                    </section>
+                  </div>
+                </li>
+                <li class="item">
+                  <div>
+                    <code>
+                    <a name="/s:Sly7ElementQz5IndexQzcip"></a>
+                    <a name="//apple_ref/swift/Method/subscript(_:)" class="dashAnchor"></a>
+                    <a class="token" href="#/s:Sly7ElementQz5IndexQzcip">subscript(_:)</a>
+                    </code>
+                  </div>
+                  <div class="height-container">
+                    <div class="pointer-container"></div>
+                    <section class="section">
+                      <div class="pointer"></div>
+                      <div class="abstract">
+                        
+                      </div>
+                      <div class="declaration">
+                        <h4>Declaration</h4>
+                        <div class="language">
+                          <p class="aside-title">Swift</p>
+                          <pre class="highlight swift"><code><span class="kd">public</span> <span class="nf">subscript</span><span class="p">(</span><span class="nv">index</span><span class="p">:</span> <span class="kt"><a href="../Structs/MQTTProperties.html#/s:Sl5IndexQa">Index</a></span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kt"><a href="../Structs/MQTTProperties/Property.html">Property</a></span> <span class="p">{</span> <span class="k">get</span> <span class="p">}</span></code></pre>
+
+                        </div>
+                      </div>
+                    </section>
+                  </div>
+                </li>
+                <li class="item">
+                  <div>
+                    <code>
+                    <a name="/s:Sl5index5after5IndexQzAD_tF"></a>
+                    <a name="//apple_ref/swift/Method/index(after:)" class="dashAnchor"></a>
+                    <a class="token" href="#/s:Sl5index5after5IndexQzAD_tF">index(after:)</a>
+                    </code>
+                  </div>
+                  <div class="height-container">
+                    <div class="pointer-container"></div>
+                    <section class="section">
+                      <div class="pointer"></div>
+                      <div class="abstract">
+                        
+                      </div>
+                      <div class="declaration">
+                        <h4>Declaration</h4>
+                        <div class="language">
+                          <p class="aside-title">Swift</p>
+                          <pre class="highlight swift"><code><span class="kd">public</span> <span class="kd">func</span> <span class="nf">index</span><span class="p">(</span><span class="n">after</span> <span class="nv">index</span><span class="p">:</span> <span class="kt"><a href="../Structs/MQTTProperties.html#/s:Sl5IndexQa">Index</a></span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kt"><a href="../Structs/MQTTProperties.html#/s:Sl5IndexQa">Index</a></span></code></pre>
+
+                        </div>
+                      </div>
+                    </section>
+                  </div>
+                </li>
+                <li class="item">
+                  <div>
+                    <code>
+                    <a name="/s:7MQTTNIO14MQTTPropertiesV5write2toy3NIO10ByteBufferVz_tKF"></a>
+                    <a name="//apple_ref/swift/Method/write(to:)" class="dashAnchor"></a>
+                    <a class="token" href="#/s:7MQTTNIO14MQTTPropertiesV5write2toy3NIO10ByteBufferVz_tKF">write(to:)</a>
+                    </code>
+                  </div>
+                  <div class="height-container">
+                    <div class="pointer-container"></div>
+                    <section class="section">
+                      <div class="pointer"></div>
+                      <div class="abstract">
+                        <p>Undocumented</p>
+
+                      </div>
+                      <div class="declaration">
+                        <h4>Declaration</h4>
+                        <div class="language">
+                          <p class="aside-title">Swift</p>
+                          <pre class="highlight swift"><code><span class="kd">func</span> <span class="nf">write</span><span class="p">(</span><span class="n">to</span> <span class="nv">byteBuffer</span><span class="p">:</span> <span class="k">inout</span> <span class="kt">ByteBuffer</span><span class="p">)</span> <span class="k">throws</span></code></pre>
+
+                        </div>
+                      </div>
+                    </section>
+                  </div>
+                </li>
+                <li class="item">
+                  <div>
+                    <code>
+                    <a name="/s:7MQTTNIO14MQTTPropertiesV4read4fromAC3NIO10ByteBufferVz_tKFZ"></a>
+                    <a name="//apple_ref/swift/Method/read(from:)" class="dashAnchor"></a>
+                    <a class="token" href="#/s:7MQTTNIO14MQTTPropertiesV4read4fromAC3NIO10ByteBufferVz_tKFZ">read(from:)</a>
+                    </code>
+                  </div>
+                  <div class="height-container">
+                    <div class="pointer-container"></div>
+                    <section class="section">
+                      <div class="pointer"></div>
+                      <div class="abstract">
+                        <p>Undocumented</p>
+
+                      </div>
+                      <div class="declaration">
+                        <h4>Declaration</h4>
+                        <div class="language">
+                          <p class="aside-title">Swift</p>
+                          <pre class="highlight swift"><code><span class="kd">static</span> <span class="kd">func</span> <span class="nf">read</span><span class="p">(</span><span class="n">from</span> <span class="nv">byteBuffer</span><span class="p">:</span> <span class="k">inout</span> <span class="kt">ByteBuffer</span><span class="p">)</span> <span class="k">throws</span> <span class="o">-&gt;</span> <span class="kt">MQTTProperties</span></code></pre>
+
+                        </div>
+                      </div>
+                    </section>
+                  </div>
+                </li>
+                <li class="item">
+                  <div>
+                    <code>
+                    <a name="/s:7MQTTNIO14MQTTPropertiesV10packetSizeSivp"></a>
+                    <a name="//apple_ref/swift/Property/packetSize" class="dashAnchor"></a>
+                    <a class="token" href="#/s:7MQTTNIO14MQTTPropertiesV10packetSizeSivp">packetSize</a>
+                    </code>
+                  </div>
+                  <div class="height-container">
+                    <div class="pointer-container"></div>
+                    <section class="section">
+                      <div class="pointer"></div>
+                      <div class="abstract">
+                        <p>Undocumented</p>
+
+                      </div>
+                      <div class="declaration">
+                        <h4>Declaration</h4>
+                        <div class="language">
+                          <p class="aside-title">Swift</p>
+                          <pre class="highlight swift"><code><span class="k">var</span> <span class="nv">packetSize</span><span class="p">:</span> <span class="kt">Int</span> <span class="p">{</span> <span class="k">get</span> <span class="p">}</span></code></pre>
+
+                        </div>
+                      </div>
+                    </section>
+                  </div>
+                </li>
+                <li class="item">
+                  <div>
+                    <code>
+                    <a name="/s:7MQTTNIO14MQTTPropertiesV10PropertyIdO"></a>
+                    <a name="//apple_ref/swift/Enum/PropertyId" class="dashAnchor"></a>
+                    <a class="token" href="#/s:7MQTTNIO14MQTTPropertiesV10PropertyIdO">PropertyId</a>
+                    </code>
+                  </div>
+                  <div class="height-container">
+                    <div class="pointer-container"></div>
+                    <section class="section">
+                      <div class="pointer"></div>
+                      <div class="abstract">
+                        <p>Undocumented</p>
+
+                        <a href="../Structs/MQTTProperties/PropertyId.html" class="slightly-smaller">See more</a>
+                      </div>
+                      <div class="declaration">
+                        <h4>Declaration</h4>
+                        <div class="language">
+                          <p class="aside-title">Swift</p>
+                          <pre class="highlight swift"><code><span class="kd">enum</span> <span class="kt">PropertyId</span> <span class="p">:</span> <span class="kt">UInt8</span></code></pre>
+
+                        </div>
+                      </div>
+                    </section>
+                  </div>
+                </li>
+                <li class="item">
+                  <div>
+                    <code>
+                    <a name="/s:7MQTTNIO14MQTTPropertiesV13PropertyValueO"></a>
+                    <a name="//apple_ref/swift/Enum/PropertyValue" class="dashAnchor"></a>
+                    <a class="token" href="#/s:7MQTTNIO14MQTTPropertiesV13PropertyValueO">PropertyValue</a>
+                    </code>
+                  </div>
+                  <div class="height-container">
+                    <div class="pointer-container"></div>
+                    <section class="section">
+                      <div class="pointer"></div>
+                      <div class="abstract">
+                        <p>Undocumented</p>
+
+                        <a href="../Structs/MQTTProperties/PropertyValue.html" class="slightly-smaller">See more</a>
+                      </div>
+                      <div class="declaration">
+                        <h4>Declaration</h4>
+                        <div class="language">
+                          <p class="aside-title">Swift</p>
+                          <pre class="highlight swift"><code><span class="kd">enum</span> <span class="kt">PropertyValue</span> <span class="p">:</span> <span class="kt">Equatable</span></code></pre>
 
                         </div>
                       </div>
@@ -313,8 +565,8 @@
           </section>
         </section>
         <section id="footer">
-          <p>&copy; 2021 <a class="link" href="https://github.com/adam-fowler" target="_blank" rel="external">Adam Fowler</a>. All rights reserved. (Last updated: 2021-07-01)</p>
-          <p>Generated by <a class="link" href="https://github.com/realm/jazzy" target="_blank" rel="external">jazzy ♪♫ v0.13.6</a>, a <a class="link" href="https://realm.io" target="_blank" rel="external">Realm</a> project.</p>
+          <p>&copy; 2021 <a class="link" href="https://github.com/adam-fowler" target="_blank" rel="external">Adam Fowler</a>. All rights reserved. (Last updated: 2021-08-11)</p>
+          <p>Generated by <a class="link" href="https://github.com/realm/jazzy" target="_blank" rel="external">jazzy ♪♫ v0.13.1</a>, a <a class="link" href="https://realm.io" target="_blank" rel="external">Realm</a> project.</p>
         </section>
       </article>
     </div>

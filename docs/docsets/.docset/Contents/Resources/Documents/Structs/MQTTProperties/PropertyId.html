@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
-    <title>Property Enumeration Reference</title>
+    <title>PropertyId Enumeration Reference</title>
     <link rel="stylesheet" type="text/css" href="../../css/jazzy.css" />
     <link rel="stylesheet" type="text/css" href="../../css/highlight.css" />
     <meta charset='utf-8'>
@@ -10,8 +10,8 @@
     
   </head>
   <body>
-    <a name="//apple_ref/swift/Enum/Property" class="dashAnchor"></a>
-    <a title="Property Enumeration Reference"></a>
+    <a name="//apple_ref/swift/Enum/PropertyId" class="dashAnchor"></a>
+    <a title="PropertyId Enumeration Reference"></a>
     <header>
       <div class="content-wrapper">
         <p><a href="../../index.html"> 2.1.0 Docs</a> (73% documented)</p>
@@ -22,7 +22,7 @@
       <p id="breadcrumbs">
         <a href="../../index.html"> Reference</a>
         <img id="carat" src="../../img/carat.png" />
-        Property Enumeration Reference
+        PropertyId Enumeration Reference
       </p>
     </div>
     <div class="content-wrapper">
@@ -143,14 +143,14 @@
       <article class="main-content">
         <section>
           <section class="section">
-            <h1>Property</h1>
+            <h1>PropertyId</h1>
               <div class="declaration">
                 <div class="language">
-                  <pre class="highlight swift"><code><span class="kd">public</span> <span class="kd">enum</span> <span class="kt">Property</span> <span class="p">:</span> <span class="kt">Equatable</span></code></pre>
+                  <pre class="highlight swift"><code><span class="kd">enum</span> <span class="kt">PropertyId</span> <span class="p">:</span> <span class="kt">UInt8</span></code></pre>
 
                 </div>
               </div>
-            <p>MQTT Property</p>
+            <p>Undocumented</p>
 
           </section>
           <section class="section task-group-section">
@@ -159,742 +159,9 @@
                 <li class="item">
                   <div>
                     <code>
-                    <a name="/s:7MQTTNIO14MQTTPropertiesV8PropertyO13payloadFormatyAEs5UInt8VcAEmF"></a>
-                    <a name="//apple_ref/swift/Element/payloadFormat(_:)" class="dashAnchor"></a>
-                    <a class="token" href="#/s:7MQTTNIO14MQTTPropertiesV8PropertyO13payloadFormatyAEs5UInt8VcAEmF">payloadFormat(_:)</a>
-                    </code>
-                  </div>
-                  <div class="height-container">
-                    <div class="pointer-container"></div>
-                    <section class="section">
-                      <div class="pointer"></div>
-                      <div class="abstract">
-                        <p>Payload format: 0 = bytes, 1 = UTF8 string (available for PUBLISH)</p>
-
-                      </div>
-                      <div class="declaration">
-                        <h4>Declaration</h4>
-                        <div class="language">
-                          <p class="aside-title">Swift</p>
-                          <pre class="highlight swift"><code><span class="k">case</span> <span class="nf">payloadFormat</span><span class="p">(</span><span class="kt">UInt8</span><span class="p">)</span></code></pre>
-
-                        </div>
-                      </div>
-                    </section>
-                  </div>
-                </li>
-                <li class="item">
-                  <div>
-                    <code>
-                    <a name="/s:7MQTTNIO14MQTTPropertiesV8PropertyO13messageExpiryyAEs6UInt32VcAEmF"></a>
-                    <a name="//apple_ref/swift/Element/messageExpiry(_:)" class="dashAnchor"></a>
-                    <a class="token" href="#/s:7MQTTNIO14MQTTPropertiesV8PropertyO13messageExpiryyAEs6UInt32VcAEmF">messageExpiry(_:)</a>
-                    </code>
-                  </div>
-                  <div class="height-container">
-                    <div class="pointer-container"></div>
-                    <section class="section">
-                      <div class="pointer"></div>
-                      <div class="abstract">
-                        <p>Message expiry indicates the lifetime of the message (available for PUBLISH)</p>
-
-                      </div>
-                      <div class="declaration">
-                        <h4>Declaration</h4>
-                        <div class="language">
-                          <p class="aside-title">Swift</p>
-                          <pre class="highlight swift"><code><span class="k">case</span> <span class="nf">messageExpiry</span><span class="p">(</span><span class="kt">UInt32</span><span class="p">)</span></code></pre>
-
-                        </div>
-                      </div>
-                    </section>
-                  </div>
-                </li>
-                <li class="item">
-                  <div>
-                    <code>
-                    <a name="/s:7MQTTNIO14MQTTPropertiesV8PropertyO11contentTypeyAESScAEmF"></a>
-                    <a name="//apple_ref/swift/Element/contentType(_:)" class="dashAnchor"></a>
-                    <a class="token" href="#/s:7MQTTNIO14MQTTPropertiesV8PropertyO11contentTypeyAESScAEmF">contentType(_:)</a>
-                    </code>
-                  </div>
-                  <div class="height-container">
-                    <div class="pointer-container"></div>
-                    <section class="section">
-                      <div class="pointer"></div>
-                      <div class="abstract">
-                        <p>String describing the content of the message eg &ldquo;application/json&rdquo; (available for PUBLISH)</p>
-
-                      </div>
-                      <div class="declaration">
-                        <h4>Declaration</h4>
-                        <div class="language">
-                          <p class="aside-title">Swift</p>
-                          <pre class="highlight swift"><code><span class="k">case</span> <span class="nf">contentType</span><span class="p">(</span><span class="kt">String</span><span class="p">)</span></code></pre>
-
-                        </div>
-                      </div>
-                    </section>
-                  </div>
-                </li>
-                <li class="item">
-                  <div>
-                    <code>
-                    <a name="/s:7MQTTNIO14MQTTPropertiesV8PropertyO13responseTopicyAESScAEmF"></a>
-                    <a name="//apple_ref/swift/Element/responseTopic(_:)" class="dashAnchor"></a>
-                    <a class="token" href="#/s:7MQTTNIO14MQTTPropertiesV8PropertyO13responseTopicyAESScAEmF">responseTopic(_:)</a>
-                    </code>
-                  </div>
-                  <div class="height-container">
-                    <div class="pointer-container"></div>
-                    <section class="section">
-                      <div class="pointer"></div>
-                      <div class="abstract">
-                        <p>Response topic used in request/response interactions (available for PUBLISH)</p>
-
-                      </div>
-                      <div class="declaration">
-                        <h4>Declaration</h4>
-                        <div class="language">
-                          <p class="aside-title">Swift</p>
-                          <pre class="highlight swift"><code><span class="k">case</span> <span class="nf">responseTopic</span><span class="p">(</span><span class="kt">String</span><span class="p">)</span></code></pre>
-
-                        </div>
-                      </div>
-                    </section>
-                  </div>
-                </li>
-                <li class="item">
-                  <div>
-                    <code>
-                    <a name="/s:7MQTTNIO14MQTTPropertiesV8PropertyO15correlationDatayAE3NIO10ByteBufferVcAEmF"></a>
-                    <a name="//apple_ref/swift/Element/correlationData(_:)" class="dashAnchor"></a>
-                    <a class="token" href="#/s:7MQTTNIO14MQTTPropertiesV8PropertyO15correlationDatayAE3NIO10ByteBufferVcAEmF">correlationData(_:)</a>
-                    </code>
-                  </div>
-                  <div class="height-container">
-                    <div class="pointer-container"></div>
-                    <section class="section">
-                      <div class="pointer"></div>
-                      <div class="abstract">
-                        <p>Correlation data used to id a request/response in request/response interactions (available for PUBLISH)</p>
-
-                      </div>
-                      <div class="declaration">
-                        <h4>Declaration</h4>
-                        <div class="language">
-                          <p class="aside-title">Swift</p>
-                          <pre class="highlight swift"><code><span class="k">case</span> <span class="nf">correlationData</span><span class="p">(</span><span class="kt">ByteBuffer</span><span class="p">)</span></code></pre>
-
-                        </div>
-                      </div>
-                    </section>
-                  </div>
-                </li>
-                <li class="item">
-                  <div>
-                    <code>
-                    <a name="/s:7MQTTNIO14MQTTPropertiesV8PropertyO22subscriptionIdentifieryAESucAEmF"></a>
-                    <a name="//apple_ref/swift/Element/subscriptionIdentifier(_:)" class="dashAnchor"></a>
-                    <a class="token" href="#/s:7MQTTNIO14MQTTPropertiesV8PropertyO22subscriptionIdentifieryAESucAEmF">subscriptionIdentifier(_:)</a>
-                    </code>
-                  </div>
-                  <div class="height-container">
-                    <div class="pointer-container"></div>
-                    <section class="section">
-                      <div class="pointer"></div>
-                      <div class="abstract">
-                        <p>Subscription identifier set in SUBSCRIBE packet and included in related PUBLISH packet
-(available for PUBLISH, SUBSCRIBE)</p>
-
-                      </div>
-                      <div class="declaration">
-                        <h4>Declaration</h4>
-                        <div class="language">
-                          <p class="aside-title">Swift</p>
-                          <pre class="highlight swift"><code><span class="k">case</span> <span class="nf">subscriptionIdentifier</span><span class="p">(</span><span class="kt">UInt</span><span class="p">)</span></code></pre>
-
-                        </div>
-                      </div>
-                    </section>
-                  </div>
-                </li>
-                <li class="item">
-                  <div>
-                    <code>
-                    <a name="/s:7MQTTNIO14MQTTPropertiesV8PropertyO21sessionExpiryIntervalyAEs6UInt32VcAEmF"></a>
-                    <a name="//apple_ref/swift/Element/sessionExpiryInterval(_:)" class="dashAnchor"></a>
-                    <a class="token" href="#/s:7MQTTNIO14MQTTPropertiesV8PropertyO21sessionExpiryIntervalyAEs6UInt32VcAEmF">sessionExpiryInterval(_:)</a>
-                    </code>
-                  </div>
-                  <div class="height-container">
-                    <div class="pointer-container"></div>
-                    <section class="section">
-                      <div class="pointer"></div>
-                      <div class="abstract">
-                        <p>Interval before session expires (available for CONNECT, CONNACK, DISCONNECT)</p>
-
-                      </div>
-                      <div class="declaration">
-                        <h4>Declaration</h4>
-                        <div class="language">
-                          <p class="aside-title">Swift</p>
-                          <pre class="highlight swift"><code><span class="k">case</span> <span class="nf">sessionExpiryInterval</span><span class="p">(</span><span class="kt">UInt32</span><span class="p">)</span></code></pre>
-
-                        </div>
-                      </div>
-                    </section>
-                  </div>
-                </li>
-                <li class="item">
-                  <div>
-                    <code>
-                    <a name="/s:7MQTTNIO14MQTTPropertiesV8PropertyO24assignedClientIdentifieryAESScAEmF"></a>
-                    <a name="//apple_ref/swift/Element/assignedClientIdentifier(_:)" class="dashAnchor"></a>
-                    <a class="token" href="#/s:7MQTTNIO14MQTTPropertiesV8PropertyO24assignedClientIdentifieryAESScAEmF">assignedClientIdentifier(_:)</a>
-                    </code>
-                  </div>
-                  <div class="height-container">
-                    <div class="pointer-container"></div>
-                    <section class="section">
-                      <div class="pointer"></div>
-                      <div class="abstract">
-                        <p>Client identifier assigned to client if they didn&rsquo;t provide one (available for CONNACK)</p>
-
-                      </div>
-                      <div class="declaration">
-                        <h4>Declaration</h4>
-                        <div class="language">
-                          <p class="aside-title">Swift</p>
-                          <pre class="highlight swift"><code><span class="k">case</span> <span class="nf">assignedClientIdentifier</span><span class="p">(</span><span class="kt">String</span><span class="p">)</span></code></pre>
-
-                        </div>
-                      </div>
-                    </section>
-                  </div>
-                </li>
-                <li class="item">
-                  <div>
-                    <code>
-                    <a name="/s:7MQTTNIO14MQTTPropertiesV8PropertyO15serverKeepAliveyAEs6UInt16VcAEmF"></a>
-                    <a name="//apple_ref/swift/Element/serverKeepAlive(_:)" class="dashAnchor"></a>
-                    <a class="token" href="#/s:7MQTTNIO14MQTTPropertiesV8PropertyO15serverKeepAliveyAEs6UInt16VcAEmF">serverKeepAlive(_:)</a>
-                    </code>
-                  </div>
-                  <div class="height-container">
-                    <div class="pointer-container"></div>
-                    <section class="section">
-                      <div class="pointer"></div>
-                      <div class="abstract">
-                        <p>Indication to client on how long server will keep connection without activity (available for CONNACK)</p>
-
-                      </div>
-                      <div class="declaration">
-                        <h4>Declaration</h4>
-                        <div class="language">
-                          <p class="aside-title">Swift</p>
-                          <pre class="highlight swift"><code><span class="k">case</span> <span class="nf">serverKeepAlive</span><span class="p">(</span><span class="kt">UInt16</span><span class="p">)</span></code></pre>
-
-                        </div>
-                      </div>
-                    </section>
-                  </div>
-                </li>
-                <li class="item">
-                  <div>
-                    <code>
-                    <a name="/s:7MQTTNIO14MQTTPropertiesV8PropertyO20authenticationMethodyAESScAEmF"></a>
-                    <a name="//apple_ref/swift/Element/authenticationMethod(_:)" class="dashAnchor"></a>
-                    <a class="token" href="#/s:7MQTTNIO14MQTTPropertiesV8PropertyO20authenticationMethodyAESScAEmF">authenticationMethod(_:)</a>
-                    </code>
-                  </div>
-                  <div class="height-container">
-                    <div class="pointer-container"></div>
-                    <section class="section">
-                      <div class="pointer"></div>
-                      <div class="abstract">
-                        <p>String indicating the authentication method to use (available for CONNECT, CONNACK, AUTH)</p>
-
-                      </div>
-                      <div class="declaration">
-                        <h4>Declaration</h4>
-                        <div class="language">
-                          <p class="aside-title">Swift</p>
-                          <pre class="highlight swift"><code><span class="k">case</span> <span class="nf">authenticationMethod</span><span class="p">(</span><span class="kt">String</span><span class="p">)</span></code></pre>
-
-                        </div>
-                      </div>
-                    </section>
-                  </div>
-                </li>
-                <li class="item">
-                  <div>
-                    <code>
-                    <a name="/s:7MQTTNIO14MQTTPropertiesV8PropertyO18authenticationDatayAE3NIO10ByteBufferVcAEmF"></a>
-                    <a name="//apple_ref/swift/Element/authenticationData(_:)" class="dashAnchor"></a>
-                    <a class="token" href="#/s:7MQTTNIO14MQTTPropertiesV8PropertyO18authenticationDatayAE3NIO10ByteBufferVcAEmF">authenticationData(_:)</a>
-                    </code>
-                  </div>
-                  <div class="height-container">
-                    <div class="pointer-container"></div>
-                    <section class="section">
-                      <div class="pointer"></div>
-                      <div class="abstract">
-                        <p>Data used in authentication (available for CONNECT, CONNACK, AUTH)</p>
-
-                      </div>
-                      <div class="declaration">
-                        <h4>Declaration</h4>
-                        <div class="language">
-                          <p class="aside-title">Swift</p>
-                          <pre class="highlight swift"><code><span class="k">case</span> <span class="nf">authenticationData</span><span class="p">(</span><span class="kt">ByteBuffer</span><span class="p">)</span></code></pre>
-
-                        </div>
-                      </div>
-                    </section>
-                  </div>
-                </li>
-                <li class="item">
-                  <div>
-                    <code>
-                    <a name="/s:7MQTTNIO14MQTTPropertiesV8PropertyO25requestProblemInformationyAEs5UInt8VcAEmF"></a>
-                    <a name="//apple_ref/swift/Element/requestProblemInformation(_:)" class="dashAnchor"></a>
-                    <a class="token" href="#/s:7MQTTNIO14MQTTPropertiesV8PropertyO25requestProblemInformationyAEs5UInt8VcAEmF">requestProblemInformation(_:)</a>
-                    </code>
-                  </div>
-                  <div class="height-container">
-                    <div class="pointer-container"></div>
-                    <section class="section">
-                      <div class="pointer"></div>
-                      <div class="abstract">
-                        <p>Request that server sends a reason string in its CONNACK or DISCONNECT packets (available for CONNECT)</p>
-
-                      </div>
-                      <div class="declaration">
-                        <h4>Declaration</h4>
-                        <div class="language">
-                          <p class="aside-title">Swift</p>
-                          <pre class="highlight swift"><code><span class="k">case</span> <span class="nf">requestProblemInformation</span><span class="p">(</span><span class="kt">UInt8</span><span class="p">)</span></code></pre>
-
-                        </div>
-                      </div>
-                    </section>
-                  </div>
-                </li>
-                <li class="item">
-                  <div>
-                    <code>
-                    <a name="/s:7MQTTNIO14MQTTPropertiesV8PropertyO17willDelayIntervalyAEs6UInt32VcAEmF"></a>
-                    <a name="//apple_ref/swift/Element/willDelayInterval(_:)" class="dashAnchor"></a>
-                    <a class="token" href="#/s:7MQTTNIO14MQTTPropertiesV8PropertyO17willDelayIntervalyAEs6UInt32VcAEmF">willDelayInterval(_:)</a>
-                    </code>
-                  </div>
-                  <div class="height-container">
-                    <div class="pointer-container"></div>
-                    <section class="section">
-                      <div class="pointer"></div>
-                      <div class="abstract">
-                        <p>Interval to wait before publishing connect will message (available for CONNECT will)</p>
-
-                      </div>
-                      <div class="declaration">
-                        <h4>Declaration</h4>
-                        <div class="language">
-                          <p class="aside-title">Swift</p>
-                          <pre class="highlight swift"><code><span class="k">case</span> <span class="nf">willDelayInterval</span><span class="p">(</span><span class="kt">UInt32</span><span class="p">)</span></code></pre>
-
-                        </div>
-                      </div>
-                    </section>
-                  </div>
-                </li>
-                <li class="item">
-                  <div>
-                    <code>
-                    <a name="/s:7MQTTNIO14MQTTPropertiesV8PropertyO26requestResponseInformationyAEs5UInt8VcAEmF"></a>
-                    <a name="//apple_ref/swift/Element/requestResponseInformation(_:)" class="dashAnchor"></a>
-                    <a class="token" href="#/s:7MQTTNIO14MQTTPropertiesV8PropertyO26requestResponseInformationyAEs5UInt8VcAEmF">requestResponseInformation(_:)</a>
-                    </code>
-                  </div>
-                  <div class="height-container">
-                    <div class="pointer-container"></div>
-                    <section class="section">
-                      <div class="pointer"></div>
-                      <div class="abstract">
-                        <p>Request response information from server (available for CONNECT)</p>
-
-                      </div>
-                      <div class="declaration">
-                        <h4>Declaration</h4>
-                        <div class="language">
-                          <p class="aside-title">Swift</p>
-                          <pre class="highlight swift"><code><span class="k">case</span> <span class="nf">requestResponseInformation</span><span class="p">(</span><span class="kt">UInt8</span><span class="p">)</span></code></pre>
-
-                        </div>
-                      </div>
-                    </section>
-                  </div>
-                </li>
-                <li class="item">
-                  <div>
-                    <code>
-                    <a name="/s:7MQTTNIO14MQTTPropertiesV8PropertyO19responseInformationyAESScAEmF"></a>
-                    <a name="//apple_ref/swift/Element/responseInformation(_:)" class="dashAnchor"></a>
-                    <a class="token" href="#/s:7MQTTNIO14MQTTPropertiesV8PropertyO19responseInformationyAESScAEmF">responseInformation(_:)</a>
-                    </code>
-                  </div>
-                  <div class="height-container">
-                    <div class="pointer-container"></div>
-                    <section class="section">
-                      <div class="pointer"></div>
-                      <div class="abstract">
-                        <p>Response information from server. Commonly used to pass a globally unique portion
-of the topic tree for this client (available for CONNACK)</p>
-
-                      </div>
-                      <div class="declaration">
-                        <h4>Declaration</h4>
-                        <div class="language">
-                          <p class="aside-title">Swift</p>
-                          <pre class="highlight swift"><code><span class="k">case</span> <span class="nf">responseInformation</span><span class="p">(</span><span class="kt">String</span><span class="p">)</span></code></pre>
-
-                        </div>
-                      </div>
-                    </section>
-                  </div>
-                </li>
-                <li class="item">
-                  <div>
-                    <code>
-                    <a name="/s:7MQTTNIO14MQTTPropertiesV8PropertyO15serverReferenceyAESScAEmF"></a>
-                    <a name="//apple_ref/swift/Element/serverReference(_:)" class="dashAnchor"></a>
-                    <a class="token" href="#/s:7MQTTNIO14MQTTPropertiesV8PropertyO15serverReferenceyAESScAEmF">serverReference(_:)</a>
-                    </code>
-                  </div>
-                  <div class="height-container">
-                    <div class="pointer-container"></div>
-                    <section class="section">
-                      <div class="pointer"></div>
-                      <div class="abstract">
-                        <p>Server uses serverReference in CONNACK to indicate to either use another server or that the server has moved
-(available for CONNACK)</p>
-
-                      </div>
-                      <div class="declaration">
-                        <h4>Declaration</h4>
-                        <div class="language">
-                          <p class="aside-title">Swift</p>
-                          <pre class="highlight swift"><code><span class="k">case</span> <span class="nf">serverReference</span><span class="p">(</span><span class="kt">String</span><span class="p">)</span></code></pre>
-
-                        </div>
-                      </div>
-                    </section>
-                  </div>
-                </li>
-                <li class="item">
-                  <div>
-                    <code>
-                    <a name="/s:7MQTTNIO14MQTTPropertiesV8PropertyO12reasonStringyAESScAEmF"></a>
-                    <a name="//apple_ref/swift/Element/reasonString(_:)" class="dashAnchor"></a>
-                    <a class="token" href="#/s:7MQTTNIO14MQTTPropertiesV8PropertyO12reasonStringyAESScAEmF">reasonString(_:)</a>
-                    </code>
-                  </div>
-                  <div class="height-container">
-                    <div class="pointer-container"></div>
-                    <section class="section">
-                      <div class="pointer"></div>
-                      <div class="abstract">
-                        <p>String representing the reason associated with this response (available for CONNACK,
-PUBACK, PUBREC, PUBREL, PUBCOMP, SUBACK, UNSUBACK, DISCONNECT, AUTH)</p>
-
-                      </div>
-                      <div class="declaration">
-                        <h4>Declaration</h4>
-                        <div class="language">
-                          <p class="aside-title">Swift</p>
-                          <pre class="highlight swift"><code><span class="k">case</span> <span class="nf">reasonString</span><span class="p">(</span><span class="kt">String</span><span class="p">)</span></code></pre>
-
-                        </div>
-                      </div>
-                    </section>
-                  </div>
-                </li>
-                <li class="item">
-                  <div>
-                    <code>
-                    <a name="/s:7MQTTNIO14MQTTPropertiesV8PropertyO14receiveMaximumyAEs6UInt16VcAEmF"></a>
-                    <a name="//apple_ref/swift/Element/receiveMaximum(_:)" class="dashAnchor"></a>
-                    <a class="token" href="#/s:7MQTTNIO14MQTTPropertiesV8PropertyO14receiveMaximumyAEs6UInt16VcAEmF">receiveMaximum(_:)</a>
-                    </code>
-                  </div>
-                  <div class="height-container">
-                    <div class="pointer-container"></div>
-                    <section class="section">
-                      <div class="pointer"></div>
-                      <div class="abstract">
-                        <p>Maximum number of PUBLISH, PUBREL messages that can be sent without receiving a response (available for CONNECT, CONNACK)</p>
-
-                      </div>
-                      <div class="declaration">
-                        <h4>Declaration</h4>
-                        <div class="language">
-                          <p class="aside-title">Swift</p>
-                          <pre class="highlight swift"><code><span class="k">case</span> <span class="nf">receiveMaximum</span><span class="p">(</span><span class="kt">UInt16</span><span class="p">)</span></code></pre>
-
-                        </div>
-                      </div>
-                    </section>
-                  </div>
-                </li>
-                <li class="item">
-                  <div>
-                    <code>
-                    <a name="/s:7MQTTNIO14MQTTPropertiesV8PropertyO17topicAliasMaximumyAEs6UInt16VcAEmF"></a>
-                    <a name="//apple_ref/swift/Element/topicAliasMaximum(_:)" class="dashAnchor"></a>
-                    <a class="token" href="#/s:7MQTTNIO14MQTTPropertiesV8PropertyO17topicAliasMaximumyAEs6UInt16VcAEmF">topicAliasMaximum(_:)</a>
-                    </code>
-                  </div>
-                  <div class="height-container">
-                    <div class="pointer-container"></div>
-                    <section class="section">
-                      <div class="pointer"></div>
-                      <div class="abstract">
-                        <p>Maximum number for topic alias (available for CONNECT, CONNACK)</p>
-
-                      </div>
-                      <div class="declaration">
-                        <h4>Declaration</h4>
-                        <div class="language">
-                          <p class="aside-title">Swift</p>
-                          <pre class="highlight swift"><code><span class="k">case</span> <span class="nf">topicAliasMaximum</span><span class="p">(</span><span class="kt">UInt16</span><span class="p">)</span></code></pre>
-
-                        </div>
-                      </div>
-                    </section>
-                  </div>
-                </li>
-                <li class="item">
-                  <div>
-                    <code>
-                    <a name="/s:7MQTTNIO14MQTTPropertiesV8PropertyO10topicAliasyAEs6UInt16VcAEmF"></a>
-                    <a name="//apple_ref/swift/Element/topicAlias(_:)" class="dashAnchor"></a>
-                    <a class="token" href="#/s:7MQTTNIO14MQTTPropertiesV8PropertyO10topicAliasyAEs6UInt16VcAEmF">topicAlias(_:)</a>
-                    </code>
-                  </div>
-                  <div class="height-container">
-                    <div class="pointer-container"></div>
-                    <section class="section">
-                      <div class="pointer"></div>
-                      <div class="abstract">
-                        <p>Topic alias. Use instead of full topic name to reduce packet size (available for PUBLISH)</p>
-
-                      </div>
-                      <div class="declaration">
-                        <h4>Declaration</h4>
-                        <div class="language">
-                          <p class="aside-title">Swift</p>
-                          <pre class="highlight swift"><code><span class="k">case</span> <span class="nf">topicAlias</span><span class="p">(</span><span class="kt">UInt16</span><span class="p">)</span></code></pre>
-
-                        </div>
-                      </div>
-                    </section>
-                  </div>
-                </li>
-                <li class="item">
-                  <div>
-                    <code>
-                    <a name="/s:7MQTTNIO14MQTTPropertiesV8PropertyO10maximumQoSyAeA7MQTTQoSOcAEmF"></a>
-                    <a name="//apple_ref/swift/Element/maximumQoS(_:)" class="dashAnchor"></a>
-                    <a class="token" href="#/s:7MQTTNIO14MQTTPropertiesV8PropertyO10maximumQoSyAeA7MQTTQoSOcAEmF">maximumQoS(_:)</a>
-                    </code>
-                  </div>
-                  <div class="height-container">
-                    <div class="pointer-container"></div>
-                    <section class="section">
-                      <div class="pointer"></div>
-                      <div class="abstract">
-                        <p>Maximum QoS supported by server (available for CONNACK)</p>
-
-                      </div>
-                      <div class="declaration">
-                        <h4>Declaration</h4>
-                        <div class="language">
-                          <p class="aside-title">Swift</p>
-                          <pre class="highlight swift"><code><span class="k">case</span> <span class="nf">maximumQoS</span><span class="p">(</span><span class="kt"><a href="../../Enums/MQTTQoS.html">MQTTQoS</a></span><span class="p">)</span></code></pre>
-
-                        </div>
-                      </div>
-                    </section>
-                  </div>
-                </li>
-                <li class="item">
-                  <div>
-                    <code>
-                    <a name="/s:7MQTTNIO14MQTTPropertiesV8PropertyO15retainAvailableyAEs5UInt8VcAEmF"></a>
-                    <a name="//apple_ref/swift/Element/retainAvailable(_:)" class="dashAnchor"></a>
-                    <a class="token" href="#/s:7MQTTNIO14MQTTPropertiesV8PropertyO15retainAvailableyAEs5UInt8VcAEmF">retainAvailable(_:)</a>
-                    </code>
-                  </div>
-                  <div class="height-container">
-                    <div class="pointer-container"></div>
-                    <section class="section">
-                      <div class="pointer"></div>
-                      <div class="abstract">
-                        <p>Does server support retained publish packets (available for CONNACK)</p>
-
-                      </div>
-                      <div class="declaration">
-                        <h4>Declaration</h4>
-                        <div class="language">
-                          <p class="aside-title">Swift</p>
-                          <pre class="highlight swift"><code><span class="k">case</span> <span class="nf">retainAvailable</span><span class="p">(</span><span class="kt">UInt8</span><span class="p">)</span></code></pre>
-
-                        </div>
-                      </div>
-                    </section>
-                  </div>
-                </li>
-                <li class="item">
-                  <div>
-                    <code>
-                    <a name="/s:7MQTTNIO14MQTTPropertiesV8PropertyO04userC0yAESS_SStcAEmF"></a>
-                    <a name="//apple_ref/swift/Element/userProperty(_:_:)" class="dashAnchor"></a>
-                    <a class="token" href="#/s:7MQTTNIO14MQTTPropertiesV8PropertyO04userC0yAESS_SStcAEmF">userProperty(_:_:)</a>
-                    </code>
-                  </div>
-                  <div class="height-container">
-                    <div class="pointer-container"></div>
-                    <section class="section">
-                      <div class="pointer"></div>
-                      <div class="abstract">
-                        <p>User property, key and value (available for all packets)</p>
-
-                      </div>
-                      <div class="declaration">
-                        <h4>Declaration</h4>
-                        <div class="language">
-                          <p class="aside-title">Swift</p>
-                          <pre class="highlight swift"><code><span class="k">case</span> <span class="nf">userProperty</span><span class="p">(</span><span class="kt">String</span><span class="p">,</span> <span class="kt">String</span><span class="p">)</span></code></pre>
-
-                        </div>
-                      </div>
-                    </section>
-                  </div>
-                </li>
-                <li class="item">
-                  <div>
-                    <code>
-                    <a name="/s:7MQTTNIO14MQTTPropertiesV8PropertyO17maximumPacketSizeyAEs6UInt32VcAEmF"></a>
-                    <a name="//apple_ref/swift/Element/maximumPacketSize(_:)" class="dashAnchor"></a>
-                    <a class="token" href="#/s:7MQTTNIO14MQTTPropertiesV8PropertyO17maximumPacketSizeyAEs6UInt32VcAEmF">maximumPacketSize(_:)</a>
-                    </code>
-                  </div>
-                  <div class="height-container">
-                    <div class="pointer-container"></div>
-                    <section class="section">
-                      <div class="pointer"></div>
-                      <div class="abstract">
-                        <p>Maximum packet size supported (available for CONNECT, CONNACK)</p>
-
-                      </div>
-                      <div class="declaration">
-                        <h4>Declaration</h4>
-                        <div class="language">
-                          <p class="aside-title">Swift</p>
-                          <pre class="highlight swift"><code><span class="k">case</span> <span class="nf">maximumPacketSize</span><span class="p">(</span><span class="kt">UInt32</span><span class="p">)</span></code></pre>
-
-                        </div>
-                      </div>
-                    </section>
-                  </div>
-                </li>
-                <li class="item">
-                  <div>
-                    <code>
-                    <a name="/s:7MQTTNIO14MQTTPropertiesV8PropertyO29wildcardSubscriptionAvailableyAEs5UInt8VcAEmF"></a>
-                    <a name="//apple_ref/swift/Element/wildcardSubscriptionAvailable(_:)" class="dashAnchor"></a>
-                    <a class="token" href="#/s:7MQTTNIO14MQTTPropertiesV8PropertyO29wildcardSubscriptionAvailableyAEs5UInt8VcAEmF">wildcardSubscriptionAvailable(_:)</a>
-                    </code>
-                  </div>
-                  <div class="height-container">
-                    <div class="pointer-container"></div>
-                    <section class="section">
-                      <div class="pointer"></div>
-                      <div class="abstract">
-                        <p>Does server support wildcard subscription (available for CONNACK)</p>
-
-                      </div>
-                      <div class="declaration">
-                        <h4>Declaration</h4>
-                        <div class="language">
-                          <p class="aside-title">Swift</p>
-                          <pre class="highlight swift"><code><span class="k">case</span> <span class="nf">wildcardSubscriptionAvailable</span><span class="p">(</span><span class="kt">UInt8</span><span class="p">)</span></code></pre>
-
-                        </div>
-                      </div>
-                    </section>
-                  </div>
-                </li>
-                <li class="item">
-                  <div>
-                    <code>
-                    <a name="/s:7MQTTNIO14MQTTPropertiesV8PropertyO31subscriptionIdentifierAvailableyAEs5UInt8VcAEmF"></a>
-                    <a name="//apple_ref/swift/Element/subscriptionIdentifierAvailable(_:)" class="dashAnchor"></a>
-                    <a class="token" href="#/s:7MQTTNIO14MQTTPropertiesV8PropertyO31subscriptionIdentifierAvailableyAEs5UInt8VcAEmF">subscriptionIdentifierAvailable(_:)</a>
-                    </code>
-                  </div>
-                  <div class="height-container">
-                    <div class="pointer-container"></div>
-                    <section class="section">
-                      <div class="pointer"></div>
-                      <div class="abstract">
-                        <p>Does server support subscription identifiers (available for CONNACK)</p>
-
-                      </div>
-                      <div class="declaration">
-                        <h4>Declaration</h4>
-                        <div class="language">
-                          <p class="aside-title">Swift</p>
-                          <pre class="highlight swift"><code><span class="k">case</span> <span class="nf">subscriptionIdentifierAvailable</span><span class="p">(</span><span class="kt">UInt8</span><span class="p">)</span></code></pre>
-
-                        </div>
-                      </div>
-                    </section>
-                  </div>
-                </li>
-                <li class="item">
-                  <div>
-                    <code>
-                    <a name="/s:7MQTTNIO14MQTTPropertiesV8PropertyO27sharedSubscriptionAvailableyAEs5UInt8VcAEmF"></a>
-                    <a name="//apple_ref/swift/Element/sharedSubscriptionAvailable(_:)" class="dashAnchor"></a>
-                    <a class="token" href="#/s:7MQTTNIO14MQTTPropertiesV8PropertyO27sharedSubscriptionAvailableyAEs5UInt8VcAEmF">sharedSubscriptionAvailable(_:)</a>
-                    </code>
-                  </div>
-                  <div class="height-container">
-                    <div class="pointer-container"></div>
-                    <section class="section">
-                      <div class="pointer"></div>
-                      <div class="abstract">
-                        <p>Does server support shared subscriptions (available for CONNACK)</p>
-
-                      </div>
-                      <div class="declaration">
-                        <h4>Declaration</h4>
-                        <div class="language">
-                          <p class="aside-title">Swift</p>
-                          <pre class="highlight swift"><code><span class="k">case</span> <span class="nf">sharedSubscriptionAvailable</span><span class="p">(</span><span class="kt">UInt8</span><span class="p">)</span></code></pre>
-
-                        </div>
-                      </div>
-                    </section>
-                  </div>
-                </li>
-                <li class="item">
-                  <div>
-                    <code>
-                    <a name="/s:7MQTTNIO14MQTTPropertiesV8PropertyO5valueAC0C5ValueOvp"></a>
-                    <a name="//apple_ref/swift/Property/value" class="dashAnchor"></a>
-                    <a class="token" href="#/s:7MQTTNIO14MQTTPropertiesV8PropertyO5valueAC0C5ValueOvp">value</a>
+                    <a name="/s:7MQTTNIO14MQTTPropertiesV10PropertyIdO13payloadFormatyA2EmF"></a>
+                    <a name="//apple_ref/swift/Element/payloadFormat" class="dashAnchor"></a>
+                    <a class="token" href="#/s:7MQTTNIO14MQTTPropertiesV10PropertyIdO13payloadFormatyA2EmF">payloadFormat</a>
                     </code>
                   </div>
                   <div class="height-container">
@@ -909,7 +176,7 @@ PUBACK, PUBREC, PUBREL, PUBCOMP, SUBACK, UNSUBACK, DISCONNECT, AUTH)</p>
                         <h4>Declaration</h4>
                         <div class="language">
                           <p class="aside-title">Swift</p>
-                          <pre class="highlight swift"><code><span class="k">var</span> <span class="nv">value</span><span class="p">:</span> <span class="kt"><a href="../../Structs/MQTTProperties.html">MQTTProperties</a></span><span class="o">.</span><span class="kt"><a href="../../Structs/MQTTProperties/PropertyValue.html">PropertyValue</a></span> <span class="p">{</span> <span class="k">get</span> <span class="p">}</span></code></pre>
+                          <pre class="highlight swift"><code><span class="k">case</span> <span class="n">payloadFormat</span> <span class="o">=</span> <span class="mi">1</span></code></pre>
 
                         </div>
                       </div>
@@ -919,9 +186,9 @@ PUBACK, PUBREC, PUBREL, PUBCOMP, SUBACK, UNSUBACK, DISCONNECT, AUTH)</p>
                 <li class="item">
                   <div>
                     <code>
-                    <a name="/s:7MQTTNIO14MQTTPropertiesV8PropertyO2idAC0C2IdOvp"></a>
-                    <a name="//apple_ref/swift/Property/id" class="dashAnchor"></a>
-                    <a class="token" href="#/s:7MQTTNIO14MQTTPropertiesV8PropertyO2idAC0C2IdOvp">id</a>
+                    <a name="/s:7MQTTNIO14MQTTPropertiesV10PropertyIdO13messageExpiryyA2EmF"></a>
+                    <a name="//apple_ref/swift/Element/messageExpiry" class="dashAnchor"></a>
+                    <a class="token" href="#/s:7MQTTNIO14MQTTPropertiesV10PropertyIdO13messageExpiryyA2EmF">messageExpiry</a>
                     </code>
                   </div>
                   <div class="height-container">
@@ -936,7 +203,7 @@ PUBACK, PUBREC, PUBREL, PUBCOMP, SUBACK, UNSUBACK, DISCONNECT, AUTH)</p>
                         <h4>Declaration</h4>
                         <div class="language">
                           <p class="aside-title">Swift</p>
-                          <pre class="highlight swift"><code><span class="k">var</span> <span class="nv">id</span><span class="p">:</span> <span class="kt"><a href="../../Structs/MQTTProperties.html">MQTTProperties</a></span><span class="o">.</span><span class="kt"><a href="../../Structs/MQTTProperties/PropertyId.html">PropertyId</a></span> <span class="p">{</span> <span class="k">get</span> <span class="p">}</span></code></pre>
+                          <pre class="highlight swift"><code><span class="k">case</span> <span class="n">messageExpiry</span> <span class="o">=</span> <span class="mi">2</span></code></pre>
 
                         </div>
                       </div>
@@ -946,9 +213,9 @@ PUBACK, PUBREC, PUBREL, PUBCOMP, SUBACK, UNSUBACK, DISCONNECT, AUTH)</p>
                 <li class="item">
                   <div>
                     <code>
-                    <a name="/s:7MQTTNIO14MQTTPropertiesV8PropertyO5write2toy3NIO10ByteBufferVz_tKF"></a>
-                    <a name="//apple_ref/swift/Method/write(to:)" class="dashAnchor"></a>
-                    <a class="token" href="#/s:7MQTTNIO14MQTTPropertiesV8PropertyO5write2toy3NIO10ByteBufferVz_tKF">write(to:)</a>
+                    <a name="/s:7MQTTNIO14MQTTPropertiesV10PropertyIdO11contentTypeyA2EmF"></a>
+                    <a name="//apple_ref/swift/Element/contentType" class="dashAnchor"></a>
+                    <a class="token" href="#/s:7MQTTNIO14MQTTPropertiesV10PropertyIdO11contentTypeyA2EmF">contentType</a>
                     </code>
                   </div>
                   <div class="height-container">
@@ -963,7 +230,7 @@ PUBACK, PUBREC, PUBREL, PUBCOMP, SUBACK, UNSUBACK, DISCONNECT, AUTH)</p>
                         <h4>Declaration</h4>
                         <div class="language">
                           <p class="aside-title">Swift</p>
-                          <pre class="highlight swift"><code><span class="kd">func</span> <span class="nf">write</span><span class="p">(</span><span class="n">to</span> <span class="nv">byteBuffer</span><span class="p">:</span> <span class="k">inout</span> <span class="kt">ByteBuffer</span><span class="p">)</span> <span class="k">throws</span></code></pre>
+                          <pre class="highlight swift"><code><span class="k">case</span> <span class="n">contentType</span> <span class="o">=</span> <span class="mi">3</span></code></pre>
 
                         </div>
                       </div>
@@ -973,9 +240,9 @@ PUBACK, PUBREC, PUBREL, PUBCOMP, SUBACK, UNSUBACK, DISCONNECT, AUTH)</p>
                 <li class="item">
                   <div>
                     <code>
-                    <a name="/s:7MQTTNIO14MQTTPropertiesV8PropertyO4read4fromAE3NIO10ByteBufferVz_tKFZ"></a>
-                    <a name="//apple_ref/swift/Method/read(from:)" class="dashAnchor"></a>
-                    <a class="token" href="#/s:7MQTTNIO14MQTTPropertiesV8PropertyO4read4fromAE3NIO10ByteBufferVz_tKFZ">read(from:)</a>
+                    <a name="/s:7MQTTNIO14MQTTPropertiesV10PropertyIdO13responseTopicyA2EmF"></a>
+                    <a name="//apple_ref/swift/Element/responseTopic" class="dashAnchor"></a>
+                    <a class="token" href="#/s:7MQTTNIO14MQTTPropertiesV10PropertyIdO13responseTopicyA2EmF">responseTopic</a>
                     </code>
                   </div>
                   <div class="height-container">
@@ -990,7 +257,7 @@ PUBACK, PUBREC, PUBREL, PUBCOMP, SUBACK, UNSUBACK, DISCONNECT, AUTH)</p>
                         <h4>Declaration</h4>
                         <div class="language">
                           <p class="aside-title">Swift</p>
-                          <pre class="highlight swift"><code><span class="kd">static</span> <span class="kd">func</span> <span class="nf">read</span><span class="p">(</span><span class="n">from</span> <span class="nv">byteBuffer</span><span class="p">:</span> <span class="k">inout</span> <span class="kt">ByteBuffer</span><span class="p">)</span> <span class="k">throws</span> <span class="o">-&gt;</span> <span class="kt"><a href="../../Structs/MQTTProperties.html">MQTTProperties</a></span><span class="o">.</span><span class="kt">Property</span></code></pre>
+                          <pre class="highlight swift"><code><span class="k">case</span> <span class="n">responseTopic</span> <span class="o">=</span> <span class="mi">8</span></code></pre>
 
                         </div>
                       </div>
@@ -1000,9 +267,9 @@ PUBACK, PUBREC, PUBREL, PUBCOMP, SUBACK, UNSUBACK, DISCONNECT, AUTH)</p>
                 <li class="item">
                   <div>
                     <code>
-                    <a name="/s:7MQTTNIO14MQTTPropertiesV8PropertyO10packetSizeSivp"></a>
-                    <a name="//apple_ref/swift/Property/packetSize" class="dashAnchor"></a>
-                    <a class="token" href="#/s:7MQTTNIO14MQTTPropertiesV8PropertyO10packetSizeSivp">packetSize</a>
+                    <a name="/s:7MQTTNIO14MQTTPropertiesV10PropertyIdO15correlationDatayA2EmF"></a>
+                    <a name="//apple_ref/swift/Element/correlationData" class="dashAnchor"></a>
+                    <a class="token" href="#/s:7MQTTNIO14MQTTPropertiesV10PropertyIdO15correlationDatayA2EmF">correlationData</a>
                     </code>
                   </div>
                   <div class="height-container">
@@ -1017,7 +284,601 @@ PUBACK, PUBREC, PUBREL, PUBCOMP, SUBACK, UNSUBACK, DISCONNECT, AUTH)</p>
                         <h4>Declaration</h4>
                         <div class="language">
                           <p class="aside-title">Swift</p>
-                          <pre class="highlight swift"><code><span class="k">var</span> <span class="nv">packetSize</span><span class="p">:</span> <span class="kt">Int</span> <span class="p">{</span> <span class="k">get</span> <span class="p">}</span></code></pre>
+                          <pre class="highlight swift"><code><span class="k">case</span> <span class="n">correlationData</span> <span class="o">=</span> <span class="mi">9</span></code></pre>
+
+                        </div>
+                      </div>
+                    </section>
+                  </div>
+                </li>
+                <li class="item">
+                  <div>
+                    <code>
+                    <a name="/s:7MQTTNIO14MQTTPropertiesV10PropertyIdO22subscriptionIdentifieryA2EmF"></a>
+                    <a name="//apple_ref/swift/Element/subscriptionIdentifier" class="dashAnchor"></a>
+                    <a class="token" href="#/s:7MQTTNIO14MQTTPropertiesV10PropertyIdO22subscriptionIdentifieryA2EmF">subscriptionIdentifier</a>
+                    </code>
+                  </div>
+                  <div class="height-container">
+                    <div class="pointer-container"></div>
+                    <section class="section">
+                      <div class="pointer"></div>
+                      <div class="abstract">
+                        <p>Undocumented</p>
+
+                      </div>
+                      <div class="declaration">
+                        <h4>Declaration</h4>
+                        <div class="language">
+                          <p class="aside-title">Swift</p>
+                          <pre class="highlight swift"><code><span class="k">case</span> <span class="n">subscriptionIdentifier</span> <span class="o">=</span> <span class="mi">11</span></code></pre>
+
+                        </div>
+                      </div>
+                    </section>
+                  </div>
+                </li>
+                <li class="item">
+                  <div>
+                    <code>
+                    <a name="/s:7MQTTNIO14MQTTPropertiesV10PropertyIdO21sessionExpiryIntervalyA2EmF"></a>
+                    <a name="//apple_ref/swift/Element/sessionExpiryInterval" class="dashAnchor"></a>
+                    <a class="token" href="#/s:7MQTTNIO14MQTTPropertiesV10PropertyIdO21sessionExpiryIntervalyA2EmF">sessionExpiryInterval</a>
+                    </code>
+                  </div>
+                  <div class="height-container">
+                    <div class="pointer-container"></div>
+                    <section class="section">
+                      <div class="pointer"></div>
+                      <div class="abstract">
+                        <p>Undocumented</p>
+
+                      </div>
+                      <div class="declaration">
+                        <h4>Declaration</h4>
+                        <div class="language">
+                          <p class="aside-title">Swift</p>
+                          <pre class="highlight swift"><code><span class="k">case</span> <span class="n">sessionExpiryInterval</span> <span class="o">=</span> <span class="mi">17</span></code></pre>
+
+                        </div>
+                      </div>
+                    </section>
+                  </div>
+                </li>
+                <li class="item">
+                  <div>
+                    <code>
+                    <a name="/s:7MQTTNIO14MQTTPropertiesV10PropertyIdO24assignedClientIdentifieryA2EmF"></a>
+                    <a name="//apple_ref/swift/Element/assignedClientIdentifier" class="dashAnchor"></a>
+                    <a class="token" href="#/s:7MQTTNIO14MQTTPropertiesV10PropertyIdO24assignedClientIdentifieryA2EmF">assignedClientIdentifier</a>
+                    </code>
+                  </div>
+                  <div class="height-container">
+                    <div class="pointer-container"></div>
+                    <section class="section">
+                      <div class="pointer"></div>
+                      <div class="abstract">
+                        <p>Undocumented</p>
+
+                      </div>
+                      <div class="declaration">
+                        <h4>Declaration</h4>
+                        <div class="language">
+                          <p class="aside-title">Swift</p>
+                          <pre class="highlight swift"><code><span class="k">case</span> <span class="n">assignedClientIdentifier</span> <span class="o">=</span> <span class="mi">18</span></code></pre>
+
+                        </div>
+                      </div>
+                    </section>
+                  </div>
+                </li>
+                <li class="item">
+                  <div>
+                    <code>
+                    <a name="/s:7MQTTNIO14MQTTPropertiesV10PropertyIdO15serverKeepAliveyA2EmF"></a>
+                    <a name="//apple_ref/swift/Element/serverKeepAlive" class="dashAnchor"></a>
+                    <a class="token" href="#/s:7MQTTNIO14MQTTPropertiesV10PropertyIdO15serverKeepAliveyA2EmF">serverKeepAlive</a>
+                    </code>
+                  </div>
+                  <div class="height-container">
+                    <div class="pointer-container"></div>
+                    <section class="section">
+                      <div class="pointer"></div>
+                      <div class="abstract">
+                        <p>Undocumented</p>
+
+                      </div>
+                      <div class="declaration">
+                        <h4>Declaration</h4>
+                        <div class="language">
+                          <p class="aside-title">Swift</p>
+                          <pre class="highlight swift"><code><span class="k">case</span> <span class="n">serverKeepAlive</span> <span class="o">=</span> <span class="mi">19</span></code></pre>
+
+                        </div>
+                      </div>
+                    </section>
+                  </div>
+                </li>
+                <li class="item">
+                  <div>
+                    <code>
+                    <a name="/s:7MQTTNIO14MQTTPropertiesV10PropertyIdO20authenticationMethodyA2EmF"></a>
+                    <a name="//apple_ref/swift/Element/authenticationMethod" class="dashAnchor"></a>
+                    <a class="token" href="#/s:7MQTTNIO14MQTTPropertiesV10PropertyIdO20authenticationMethodyA2EmF">authenticationMethod</a>
+                    </code>
+                  </div>
+                  <div class="height-container">
+                    <div class="pointer-container"></div>
+                    <section class="section">
+                      <div class="pointer"></div>
+                      <div class="abstract">
+                        <p>Undocumented</p>
+
+                      </div>
+                      <div class="declaration">
+                        <h4>Declaration</h4>
+                        <div class="language">
+                          <p class="aside-title">Swift</p>
+                          <pre class="highlight swift"><code><span class="k">case</span> <span class="n">authenticationMethod</span> <span class="o">=</span> <span class="mi">21</span></code></pre>
+
+                        </div>
+                      </div>
+                    </section>
+                  </div>
+                </li>
+                <li class="item">
+                  <div>
+                    <code>
+                    <a name="/s:7MQTTNIO14MQTTPropertiesV10PropertyIdO18authenticationDatayA2EmF"></a>
+                    <a name="//apple_ref/swift/Element/authenticationData" class="dashAnchor"></a>
+                    <a class="token" href="#/s:7MQTTNIO14MQTTPropertiesV10PropertyIdO18authenticationDatayA2EmF">authenticationData</a>
+                    </code>
+                  </div>
+                  <div class="height-container">
+                    <div class="pointer-container"></div>
+                    <section class="section">
+                      <div class="pointer"></div>
+                      <div class="abstract">
+                        <p>Undocumented</p>
+
+                      </div>
+                      <div class="declaration">
+                        <h4>Declaration</h4>
+                        <div class="language">
+                          <p class="aside-title">Swift</p>
+                          <pre class="highlight swift"><code><span class="k">case</span> <span class="n">authenticationData</span> <span class="o">=</span> <span class="mi">22</span></code></pre>
+
+                        </div>
+                      </div>
+                    </section>
+                  </div>
+                </li>
+                <li class="item">
+                  <div>
+                    <code>
+                    <a name="/s:7MQTTNIO14MQTTPropertiesV10PropertyIdO25requestProblemInformationyA2EmF"></a>
+                    <a name="//apple_ref/swift/Element/requestProblemInformation" class="dashAnchor"></a>
+                    <a class="token" href="#/s:7MQTTNIO14MQTTPropertiesV10PropertyIdO25requestProblemInformationyA2EmF">requestProblemInformation</a>
+                    </code>
+                  </div>
+                  <div class="height-container">
+                    <div class="pointer-container"></div>
+                    <section class="section">
+                      <div class="pointer"></div>
+                      <div class="abstract">
+                        <p>Undocumented</p>
+
+                      </div>
+                      <div class="declaration">
+                        <h4>Declaration</h4>
+                        <div class="language">
+                          <p class="aside-title">Swift</p>
+                          <pre class="highlight swift"><code><span class="k">case</span> <span class="n">requestProblemInformation</span> <span class="o">=</span> <span class="mi">23</span></code></pre>
+
+                        </div>
+                      </div>
+                    </section>
+                  </div>
+                </li>
+                <li class="item">
+                  <div>
+                    <code>
+                    <a name="/s:7MQTTNIO14MQTTPropertiesV10PropertyIdO17willDelayIntervalyA2EmF"></a>
+                    <a name="//apple_ref/swift/Element/willDelayInterval" class="dashAnchor"></a>
+                    <a class="token" href="#/s:7MQTTNIO14MQTTPropertiesV10PropertyIdO17willDelayIntervalyA2EmF">willDelayInterval</a>
+                    </code>
+                  </div>
+                  <div class="height-container">
+                    <div class="pointer-container"></div>
+                    <section class="section">
+                      <div class="pointer"></div>
+                      <div class="abstract">
+                        <p>Undocumented</p>
+
+                      </div>
+                      <div class="declaration">
+                        <h4>Declaration</h4>
+                        <div class="language">
+                          <p class="aside-title">Swift</p>
+                          <pre class="highlight swift"><code><span class="k">case</span> <span class="n">willDelayInterval</span> <span class="o">=</span> <span class="mi">24</span></code></pre>
+
+                        </div>
+                      </div>
+                    </section>
+                  </div>
+                </li>
+                <li class="item">
+                  <div>
+                    <code>
+                    <a name="/s:7MQTTNIO14MQTTPropertiesV10PropertyIdO26requestResponseInformationyA2EmF"></a>
+                    <a name="//apple_ref/swift/Element/requestResponseInformation" class="dashAnchor"></a>
+                    <a class="token" href="#/s:7MQTTNIO14MQTTPropertiesV10PropertyIdO26requestResponseInformationyA2EmF">requestResponseInformation</a>
+                    </code>
+                  </div>
+                  <div class="height-container">
+                    <div class="pointer-container"></div>
+                    <section class="section">
+                      <div class="pointer"></div>
+                      <div class="abstract">
+                        <p>Undocumented</p>
+
+                      </div>
+                      <div class="declaration">
+                        <h4>Declaration</h4>
+                        <div class="language">
+                          <p class="aside-title">Swift</p>
+                          <pre class="highlight swift"><code><span class="k">case</span> <span class="n">requestResponseInformation</span> <span class="o">=</span> <span class="mi">25</span></code></pre>
+
+                        </div>
+                      </div>
+                    </section>
+                  </div>
+                </li>
+                <li class="item">
+                  <div>
+                    <code>
+                    <a name="/s:7MQTTNIO14MQTTPropertiesV10PropertyIdO19responseInformationyA2EmF"></a>
+                    <a name="//apple_ref/swift/Element/responseInformation" class="dashAnchor"></a>
+                    <a class="token" href="#/s:7MQTTNIO14MQTTPropertiesV10PropertyIdO19responseInformationyA2EmF">responseInformation</a>
+                    </code>
+                  </div>
+                  <div class="height-container">
+                    <div class="pointer-container"></div>
+                    <section class="section">
+                      <div class="pointer"></div>
+                      <div class="abstract">
+                        <p>Undocumented</p>
+
+                      </div>
+                      <div class="declaration">
+                        <h4>Declaration</h4>
+                        <div class="language">
+                          <p class="aside-title">Swift</p>
+                          <pre class="highlight swift"><code><span class="k">case</span> <span class="n">responseInformation</span> <span class="o">=</span> <span class="mi">26</span></code></pre>
+
+                        </div>
+                      </div>
+                    </section>
+                  </div>
+                </li>
+                <li class="item">
+                  <div>
+                    <code>
+                    <a name="/s:7MQTTNIO14MQTTPropertiesV10PropertyIdO15serverReferenceyA2EmF"></a>
+                    <a name="//apple_ref/swift/Element/serverReference" class="dashAnchor"></a>
+                    <a class="token" href="#/s:7MQTTNIO14MQTTPropertiesV10PropertyIdO15serverReferenceyA2EmF">serverReference</a>
+                    </code>
+                  </div>
+                  <div class="height-container">
+                    <div class="pointer-container"></div>
+                    <section class="section">
+                      <div class="pointer"></div>
+                      <div class="abstract">
+                        <p>Undocumented</p>
+
+                      </div>
+                      <div class="declaration">
+                        <h4>Declaration</h4>
+                        <div class="language">
+                          <p class="aside-title">Swift</p>
+                          <pre class="highlight swift"><code><span class="k">case</span> <span class="n">serverReference</span> <span class="o">=</span> <span class="mi">28</span></code></pre>
+
+                        </div>
+                      </div>
+                    </section>
+                  </div>
+                </li>
+                <li class="item">
+                  <div>
+                    <code>
+                    <a name="/s:7MQTTNIO14MQTTPropertiesV10PropertyIdO12reasonStringyA2EmF"></a>
+                    <a name="//apple_ref/swift/Element/reasonString" class="dashAnchor"></a>
+                    <a class="token" href="#/s:7MQTTNIO14MQTTPropertiesV10PropertyIdO12reasonStringyA2EmF">reasonString</a>
+                    </code>
+                  </div>
+                  <div class="height-container">
+                    <div class="pointer-container"></div>
+                    <section class="section">
+                      <div class="pointer"></div>
+                      <div class="abstract">
+                        <p>Undocumented</p>
+
+                      </div>
+                      <div class="declaration">
+                        <h4>Declaration</h4>
+                        <div class="language">
+                          <p class="aside-title">Swift</p>
+                          <pre class="highlight swift"><code><span class="k">case</span> <span class="n">reasonString</span> <span class="o">=</span> <span class="mi">31</span></code></pre>
+
+                        </div>
+                      </div>
+                    </section>
+                  </div>
+                </li>
+                <li class="item">
+                  <div>
+                    <code>
+                    <a name="/s:7MQTTNIO14MQTTPropertiesV10PropertyIdO14receiveMaximumyA2EmF"></a>
+                    <a name="//apple_ref/swift/Element/receiveMaximum" class="dashAnchor"></a>
+                    <a class="token" href="#/s:7MQTTNIO14MQTTPropertiesV10PropertyIdO14receiveMaximumyA2EmF">receiveMaximum</a>
+                    </code>
+                  </div>
+                  <div class="height-container">
+                    <div class="pointer-container"></div>
+                    <section class="section">
+                      <div class="pointer"></div>
+                      <div class="abstract">
+                        <p>Undocumented</p>
+
+                      </div>
+                      <div class="declaration">
+                        <h4>Declaration</h4>
+                        <div class="language">
+                          <p class="aside-title">Swift</p>
+                          <pre class="highlight swift"><code><span class="k">case</span> <span class="n">receiveMaximum</span> <span class="o">=</span> <span class="mi">33</span></code></pre>
+
+                        </div>
+                      </div>
+                    </section>
+                  </div>
+                </li>
+                <li class="item">
+                  <div>
+                    <code>
+                    <a name="/s:7MQTTNIO14MQTTPropertiesV10PropertyIdO17topicAliasMaximumyA2EmF"></a>
+                    <a name="//apple_ref/swift/Element/topicAliasMaximum" class="dashAnchor"></a>
+                    <a class="token" href="#/s:7MQTTNIO14MQTTPropertiesV10PropertyIdO17topicAliasMaximumyA2EmF">topicAliasMaximum</a>
+                    </code>
+                  </div>
+                  <div class="height-container">
+                    <div class="pointer-container"></div>
+                    <section class="section">
+                      <div class="pointer"></div>
+                      <div class="abstract">
+                        <p>Undocumented</p>
+
+                      </div>
+                      <div class="declaration">
+                        <h4>Declaration</h4>
+                        <div class="language">
+                          <p class="aside-title">Swift</p>
+                          <pre class="highlight swift"><code><span class="k">case</span> <span class="n">topicAliasMaximum</span> <span class="o">=</span> <span class="mi">34</span></code></pre>
+
+                        </div>
+                      </div>
+                    </section>
+                  </div>
+                </li>
+                <li class="item">
+                  <div>
+                    <code>
+                    <a name="/s:7MQTTNIO14MQTTPropertiesV10PropertyIdO10topicAliasyA2EmF"></a>
+                    <a name="//apple_ref/swift/Element/topicAlias" class="dashAnchor"></a>
+                    <a class="token" href="#/s:7MQTTNIO14MQTTPropertiesV10PropertyIdO10topicAliasyA2EmF">topicAlias</a>
+                    </code>
+                  </div>
+                  <div class="height-container">
+                    <div class="pointer-container"></div>
+                    <section class="section">
+                      <div class="pointer"></div>
+                      <div class="abstract">
+                        <p>Undocumented</p>
+
+                      </div>
+                      <div class="declaration">
+                        <h4>Declaration</h4>
+                        <div class="language">
+                          <p class="aside-title">Swift</p>
+                          <pre class="highlight swift"><code><span class="k">case</span> <span class="n">topicAlias</span> <span class="o">=</span> <span class="mi">35</span></code></pre>
+
+                        </div>
+                      </div>
+                    </section>
+                  </div>
+                </li>
+                <li class="item">
+                  <div>
+                    <code>
+                    <a name="/s:7MQTTNIO14MQTTPropertiesV10PropertyIdO10maximumQoSyA2EmF"></a>
+                    <a name="//apple_ref/swift/Element/maximumQoS" class="dashAnchor"></a>
+                    <a class="token" href="#/s:7MQTTNIO14MQTTPropertiesV10PropertyIdO10maximumQoSyA2EmF">maximumQoS</a>
+                    </code>
+                  </div>
+                  <div class="height-container">
+                    <div class="pointer-container"></div>
+                    <section class="section">
+                      <div class="pointer"></div>
+                      <div class="abstract">
+                        <p>Undocumented</p>
+
+                      </div>
+                      <div class="declaration">
+                        <h4>Declaration</h4>
+                        <div class="language">
+                          <p class="aside-title">Swift</p>
+                          <pre class="highlight swift"><code><span class="k">case</span> <span class="n">maximumQoS</span> <span class="o">=</span> <span class="mi">36</span></code></pre>
+
+                        </div>
+                      </div>
+                    </section>
+                  </div>
+                </li>
+                <li class="item">
+                  <div>
+                    <code>
+                    <a name="/s:7MQTTNIO14MQTTPropertiesV10PropertyIdO15retainAvailableyA2EmF"></a>
+                    <a name="//apple_ref/swift/Element/retainAvailable" class="dashAnchor"></a>
+                    <a class="token" href="#/s:7MQTTNIO14MQTTPropertiesV10PropertyIdO15retainAvailableyA2EmF">retainAvailable</a>
+                    </code>
+                  </div>
+                  <div class="height-container">
+                    <div class="pointer-container"></div>
+                    <section class="section">
+                      <div class="pointer"></div>
+                      <div class="abstract">
+                        <p>Undocumented</p>
+
+                      </div>
+                      <div class="declaration">
+                        <h4>Declaration</h4>
+                        <div class="language">
+                          <p class="aside-title">Swift</p>
+                          <pre class="highlight swift"><code><span class="k">case</span> <span class="n">retainAvailable</span> <span class="o">=</span> <span class="mi">37</span></code></pre>
+
+                        </div>
+                      </div>
+                    </section>
+                  </div>
+                </li>
+                <li class="item">
+                  <div>
+                    <code>
+                    <a name="/s:7MQTTNIO14MQTTPropertiesV10PropertyIdO04userC0yA2EmF"></a>
+                    <a name="//apple_ref/swift/Element/userProperty" class="dashAnchor"></a>
+                    <a class="token" href="#/s:7MQTTNIO14MQTTPropertiesV10PropertyIdO04userC0yA2EmF">userProperty</a>
+                    </code>
+                  </div>
+                  <div class="height-container">
+                    <div class="pointer-container"></div>
+                    <section class="section">
+                      <div class="pointer"></div>
+                      <div class="abstract">
+                        <p>Undocumented</p>
+
+                      </div>
+                      <div class="declaration">
+                        <h4>Declaration</h4>
+                        <div class="language">
+                          <p class="aside-title">Swift</p>
+                          <pre class="highlight swift"><code><span class="k">case</span> <span class="n">userProperty</span> <span class="o">=</span> <span class="mi">38</span></code></pre>
+
+                        </div>
+                      </div>
+                    </section>
+                  </div>
+                </li>
+                <li class="item">
+                  <div>
+                    <code>
+                    <a name="/s:7MQTTNIO14MQTTPropertiesV10PropertyIdO17maximumPacketSizeyA2EmF"></a>
+                    <a name="//apple_ref/swift/Element/maximumPacketSize" class="dashAnchor"></a>
+                    <a class="token" href="#/s:7MQTTNIO14MQTTPropertiesV10PropertyIdO17maximumPacketSizeyA2EmF">maximumPacketSize</a>
+                    </code>
+                  </div>
+                  <div class="height-container">
+                    <div class="pointer-container"></div>
+                    <section class="section">
+                      <div class="pointer"></div>
+                      <div class="abstract">
+                        <p>Undocumented</p>
+
+                      </div>
+                      <div class="declaration">
+                        <h4>Declaration</h4>
+                        <div class="language">
+                          <p class="aside-title">Swift</p>
+                          <pre class="highlight swift"><code><span class="k">case</span> <span class="n">maximumPacketSize</span> <span class="o">=</span> <span class="mi">39</span></code></pre>
+
+                        </div>
+                      </div>
+                    </section>
+                  </div>
+                </li>
+                <li class="item">
+                  <div>
+                    <code>
+                    <a name="/s:7MQTTNIO14MQTTPropertiesV10PropertyIdO29wildcardSubscriptionAvailableyA2EmF"></a>
+                    <a name="//apple_ref/swift/Element/wildcardSubscriptionAvailable" class="dashAnchor"></a>
+                    <a class="token" href="#/s:7MQTTNIO14MQTTPropertiesV10PropertyIdO29wildcardSubscriptionAvailableyA2EmF">wildcardSubscriptionAvailable</a>
+                    </code>
+                  </div>
+                  <div class="height-container">
+                    <div class="pointer-container"></div>
+                    <section class="section">
+                      <div class="pointer"></div>
+                      <div class="abstract">
+                        <p>Undocumented</p>
+
+                      </div>
+                      <div class="declaration">
+                        <h4>Declaration</h4>
+                        <div class="language">
+                          <p class="aside-title">Swift</p>
+                          <pre class="highlight swift"><code><span class="k">case</span> <span class="n">wildcardSubscriptionAvailable</span> <span class="o">=</span> <span class="mi">40</span></code></pre>
+
+                        </div>
+                      </div>
+                    </section>
+                  </div>
+                </li>
+                <li class="item">
+                  <div>
+                    <code>
+                    <a name="/s:7MQTTNIO14MQTTPropertiesV10PropertyIdO31subscriptionIdentifierAvailableyA2EmF"></a>
+                    <a name="//apple_ref/swift/Element/subscriptionIdentifierAvailable" class="dashAnchor"></a>
+                    <a class="token" href="#/s:7MQTTNIO14MQTTPropertiesV10PropertyIdO31subscriptionIdentifierAvailableyA2EmF">subscriptionIdentifierAvailable</a>
+                    </code>
+                  </div>
+                  <div class="height-container">
+                    <div class="pointer-container"></div>
+                    <section class="section">
+                      <div class="pointer"></div>
+                      <div class="abstract">
+                        <p>Undocumented</p>
+
+                      </div>
+                      <div class="declaration">
+                        <h4>Declaration</h4>
+                        <div class="language">
+                          <p class="aside-title">Swift</p>
+                          <pre class="highlight swift"><code><span class="k">case</span> <span class="n">subscriptionIdentifierAvailable</span> <span class="o">=</span> <span class="mi">41</span></code></pre>
+
+                        </div>
+                      </div>
+                    </section>
+                  </div>
+                </li>
+                <li class="item">
+                  <div>
+                    <code>
+                    <a name="/s:7MQTTNIO14MQTTPropertiesV10PropertyIdO27sharedSubscriptionAvailableyA2EmF"></a>
+                    <a name="//apple_ref/swift/Element/sharedSubscriptionAvailable" class="dashAnchor"></a>
+                    <a class="token" href="#/s:7MQTTNIO14MQTTPropertiesV10PropertyIdO27sharedSubscriptionAvailableyA2EmF">sharedSubscriptionAvailable</a>
+                    </code>
+                  </div>
+                  <div class="height-container">
+                    <div class="pointer-container"></div>
+                    <section class="section">
+                      <div class="pointer"></div>
+                      <div class="abstract">
+                        <p>Undocumented</p>
+
+                      </div>
+                      <div class="declaration">
+                        <h4>Declaration</h4>
+                        <div class="language">
+                          <p class="aside-title">Swift</p>
+                          <pre class="highlight swift"><code><span class="k">case</span> <span class="n">sharedSubscriptionAvailable</span> <span class="o">=</span> <span class="mi">42</span></code></pre>
 
                         </div>
                       </div>

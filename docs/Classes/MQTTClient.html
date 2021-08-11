@@ -8,22 +8,14 @@
     <script src="../js/jquery.min.js" defer></script>
     <script src="../js/jazzy.js" defer></script>
     
-    <script src="../js/lunr.min.js" defer></script>
-    <script src="../js/typeahead.jquery.js" defer></script>
-    <script src="../js/jazzy.search.js" defer></script>
   </head>
   <body>
     <a name="//apple_ref/swift/Class/MQTTClient" class="dashAnchor"></a>
     <a title="MQTTClient Class Reference"></a>
     <header>
       <div class="content-wrapper">
-        <p><a href="../index.html"> 2.0.0 Docs</a> (87% documented)</p>
+        <p><a href="../index.html"> 2.1.0 Docs</a> (73% documented)</p>
         <p class="header-right"><a href="https://github.com/adam-fowler/mqtt-nio"><img src="../img/gh.png"/>View on GitHub</a></p>
-        <p class="header-right">
-          <form role="search" action="../search.json">
-            <input type="text" placeholder="Search documentation" data-typeahead>
-          </form>
-        </p>
       </div>
     </header>
     <div class="content-wrapper">
@@ -80,6 +72,20 @@
             </ul>
           </li>
           <li class="nav-group-name">
+            <a href="../Extensions.html">Extensions</a>
+            <ul class="nav-group-tasks">
+              <li class="nav-group-task">
+                <a href="../Extensions/Logger.html">Logger</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Extensions/WebSocketErrorCode.html">WebSocketErrorCode</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Extensions/tls_protocol_version_t.html">tls_protocol_version_t</a>
+              </li>
+            </ul>
+          </li>
+          <li class="nav-group-name">
             <a href="../Structs.html">Structures</a>
             <ul class="nav-group-tasks">
               <li class="nav-group-task">
@@ -99,6 +105,12 @@
               </li>
               <li class="nav-group-task">
                 <a href="../Structs/MQTTProperties/Property.html">– Property</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Structs/MQTTProperties/PropertyId.html">– PropertyId</a>
+              </li>
+              <li class="nav-group-task">
+                <a href="../Structs/MQTTProperties/PropertyValue.html">– PropertyValue</a>
               </li>
               <li class="nav-group-task">
                 <a href="../Structs/MQTTPublishInfo.html">MQTTPublishInfo</a>
@@ -134,7 +146,6 @@
             <h1>MQTTClient</h1>
               <div class="declaration">
                 <div class="language">
-                  
                   <pre class="highlight swift"><code><span class="kd">public</span> <span class="kd">final</span> <span class="kd">class</span> <span class="kt">MQTTClient</span></code></pre>
 
                 </div>
@@ -323,7 +334,7 @@ and subscribing to MQTT topics</p>
                     <code>
                     <a name="/s:7MQTTNIO10MQTTClientC4host4port10identifier22eventLoopGroupProvider6logger13configurationACSS_SiSgSS3NIO08NIOEventghI0O7Logging6LoggerVSgAC13ConfigurationVtcfc"></a>
                     <a name="//apple_ref/swift/Method/init(host:port:identifier:eventLoopGroupProvider:logger:configuration:)" class="dashAnchor"></a>
-                    <a class="token" href="#/s:7MQTTNIO10MQTTClientC4host4port10identifier22eventLoopGroupProvider6logger13configurationACSS_SiSgSS3NIO08NIOEventghI0O7Logging6LoggerVSgAC13ConfigurationVtcfc">init(host:<wbr>port:<wbr>identifier:<wbr>eventLoopGroupProvider:<wbr>logger:<wbr>configuration:<wbr>)</a>
+                    <a class="token" href="#/s:7MQTTNIO10MQTTClientC4host4port10identifier22eventLoopGroupProvider6logger13configurationACSS_SiSgSS3NIO08NIOEventghI0O7Logging6LoggerVSgAC13ConfigurationVtcfc">init(host:port:identifier:eventLoopGroupProvider:logger:configuration:)</a>
                     </code>
                   </div>
                   <div class="height-container">
@@ -451,7 +462,7 @@ and subscribing to MQTT topics</p>
                     <code>
                     <a name="/s:7MQTTNIO10MQTTClientC7connect12cleanSession4will3NIO15EventLoopFutureCySbGSb_SS9topicName_AG10ByteBufferV7payloadAA7MQTTQoSO3qosSb6retaintSgtF"></a>
                     <a name="//apple_ref/swift/Method/connect(cleanSession:will:)" class="dashAnchor"></a>
-                    <a class="token" href="#/s:7MQTTNIO10MQTTClientC7connect12cleanSession4will3NIO15EventLoopFutureCySbGSb_SS9topicName_AG10ByteBufferV7payloadAA7MQTTQoSO3qosSb6retaintSgtF">connect(cleanSession:<wbr>will:<wbr>)</a>
+                    <a class="token" href="#/s:7MQTTNIO10MQTTClientC7connect12cleanSession4will3NIO15EventLoopFutureCySbGSb_SS9topicName_AG10ByteBufferV7payloadAA7MQTTQoSO3qosSb6retaintSgtF">connect(cleanSession:will:)</a>
                     </code>
                   </div>
                   <div class="height-container">
@@ -522,7 +533,7 @@ after the Client and Server are disconnected. If set to true then the Client and
                     <code>
                     <a name="/s:7MQTTNIO10MQTTClientC7publish2to7payload3qos6retain10properties3NIO15EventLoopFutureCyytGSS_AJ10ByteBufferVAA7MQTTQoSOSbAA14MQTTPropertiesVtF"></a>
                     <a name="//apple_ref/swift/Method/publish(to:payload:qos:retain:properties:)" class="dashAnchor"></a>
-                    <a class="token" href="#/s:7MQTTNIO10MQTTClientC7publish2to7payload3qos6retain10properties3NIO15EventLoopFutureCyytGSS_AJ10ByteBufferVAA7MQTTQoSOSbAA14MQTTPropertiesVtF">publish(to:<wbr>payload:<wbr>qos:<wbr>retain:<wbr>properties:<wbr>)</a>
+                    <a class="token" href="#/s:7MQTTNIO10MQTTClientC7publish2to7payload3qos6retain10properties3NIO15EventLoopFutureCyytGSS_AJ10ByteBufferVAA7MQTTQoSOSbAA14MQTTPropertiesVtF">publish(to:payload:qos:retain:properties:)</a>
                     </code>
                   </div>
                   <div class="height-container">
@@ -616,7 +627,7 @@ received</p>
                     <code>
                     <a name="/s:7MQTTNIO10MQTTClientC9subscribe2to3NIO15EventLoopFutureCyAA10MQTTSubackVGSayAA17MQTTSubscribeInfoVG_tF"></a>
                     <a name="//apple_ref/swift/Method/subscribe(to:)" class="dashAnchor"></a>
-                    <a class="token" href="#/s:7MQTTNIO10MQTTClientC9subscribe2to3NIO15EventLoopFutureCyAA10MQTTSubackVGSayAA17MQTTSubscribeInfoVG_tF">subscribe(to:<wbr>)</a>
+                    <a class="token" href="#/s:7MQTTNIO10MQTTClientC9subscribe2to3NIO15EventLoopFutureCyAA10MQTTSubackVGSayAA17MQTTSubscribeInfoVG_tF">subscribe(to:)</a>
                     </code>
                   </div>
                   <div class="height-container">
@@ -666,7 +677,7 @@ received</p>
                     <code>
                     <a name="/s:7MQTTNIO10MQTTClientC11unsubscribe4from3NIO15EventLoopFutureCyytGSaySSG_tF"></a>
                     <a name="//apple_ref/swift/Method/unsubscribe(from:)" class="dashAnchor"></a>
-                    <a class="token" href="#/s:7MQTTNIO10MQTTClientC11unsubscribe4from3NIO15EventLoopFutureCyytGSaySSG_tF">unsubscribe(from:<wbr>)</a>
+                    <a class="token" href="#/s:7MQTTNIO10MQTTClientC11unsubscribe4from3NIO15EventLoopFutureCyytGSaySSG_tF">unsubscribe(from:)</a>
                     </code>
                   </div>
                   <div class="height-container">
@@ -809,7 +820,7 @@ are disabled and it is up to you to send the PINGREQ messages yourself</p>
                     <code>
                     <a name="/s:7MQTTNIO10MQTTClientC18addPublishListener5named_ySS_ys6ResultOyAA15MQTTPublishInfoVs5Error_pGctF"></a>
                     <a name="//apple_ref/swift/Method/addPublishListener(named:_:)" class="dashAnchor"></a>
-                    <a class="token" href="#/s:7MQTTNIO10MQTTClientC18addPublishListener5named_ySS_ys6ResultOyAA15MQTTPublishInfoVs5Error_pGctF">addPublishListener(named:<wbr>_:<wbr>)</a>
+                    <a class="token" href="#/s:7MQTTNIO10MQTTClientC18addPublishListener5named_ySS_ys6ResultOyAA15MQTTPublishInfoVs5Error_pGctF">addPublishListener(named:_:)</a>
                     </code>
                   </div>
                   <div class="height-container">
@@ -836,7 +847,7 @@ are disabled and it is up to you to send the PINGREQ messages yourself</p>
                     <code>
                     <a name="/s:7MQTTNIO10MQTTClientC21removePublishListener5namedySS_tF"></a>
                     <a name="//apple_ref/swift/Method/removePublishListener(named:)" class="dashAnchor"></a>
-                    <a class="token" href="#/s:7MQTTNIO10MQTTClientC21removePublishListener5namedySS_tF">removePublishListener(named:<wbr>)</a>
+                    <a class="token" href="#/s:7MQTTNIO10MQTTClientC21removePublishListener5namedySS_tF">removePublishListener(named:)</a>
                     </code>
                   </div>
                   <div class="height-container">
@@ -863,7 +874,7 @@ are disabled and it is up to you to send the PINGREQ messages yourself</p>
                     <code>
                     <a name="/s:7MQTTNIO10MQTTClientC16addCloseListener5named_ySS_ys6ResultOyyts5Error_pGctF"></a>
                     <a name="//apple_ref/swift/Method/addCloseListener(named:_:)" class="dashAnchor"></a>
-                    <a class="token" href="#/s:7MQTTNIO10MQTTClientC16addCloseListener5named_ySS_ys6ResultOyyts5Error_pGctF">addCloseListener(named:<wbr>_:<wbr>)</a>
+                    <a class="token" href="#/s:7MQTTNIO10MQTTClientC16addCloseListener5named_ySS_ys6ResultOyyts5Error_pGctF">addCloseListener(named:_:)</a>
                     </code>
                   </div>
                   <div class="height-container">
@@ -890,7 +901,7 @@ are disabled and it is up to you to send the PINGREQ messages yourself</p>
                     <code>
                     <a name="/s:7MQTTNIO10MQTTClientC19removeCloseListener5namedySS_tF"></a>
                     <a name="//apple_ref/swift/Method/removeCloseListener(named:)" class="dashAnchor"></a>
-                    <a class="token" href="#/s:7MQTTNIO10MQTTClientC19removeCloseListener5namedySS_tF">removeCloseListener(named:<wbr>)</a>
+                    <a class="token" href="#/s:7MQTTNIO10MQTTClientC19removeCloseListener5namedySS_tF">removeCloseListener(named:)</a>
                     </code>
                   </div>
                   <div class="height-container">
@@ -908,6 +919,379 @@ are disabled and it is up to you to send the PINGREQ messages yourself</p>
                           <pre class="highlight swift"><code><span class="kd">public</span> <span class="kd">func</span> <span class="nf">removeCloseListener</span><span class="p">(</span><span class="n">named</span> <span class="nv">name</span><span class="p">:</span> <span class="kt">String</span><span class="p">)</span></code></pre>
 
                         </div>
+                      </div>
+                    </section>
+                  </div>
+                </li>
+                <li class="item">
+                  <div>
+                    <code>
+                    <a name="/s:7MQTTNIO10MQTTClientC7connect6packet12authWorkflow3NIO15EventLoopFutureCyAA17MQTTConnAckPacketVGAA011MQTTConnectM0V_AIyAA10MQTTAuthV5VGAP_AG0hI0_ptcSgtF"></a>
+                    <a name="//apple_ref/swift/Method/connect(packet:authWorkflow:)" class="dashAnchor"></a>
+                    <a class="token" href="#/s:7MQTTNIO10MQTTClientC7connect6packet12authWorkflow3NIO15EventLoopFutureCyAA17MQTTConnAckPacketVGAA011MQTTConnectM0V_AIyAA10MQTTAuthV5VGAP_AG0hI0_ptcSgtF">connect(packet:authWorkflow:)</a>
+                    </code>
+                  </div>
+                  <div class="height-container">
+                    <div class="pointer-container"></div>
+                    <section class="section">
+                      <div class="pointer"></div>
+                      <div class="abstract">
+                        <p>connect to broker</p>
+
+                      </div>
+                      <div class="declaration">
+                        <h4>Declaration</h4>
+                        <div class="language">
+                          <p class="aside-title">Swift</p>
+                          <pre class="highlight swift"><code><span class="kd">func</span> <span class="nf">connect</span><span class="p">(</span>
+    <span class="nv">packet</span><span class="p">:</span> <span class="kt">MQTTConnectPacket</span><span class="p">,</span>
+    <span class="nv">authWorkflow</span><span class="p">:</span> <span class="p">((</span><span class="kt"><a href="../Structs/MQTTAuthV5.html">MQTTAuthV5</a></span><span class="p">,</span> <span class="kt">EventLoop</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kt">EventLoopFuture</span><span class="o">&lt;</span><span class="kt"><a href="../Structs/MQTTAuthV5.html">MQTTAuthV5</a></span><span class="o">&gt;</span><span class="p">)?</span> <span class="o">=</span> <span class="kc">nil</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="kt">EventLoopFuture</span><span class="o">&lt;</span><span class="kt">MQTTConnAckPacket</span><span class="o">&gt;</span></code></pre>
+
+                        </div>
+                      </div>
+                    </section>
+                  </div>
+                </li>
+                <li class="item">
+                  <div>
+                    <code>
+                    <a name="/s:7MQTTNIO10MQTTClientC15resendOnRestartyyF"></a>
+                    <a name="//apple_ref/swift/Method/resendOnRestart()" class="dashAnchor"></a>
+                    <a class="token" href="#/s:7MQTTNIO10MQTTClientC15resendOnRestartyyF">resendOnRestart()</a>
+                    </code>
+                  </div>
+                  <div class="height-container">
+                    <div class="pointer-container"></div>
+                    <section class="section">
+                      <div class="pointer"></div>
+                      <div class="abstract">
+                        <p>Resend PUBLISH and PUBREL messages</p>
+
+                      </div>
+                      <div class="declaration">
+                        <h4>Declaration</h4>
+                        <div class="language">
+                          <p class="aside-title">Swift</p>
+                          <pre class="highlight swift"><code><span class="kd">func</span> <span class="nf">resendOnRestart</span><span class="p">()</span></code></pre>
+
+                        </div>
+                      </div>
+                    </section>
+                  </div>
+                </li>
+                <li class="item">
+                  <div>
+                    <code>
+                    <a name="/s:7MQTTNIO10MQTTClientC14processConnackyAA17MQTTConnAckPacketVAFKF"></a>
+                    <a name="//apple_ref/swift/Method/processConnack(_:)" class="dashAnchor"></a>
+                    <a class="token" href="#/s:7MQTTNIO10MQTTClientC14processConnackyAA17MQTTConnAckPacketVAFKF">processConnack(_:)</a>
+                    </code>
+                  </div>
+                  <div class="height-container">
+                    <div class="pointer-container"></div>
+                    <section class="section">
+                      <div class="pointer"></div>
+                      <div class="abstract">
+                        <p>Undocumented</p>
+
+                      </div>
+                      <div class="declaration">
+                        <h4>Declaration</h4>
+                        <div class="language">
+                          <p class="aside-title">Swift</p>
+                          <pre class="highlight swift"><code><span class="kd">func</span> <span class="nf">processConnack</span><span class="p">(</span><span class="n">_</span> <span class="nv">connack</span><span class="p">:</span> <span class="kt">MQTTConnAckPacket</span><span class="p">)</span> <span class="k">throws</span> <span class="o">-&gt;</span> <span class="kt">MQTTConnAckPacket</span></code></pre>
+
+                        </div>
+                      </div>
+                    </section>
+                  </div>
+                </li>
+                <li class="item">
+                  <div>
+                    <code>
+                    <a name="/s:7MQTTNIO10MQTTClientC11processAuth_12authWorkflow2on3NIO15EventLoopFutureCyAA10MQTTPacket_pGAA14MQTTAuthPacketV_AIyAA0M2V5VGAO_AG0iJ0_ptcAgQ_ptF"></a>
+                    <a name="//apple_ref/swift/Method/processAuth(_:authWorkflow:on:)" class="dashAnchor"></a>
+                    <a class="token" href="#/s:7MQTTNIO10MQTTClientC11processAuth_12authWorkflow2on3NIO15EventLoopFutureCyAA10MQTTPacket_pGAA14MQTTAuthPacketV_AIyAA0M2V5VGAO_AG0iJ0_ptcAgQ_ptF">processAuth(_:authWorkflow:on:)</a>
+                    </code>
+                  </div>
+                  <div class="height-container">
+                    <div class="pointer-container"></div>
+                    <section class="section">
+                      <div class="pointer"></div>
+                      <div class="abstract">
+                        <p>Undocumented</p>
+
+                      </div>
+                      <div class="declaration">
+                        <h4>Declaration</h4>
+                        <div class="language">
+                          <p class="aside-title">Swift</p>
+                          <pre class="highlight swift"><code><span class="kd">func</span> <span class="nf">processAuth</span><span class="p">(</span>
+    <span class="n">_</span> <span class="nv">packet</span><span class="p">:</span> <span class="kt">MQTTAuthPacket</span><span class="p">,</span>
+    <span class="nv">authWorkflow</span><span class="p">:</span> <span class="kd">@escaping</span> <span class="p">((</span><span class="kt"><a href="../Structs/MQTTAuthV5.html">MQTTAuthV5</a></span><span class="p">,</span> <span class="kt">EventLoop</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kt">EventLoopFuture</span><span class="o">&lt;</span><span class="kt"><a href="../Structs/MQTTAuthV5.html">MQTTAuthV5</a></span><span class="o">&gt;</span><span class="p">),</span>
+    <span class="n">on</span> <span class="nv">eventLoop</span><span class="p">:</span> <span class="kt">EventLoop</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="kt">EventLoopFuture</span><span class="o">&lt;</span><span class="kt">MQTTPacket</span><span class="o">&gt;</span></code></pre>
+
+                        </div>
+                      </div>
+                    </section>
+                  </div>
+                </li>
+                <li class="item">
+                  <div>
+                    <code>
+                    <a name="/s:7MQTTNIO10MQTTClientC4auth6packet3NIO15EventLoopFutureCyAA10MQTTPacket_pGAA14MQTTAuthPacketV_tF"></a>
+                    <a name="//apple_ref/swift/Method/auth(packet:)" class="dashAnchor"></a>
+                    <a class="token" href="#/s:7MQTTNIO10MQTTClientC4auth6packet3NIO15EventLoopFutureCyAA10MQTTPacket_pGAA14MQTTAuthPacketV_tF">auth(packet:)</a>
+                    </code>
+                  </div>
+                  <div class="height-container">
+                    <div class="pointer-container"></div>
+                    <section class="section">
+                      <div class="pointer"></div>
+                      <div class="abstract">
+                        <p>Undocumented</p>
+
+                      </div>
+                      <div class="declaration">
+                        <h4>Declaration</h4>
+                        <div class="language">
+                          <p class="aside-title">Swift</p>
+                          <pre class="highlight swift"><code><span class="kd">func</span> <span class="nf">auth</span><span class="p">(</span><span class="nv">packet</span><span class="p">:</span> <span class="kt">MQTTAuthPacket</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kt">EventLoopFuture</span><span class="o">&lt;</span><span class="kt">MQTTPacket</span><span class="o">&gt;</span></code></pre>
+
+                        </div>
+                      </div>
+                    </section>
+                  </div>
+                </li>
+                <li class="item">
+                  <div>
+                    <code>
+                    <a name="/s:7MQTTNIO10MQTTClientC6reAuth6packet3NIO15EventLoopFutureCyAA10MQTTPacket_pGAA14MQTTAuthPacketV_tF"></a>
+                    <a name="//apple_ref/swift/Method/reAuth(packet:)" class="dashAnchor"></a>
+                    <a class="token" href="#/s:7MQTTNIO10MQTTClientC6reAuth6packet3NIO15EventLoopFutureCyAA10MQTTPacket_pGAA14MQTTAuthPacketV_tF">reAuth(packet:)</a>
+                    </code>
+                  </div>
+                  <div class="height-container">
+                    <div class="pointer-container"></div>
+                    <section class="section">
+                      <div class="pointer"></div>
+                      <div class="abstract">
+                        <p>Undocumented</p>
+
+                      </div>
+                      <div class="declaration">
+                        <h4>Declaration</h4>
+                        <div class="language">
+                          <p class="aside-title">Swift</p>
+                          <pre class="highlight swift"><code><span class="kd">func</span> <span class="nf">reAuth</span><span class="p">(</span><span class="nv">packet</span><span class="p">:</span> <span class="kt">MQTTAuthPacket</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kt">EventLoopFuture</span><span class="o">&lt;</span><span class="kt">MQTTPacket</span><span class="o">&gt;</span></code></pre>
+
+                        </div>
+                      </div>
+                    </section>
+                  </div>
+                </li>
+                <li class="item">
+                  <div>
+                    <code>
+                    <a name="/s:7MQTTNIO10MQTTClientC7publish6packet3NIO15EventLoopFutureCyAA9MQTTAckV5VSgGAA17MQTTPublishPacketV_tF"></a>
+                    <a name="//apple_ref/swift/Method/publish(packet:)" class="dashAnchor"></a>
+                    <a class="token" href="#/s:7MQTTNIO10MQTTClientC7publish6packet3NIO15EventLoopFutureCyAA9MQTTAckV5VSgGAA17MQTTPublishPacketV_tF">publish(packet:)</a>
+                    </code>
+                  </div>
+                  <div class="height-container">
+                    <div class="pointer-container"></div>
+                    <section class="section">
+                      <div class="pointer"></div>
+                      <div class="abstract">
+                        <p>Publish message to topic</p>
+
+                      </div>
+                      <div class="declaration">
+                        <h4>Declaration</h4>
+                        <div class="language">
+                          <p class="aside-title">Swift</p>
+                          <pre class="highlight swift"><code><span class="kd">func</span> <span class="nf">publish</span><span class="p">(</span><span class="nv">packet</span><span class="p">:</span> <span class="kt">MQTTPublishPacket</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kt">EventLoopFuture</span><span class="o">&lt;</span><span class="kt"><a href="../Structs/MQTTAckV5.html">MQTTAckV5</a></span><span class="p">?</span><span class="o">&gt;</span></code></pre>
+
+                        </div>
+                      </div>
+                      <div>
+                        <h4>Parameters</h4>
+                        <table class="graybox">
+                          <tbody>
+                            <tr>
+                              <td>
+                                <code>
+                                <em>packet</em>
+                                </code>
+                              </td>
+                              <td>
+                                <div>
+                                  <p>Publish packet</p>
+                                </div>
+                              </td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </section>
+                  </div>
+                </li>
+                <li class="item">
+                  <div>
+                    <code>
+                    <a name="/s:7MQTTNIO10MQTTClientC6pubRel6packet3NIO15EventLoopFutureCyAA10MQTTPacket_pGAA16MQTTPubAckPacketV_tF"></a>
+                    <a name="//apple_ref/swift/Method/pubRel(packet:)" class="dashAnchor"></a>
+                    <a class="token" href="#/s:7MQTTNIO10MQTTClientC6pubRel6packet3NIO15EventLoopFutureCyAA10MQTTPacket_pGAA16MQTTPubAckPacketV_tF">pubRel(packet:)</a>
+                    </code>
+                  </div>
+                  <div class="height-container">
+                    <div class="pointer-container"></div>
+                    <section class="section">
+                      <div class="pointer"></div>
+                      <div class="abstract">
+                        <p>Undocumented</p>
+
+                      </div>
+                      <div class="declaration">
+                        <h4>Declaration</h4>
+                        <div class="language">
+                          <p class="aside-title">Swift</p>
+                          <pre class="highlight swift"><code><span class="kd">func</span> <span class="nf">pubRel</span><span class="p">(</span><span class="nv">packet</span><span class="p">:</span> <span class="kt">MQTTPubAckPacket</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kt">EventLoopFuture</span><span class="o">&lt;</span><span class="kt">MQTTPacket</span><span class="o">&gt;</span></code></pre>
+
+                        </div>
+                      </div>
+                    </section>
+                  </div>
+                </li>
+                <li class="item">
+                  <div>
+                    <code>
+                    <a name="/s:7MQTTNIO10MQTTClientC9subscribe6packet3NIO15EventLoopFutureCyAA16MQTTSubAckPacketVGAA013MQTTSubscribeK0V_tF"></a>
+                    <a name="//apple_ref/swift/Method/subscribe(packet:)" class="dashAnchor"></a>
+                    <a class="token" href="#/s:7MQTTNIO10MQTTClientC9subscribe6packet3NIO15EventLoopFutureCyAA16MQTTSubAckPacketVGAA013MQTTSubscribeK0V_tF">subscribe(packet:)</a>
+                    </code>
+                  </div>
+                  <div class="height-container">
+                    <div class="pointer-container"></div>
+                    <section class="section">
+                      <div class="pointer"></div>
+                      <div class="abstract">
+                        <p>Subscribe to topic</p>
+
+                      </div>
+                      <div class="declaration">
+                        <h4>Declaration</h4>
+                        <div class="language">
+                          <p class="aside-title">Swift</p>
+                          <pre class="highlight swift"><code><span class="kd">func</span> <span class="nf">subscribe</span><span class="p">(</span><span class="nv">packet</span><span class="p">:</span> <span class="kt">MQTTSubscribePacket</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kt">EventLoopFuture</span><span class="o">&lt;</span><span class="kt">MQTTSubAckPacket</span><span class="o">&gt;</span></code></pre>
+
+                        </div>
+                      </div>
+                      <div>
+                        <h4>Parameters</h4>
+                        <table class="graybox">
+                          <tbody>
+                            <tr>
+                              <td>
+                                <code>
+                                <em>packet</em>
+                                </code>
+                              </td>
+                              <td>
+                                <div>
+                                  <p>Subscription packet</p>
+                                </div>
+                              </td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                      <div>
+                        <h4>Return Value</h4>
+                        <p>Future waiting for subscribe to complete. Will wait for SUBACK message from server</p>
+                      </div>
+                    </section>
+                  </div>
+                </li>
+                <li class="item">
+                  <div>
+                    <code>
+                    <a name="/s:7MQTTNIO10MQTTClientC11unsubscribe6packet3NIO15EventLoopFutureCyAA16MQTTSubAckPacketVGAA015MQTTUnsubscribeK0V_tF"></a>
+                    <a name="//apple_ref/swift/Method/unsubscribe(packet:)" class="dashAnchor"></a>
+                    <a class="token" href="#/s:7MQTTNIO10MQTTClientC11unsubscribe6packet3NIO15EventLoopFutureCyAA16MQTTSubAckPacketVGAA015MQTTUnsubscribeK0V_tF">unsubscribe(packet:)</a>
+                    </code>
+                  </div>
+                  <div class="height-container">
+                    <div class="pointer-container"></div>
+                    <section class="section">
+                      <div class="pointer"></div>
+                      <div class="abstract">
+                        <p>Unsubscribe from topic</p>
+
+                      </div>
+                      <div class="declaration">
+                        <h4>Declaration</h4>
+                        <div class="language">
+                          <p class="aside-title">Swift</p>
+                          <pre class="highlight swift"><code><span class="kd">func</span> <span class="nf">unsubscribe</span><span class="p">(</span><span class="nv">packet</span><span class="p">:</span> <span class="kt">MQTTUnsubscribePacket</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kt">EventLoopFuture</span><span class="o">&lt;</span><span class="kt">MQTTSubAckPacket</span><span class="o">&gt;</span></code></pre>
+
+                        </div>
+                      </div>
+                      <div>
+                        <h4>Parameters</h4>
+                        <table class="graybox">
+                          <tbody>
+                            <tr>
+                              <td>
+                                <code>
+                                <em>subscriptions</em>
+                                </code>
+                              </td>
+                              <td>
+                                <div>
+                                  <p>List of subscriptions to unsubscribe from</p>
+                                </div>
+                              </td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                      <div>
+                        <h4>Return Value</h4>
+                        <p>Future waiting for unsubscribe to complete. Will wait for UNSUBACK message from server</p>
+                      </div>
+                    </section>
+                  </div>
+                </li>
+                <li class="item">
+                  <div>
+                    <code>
+                    <a name="/s:7MQTTNIO10MQTTClientC10disconnect6packet3NIO15EventLoopFutureCyytGAA20MQTTDisconnectPacketV_tF"></a>
+                    <a name="//apple_ref/swift/Method/disconnect(packet:)" class="dashAnchor"></a>
+                    <a class="token" href="#/s:7MQTTNIO10MQTTClientC10disconnect6packet3NIO15EventLoopFutureCyytGAA20MQTTDisconnectPacketV_tF">disconnect(packet:)</a>
+                    </code>
+                  </div>
+                  <div class="height-container">
+                    <div class="pointer-container"></div>
+                    <section class="section">
+                      <div class="pointer"></div>
+                      <div class="abstract">
+                        <p>Disconnect from server</p>
+
+                      </div>
+                      <div class="declaration">
+                        <h4>Declaration</h4>
+                        <div class="language">
+                          <p class="aside-title">Swift</p>
+                          <pre class="highlight swift"><code><span class="kd">func</span> <span class="nf">disconnect</span><span class="p">(</span><span class="nv">packet</span><span class="p">:</span> <span class="kt">MQTTDisconnectPacket</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kt">EventLoopFuture</span><span class="o">&lt;</span><span class="kt">Void</span><span class="o">&gt;</span></code></pre>
+
+                        </div>
+                      </div>
+                      <div>
+                        <h4>Return Value</h4>
+                        <p>Future waiting on disconnect message to be sent</p>
                       </div>
                     </section>
                   </div>
@@ -1058,8 +1442,8 @@ It is recommended on iOS you use NIO Transport Services.</p>
           </section>
         </section>
         <section id="footer">
-          <p>&copy; 2021 <a class="link" href="https://github.com/adam-fowler" target="_blank" rel="external">Adam Fowler</a>. All rights reserved. (Last updated: 2021-07-01)</p>
-          <p>Generated by <a class="link" href="https://github.com/realm/jazzy" target="_blank" rel="external">jazzy ♪♫ v0.13.6</a>, a <a class="link" href="https://realm.io" target="_blank" rel="external">Realm</a> project.</p>
+          <p>&copy; 2021 <a class="link" href="https://github.com/adam-fowler" target="_blank" rel="external">Adam Fowler</a>. All rights reserved. (Last updated: 2021-08-11)</p>
+          <p>Generated by <a class="link" href="https://github.com/realm/jazzy" target="_blank" rel="external">jazzy ♪♫ v0.13.1</a>, a <a class="link" href="https://realm.io" target="_blank" rel="external">Realm</a> project.</p>
         </section>
       </article>
     </div>
