@@ -384,6 +384,26 @@ final class MQTTNIOTests: XCTestCase {
         try client.syncShutdownGracefully()
     }
 
+    func testRawIPConnect() throws {
+        #if os(macOS)
+        if ProcessInfo.processInfo.environment["CI"] != nil {
+            return
+        }
+        let elg = MultiThreadedEventLoopGroup(numberOfThreads: 2)
+        defer { XCTAssertNoThrow(try elg.syncShutdownGracefully()) }
+        let client = MQTTClient(
+            host: "127.0.0.1",
+            identifier: "test/raw-ip",
+            eventLoopGroupProvider: .shared(elg),
+            logger: self.logger
+        )
+        _ = try client.connect().wait()
+        _ = try client.ping().wait()
+        try client.disconnect().wait()
+        try client.syncShutdownGracefully()
+        #endif
+    }
+    
     // MARK: Helper variables and functions
 
     func createClient(identifier: String, configuration: MQTTClient.Configuration = .init()) -> MQTTClient {
