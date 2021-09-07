@@ -35,14 +35,14 @@ final class AsyncMQTTNIOTests: XCTestCase {
         dg.wait()
     }
 
-    func createClient(identifier: String, timeout: TimeAmount? = .seconds(10)) -> MQTTClient {
+    func createClient(identifier: String, version: MQTTClient.Version = .v3_1_1, timeout: TimeAmount? = .seconds(10)) -> MQTTClient {
         MQTTClient(
             host: Self.hostname,
             port: 1883,
             identifier: identifier,
             eventLoopGroupProvider: .createNew,
             logger: Self.logger,
-            configuration: .init(timeout: timeout)
+            configuration: .init(version: version, timeout: timeout)
         )
     }
 
@@ -93,6 +93,41 @@ final class AsyncMQTTNIOTests: XCTestCase {
             try await client.connect()
             try await client.ping()
             try await client.disconnect()
+        }
+    }
+
+    func testAsyncSequencePublishListener() {
+        let client = createClient(identifier: "testAsyncSequencePublishListener+async", version: .v5_0)
+        let client2 = createClient(identifier: "testAsyncSequencePublishListener+async2", version: .v5_0)
+        let payloadString = "Hello"
+        XCTRunAsyncAndBlock {
+            try await client.connect()
+            try await client2.connect()
+            _ = try await client2.v5.subscribe(to: [.init(topicFilter: "TestSubject", qos: .atLeastOnce)])
+            let task = Task { () -> Int in
+                var count = 0
+                let publishListener = client2.createPublishListener(finishOnClose: true)
+                for await result in publishListener {
+                    switch result {
+                    case .success(let publish):
+                        var buffer = publish.payload
+                        let string = buffer.readString(length: buffer.readableBytes)
+                        XCTAssertEqual(string, payloadString)
+                        count += 1
+                    case .failure(let error):
+                        XCTFail("\(error)")
+                    }
+                }
+                return count + 1
+            }
+            try await client.publish(to: "TestSubject", payload: ByteBufferAllocator().buffer(string: payloadString), qos: .atLeastOnce)
+            try await client.publish(to: "TestSubject", payload: ByteBufferAllocator().buffer(string: payloadString), qos: .atLeastOnce)
+            try await client.disconnect()
+            Thread.sleep(forTimeInterval: 1)
+            try await client2.disconnect()
+            
+            let result = await task.result
+            XCTAssertEqual(result, .success(3))
         }
     }
 }
