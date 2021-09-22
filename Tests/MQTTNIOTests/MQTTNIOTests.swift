@@ -403,7 +403,7 @@ final class MQTTNIOTests: XCTestCase {
         try client.syncShutdownGracefully()
         #endif
     }
-    
+
     // MARK: Helper variables and functions
 
     func createClient(identifier: String, configuration: MQTTClient.Configuration = .init()) -> MQTTClient {
@@ -474,7 +474,7 @@ final class MQTTNIOTests: XCTestCase {
             let rootCertificate = try NIOSSLCertificate.fromPEMFile(MQTTNIOTests.rootPath + "/mosquitto/certs/ca.crt")
             let certificate = try NIOSSLCertificate.fromPEMFile(MQTTNIOTests.rootPath + "/mosquitto/certs/client.crt")
             let privateKey = try NIOSSLPrivateKey(file: MQTTNIOTests.rootPath + "/mosquitto/certs/client.key", format: .pem)
-            var tlsConfiguration = TLSConfiguration.makeClientConfiguration()            
+            var tlsConfiguration = TLSConfiguration.makeClientConfiguration()
             tlsConfiguration.trustRoots = .certificates(rootCertificate)
             tlsConfiguration.certificateChain = certificate.map { .certificate($0) }
             tlsConfiguration.privateKey = .privateKey(privateKey)

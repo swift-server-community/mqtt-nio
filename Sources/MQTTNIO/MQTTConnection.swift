@@ -118,7 +118,7 @@ final class MQTTConnection {
                 bootstrap = NIOClientTCPBootstrap(clientBootstrap, tls: tlsProvider)
                 return bootstrap.enableTLS()
             } else {
-                bootstrap = NIOClientTCPBootstrap(clientBootstrap,tls: NIOInsecureNoTLS())
+                bootstrap = NIOClientTCPBootstrap(clientBootstrap, tls: NIOInsecureNoTLS())
             }
             return bootstrap
         }
@@ -181,7 +181,7 @@ final class MQTTConnection {
         let task = MQTTTask(on: channel.eventLoop, timeout: self.timeout, checkInbound: checkInbound)
         let taskHandler = MQTTTaskHandler(task: task, channel: channel)
 
-        channel.pipeline.addHandler(taskHandler, position: .before(unhandledHandler))
+        channel.pipeline.addHandler(taskHandler, position: .before(self.unhandledHandler))
             .flatMap {
                 self.channel.writeAndFlush(message)
             }

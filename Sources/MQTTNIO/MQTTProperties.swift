@@ -87,15 +87,15 @@ extension MQTTProperties: ExpressibleByArrayLiteral {
 
 extension MQTTProperties: Collection {
     public typealias Index = Array<Property>.Index
-    public var startIndex: Index { properties.startIndex }
-    public var endIndex: Index { properties.endIndex }
+    public var startIndex: Index { self.properties.startIndex }
+    public var endIndex: Index { self.properties.endIndex }
 
     public subscript(_ index: Index) -> Property {
-        return properties[index]
+        return self.properties[index]
     }
 
     public func index(after index: Index) -> Index {
-        return properties.index(after: index)
+        return self.properties.index(after: index)
     }
 }
 

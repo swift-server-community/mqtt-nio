@@ -56,7 +56,7 @@ extension MQTTClient {
     /// Completes when UNSUBACK is received
     /// - Parameter subscriptions: List of subscriptions to unsubscribe from
     public func unsubscribe(from subscriptions: [String]) async throws {
-        return try await unsubscribe(from: subscriptions).get()
+        return try await self.unsubscribe(from: subscriptions).get()
     }
 
     /// Ping the server to test if it is still alive and to tell it you are alive.
@@ -67,15 +67,13 @@ extension MQTTClient {
     /// the connection is still live. If you initialize the client with the configuration `disablePingReq: true` then these
     /// are disabled and it is up to you to send the PINGREQ messages yourself
     public func ping() async throws {
-        return try await ping().get()
+        return try await self.ping().get()
     }
 
     /// Disconnect from server
     public func disconnect() async throws {
-        return try await disconnect().get()
+        return try await self.disconnect().get()
     }
-
 }
 
 #endif // compiler(>=5.5)
-
