@@ -1,18 +1,18 @@
-#if compiler(>=5.5)
+#if compiler(>=5.5) && canImport(_Concurrency)
 
-import XCTest
 import Foundation
 import Logging
 import NIO
 import NIOConcurrencyHelpers
 import NIOFoundationCompat
 import NIOHTTP1
+import XCTest
 #if canImport(NIOSSL)
 import NIOSSL
 #endif
 @testable import MQTTNIO
 
-@available(macOS 9999, iOS 9999, watchOS 9999, tvOS 9999, *)
+@available(macOS 12.0, iOS 15.0, watchOS 8.0, tvOS 15.0, *)
 final class AsyncMQTTNIOTests: XCTestCase {
     static let hostname = ProcessInfo.processInfo.environment["MOSQUITTO_SERVER"] ?? "localhost"
     static let logger: Logger = {
@@ -47,18 +47,18 @@ final class AsyncMQTTNIOTests: XCTestCase {
     }
 
     func testConnect() {
-        let client = createClient(identifier: "testConnect+async")
-        XCTRunAsyncAndBlock {
+        let client = self.createClient(identifier: "testConnect+async")
+        self.XCTRunAsyncAndBlock {
             try await client.connect()
             try await client.disconnect()
         }
     }
 
     func testPublishSubscribe() {
-        let client = createClient(identifier: "testPublish+async")
-        let client2 = createClient(identifier: "testPublish+async2")
+        let client = self.createClient(identifier: "testPublish+async")
+        let client2 = self.createClient(identifier: "testPublish+async2")
         let payloadString = "Hello"
-        XCTRunAsyncAndBlock {
+        self.XCTRunAsyncAndBlock {
             try await client.connect()
             try await client2.connect()
             _ = try await client2.subscribe(to: [.init(topicFilter: "TestSubject", qos: .atLeastOnce)])
@@ -89,7 +89,7 @@ final class AsyncMQTTNIOTests: XCTestCase {
             configuration: .init(disablePing: true)
         )
 
-        XCTRunAsyncAndBlock {
+        self.XCTRunAsyncAndBlock {
             try await client.connect()
             try await client.ping()
             try await client.disconnect()

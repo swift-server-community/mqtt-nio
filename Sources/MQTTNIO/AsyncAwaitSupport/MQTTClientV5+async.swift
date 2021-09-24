@@ -1,4 +1,4 @@
-#if compiler(>=5.5)
+#if compiler(>=5.5) && canImport(_Concurrency)
 
 import _NIOConcurrency
 import NIO
@@ -24,7 +24,7 @@ extension MQTTClient.V5 {
         will: (topicName: String, payload: ByteBuffer, qos: MQTTQoS, retain: Bool, properties: MQTTProperties)? = nil,
         authWorkflow: ((MQTTAuthV5, EventLoop) -> EventLoopFuture<MQTTAuthV5>)? = nil
     ) async throws -> MQTTConnackV5 {
-        return try await connect(cleanStart: cleanStart, properties: properties, will: will, authWorkflow: authWorkflow).get()
+        return try await self.connect(cleanStart: cleanStart, properties: properties, will: will, authWorkflow: authWorkflow).get()
     }
 
     /// Publish message to topic
@@ -44,7 +44,7 @@ extension MQTTClient.V5 {
         retain: Bool = false,
         properties: MQTTProperties = .init()
     ) async throws -> MQTTAckV5? {
-        return try await publish(to: topicName, payload: payload, qos: qos, retain: retain, properties: properties).get()
+        return try await self.publish(to: topicName, payload: payload, qos: qos, retain: retain, properties: properties).get()
     }
 
     /// Subscribe to topic
@@ -57,7 +57,7 @@ extension MQTTClient.V5 {
         to subscriptions: [MQTTSubscribeInfoV5],
         properties: MQTTProperties = .init()
     ) async throws -> MQTTSubackV5 {
-        return try await subscribe(to: subscriptions, properties: properties).get()
+        return try await self.subscribe(to: subscriptions, properties: properties).get()
     }
 
     /// Unsubscribe from topic
@@ -70,16 +70,16 @@ extension MQTTClient.V5 {
         from subscriptions: [String],
         properties: MQTTProperties = .init()
     ) async throws -> MQTTSubackV5 {
-        return try await unsubscribe(from: subscriptions, properties: properties).get()
+        return try await self.unsubscribe(from: subscriptions, properties: properties).get()
     }
 
     /// Disconnect from server
     /// - Parameter properties: properties to attach to disconnect packet
     /// - Returns: Future waiting on disconnect message to be sent
     public func disconnect(properties: MQTTProperties = .init()) async throws {
-        return try await disconnect(properties: properties).get()
+        return try await self.disconnect(properties: properties).get()
     }
-    
+
     /// Re-authenticate with server
     ///
     /// - Parameters:
@@ -90,7 +90,7 @@ extension MQTTClient.V5 {
         properties: MQTTProperties,
         authWorkflow: ((MQTTAuthV5, EventLoop) -> EventLoopFuture<MQTTAuthV5>)? = nil
     ) async throws -> MQTTAuthV5 {
-        return try await auth(properties: properties, authWorkflow: authWorkflow).get()
+        return try await self.auth(properties: properties, authWorkflow: authWorkflow).get()
     }
 }
 

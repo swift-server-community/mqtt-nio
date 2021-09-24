@@ -118,7 +118,7 @@ extension MQTTClient {
         public func disconnect(properties: MQTTProperties = .init()) -> EventLoopFuture<Void> {
             return self.client.disconnect(packet: MQTTDisconnectPacket(reason: .success, properties: properties))
         }
-        
+
         /// Re-authenticate with server
         ///
         /// - Parameters:
@@ -130,7 +130,7 @@ extension MQTTClient {
             authWorkflow: ((MQTTAuthV5, EventLoop) -> EventLoopFuture<MQTTAuthV5>)? = nil
         ) -> EventLoopFuture<MQTTAuthV5> {
             let authPacket = MQTTAuthPacket(reason: .reAuthenticate, properties: properties)
-            let authFuture = client.reAuth(packet: authPacket)
+            let authFuture = self.client.reAuth(packet: authPacket)
             let eventLoop = authFuture.eventLoop
             return authFuture.flatMap { response -> EventLoopFuture<MQTTPacket> in
                 guard let auth = response as? MQTTAuthPacket else { return eventLoop.makeFailedFuture(MQTTError.unexpectedMessage) }

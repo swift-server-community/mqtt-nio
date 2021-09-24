@@ -93,7 +93,7 @@ final class MQTTUnhandledPacketHandler: ChannelInboundHandler {
 
     func channelRead(context: ChannelHandlerContext, data: NIOAny) {
         // we only send response to v5 server
-        guard client.configuration.version == .v5_0 else { return }
+        guard self.client.configuration.version == .v5_0 else { return }
         guard let connection = client.connection else { return }
         let response = self.unwrapInboundIn(data)
         switch response.type {
