@@ -1,5 +1,6 @@
 #if compiler(>=5.5) && canImport(_Concurrency)
 
+import Foundation
 import NIOCore
 
 @available(macOS 12.0, iOS 15.0, watchOS 8.0, tvOS 15.0, *)
@@ -72,6 +73,44 @@ extension MQTTClient {
     /// Disconnect from server
     public func disconnect() async throws {
         return try await self.disconnect().get()
+    }
+
+    /// Create a publish listener AsyncSequence. Called whenever a PUBLISH message is received from the server
+    public func createPublishListener() -> MQTTPublishListener {
+        return .init(self)
+    }
+}
+
+@available(macOS 12.0, iOS 15.0, watchOS 8.0, tvOS 15.0, *)
+public class MQTTPublishListener: AsyncSequence {
+    public typealias AsyncIterator = AsyncStream<Element>.AsyncIterator
+    public typealias Element = Result<MQTTPublishInfo, Error>
+
+    let client: MQTTClient
+    let stream: AsyncStream<Element>
+    let name: String
+
+    public init(_ client: MQTTClient) {
+        let name = UUID().uuidString
+        self.client = client
+        self.name = name
+        self.stream = AsyncStream { cont in
+            client.addPublishListener(named: name) { result in
+                cont.yield(result)
+            }
+            client.addShutdownListener(named: name) { _ in
+                cont.finish()
+            }
+        }
+    }
+
+    deinit {
+        self.client.removePublishListener(named: self.name)
+        self.client.removeShutdownListener(named: self.name)
+    }
+
+    public __consuming func makeAsyncIterator() -> AsyncStream<Element>.AsyncIterator {
+        return stream.makeAsyncIterator()
     }
 }
 

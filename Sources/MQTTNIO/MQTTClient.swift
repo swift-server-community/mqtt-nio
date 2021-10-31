@@ -124,6 +124,7 @@ public final class MQTTClient {
     /// Close down client. Must be called before the client is destroyed
     public func syncShutdownGracefully() throws {
         try self.connection?.close().wait()
+        self.shutdownListeners.notify(.success(()))
         switch self.eventLoopGroupProvider {
         case .createNew:
             try self.eventLoopGroup.syncShutdownGracefully()
@@ -269,6 +270,16 @@ public final class MQTTClient {
         self.closeListeners.removeListener(named: name)
     }
 
+    /// Add close listener. Called whenever the connection is closed
+    public func addShutdownListener(named name: String, _ listener: @escaping (Result<Void, Swift.Error>) -> Void) {
+        self.shutdownListeners.addListener(named: name, listener: listener)
+    }
+
+    /// Remove named close listener
+    public func removeShutdownListener(named name: String) {
+        self.shutdownListeners.removeListener(named: name)
+    }
+
     internal func updatePacketId() -> UInt16 {
         // packet id must be non-zero
         if self.globalPacketId.compareAndExchange(expected: 0, desired: 1) {
@@ -289,6 +300,7 @@ public final class MQTTClient {
     var connectionParameters = ConnectionParameters()
     var publishListeners = MQTTListeners<MQTTPublishInfo>()
     var closeListeners = MQTTListeners<Void>()
+    var shutdownListeners = MQTTListeners<Void>()
     private var _connection: MQTTConnection?
     private var lock = Lock()
 }
