@@ -138,6 +138,50 @@ final class AsyncMQTTNIOTests: XCTestCase {
         }
         wait(for: [expectation], timeout: 5.0)
     }
+
+    func testAsyncSequencePublishSubscriptionIdListener() {
+        let client = createClient(identifier: "testAsyncSequencePublishSubscriptionIdListener+async", version: .v5_0)
+        let client2 = createClient(identifier: "testAsyncSequencePublishSubscriptionIdListener+async2", version: .v5_0)
+        let payloadString = "Hello"
+        let expectation = XCTestExpectation(description: "publish listener")
+        let expectation2 = XCTestExpectation(description: "publish listener2")
+        expectation.expectedFulfillmentCount = 3
+        expectation2.expectedFulfillmentCount = 2
+
+        XCTRunAsyncAndBlock {
+            try await client.connect()
+            try await client2.connect()
+            _ = try await client2.v5.subscribe(to: [.init(topicFilter: "TestSubject", qos: .atLeastOnce)], properties: [.subscriptionIdentifier(1)])
+            _ = try await client2.v5.subscribe(to: [.init(topicFilter: "TestSubject2", qos: .atLeastOnce)], properties: [.subscriptionIdentifier(2)])
+            let task = Task {
+                let publishListener = client2.v5.createPublishListener(subscriptionId: 1)
+                for await _ in publishListener {
+                    expectation.fulfill()
+                }
+                expectation.fulfill()
+            }
+            let task2 = Task {
+                let publishListener = client2.v5.createPublishListener(subscriptionId: 2)
+                for await _ in publishListener {
+                    expectation2.fulfill()
+                }
+                expectation2.fulfill()
+            }
+            try await client.publish(to: "TestSubject", payload: ByteBufferAllocator().buffer(string: payloadString), qos: .atLeastOnce)
+            try await client.publish(to: "TestSubject", payload: ByteBufferAllocator().buffer(string: payloadString), qos: .atLeastOnce)
+            try await client.publish(to: "TestSubject2", payload: ByteBufferAllocator().buffer(string: payloadString), qos: .atLeastOnce)
+            try await client.disconnect()
+            Thread.sleep(forTimeInterval: 0.5)
+            try await client2.disconnect()
+            Thread.sleep(forTimeInterval: 0.5)
+            try client.syncShutdownGracefully()
+            try client2.syncShutdownGracefully()
+
+            _ = await task.result
+            _ = await task2.result
+        }
+        wait(for: [expectation, expectation2], timeout: 5.0)
+    }
 }
 
 #endif // compiler(>=5.5)
