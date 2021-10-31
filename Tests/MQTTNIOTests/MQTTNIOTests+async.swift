@@ -103,12 +103,14 @@ final class AsyncMQTTNIOTests: XCTestCase {
         let client = createClient(identifier: "testAsyncSequencePublishListener+async", version: .v5_0)
         let client2 = createClient(identifier: "testAsyncSequencePublishListener+async2", version: .v5_0)
         let payloadString = "Hello"
+        let expectation = XCTestExpectation(description: "publish listener")
+        expectation.expectedFulfillmentCount = 3
+        
         XCTRunAsyncAndBlock {
             try await client.connect()
             try await client2.connect()
             _ = try await client2.v5.subscribe(to: [.init(topicFilter: "TestSubject", qos: .atLeastOnce)])
-            let task = Task { () -> Int in
-                var count = 0
+            let task = Task {
                 let publishListener = client2.createPublishListener()
                 for await result in publishListener {
                     switch result {
@@ -116,27 +118,25 @@ final class AsyncMQTTNIOTests: XCTestCase {
                         var buffer = publish.payload
                         let string = buffer.readString(length: buffer.readableBytes)
                         XCTAssertEqual(string, payloadString)
-                        count += 1
-                        print("Count: \(count)")
+                        expectation.fulfill()
                     case .failure(let error):
                         XCTFail("\(error)")
                     }
                 }
-                print("Done: \(count+1)")
-                return count + 1
+                expectation.fulfill()
             }
             try await client.publish(to: "TestSubject", payload: ByteBufferAllocator().buffer(string: payloadString), qos: .atLeastOnce)
             try await client.publish(to: "TestSubject", payload: ByteBufferAllocator().buffer(string: payloadString), qos: .atLeastOnce)
             try await client.disconnect()
-            Thread.sleep(forTimeInterval: 1)
+            Thread.sleep(forTimeInterval: 0.5)
             try await client2.disconnect()
-            
+            Thread.sleep(forTimeInterval: 0.5)
             try client.syncShutdownGracefully()
             try client2.syncShutdownGracefully()
 
-            let result = await task.result
-            XCTAssertEqual(result, .success(3))
+            _ = await task.result
         }
+        wait(for: [expectation], timeout: 5.0)
     }
 }
 
