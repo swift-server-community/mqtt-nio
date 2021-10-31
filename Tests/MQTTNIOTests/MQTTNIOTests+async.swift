@@ -117,10 +117,12 @@ final class AsyncMQTTNIOTests: XCTestCase {
                         let string = buffer.readString(length: buffer.readableBytes)
                         XCTAssertEqual(string, payloadString)
                         count += 1
+                        print("Count: \(count)")
                     case .failure(let error):
                         XCTFail("\(error)")
                     }
                 }
+                print("Done: \(count+1)")
                 return count + 1
             }
             try await client.publish(to: "TestSubject", payload: ByteBufferAllocator().buffer(string: payloadString), qos: .atLeastOnce)
