@@ -51,6 +51,7 @@ final class AsyncMQTTNIOTests: XCTestCase {
         self.XCTRunAsyncAndBlock {
             try await client.connect()
             try await client.disconnect()
+            try client.syncShutdownGracefully()
         }
     }
 
@@ -76,6 +77,7 @@ final class AsyncMQTTNIOTests: XCTestCase {
             try await client.disconnect()
             Thread.sleep(forTimeInterval: 2)
             try await client2.disconnect()
+            try client.syncShutdownGracefully()
         }
     }
 
@@ -93,6 +95,7 @@ final class AsyncMQTTNIOTests: XCTestCase {
             try await client.connect()
             try await client.ping()
             try await client.disconnect()
+            try client.syncShutdownGracefully()
         }
     }
 
@@ -106,7 +109,7 @@ final class AsyncMQTTNIOTests: XCTestCase {
             _ = try await client2.v5.subscribe(to: [.init(topicFilter: "TestSubject", qos: .atLeastOnce)])
             let task = Task { () -> Int in
                 var count = 0
-                let publishListener = client2.createPublishListener(finishOnClose: true)
+                let publishListener = client2.createPublishListener()
                 for await result in publishListener {
                     switch result {
                     case .success(let publish):
@@ -126,6 +129,9 @@ final class AsyncMQTTNIOTests: XCTestCase {
             Thread.sleep(forTimeInterval: 1)
             try await client2.disconnect()
             
+            try client.syncShutdownGracefully()
+            try client2.syncShutdownGracefully()
+
             let result = await task.result
             XCTAssertEqual(result, .success(3))
         }

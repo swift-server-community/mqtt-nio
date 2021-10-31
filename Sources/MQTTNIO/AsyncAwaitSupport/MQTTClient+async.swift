@@ -75,8 +75,8 @@ extension MQTTClient {
     }
 
     /// Create a publish listener AsyncSequence. Called whenever a PUBLISH message is received from the server
-    public func createPublishListener(finishOnClose: Bool = true) -> MQTTPublishListener {
-        return .init(self, finishOnClose: finishOnClose)
+    public func createPublishListener() -> MQTTPublishListener {
+        return .init(self)
     }
 }
 
@@ -89,7 +89,7 @@ public class MQTTPublishListener: AsyncSequence {
     let stream: AsyncStream<Element>
     let name: String
 
-    public init(_ client: MQTTClient, finishOnClose: Bool) {
+    public init(_ client: MQTTClient) {
         let name = UUID().uuidString
         self.client = client
         self.name = name
@@ -97,7 +97,7 @@ public class MQTTPublishListener: AsyncSequence {
             client.addPublishListener(named: name) { result in
                 cont.yield(result)
             }
-            client.addCloseListener(named: name) { _ in
+            client.addShutdownListener(named: name) { _ in
                 cont.finish()
             }
         }
@@ -105,6 +105,7 @@ public class MQTTPublishListener: AsyncSequence {
 
     deinit {
         self.client.removePublishListener(named: self.name)
+        self.client.removeShutdownListener(named: self.name)
     }
 
     public __consuming func makeAsyncIterator() -> AsyncStream<Element>.AsyncIterator {
