@@ -49,7 +49,7 @@ jobs:
         ./scripts/mosquitto.sh start
     - name: Test
       run: |
-        swift test --enable-test-discovery --enable-code-coverage --sanitize=thread
+        swift test --enable-test-discovery --enable-code-coverage
     # ubuntu latest docker image doesn't have llvm-cov installed
     #- name: Convert coverage files
     #  run: |
