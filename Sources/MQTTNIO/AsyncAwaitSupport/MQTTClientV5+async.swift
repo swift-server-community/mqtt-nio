@@ -1,5 +1,6 @@
 #if compiler(>=5.5) && canImport(_Concurrency)
 
+import Foundation
 import NIOCore
 
 @available(macOS 12.0, iOS 15.0, watchOS 8.0, tvOS 15.0, *)
@@ -91,6 +92,47 @@ extension MQTTClient.V5 {
     ) async throws -> MQTTAuthV5 {
         return try await self.auth(properties: properties, authWorkflow: authWorkflow).get()
     }
+
+    /// Create a publish listener AsyncSequence that yields a value whenever a PUBLISH message is received from the server
+    /// with the specified subscription id
+    public func createPublishListener(subscriptionId: UInt) -> MQTTPublishIdListener {
+        return .init(self, subscriptionId: subscriptionId)
+    }
 }
+
+/// MQTT Publish message listener, that filters messages by subscription identifier
+@available(macOS 12.0, iOS 15.0, watchOS 8.0, tvOS 15.0, *)
+public class MQTTPublishIdListener: AsyncSequence {
+    public typealias AsyncIterator = AsyncStream<Element>.AsyncIterator
+    public typealias Element = MQTTPublishInfo
+
+    let client: MQTTClient
+    let stream: AsyncStream<Element>
+    let name: String
+
+    init(_ client: MQTTClient.V5, subscriptionId: UInt) {
+        let name = UUID().uuidString
+        self.client = client.client
+        self.name = name
+        self.stream = AsyncStream { cont in
+            client.addPublishListener(named: name, subscriptionId: subscriptionId) { result in
+                cont.yield(result)
+            }
+            client.client.addShutdownListener(named: name) { _ in
+                cont.finish()
+            }
+        }
+    }
+
+    deinit {
+        self.client.removePublishListener(named: self.name)
+        self.client.removeShutdownListener(named: self.name)
+    }
+
+    public __consuming func makeAsyncIterator() -> AsyncStream<Element>.AsyncIterator {
+        return stream.makeAsyncIterator()
+    }
+}
+
 
 #endif // compiler(>=5.5)
