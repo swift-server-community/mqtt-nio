@@ -145,6 +145,27 @@ extension MQTTClient {
                 return MQTTAuthV5(reason: auth.reason, properties: auth.properties)
             }
         }
+
+        /// Add named publish listener. Called whenever a PUBLISH message is received from the server with the
+        /// specified subscription id
+        ///
+        /// - Parameters:
+        ///   - name: Name of listener
+        ///   - subscriptionIdentifier: subscription identifier to look for
+        ///   - listener: listener function
+        public func addPublishListener(named name: String, subscriptionId: UInt, _ listener: @escaping (MQTTPublishInfo) -> Void) {
+            self.client.publishListeners.addListener(named: name) { result in
+                if case .success(let info) = result {
+                    for property in info.properties {
+                        if case .subscriptionIdentifier(let id) = property,
+                           id == subscriptionId {
+                            listener(info)
+                            break
+                        }
+                    }
+                }
+            }
+        }
     }
 
     /// v5 client

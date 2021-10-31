@@ -75,12 +75,13 @@ extension MQTTClient {
         return try await self.disconnect().get()
     }
 
-    /// Create a publish listener AsyncSequence. Called whenever a PUBLISH message is received from the server
+    /// Create a publish listener AsyncSequence that yields a result whenever a PUBLISH message is received from the server
     public func createPublishListener() -> MQTTPublishListener {
         return .init(self)
     }
 }
 
+/// MQTT Publish message listener AsyncSequence
 @available(macOS 12.0, iOS 15.0, watchOS 8.0, tvOS 15.0, *)
 public class MQTTPublishListener: AsyncSequence {
     public typealias AsyncIterator = AsyncStream<Element>.AsyncIterator
@@ -90,7 +91,7 @@ public class MQTTPublishListener: AsyncSequence {
     let stream: AsyncStream<Element>
     let name: String
 
-    public init(_ client: MQTTClient) {
+    init(_ client: MQTTClient) {
         let name = UUID().uuidString
         self.client = client
         self.name = name
