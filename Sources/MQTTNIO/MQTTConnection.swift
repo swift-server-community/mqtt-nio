@@ -13,21 +13,21 @@ import NIOWebSocket
 final class MQTTConnection {
     let channel: Channel
     let timeout: TimeAmount?
-    let unhandledHandler: MQTTUnhandledPacketHandler
+    let taskHandler: MQTTTaskHandler
 
-    private init(channel: Channel, timeout: TimeAmount?, unhandledHandler: MQTTUnhandledPacketHandler) {
+    private init(channel: Channel, timeout: TimeAmount?, taskHandler: MQTTTaskHandler) {
         self.channel = channel
         self.timeout = timeout
-        self.unhandledHandler = unhandledHandler
+        self.taskHandler = taskHandler
     }
 
     static func create(client: MQTTClient, pingInterval: TimeAmount) -> EventLoopFuture<MQTTConnection> {
-        let unhandledHandler = MQTTUnhandledPacketHandler(client: client)
-        return self.createBootstrap(client: client, pingInterval: pingInterval, unhandledHandler: unhandledHandler)
-            .map { MQTTConnection(channel: $0, timeout: client.configuration.timeout, unhandledHandler: unhandledHandler) }
+        let taskHandler = MQTTTaskHandler()
+        return self.createBootstrap(client: client, pingInterval: pingInterval, taskHandler: taskHandler)
+            .map { MQTTConnection(channel: $0, timeout: client.configuration.timeout, taskHandler: taskHandler) }
     }
 
-    static func createBootstrap(client: MQTTClient, pingInterval: TimeAmount, unhandledHandler: MQTTUnhandledPacketHandler) -> EventLoopFuture<Channel> {
+    static func createBootstrap(client: MQTTClient, pingInterval: TimeAmount, taskHandler: MQTTTaskHandler) -> EventLoopFuture<Channel> {
         let eventLoop = client.eventLoopGroup.next()
         let channelPromise = eventLoop.makePromise(of: Channel.self)
         do {
@@ -41,7 +41,7 @@ final class MQTTConnection {
                     // Work out what handlers to add
                     var handlers: [ChannelHandler] = [
                         ByteToMessageHandler(ByteToMQTTMessageDecoder(client: client)),
-                        unhandledHandler,
+                        taskHandler,
                         MQTTEncodeHandler(client: client),
                     ]
                     if !client.configuration.disablePing {
@@ -179,9 +179,8 @@ final class MQTTConnection {
 
     func sendMessage(_ message: MQTTPacket, checkInbound: @escaping (MQTTPacket) throws -> Bool) -> EventLoopFuture<MQTTPacket> {
         let task = MQTTTask(on: channel.eventLoop, timeout: self.timeout, checkInbound: checkInbound)
-        let taskHandler = MQTTTaskHandler(task: task, channel: channel)
 
-        self.channel.pipeline.addHandler(taskHandler, position: .before(self.unhandledHandler))
+        self.taskHandler.addTask(task)
             .flatMap {
                 self.channel.writeAndFlush(message)
             }
