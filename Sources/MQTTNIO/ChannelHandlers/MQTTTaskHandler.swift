@@ -16,9 +16,17 @@ final class MQTTTaskHandler: ChannelInboundHandler, RemovableChannelHandler {
         }
     }
 
+    func _removeTask(_ task: MQTTTask) {
+        self.tasks.removeAll { $0 === task }
+    }
+
     func removeTask(_ task: MQTTTask) {
-        return self.eventLoop.execute {
-            self.tasks.removeAll { $0 === task }
+        if eventLoop.inEventLoop {
+            _removeTask(task)
+        } else {
+            self.eventLoop.execute {
+                self._removeTask(task)
+            }
         }
     }
 
