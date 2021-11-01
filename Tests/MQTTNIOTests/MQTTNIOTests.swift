@@ -93,7 +93,7 @@ final class MQTTNIOTests: XCTestCase {
         let client = self.createClient(identifier: "testMultipleTasks")
         defer { XCTAssertNoThrow(try client.syncShutdownGracefully()) }
         _ = try client.connect().wait()
-        let publishFutures = (0..<16).map { client.publish(to: "test/multiple", payload: ByteBuffer(integer: $0), qos: .exactlyOnce)}
+        let publishFutures = (0..<16).map { client.publish(to: "test/multiple", payload: ByteBuffer(integer: $0), qos: .exactlyOnce) }
         _ = client.ping()
         try EventLoopFuture.andAllComplete(publishFutures, on: client.eventLoopGroup.next()).wait()
         XCTAssertEqual(client.connection?.taskHandler.tasks.count, 0)
