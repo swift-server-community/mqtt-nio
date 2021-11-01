@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
-    <title>MQTTSubscribeInfoV5 Structure Reference</title>
+    <title>MQTTPublishIdListener Class Reference</title>
     <link rel="stylesheet" type="text/css" href="../css/jazzy.css" />
     <link rel="stylesheet" type="text/css" href="../css/highlight.css" />
     <meta charset='utf-8'>
@@ -10,8 +10,8 @@
     
   </head>
   <body>
-    <a name="//apple_ref/swift/Struct/MQTTSubscribeInfoV5" class="dashAnchor"></a>
-    <a title="MQTTSubscribeInfoV5 Structure Reference"></a>
+    <a name="//apple_ref/swift/Class/MQTTPublishIdListener" class="dashAnchor"></a>
+    <a title="MQTTPublishIdListener Class Reference"></a>
     <header>
       <div class="content-wrapper">
         <p><a href="../index.html"> 2.3.0 Docs</a> (75% documented)</p>
@@ -22,7 +22,7 @@
       <p id="breadcrumbs">
         <a href="../index.html"> Reference</a>
         <img id="carat" src="../img/carat.png" />
-        MQTTSubscribeInfoV5 Structure Reference
+        MQTTPublishIdListener Class Reference
       </p>
     </div>
     <div class="content-wrapper">
@@ -149,14 +149,15 @@
       <article class="main-content">
         <section>
           <section class="section">
-            <h1>MQTTSubscribeInfoV5</h1>
+            <h1>MQTTPublishIdListener</h1>
               <div class="declaration">
                 <div class="language">
-                  <pre class="highlight swift"><code><span class="kd">public</span> <span class="kd">struct</span> <span class="kt">MQTTSubscribeInfoV5</span></code></pre>
+                  <pre class="highlight swift"><code><span class="kd">@available</span><span class="p">(</span><span class="n">macOS</span> <span class="mf">12.0</span><span class="p">,</span> <span class="n">iOS</span> <span class="mf">15.0</span><span class="p">,</span> <span class="n">watchOS</span> <span class="mf">8.0</span><span class="p">,</span> <span class="n">tvOS</span> <span class="mf">15.0</span><span class="p">,</span> <span class="o">*</span><span class="p">)</span>
+<span class="kd">public</span> <span class="kd">class</span> <span class="kt">MQTTPublishIdListener</span> <span class="p">:</span> <span class="kt">AsyncSequence</span></code></pre>
 
                 </div>
               </div>
-            <p>MQTT SUBSCRIBE packet parameters.</p>
+            <p>MQTT Publish message listener, that filters messages by subscription identifier</p>
 
           </section>
           <section class="section task-group-section">
@@ -165,9 +166,9 @@
                 <li class="item">
                   <div>
                     <code>
-                    <a name="/s:7MQTTNIO19MQTTSubscribeInfoV5V14RetainHandlingO"></a>
-                    <a name="//apple_ref/swift/Enum/RetainHandling" class="dashAnchor"></a>
-                    <a class="token" href="#/s:7MQTTNIO19MQTTSubscribeInfoV5V14RetainHandlingO">RetainHandling</a>
+                    <a name="/s:Sci13AsyncIteratorQa"></a>
+                    <a name="//apple_ref/swift/Alias/AsyncIterator" class="dashAnchor"></a>
+                    <a class="token" href="#/s:Sci13AsyncIteratorQa">AsyncIterator</a>
                     </code>
                   </div>
                   <div class="height-container">
@@ -175,15 +176,13 @@
                     <section class="section">
                       <div class="pointer"></div>
                       <div class="abstract">
-                        <p>Retain handling options</p>
-
-                        <a href="../Structs/MQTTSubscribeInfoV5/RetainHandling.html" class="slightly-smaller">See more</a>
+                        
                       </div>
                       <div class="declaration">
                         <h4>Declaration</h4>
                         <div class="language">
                           <p class="aside-title">Swift</p>
-                          <pre class="highlight swift"><code><span class="kd">public</span> <span class="kd">enum</span> <span class="kt">RetainHandling</span> <span class="p">:</span> <span class="kt">UInt8</span></code></pre>
+                          <pre class="highlight swift"><code><span class="kd">public</span> <span class="kd">typealias</span> <span class="kt">AsyncIterator</span> <span class="o">=</span> <span class="kt">AsyncStream</span><span class="o">&lt;</span><span class="kt"><a href="../Classes/MQTTPublishIdListener.html#/s:Sci7ElementQa">Element</a></span><span class="o">&gt;.</span><span class="kt">AsyncIterator</span></code></pre>
 
                         </div>
                       </div>
@@ -193,9 +192,9 @@
                 <li class="item">
                   <div>
                     <code>
-                    <a name="/s:7MQTTNIO19MQTTSubscribeInfoV5V11topicFilterSSvp"></a>
-                    <a name="//apple_ref/swift/Property/topicFilter" class="dashAnchor"></a>
-                    <a class="token" href="#/s:7MQTTNIO19MQTTSubscribeInfoV5V11topicFilterSSvp">topicFilter</a>
+                    <a name="/s:Sci7ElementQa"></a>
+                    <a name="//apple_ref/swift/Alias/Element" class="dashAnchor"></a>
+                    <a class="token" href="#/s:Sci7ElementQa">Element</a>
                     </code>
                   </div>
                   <div class="height-container">
@@ -203,14 +202,13 @@
                     <section class="section">
                       <div class="pointer"></div>
                       <div class="abstract">
-                        <p>Topic filter to subscribe to.</p>
-
+                        
                       </div>
                       <div class="declaration">
                         <h4>Declaration</h4>
                         <div class="language">
                           <p class="aside-title">Swift</p>
-                          <pre class="highlight swift"><code><span class="kd">public</span> <span class="k">let</span> <span class="nv">topicFilter</span><span class="p">:</span> <span class="kt">String</span></code></pre>
+                          <pre class="highlight swift"><code><span class="kd">public</span> <span class="kd">typealias</span> <span class="kt">Element</span> <span class="o">=</span> <span class="kt"><a href="../Structs/MQTTPublishInfo.html">MQTTPublishInfo</a></span></code></pre>
 
                         </div>
                       </div>
@@ -220,9 +218,9 @@
                 <li class="item">
                   <div>
                     <code>
-                    <a name="/s:7MQTTNIO19MQTTSubscribeInfoV5V3qosAA7MQTTQoSOvp"></a>
-                    <a name="//apple_ref/swift/Property/qos" class="dashAnchor"></a>
-                    <a class="token" href="#/s:7MQTTNIO19MQTTSubscribeInfoV5V3qosAA7MQTTQoSOvp">qos</a>
+                    <a name="/s:Sci17makeAsyncIterator0bC0QzyF"></a>
+                    <a name="//apple_ref/swift/Method/makeAsyncIterator()" class="dashAnchor"></a>
+                    <a class="token" href="#/s:Sci17makeAsyncIterator0bC0QzyF">makeAsyncIterator()</a>
                     </code>
                   </div>
                   <div class="height-container">
@@ -230,128 +228,13 @@
                     <section class="section">
                       <div class="pointer"></div>
                       <div class="abstract">
-                        <p>Quality of Service for subscription.</p>
-
+                        
                       </div>
                       <div class="declaration">
                         <h4>Declaration</h4>
                         <div class="language">
                           <p class="aside-title">Swift</p>
-                          <pre class="highlight swift"><code><span class="kd">public</span> <span class="k">let</span> <span class="nv">qos</span><span class="p">:</span> <span class="kt"><a href="../Enums/MQTTQoS.html">MQTTQoS</a></span></code></pre>
-
-                        </div>
-                      </div>
-                    </section>
-                  </div>
-                </li>
-                <li class="item">
-                  <div>
-                    <code>
-                    <a name="/s:7MQTTNIO19MQTTSubscribeInfoV5V7noLocalSbvp"></a>
-                    <a name="//apple_ref/swift/Property/noLocal" class="dashAnchor"></a>
-                    <a class="token" href="#/s:7MQTTNIO19MQTTSubscribeInfoV5V7noLocalSbvp">noLocal</a>
-                    </code>
-                  </div>
-                  <div class="height-container">
-                    <div class="pointer-container"></div>
-                    <section class="section">
-                      <div class="pointer"></div>
-                      <div class="abstract">
-                        <p>Don&rsquo;t forward message published by this client</p>
-
-                      </div>
-                      <div class="declaration">
-                        <h4>Declaration</h4>
-                        <div class="language">
-                          <p class="aside-title">Swift</p>
-                          <pre class="highlight swift"><code><span class="kd">public</span> <span class="k">let</span> <span class="nv">noLocal</span><span class="p">:</span> <span class="kt">Bool</span></code></pre>
-
-                        </div>
-                      </div>
-                    </section>
-                  </div>
-                </li>
-                <li class="item">
-                  <div>
-                    <code>
-                    <a name="/s:7MQTTNIO19MQTTSubscribeInfoV5V17retainAsPublishedSbvp"></a>
-                    <a name="//apple_ref/swift/Property/retainAsPublished" class="dashAnchor"></a>
-                    <a class="token" href="#/s:7MQTTNIO19MQTTSubscribeInfoV5V17retainAsPublishedSbvp">retainAsPublished</a>
-                    </code>
-                  </div>
-                  <div class="height-container">
-                    <div class="pointer-container"></div>
-                    <section class="section">
-                      <div class="pointer"></div>
-                      <div class="abstract">
-                        <p>Keep retain flag message was published with</p>
-
-                      </div>
-                      <div class="declaration">
-                        <h4>Declaration</h4>
-                        <div class="language">
-                          <p class="aside-title">Swift</p>
-                          <pre class="highlight swift"><code><span class="kd">public</span> <span class="k">let</span> <span class="nv">retainAsPublished</span><span class="p">:</span> <span class="kt">Bool</span></code></pre>
-
-                        </div>
-                      </div>
-                    </section>
-                  </div>
-                </li>
-                <li class="item">
-                  <div>
-                    <code>
-                    <a name="/s:7MQTTNIO19MQTTSubscribeInfoV5V14retainHandlingAC06RetainF0Ovp"></a>
-                    <a name="//apple_ref/swift/Property/retainHandling" class="dashAnchor"></a>
-                    <a class="token" href="#/s:7MQTTNIO19MQTTSubscribeInfoV5V14retainHandlingAC06RetainF0Ovp">retainHandling</a>
-                    </code>
-                  </div>
-                  <div class="height-container">
-                    <div class="pointer-container"></div>
-                    <section class="section">
-                      <div class="pointer"></div>
-                      <div class="abstract">
-                        <p>Retain handing</p>
-
-                      </div>
-                      <div class="declaration">
-                        <h4>Declaration</h4>
-                        <div class="language">
-                          <p class="aside-title">Swift</p>
-                          <pre class="highlight swift"><code><span class="kd">public</span> <span class="k">let</span> <span class="nv">retainHandling</span><span class="p">:</span> <span class="kt"><a href="../Structs/MQTTSubscribeInfoV5/RetainHandling.html">RetainHandling</a></span></code></pre>
-
-                        </div>
-                      </div>
-                    </section>
-                  </div>
-                </li>
-                <li class="item">
-                  <div>
-                    <code>
-                    <a name="/s:7MQTTNIO19MQTTSubscribeInfoV5V11topicFilter3qos7noLocal17retainAsPublished0J8HandlingACSS_AA7MQTTQoSOS2bAC06RetainM0Otcfc"></a>
-                    <a name="//apple_ref/swift/Method/init(topicFilter:qos:noLocal:retainAsPublished:retainHandling:)" class="dashAnchor"></a>
-                    <a class="token" href="#/s:7MQTTNIO19MQTTSubscribeInfoV5V11topicFilter3qos7noLocal17retainAsPublished0J8HandlingACSS_AA7MQTTQoSOS2bAC06RetainM0Otcfc">init(topicFilter:qos:noLocal:retainAsPublished:retainHandling:)</a>
-                    </code>
-                  </div>
-                  <div class="height-container">
-                    <div class="pointer-container"></div>
-                    <section class="section">
-                      <div class="pointer"></div>
-                      <div class="abstract">
-                        <p>Undocumented</p>
-
-                      </div>
-                      <div class="declaration">
-                        <h4>Declaration</h4>
-                        <div class="language">
-                          <p class="aside-title">Swift</p>
-                          <pre class="highlight swift"><code><span class="kd">public</span> <span class="nf">init</span><span class="p">(</span>
-    <span class="nv">topicFilter</span><span class="p">:</span> <span class="kt">String</span><span class="p">,</span>
-    <span class="nv">qos</span><span class="p">:</span> <span class="kt"><a href="../Enums/MQTTQoS.html">MQTTQoS</a></span><span class="p">,</span>
-    <span class="nv">noLocal</span><span class="p">:</span> <span class="kt">Bool</span> <span class="o">=</span> <span class="kc">false</span><span class="p">,</span>
-    <span class="nv">retainAsPublished</span><span class="p">:</span> <span class="kt">Bool</span> <span class="o">=</span> <span class="kc">true</span><span class="p">,</span>
-    <span class="nv">retainHandling</span><span class="p">:</span> <span class="kt"><a href="../Structs/MQTTSubscribeInfoV5/RetainHandling.html">RetainHandling</a></span> <span class="o">=</span> <span class="o">.</span><span class="n">sendIfNew</span>
-<span class="p">)</span></code></pre>
+                          <pre class="highlight swift"><code><span class="kd">public</span>  <span class="kd">func</span> <span class="nf">makeAsyncIterator</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="kt">AsyncStream</span><span class="o">&lt;</span><span class="kt"><a href="../Classes/MQTTPublishIdListener.html#/s:Sci7ElementQa">Element</a></span><span class="o">&gt;.</span><span class="kt"><a href="../Classes/MQTTPublishIdListener.html#/s:Sci13AsyncIteratorQa">AsyncIterator</a></span></code></pre>
 
                         </div>
                       </div>

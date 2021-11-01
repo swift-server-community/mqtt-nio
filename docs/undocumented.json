@@ -1,43 +1,15 @@
 {
   "warnings": [
     {
-      "file": "/Users/adamfowler/Developer/macOS/lib/mqtt-nio/Sources/MQTTNIO/MQTTClient.swift",
-      "line": 381,
-      "symbol": "MQTTClient.processConnack(_:)",
+      "file": "/Users/adamfowler/Developer/macOS/lib/mqtt-nio/Sources/MQTTNIO/AsyncAwaitSupport/MQTTClient+async.swift",
+      "line": 8,
+      "symbol": "MQTTClient.shutdown(queue:)",
       "symbol_kind": "source.lang.swift.decl.function.method.instance",
       "warning": "undocumented"
     },
     {
       "file": "/Users/adamfowler/Developer/macOS/lib/mqtt-nio/Sources/MQTTNIO/MQTTClient.swift",
-      "line": 429,
-      "symbol": "MQTTClient.processAuth(_:authWorkflow:on:)",
-      "symbol_kind": "source.lang.swift.decl.function.method.instance",
-      "warning": "undocumented"
-    },
-    {
-      "file": "/Users/adamfowler/Developer/macOS/lib/mqtt-nio/Sources/MQTTNIO/MQTTClient.swift",
-      "line": 465,
-      "symbol": "MQTTClient.auth(packet:)",
-      "symbol_kind": "source.lang.swift.decl.function.method.instance",
-      "warning": "undocumented"
-    },
-    {
-      "file": "/Users/adamfowler/Developer/macOS/lib/mqtt-nio/Sources/MQTTNIO/MQTTClient.swift",
-      "line": 474,
-      "symbol": "MQTTClient.reAuth(packet:)",
-      "symbol_kind": "source.lang.swift.decl.function.method.instance",
-      "warning": "undocumented"
-    },
-    {
-      "file": "/Users/adamfowler/Developer/macOS/lib/mqtt-nio/Sources/MQTTNIO/MQTTClient.swift",
-      "line": 558,
-      "symbol": "MQTTClient.pubRel(packet:)",
-      "symbol_kind": "source.lang.swift.decl.function.method.instance",
-      "warning": "undocumented"
-    },
-    {
-      "file": "/Users/adamfowler/Developer/macOS/lib/mqtt-nio/Sources/MQTTNIO/MQTTClient.swift",
-      "line": 628,
+      "line": 715,
       "symbol": "Logger.attachingClientIdentifier(_:)",
       "symbol_kind": "source.lang.swift.decl.function.method.instance",
       "warning": "undocumented"
