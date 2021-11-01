@@ -2,12 +2,8 @@
 version: "3.3"
 
 services:
-# run this with docker-compose -f docker/docker-compose.yml run test
-version: "3.3"
-
-services:
   test:
-    image: swift:5.3
+    image: swift:5.5
     working_dir: /mqtt-nio
     volumes:
       - .:/mqtt-nio
@@ -15,7 +11,8 @@ services:
       - mosquitto
     environment:
       - MOSQUITTO_SERVER=mosquitto
-    command: /bin/bash -xcl "swift test --enable-test-discovery --sanitize=thread"
+      - CI=true
+    command: /bin/bash -xcl "swift test --enable-test-discovery"
 
   mosquitto:
     image: eclipse-mosquitto

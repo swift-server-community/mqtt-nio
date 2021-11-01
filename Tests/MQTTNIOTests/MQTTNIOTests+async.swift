@@ -114,7 +114,6 @@ final class AsyncMQTTNIOTests: XCTestCase {
 
         let client = self.createClient(identifier: "testAsyncSequencePublishListener+async", version: .v5_0)
         let client2 = self.createClient(identifier: "testAsyncSequencePublishListener+async2", version: .v5_0)
-        let payloadString = "Hello"
 
         self.XCTRunAsyncAndBlock {
             try await client.connect()
@@ -127,16 +126,17 @@ final class AsyncMQTTNIOTests: XCTestCase {
                     case .success(let publish):
                         var buffer = publish.payload
                         let string = buffer.readString(length: buffer.readableBytes)
-                        XCTAssertEqual(string, payloadString)
+                        print("Received: \(string ?? "nothing")")
                         expectation.fulfill()
+
                     case .failure(let error):
                         XCTFail("\(error)")
                     }
                 }
                 finishExpectation.fulfill()
             }
-            try await client.publish(to: "TestSubject", payload: ByteBufferAllocator().buffer(string: payloadString), qos: .atLeastOnce)
-            try await client.publish(to: "TestSubject", payload: ByteBufferAllocator().buffer(string: payloadString), qos: .atLeastOnce)
+            try await client.publish(to: "TestSubject", payload: ByteBufferAllocator().buffer(string: "Hello"), qos: .atLeastOnce)
+            try await client.publish(to: "TestSubject", payload: ByteBufferAllocator().buffer(string: "Goodbye"), qos: .atLeastOnce)
             try await client.disconnect()
 
             self.wait(for: [expectation], timeout: 5.0)
