@@ -385,11 +385,12 @@ final class MQTTNIOTests: XCTestCase {
             eventLoopGroupProvider: .createNew,
             logger: self.logger
         )
+        defer { XCTAssertNoThrow(try client.syncShutdownGracefully()) }
+
         _ = try client.connect().wait()
         _ = try client.subscribe(to: [.init(topicFilter: "#", qos: .exactlyOnce)]).wait()
         Thread.sleep(forTimeInterval: 5)
         try client.disconnect().wait()
-        try client.syncShutdownGracefully()
     }
 
     func testRawIPConnect() throws {
