@@ -51,11 +51,14 @@ final class AsyncMQTTNIOTests: XCTestCase {
         self.XCTRunAsyncAndBlock {
             try await client.connect()
             try await client.disconnect()
-            try client.syncShutdownGracefully()
+            try await client.shutdown()
         }
     }
 
     func testPublishSubscribe() {
+        let expectation = XCTestExpectation(description: "testPublishSubscribe")
+        expectation.expectedFulfillmentCount = 1
+
         let client = self.createClient(identifier: "testPublish+async")
         let client2 = self.createClient(identifier: "testPublish+async2")
         let payloadString = "Hello"
@@ -69,15 +72,19 @@ final class AsyncMQTTNIOTests: XCTestCase {
                     var buffer = publish.payload
                     let string = buffer.readString(length: buffer.readableBytes)
                     XCTAssertEqual(string, payloadString)
+                    expectation.fulfill()
                 case .failure(let error):
                     XCTFail("\(error)")
                 }
             }
             try await client.publish(to: "TestSubject", payload: ByteBufferAllocator().buffer(string: payloadString), qos: .atLeastOnce)
+
+            self.wait(for: [expectation], timeout: 2)
+
             try await client.disconnect()
-            Thread.sleep(forTimeInterval: 2)
             try await client2.disconnect()
-            try client.syncShutdownGracefully()
+            try await client.shutdown()
+            try await client2.shutdown()
         }
     }
 
@@ -95,18 +102,19 @@ final class AsyncMQTTNIOTests: XCTestCase {
             try await client.connect()
             try await client.ping()
             try await client.disconnect()
-            try client.syncShutdownGracefully()
+            try await client.shutdown()
         }
     }
 
     func testAsyncSequencePublishListener() {
-        let client = createClient(identifier: "testAsyncSequencePublishListener+async", version: .v5_0)
-        let client2 = createClient(identifier: "testAsyncSequencePublishListener+async2", version: .v5_0)
-        let payloadString = "Hello"
-        let expectation = XCTestExpectation(description: "publish listener")
+        let expectation = XCTestExpectation(description: "testAsyncSequencePublishListener")
         expectation.expectedFulfillmentCount = 3
-        
-        XCTRunAsyncAndBlock {
+
+        let client = self.createClient(identifier: "testAsyncSequencePublishListener+async", version: .v5_0)
+        let client2 = self.createClient(identifier: "testAsyncSequencePublishListener+async2", version: .v5_0)
+        let payloadString = "Hello"
+
+        self.XCTRunAsyncAndBlock {
             try await client.connect()
             try await client2.connect()
             _ = try await client2.v5.subscribe(to: [.init(topicFilter: "TestSubject", qos: .atLeastOnce)])
@@ -131,8 +139,8 @@ final class AsyncMQTTNIOTests: XCTestCase {
             Thread.sleep(forTimeInterval: 0.5)
             try await client2.disconnect()
             Thread.sleep(forTimeInterval: 0.5)
-            try client.syncShutdownGracefully()
-            try client2.syncShutdownGracefully()
+            try await client.shutdown()
+            try await client2.shutdown()
 
             _ = await task.result
         }
@@ -140,15 +148,15 @@ final class AsyncMQTTNIOTests: XCTestCase {
     }
 
     func testAsyncSequencePublishSubscriptionIdListener() {
-        let client = createClient(identifier: "testAsyncSequencePublishSubscriptionIdListener+async", version: .v5_0)
-        let client2 = createClient(identifier: "testAsyncSequencePublishSubscriptionIdListener+async2", version: .v5_0)
+        let client = self.createClient(identifier: "testAsyncSequencePublishSubscriptionIdListener+async", version: .v5_0)
+        let client2 = self.createClient(identifier: "testAsyncSequencePublishSubscriptionIdListener+async2", version: .v5_0)
         let payloadString = "Hello"
         let expectation = XCTestExpectation(description: "publish listener")
         let expectation2 = XCTestExpectation(description: "publish listener2")
         expectation.expectedFulfillmentCount = 3
         expectation2.expectedFulfillmentCount = 2
 
-        XCTRunAsyncAndBlock {
+        self.XCTRunAsyncAndBlock {
             try await client.connect()
             try await client2.connect()
             _ = try await client2.v5.subscribe(to: [.init(topicFilter: "TestSubject", qos: .atLeastOnce)], properties: [.subscriptionIdentifier(1)])

@@ -158,7 +158,8 @@ extension MQTTClient {
                 if case .success(let info) = result {
                     for property in info.properties {
                         if case .subscriptionIdentifier(let id) = property,
-                           id == subscriptionId {
+                           id == subscriptionId
+                        {
                             listener(info)
                             break
                         }

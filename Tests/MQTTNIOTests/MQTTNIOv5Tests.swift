@@ -234,6 +234,7 @@ final class MQTTNIOv5Tests: XCTestCase {
         connack = try client.v5.connect(cleanStart: false).wait()
         XCTAssertEqual(connack.sessionPresent, true)
         try client.disconnect().wait()
+        try client.syncShutdownGracefully()
     }
 
     func testPersistentSession() throws {

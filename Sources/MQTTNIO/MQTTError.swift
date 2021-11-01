@@ -20,6 +20,8 @@ public enum MQTTError: Error {
 
     /// You called connect on a client that is already connected to the broker
     case alreadyConnected
+    /// Client has already been shutdown
+    case alreadyShutdown
     /// We received an unexpected message while connecting
     case failedToConnect
     /// We received an unsuccessful connection return value
