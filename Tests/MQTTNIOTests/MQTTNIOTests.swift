@@ -89,6 +89,17 @@ final class MQTTNIOTests: XCTestCase {
         try client.disconnect().wait()
     }
 
+    func testMultipleTasks() throws {
+        let client = self.createClient(identifier: "testMultipleTasks")
+        defer { XCTAssertNoThrow(try client.syncShutdownGracefully()) }
+        _ = try client.connect().wait()
+        let publishFutures = (0..<16).map { client.publish(to: "test/multiple", payload: ByteBuffer(integer: $0), qos: .exactlyOnce)}
+        _ = client.ping()
+        try EventLoopFuture.andAllComplete(publishFutures, on: client.eventLoopGroup.next()).wait()
+        XCTAssertEqual(client.connection?.taskHandler.tasks.count, 0)
+        try client.disconnect().wait()
+    }
+
     func testMQTTSubscribe() throws {
         let client = self.createClient(identifier: "testMQTTSubscribe")
         defer { XCTAssertNoThrow(try client.syncShutdownGracefully()) }

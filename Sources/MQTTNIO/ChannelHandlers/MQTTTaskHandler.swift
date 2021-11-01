@@ -21,8 +21,8 @@ final class MQTTTaskHandler: ChannelInboundHandler, RemovableChannelHandler {
     }
 
     func removeTask(_ task: MQTTTask) {
-        if eventLoop.inEventLoop {
-            _removeTask(task)
+        if self.eventLoop.inEventLoop {
+            self._removeTask(task)
         } else {
             self.eventLoop.execute {
                 self._removeTask(task)
@@ -40,25 +40,25 @@ final class MQTTTaskHandler: ChannelInboundHandler, RemovableChannelHandler {
             do {
                 if try task.checkInbound(response) {
                     task.succeed(response)
-                    removeTask(task)
+                    self.removeTask(task)
                     return
                 }
             } catch {
                 task.fail(error)
-                removeTask(task)
+                self.removeTask(task)
                 return
             }
         }
     }
 
     func channelInactive(context: ChannelHandlerContext) {
-        tasks.forEach { $0.fail(MQTTError.serverClosedConnection) }
-        tasks.removeAll()
+        self.tasks.forEach { $0.fail(MQTTError.serverClosedConnection) }
+        self.tasks.removeAll()
     }
 
     func errorCaught(context: ChannelHandlerContext, error: Error) {
-        tasks.forEach { $0.fail(error) }
-        tasks.removeAll()
+        self.tasks.forEach { $0.fail(error) }
+        self.tasks.removeAll()
     }
 
     var tasks: [MQTTTask]

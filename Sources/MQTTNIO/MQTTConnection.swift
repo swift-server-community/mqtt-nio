@@ -180,7 +180,7 @@ final class MQTTConnection {
     func sendMessage(_ message: MQTTPacket, checkInbound: @escaping (MQTTPacket) throws -> Bool) -> EventLoopFuture<MQTTPacket> {
         let task = MQTTTask(on: channel.eventLoop, timeout: self.timeout, checkInbound: checkInbound)
 
-        taskHandler.addTask(task)
+        self.taskHandler.addTask(task)
             .flatMap {
                 self.channel.writeAndFlush(message)
             }
