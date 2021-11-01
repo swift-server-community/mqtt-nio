@@ -106,7 +106,7 @@ final class MQTTNIOv5Tests: XCTestCase {
     func testMQTTSubscribeFlags() throws {
         let expectation = XCTestExpectation(description: "testMQTTSubscribeFlags")
         expectation.expectedFulfillmentCount = 1
-        
+
         let payloadString = #"{"test":1000000}"#
         let payload = ByteBufferAllocator().buffer(string: payloadString)
 
@@ -149,7 +149,7 @@ final class MQTTNIOv5Tests: XCTestCase {
     func testMQTTContentType() throws {
         let expectation = XCTestExpectation(description: "testMQTTContentType")
         expectation.expectedFulfillmentCount = 1
-        
+
         let payloadString = #"{"test":1000000}"#
         let payload = ByteBufferAllocator().buffer(string: payloadString)
 
@@ -191,7 +191,7 @@ final class MQTTNIOv5Tests: XCTestCase {
         let expectation = XCTestExpectation(description: "testMQTTContentType")
         expectation.expectedFulfillmentCount = 1
         expectation.assertForOverFulfill = true
-        
+
         let payloadString = #"test payload"#
         let payload = ByteBufferAllocator().buffer(string: payloadString)
 
@@ -274,7 +274,7 @@ final class MQTTNIOv5Tests: XCTestCase {
         try client.publish(to: "testPersistentAtLeastOnceV5", payload: payload, qos: .atLeastOnce).wait()
         // should not receive previous publish on connect as this is a cleanSession
         _ = try client2.v5.connect(cleanStart: true).wait()
-        
+
         wait(for: [expectation], timeout: 5.0)
 
         try client.disconnect().wait()
