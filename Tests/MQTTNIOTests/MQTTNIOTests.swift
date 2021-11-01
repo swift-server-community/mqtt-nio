@@ -105,6 +105,9 @@ final class MQTTNIOTests: XCTestCase {
     }
 
     func testMQTTServerDisconnect() throws {
+        let expectation = XCTestExpectation(description: "testMQTTServerDisconnect")
+        expectation.expectedFulfillmentCount = 1
+        
         struct MQTTForceDisconnectMessage: MQTTPacket {
             var type: MQTTPacketType { .PUBLISH }
             var description: String { "FORCEDISCONNECT" }
@@ -123,14 +126,20 @@ final class MQTTNIOTests: XCTestCase {
         let client = self.createClient(identifier: "testMQTTServerDisconnect")
         _ = try client.connect().wait()
         try client.connection?.sendMessageNoWait(MQTTForceDisconnectMessage()).wait()
-        Thread.sleep(forTimeInterval: 2)
+        client.addCloseListener(named: "Test") { result in
+            expectation.fulfill()
+        }
+        
+        wait(for: [expectation], timeout: 1.0)
+        
         XCTAssertFalse(client.isActive())
         try client.syncShutdownGracefully()
     }
 
     func testMQTTPublishRetain() throws {
-        let lock = Lock()
-        var publishReceived: [MQTTPublishInfo] = []
+        let expectation = XCTestExpectation(description: "testMQTTPublishRetain")
+        expectation.expectedFulfillmentCount = 1
+        
         let payloadString = #"{"from":1000000,"to":1234567,"type":1,"content":"I am a beginner in swift and I am studying hard!!测试\n\n test, message","timestamp":1607243024,"nonce":"pAx2EsUuXrVuiIU3GGOGHNbUjzRRdT5b","sign":"ff902e31a6a5f5343d70a3a93ac9f946adf1caccab539c6f3a6"}"#
         let payload = ByteBufferAllocator().buffer(string: payloadString)
 
@@ -142,26 +151,24 @@ final class MQTTNIOTests: XCTestCase {
                 var buffer = publish.payload
                 let string = buffer.readString(length: buffer.readableBytes)
                 XCTAssertEqual(string, payloadString)
-                lock.withLock {
-                    publishReceived.append(publish)
-                }
+                expectation.fulfill()
             case .failure(let error):
                 XCTFail("\(error)")
             }
         }
         try client.publish(to: "testMQTTPublishRetain", payload: payload, qos: .atLeastOnce, retain: true).wait()
         _ = try client.subscribe(to: [.init(topicFilter: "testMQTTPublishRetain", qos: .atLeastOnce)]).wait()
-        Thread.sleep(forTimeInterval: 2)
-        lock.withLock {
-            XCTAssertEqual(publishReceived.count, 1)
-        }
+
+        wait(for: [expectation], timeout: 2.0)
+
         try client.disconnect().wait()
         try client.syncShutdownGracefully()
     }
 
     func testMQTTPublishToClient() throws {
-        let lock = Lock()
-        var publishReceived: [MQTTPublishInfo] = []
+        let expectation = XCTestExpectation(description: "testMQTTPublishToClient")
+        expectation.expectedFulfillmentCount = 2
+        
         let payloadString = #"{"from":1000000,"to":1234567,"type":1,"content":"I am a beginner in swift and I am studying hard!!测试\n\n test, message","timestamp":1607243024,"nonce":"pAx2EsUuXrVuiIU3GGOGHNbUjzRRdT5b","sign":"ff902e31a6a5f5343d70a3a93ac9f946adf1caccab539c6f3a6"}"#
         let payload = ByteBufferAllocator().buffer(string: payloadString)
 
@@ -174,9 +181,8 @@ final class MQTTNIOTests: XCTestCase {
                 var buffer = publish.payload
                 let string = buffer.readString(length: buffer.readableBytes)
                 XCTAssertEqual(string, payloadString)
-                lock.withLock {
-                    publishReceived.append(publish)
-                }
+                expectation.fulfill()
+                
             case .failure(let error):
                 XCTFail("\(error)")
             }
@@ -186,10 +192,9 @@ final class MQTTNIOTests: XCTestCase {
         _ = try client2.subscribe(to: [.init(topicFilter: "testExactlyOnce", qos: .exactlyOnce)]).wait()
         try client.publish(to: "testAtLeastOnce", payload: payload, qos: .atLeastOnce).wait()
         try client.publish(to: "testExactlyOnce", payload: payload, qos: .exactlyOnce).wait()
-        Thread.sleep(forTimeInterval: 2)
-        lock.withLock {
-            XCTAssertEqual(publishReceived.count, 2)
-        }
+        
+        wait(for: [expectation], timeout: 2.0)
+
         try client.disconnect().wait()
         try client2.disconnect().wait()
         try client.syncShutdownGracefully()
@@ -197,8 +202,10 @@ final class MQTTNIOTests: XCTestCase {
     }
 
     func testUnsubscribe() throws {
-        let lock = Lock()
-        var publishReceived: [MQTTPublishInfo] = []
+        let expectation = XCTestExpectation(description: "testMQTTPublishToClient")
+        expectation.expectedFulfillmentCount = 1
+        expectation.assertForOverFulfill = true
+        
         let payloadString = #"test payload"#
         let payload = ByteBufferAllocator().buffer(string: payloadString)
 
@@ -211,9 +218,8 @@ final class MQTTNIOTests: XCTestCase {
                 var buffer = publish.payload
                 let string = buffer.readString(length: buffer.readableBytes)
                 XCTAssertEqual(string, payloadString)
-                lock.withLock {
-                    publishReceived.append(publish)
-                }
+                expectation.fulfill()
+
             case .failure(let error):
                 XCTFail("\(error)")
             }
@@ -224,10 +230,8 @@ final class MQTTNIOTests: XCTestCase {
         try client2.unsubscribe(from: ["testUnsubscribe"]).wait()
         try client.publish(to: "testUnsubscribe", payload: payload, qos: .atLeastOnce).wait()
 
-        Thread.sleep(forTimeInterval: 2)
-        lock.withLock {
-            XCTAssertEqual(publishReceived.count, 1)
-        }
+        wait(for: [expectation], timeout: 2.0)
+
         try client.disconnect().wait()
         try client2.disconnect().wait()
         try client.syncShutdownGracefully()
@@ -235,8 +239,9 @@ final class MQTTNIOTests: XCTestCase {
     }
 
     func testMQTTPublishToClientLargePayload() throws {
-        let lock = Lock()
-        var publishReceived: [MQTTPublishInfo] = []
+        let expectation = XCTestExpectation(description: "testMQTTPublishToClientLargePayload")
+        expectation.expectedFulfillmentCount = 1
+        
         let payloadSize = 65537
         let payloadData = Data(count: payloadSize)
         let payload = ByteBufferAllocator().buffer(data: payloadData)
@@ -250,9 +255,8 @@ final class MQTTNIOTests: XCTestCase {
                 var buffer = publish.payload
                 let data = buffer.readData(length: buffer.readableBytes)
                 XCTAssertEqual(data, payloadData)
-                lock.withLock {
-                    publishReceived.append(publish)
-                }
+                expectation.fulfill()
+                
             case .failure(let error):
                 XCTFail("\(error)")
             }
@@ -260,10 +264,9 @@ final class MQTTNIOTests: XCTestCase {
         _ = try client2.connect().wait()
         _ = try client2.subscribe(to: [.init(topicFilter: "testLargeAtLeastOnce", qos: .atLeastOnce)]).wait()
         try client.publish(to: "testLargeAtLeastOnce", payload: payload, qos: .atLeastOnce).wait()
-        Thread.sleep(forTimeInterval: 2)
-        lock.withLock {
-            XCTAssertEqual(publishReceived.count, 1)
-        }
+        
+        wait(for: [expectation], timeout: 2.0)
+
         try client.disconnect().wait()
         try client2.disconnect().wait()
         try client.syncShutdownGracefully()
@@ -271,7 +274,9 @@ final class MQTTNIOTests: XCTestCase {
     }
 
     func testCloseListener() throws {
-        let disconnected = NIOAtomic<Bool>.makeAtomic(value: false)
+        let expectation = XCTestExpectation(description: "testCloseListener")
+        expectation.expectedFulfillmentCount = 1
+        
         let client = self.createWebSocketClient(identifier: "testCloseListener")
         let client2 = self.createWebSocketClient(identifier: "testCloseListener")
 
@@ -280,7 +285,7 @@ final class MQTTNIOTests: XCTestCase {
             case .failure(let error):
                 XCTFail("\(error)")
             case .success:
-                disconnected.store(true)
+                expectation.fulfill()
             }
         }
 
@@ -288,8 +293,7 @@ final class MQTTNIOTests: XCTestCase {
         // by connecting with same identifier the first client uses the first client is forced to disconnect
         _ = try client2.connect().wait()
 
-        Thread.sleep(forTimeInterval: 5)
-        XCTAssertTrue(disconnected.load())
+        wait(for: [expectation], timeout: 5.0)
 
         try client2.disconnect().wait()
         try client.syncShutdownGracefully()
@@ -319,8 +323,10 @@ final class MQTTNIOTests: XCTestCase {
     }
 
     func testPersistentSession() throws {
-        let lock = Lock()
-        var publishReceived: [MQTTPublishInfo] = []
+        let expectation = XCTestExpectation(description: "testPersistentSession")
+        expectation.expectedFulfillmentCount = 2
+        expectation.assertForOverFulfill = true
+
         let payloadString = #"{"from":1000000,"to":1234567,"type":1,"content":"I am a beginner in swift and I am studying hard!!测试\n\n test, message","timestamp":1607243024,"nonce":"pAx2EsUuXrVuiIU3GGOGHNbUjzRRdT5b","sign":"ff902e31a6a5f5343d70a3a93ac9f946adf1caccab539c6f3a6"}"#
         let payload = ByteBufferAllocator().buffer(string: payloadString)
 
@@ -333,9 +339,8 @@ final class MQTTNIOTests: XCTestCase {
                 var buffer = publish.payload
                 let string = buffer.readString(length: buffer.readableBytes)
                 XCTAssertEqual(string, payloadString)
-                lock.withLock {
-                    publishReceived.append(publish)
-                }
+                expectation.fulfill()
+
             case .failure(let error):
                 XCTFail("\(error)")
             }
@@ -352,14 +357,12 @@ final class MQTTNIOTests: XCTestCase {
         _ = try client2.connect(cleanSession: false).wait()
         Thread.sleep(forTimeInterval: 1)
         try client2.disconnect().wait()
-        Thread.sleep(forTimeInterval: 1)
         try client.publish(to: "testPersistentAtLeastOnce", payload: payload, qos: .atLeastOnce).wait()
         // should not receive previous publish on connect as this is a cleanSession
         _ = try client2.connect(cleanSession: true).wait()
-        Thread.sleep(forTimeInterval: 1)
-        lock.withLock {
-            XCTAssertEqual(publishReceived.count, 2)
-        }
+        
+        wait(for: [expectation], timeout: 2.0)
+
         try client.disconnect().wait()
         try client2.disconnect().wait()
         try client.syncShutdownGracefully()
