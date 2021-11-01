@@ -1,0 +1,19 @@
+name: Sanity Check
+
+on:
+  pull_request:
+
+jobs:
+  sanity-check:
+    runs-on: macOS-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v1
+      with:
+        fetch-depth: 1
+    - name: Install Dependencies
+      run: |
+        brew install mint
+        mint install nicklockwood/swiftformat@0.47.13 --no-link
+    - name: run script
+      run: ./scripts/sanity.sh
