@@ -15,28 +15,28 @@ final class MQTTNIOTests: XCTestCase {
 
     func testConnectWithWill() throws {
         let client = self.createClient(identifier: "testConnectWithWill")
+        defer { XCTAssertNoThrow(try client.syncShutdownGracefully()) }
         _ = try client.connect(
             will: (topicName: "MyWillTopic", payload: ByteBufferAllocator().buffer(string: "Test payload"), qos: .atLeastOnce, retain: false)
         ).wait()
         try client.ping().wait()
         try client.disconnect().wait()
-        try client.syncShutdownGracefully()
     }
 
     func testConnectWithUsernameAndPassword() throws {
         let client = self.createClient(identifier: "testConnectWithWill", configuration: .init(userName: "adam", password: "password123"))
+        defer { XCTAssertNoThrow(try client.syncShutdownGracefully()) }
         _ = try client.connect().wait()
         try client.ping().wait()
         try client.disconnect().wait()
-        try client.syncShutdownGracefully()
     }
 
     func testWebsocketConnect() throws {
         let client = self.createWebSocketClient(identifier: "testWebsocketConnect")
+        defer { XCTAssertNoThrow(try client.syncShutdownGracefully()) }
         _ = try client.connect().wait()
         try client.ping().wait()
         try client.disconnect().wait()
-        try client.syncShutdownGracefully()
     }
 
     #if canImport(NIOSSL)
@@ -50,47 +50,48 @@ final class MQTTNIOTests: XCTestCase {
 
     func testWebsocketAndSSLConnect() throws {
         let client = try createWebSocketAndSSLClient(identifier: "testWebsocketAndSSLConnect")
+        defer { XCTAssertNoThrow(try client.syncShutdownGracefully()) }
         _ = try client.connect().wait()
         try client.ping().wait()
         try client.disconnect().wait()
-        try client.syncShutdownGracefully()
     }
     #endif
 
     func testMQTTPublishQoS0() throws {
         let client = self.createClient(identifier: "testMQTTPublishQoS0")
+        defer { XCTAssertNoThrow(try client.syncShutdownGracefully()) }
         _ = try client.connect().wait()
         try client.publish(to: "testMQTTPublishQoS", payload: ByteBufferAllocator().buffer(string: "Test payload"), qos: .atMostOnce).wait()
         try client.disconnect().wait()
-        try client.syncShutdownGracefully()
     }
 
     func testMQTTPublishQoS1() throws {
         let client = self.createClient(identifier: "testMQTTPublishQoS1")
+        defer { XCTAssertNoThrow(try client.syncShutdownGracefully()) }
         _ = try client.connect().wait()
         try client.publish(to: "testMQTTPublishQoS", payload: ByteBufferAllocator().buffer(string: "Test payload"), qos: .atLeastOnce).wait()
         try client.disconnect().wait()
-        try client.syncShutdownGracefully()
     }
 
     func testMQTTPublishQoS2() throws {
         let client = self.createWebSocketClient(identifier: "testMQTTPublishQoS2")
+        defer { XCTAssertNoThrow(try client.syncShutdownGracefully()) }
         _ = try client.connect().wait()
         try client.publish(to: "testMQTTPublishQoS", payload: ByteBufferAllocator().buffer(string: "Test payload"), qos: .exactlyOnce).wait()
         try client.disconnect().wait()
-        try client.syncShutdownGracefully()
     }
 
     func testMQTTPingreq() throws {
         let client = self.createClient(identifier: "testMQTTPingreq")
+        defer { XCTAssertNoThrow(try client.syncShutdownGracefully()) }
         _ = try client.connect().wait()
         try client.ping().wait()
         try client.disconnect().wait()
-        try client.syncShutdownGracefully()
     }
 
     func testMQTTSubscribe() throws {
         let client = self.createClient(identifier: "testMQTTSubscribe")
+        defer { XCTAssertNoThrow(try client.syncShutdownGracefully()) }
         _ = try client.connect().wait()
         let sub = try client.subscribe(
             to: [
@@ -101,7 +102,6 @@ final class MQTTNIOTests: XCTestCase {
         XCTAssertEqual(sub.returnCodes[0], .grantedQoS1)
         XCTAssertEqual(sub.returnCodes[1], .grantedQoS2)
         try client.disconnect().wait()
-        try client.syncShutdownGracefully()
     }
 
     func testMQTTServerDisconnect() throws {
@@ -124,6 +124,7 @@ final class MQTTNIOTests: XCTestCase {
         }
 
         let client = self.createClient(identifier: "testMQTTServerDisconnect")
+        defer { XCTAssertNoThrow(try client.syncShutdownGracefully()) }
         _ = try client.connect().wait()
         try client.connection?.sendMessageNoWait(MQTTForceDisconnectMessage()).wait()
         client.addCloseListener(named: "Test") { _ in
@@ -133,7 +134,6 @@ final class MQTTNIOTests: XCTestCase {
         wait(for: [expectation], timeout: 5.0)
 
         XCTAssertFalse(client.isActive())
-        try client.syncShutdownGracefully()
     }
 
     func testMQTTPublishRetain() throws {
@@ -144,6 +144,7 @@ final class MQTTNIOTests: XCTestCase {
         let payload = ByteBufferAllocator().buffer(string: payloadString)
 
         let client = self.createWebSocketClient(identifier: "testMQTTPublishToClient_publisher")
+        defer { XCTAssertNoThrow(try client.syncShutdownGracefully()) }
         _ = try client.connect().wait()
         client.addPublishListener(named: "test") { result in
             switch result {
@@ -162,7 +163,6 @@ final class MQTTNIOTests: XCTestCase {
         wait(for: [expectation], timeout: 5.0)
 
         try client.disconnect().wait()
-        try client.syncShutdownGracefully()
     }
 
     func testMQTTPublishToClient() throws {
@@ -173,8 +173,11 @@ final class MQTTNIOTests: XCTestCase {
         let payload = ByteBufferAllocator().buffer(string: payloadString)
 
         let client = self.createWebSocketClient(identifier: "testMQTTPublishToClient_publisher")
+        defer { XCTAssertNoThrow(try client.syncShutdownGracefully()) }
         _ = try client.connect().wait()
         let client2 = self.createWebSocketClient(identifier: "testMQTTPublishToClient_subscriber")
+        defer { XCTAssertNoThrow(try client2.syncShutdownGracefully()) }
+
         client2.addPublishListener(named: "test") { result in
             switch result {
             case .success(let publish):
@@ -197,8 +200,6 @@ final class MQTTNIOTests: XCTestCase {
 
         try client.disconnect().wait()
         try client2.disconnect().wait()
-        try client.syncShutdownGracefully()
-        try client2.syncShutdownGracefully()
     }
 
     func testUnsubscribe() throws {
@@ -210,8 +211,11 @@ final class MQTTNIOTests: XCTestCase {
         let payload = ByteBufferAllocator().buffer(string: payloadString)
 
         let client = self.createClient(identifier: "testUnsubscribe_publisher")
+        defer { XCTAssertNoThrow(try client.syncShutdownGracefully()) }
         _ = try client.connect().wait()
         let client2 = self.createClient(identifier: "testUnsubscribe_subscriber")
+        defer { XCTAssertNoThrow(try client2.syncShutdownGracefully()) }
+
         client2.addPublishListener(named: "test") { result in
             switch result {
             case .success(let publish):
@@ -234,8 +238,6 @@ final class MQTTNIOTests: XCTestCase {
 
         try client.disconnect().wait()
         try client2.disconnect().wait()
-        try client.syncShutdownGracefully()
-        try client2.syncShutdownGracefully()
     }
 
     func testMQTTPublishToClientLargePayload() throws {
@@ -247,8 +249,11 @@ final class MQTTNIOTests: XCTestCase {
         let payload = ByteBufferAllocator().buffer(data: payloadData)
 
         let client = self.createClient(identifier: "testMQTTPublishToClientLargePayload_publisher")
+        defer { XCTAssertNoThrow(try client.syncShutdownGracefully()) }
         _ = try client.connect().wait()
         let client2 = self.createClient(identifier: "testMQTTPublishToClientLargePayload_subscriber")
+        defer { XCTAssertNoThrow(try client2.syncShutdownGracefully()) }
+
         client2.addPublishListener(named: "test") { result in
             switch result {
             case .success(let publish):
@@ -269,8 +274,6 @@ final class MQTTNIOTests: XCTestCase {
 
         try client.disconnect().wait()
         try client2.disconnect().wait()
-        try client.syncShutdownGracefully()
-        try client2.syncShutdownGracefully()
     }
 
     func testCloseListener() throws {
@@ -278,7 +281,9 @@ final class MQTTNIOTests: XCTestCase {
         expectation.expectedFulfillmentCount = 1
 
         let client = self.createWebSocketClient(identifier: "testCloseListener")
+        defer { XCTAssertNoThrow(try client.syncShutdownGracefully()) }
         let client2 = self.createWebSocketClient(identifier: "testCloseListener")
+        defer { XCTAssertNoThrow(try client2.syncShutdownGracefully()) }
 
         client.addCloseListener(named: "Reconnect") { result in
             switch result {
@@ -296,23 +301,22 @@ final class MQTTNIOTests: XCTestCase {
         wait(for: [expectation], timeout: 5.0)
 
         try client2.disconnect().wait()
-        try client.syncShutdownGracefully()
-        try client2.syncShutdownGracefully()
     }
 
     func testDoubleConnect() throws {
         let client = self.createClient(identifier: "DoubleConnect")
         _ = try client.connect(cleanSession: true).wait()
+        defer { XCTAssertNoThrow(try client.syncShutdownGracefully()) }
         let sessionPresent = try client.connect(cleanSession: false).wait()
         let sessionPresent2 = try client.connect(cleanSession: false).wait()
         XCTAssertFalse(sessionPresent)
         XCTAssertTrue(sessionPresent2)
         try client.disconnect().wait()
-        try client.syncShutdownGracefully()
     }
 
     func testSessionPresent() throws {
         let client = self.createClient(identifier: "testSessionPresent")
+        defer { XCTAssertNoThrow(try client.syncShutdownGracefully()) }
 
         _ = try client.connect(cleanSession: true).wait()
         var connack = try client.connect(cleanSession: false).wait()
@@ -331,8 +335,11 @@ final class MQTTNIOTests: XCTestCase {
         let payload = ByteBufferAllocator().buffer(string: payloadString)
 
         let client = self.createClient(identifier: "testPersistentSession_publisher")
+        defer { XCTAssertNoThrow(try client.syncShutdownGracefully()) }
         _ = try client.connect().wait()
         let client2 = self.createClient(identifier: "testPersistentSession_subscriber")
+        defer { XCTAssertNoThrow(try client2.syncShutdownGracefully()) }
+
         client2.addPublishListener(named: "test") { result in
             switch result {
             case .success(let publish):
@@ -365,8 +372,6 @@ final class MQTTNIOTests: XCTestCase {
 
         try client.disconnect().wait()
         try client2.disconnect().wait()
-        try client.syncShutdownGracefully()
-        try client2.syncShutdownGracefully()
     }
 
     func testSubscribeAll() throws {
@@ -400,10 +405,10 @@ final class MQTTNIOTests: XCTestCase {
             eventLoopGroupProvider: .shared(elg),
             logger: self.logger
         )
+        defer { XCTAssertNoThrow(try client.syncShutdownGracefully()) }
         _ = try client.connect().wait()
         _ = try client.ping().wait()
         try client.disconnect().wait()
-        try client.syncShutdownGracefully()
         #endif
     }
 
