@@ -104,8 +104,9 @@ final class MQTTNIOv5Tests: XCTestCase {
     }
 
     func testMQTTSubscribeFlags() throws {
-        let lock = Lock()
-        var publishReceived: [MQTTPublishInfo] = []
+        let expectation = XCTestExpectation(description: "testMQTTSubscribeFlags")
+        expectation.expectedFulfillmentCount = 1
+        
         let payloadString = #"{"test":1000000}"#
         let payload = ByteBufferAllocator().buffer(string: payloadString)
 
@@ -117,9 +118,8 @@ final class MQTTNIOv5Tests: XCTestCase {
                 var buffer = publish.payload
                 let string = buffer.readString(length: buffer.readableBytes)
                 XCTAssertEqual(string, payloadString)
-                lock.withLock {
-                    publishReceived.append(publish)
-                }
+                expectation.fulfill()
+
             case .failure(let error):
                 XCTFail("\(error)")
             }
@@ -140,17 +140,16 @@ final class MQTTNIOv5Tests: XCTestCase {
 
         try client.publish(to: "testMQTTSubscribeFlags1", payload: payload, qos: .atLeastOnce, retain: false).wait()
 
-        Thread.sleep(forTimeInterval: 2)
-        lock.withLock {
-            XCTAssertEqual(publishReceived.count, 1)
-        }
+        wait(for: [expectation], timeout: 2)
+
         try client.disconnect().wait()
         try client.syncShutdownGracefully()
     }
 
     func testMQTTContentType() throws {
-        let lock = Lock()
-        var publishReceived: [MQTTPublishInfo] = []
+        let expectation = XCTestExpectation(description: "testMQTTContentType")
+        expectation.expectedFulfillmentCount = 1
+        
         let payloadString = #"{"test":1000000}"#
         let payload = ByteBufferAllocator().buffer(string: payloadString)
 
@@ -163,9 +162,8 @@ final class MQTTNIOv5Tests: XCTestCase {
                 let string = buffer.readString(length: buffer.readableBytes)
                 XCTAssertEqual(string, payloadString)
                 XCTAssertNotNil(publish.properties.first { $0 == .contentType("application/json") })
-                lock.withLock {
-                    publishReceived.append(publish)
-                }
+                expectation.fulfill()
+
             case .failure(let error):
                 XCTFail("\(error)")
             }
@@ -183,17 +181,17 @@ final class MQTTNIOv5Tests: XCTestCase {
             properties: [.contentType("application/json")]
         ).wait()
 
-        Thread.sleep(forTimeInterval: 2)
-        lock.withLock {
-            XCTAssertEqual(publishReceived.count, 1)
-        }
+        wait(for: [expectation], timeout: 2.0)
+
         try client.disconnect().wait()
         try client.syncShutdownGracefully()
     }
 
     func testUnsubscribe() throws {
-        let lock = Lock()
-        var publishReceived: [MQTTPublishInfo] = []
+        let expectation = XCTestExpectation(description: "testMQTTContentType")
+        expectation.expectedFulfillmentCount = 1
+        expectation.assertForOverFulfill = true
+        
         let payloadString = #"test payload"#
         let payload = ByteBufferAllocator().buffer(string: payloadString)
 
@@ -206,9 +204,8 @@ final class MQTTNIOv5Tests: XCTestCase {
                 var buffer = publish.payload
                 let string = buffer.readString(length: buffer.readableBytes)
                 XCTAssertEqual(string, payloadString)
-                lock.withLock {
-                    publishReceived.append(publish)
-                }
+                expectation.fulfill()
+
             case .failure(let error):
                 XCTFail("\(error)")
             }
@@ -221,10 +218,8 @@ final class MQTTNIOv5Tests: XCTestCase {
         XCTAssertEqual(unsub.reasons[1], .noSubscriptionExisted)
         try client.publish(to: "testUnsubscribe", payload: payload, qos: .atLeastOnce).wait()
 
-        Thread.sleep(forTimeInterval: 2)
-        lock.withLock {
-            XCTAssertEqual(publishReceived.count, 1)
-        }
+        wait(for: [expectation], timeout: 2.0)
+
         try client.disconnect().wait()
         try client2.disconnect().wait()
         try client.syncShutdownGracefully()
@@ -242,8 +237,10 @@ final class MQTTNIOv5Tests: XCTestCase {
     }
 
     func testPersistentSession() throws {
-        let lock = Lock()
-        var publishReceived: [MQTTPublishInfo] = []
+        let expectation = XCTestExpectation(description: "testPersistentSession")
+        expectation.expectedFulfillmentCount = 2
+        expectation.assertForOverFulfill = true
+
         let payloadString = #"{"from":1000000,"to":1234567,"type":1,"content":"I am a beginner in swift and I am studying hard!!测试\n\n test, message","timestamp":1607243024,"nonce":"pAx2EsUuXrVuiIU3GGOGHNbUjzRRdT5b","sign":"ff902e31a6a5f5343d70a3a93ac9f946adf1caccab539c6f3a6"}"#
         let payload = ByteBufferAllocator().buffer(string: payloadString)
 
@@ -256,9 +253,8 @@ final class MQTTNIOv5Tests: XCTestCase {
                 var buffer = publish.payload
                 let string = buffer.readString(length: buffer.readableBytes)
                 XCTAssertEqual(string, payloadString)
-                lock.withLock {
-                    publishReceived.append(publish)
-                }
+                expectation.fulfill()
+
             case .failure(let error):
                 XCTFail("\(error)")
             }
@@ -274,14 +270,12 @@ final class MQTTNIOv5Tests: XCTestCase {
         _ = try client2.v5.connect(cleanStart: false, properties: [.sessionExpiryInterval(3600)]).wait()
         Thread.sleep(forTimeInterval: 1)
         try client2.disconnect().wait()
-        Thread.sleep(forTimeInterval: 1)
         try client.publish(to: "testPersistentAtLeastOnceV5", payload: payload, qos: .atLeastOnce).wait()
         // should not receive previous publish on connect as this is a cleanSession
         _ = try client2.v5.connect(cleanStart: true).wait()
-        Thread.sleep(forTimeInterval: 1)
-        lock.withLock {
-            XCTAssertEqual(publishReceived.count, 2)
-        }
+        
+        wait(for: [expectation], timeout: 2.0)
+
         try client.disconnect().wait()
         try client2.disconnect().wait()
         try client.syncShutdownGracefully()
