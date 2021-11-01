@@ -53,22 +53,23 @@ final class MQTTNIOv5Tests: XCTestCase {
 
     func testConnectWithNoIdentifier() throws {
         let client = self.createClient(identifier: "")
+        defer { XCTAssertNoThrow(try client.syncShutdownGracefully()) }
         _ = try client.v5.connect().wait()
         XCTAssertTrue(client.identifier.count > 0)
         try client.disconnect().wait()
-        try client.syncShutdownGracefully()
     }
 
     func testPublishQoS1() throws {
         let client = self.createClient(identifier: "testPublishQoS1V5")
+        defer { XCTAssertNoThrow(try client.syncShutdownGracefully()) }
         _ = try client.connect().wait()
         try client.publish(to: "testMQTTPublishQoS", payload: ByteBufferAllocator().buffer(string: "Test payload"), qos: .atLeastOnce).wait()
         try client.disconnect().wait()
-        try client.syncShutdownGracefully()
     }
 
     func testPublishQoS1WithProperty() throws {
         let client = self.createClient(identifier: "testPublishQoS1V5")
+        defer { XCTAssertNoThrow(try client.syncShutdownGracefully()) }
         _ = try client.connect().wait()
         _ = try client.v5.publish(
             to: "testMQTTPublishQoS",
@@ -77,19 +78,19 @@ final class MQTTNIOv5Tests: XCTestCase {
             properties: [.contentType("text/plain")]
         ).wait()
         try client.disconnect().wait()
-        try client.syncShutdownGracefully()
     }
 
     func testPublishQoS2() throws {
         let client = self.createClient(identifier: "testPublishQoS1V5")
+        defer { XCTAssertNoThrow(try client.syncShutdownGracefully()) }
         _ = try client.connect().wait()
         try client.publish(to: "testMQTTPublishQoS", payload: ByteBufferAllocator().buffer(string: "Test payload"), qos: .exactlyOnce).wait()
         try client.disconnect().wait()
-        try client.syncShutdownGracefully()
     }
 
     func testMQTTSubscribe() throws {
         let client = self.createClient(identifier: "testMQTTSubscribeV5")
+        defer { XCTAssertNoThrow(try client.syncShutdownGracefully()) }
         _ = try client.connect().wait()
         let sub = try client.v5.subscribe(
             to: [
@@ -100,17 +101,17 @@ final class MQTTNIOv5Tests: XCTestCase {
         XCTAssertEqual(sub.reasons[0], .grantedQoS1)
         XCTAssertEqual(sub.reasons[1], .grantedQoS2)
         try client.disconnect().wait()
-        try client.syncShutdownGracefully()
     }
 
     func testMQTTSubscribeFlags() throws {
         let expectation = XCTestExpectation(description: "testMQTTSubscribeFlags")
         expectation.expectedFulfillmentCount = 1
-        
+
         let payloadString = #"{"test":1000000}"#
         let payload = ByteBufferAllocator().buffer(string: payloadString)
 
         let client = self.createClient(identifier: "testMQTTPublishToClient_publisher")
+        defer { XCTAssertNoThrow(try client.syncShutdownGracefully()) }
         _ = try client.connect().wait()
         client.addPublishListener(named: "test") { result in
             switch result {
@@ -143,17 +144,17 @@ final class MQTTNIOv5Tests: XCTestCase {
         wait(for: [expectation], timeout: 5)
 
         try client.disconnect().wait()
-        try client.syncShutdownGracefully()
     }
 
     func testMQTTContentType() throws {
         let expectation = XCTestExpectation(description: "testMQTTContentType")
         expectation.expectedFulfillmentCount = 1
-        
+
         let payloadString = #"{"test":1000000}"#
         let payload = ByteBufferAllocator().buffer(string: payloadString)
 
         let client = self.createClient(identifier: "testMQTTContentType")
+        defer { XCTAssertNoThrow(try client.syncShutdownGracefully()) }
         _ = try client.connect().wait()
         client.addPublishListener(named: "test") { result in
             switch result {
@@ -184,20 +185,21 @@ final class MQTTNIOv5Tests: XCTestCase {
         wait(for: [expectation], timeout: 5.0)
 
         try client.disconnect().wait()
-        try client.syncShutdownGracefully()
     }
 
     func testUnsubscribe() throws {
         let expectation = XCTestExpectation(description: "testMQTTContentType")
         expectation.expectedFulfillmentCount = 1
         expectation.assertForOverFulfill = true
-        
+
         let payloadString = #"test payload"#
         let payload = ByteBufferAllocator().buffer(string: payloadString)
 
         let client = self.createClient(identifier: "testUnsubscribe_publisherV5")
+        defer { XCTAssertNoThrow(try client.syncShutdownGracefully()) }
         _ = try client.connect().wait()
         let client2 = self.createClient(identifier: "testUnsubscribe_subscriberV5")
+        defer { XCTAssertNoThrow(try client2.syncShutdownGracefully()) }
         client2.addPublishListener(named: "test") { result in
             switch result {
             case .success(let publish):
@@ -222,19 +224,17 @@ final class MQTTNIOv5Tests: XCTestCase {
 
         try client.disconnect().wait()
         try client2.disconnect().wait()
-        try client.syncShutdownGracefully()
-        try client2.syncShutdownGracefully()
     }
 
     func testSessionPresent() throws {
         let client = self.createClient(identifier: "testSessionPresent")
+        defer { XCTAssertNoThrow(try client.syncShutdownGracefully()) }
         var connack = try client.v5.connect(cleanStart: true, properties: [.sessionExpiryInterval(3600)]).wait()
         XCTAssertEqual(connack.sessionPresent, false)
         try client.v5.disconnect(properties: [.sessionExpiryInterval(3600)]).wait()
         connack = try client.v5.connect(cleanStart: false).wait()
         XCTAssertEqual(connack.sessionPresent, true)
         try client.disconnect().wait()
-        try client.syncShutdownGracefully()
     }
 
     func testPersistentSession() throws {
@@ -246,8 +246,11 @@ final class MQTTNIOv5Tests: XCTestCase {
         let payload = ByteBufferAllocator().buffer(string: payloadString)
 
         let client = self.createClient(identifier: "testPersistentSession_publisher")
+        defer { XCTAssertNoThrow(try client.syncShutdownGracefully()) }
         _ = try client.v5.connect().wait()
         let client2 = self.createClient(identifier: "testPersistentSession_subscriber")
+        defer { XCTAssertNoThrow(try client2.syncShutdownGracefully()) }
+
         client2.addPublishListener(named: "test") { result in
             switch result {
             case .success(let publish):
@@ -274,28 +277,27 @@ final class MQTTNIOv5Tests: XCTestCase {
         try client.publish(to: "testPersistentAtLeastOnceV5", payload: payload, qos: .atLeastOnce).wait()
         // should not receive previous publish on connect as this is a cleanSession
         _ = try client2.v5.connect(cleanStart: true).wait()
-        
+
         wait(for: [expectation], timeout: 5.0)
 
         try client.disconnect().wait()
         try client2.disconnect().wait()
-        try client.syncShutdownGracefully()
-        try client2.syncShutdownGracefully()
     }
 
     func testInvalidTopicName() throws {
         let client = self.createClient(identifier: "testInvalidTopicName")
+        defer { XCTAssertNoThrow(try client.syncShutdownGracefully()) }
         _ = try client.connect().wait()
         do {
             try client.publish(to: "testInvalidTopicName#", payload: ByteBufferAllocator().buffer(string: "Test payload"), qos: .atLeastOnce).wait()
             XCTFail("Should have errored")
         } catch let error as MQTTPacketError where error == .invalidTopicName {}
         try client.disconnect().wait()
-        try client.syncShutdownGracefully()
     }
 
     func testOutOfRangeTopicAlias() throws {
         let client = self.createClient(identifier: "testOutOfRangeTopicAlias")
+        defer { XCTAssertNoThrow(try client.syncShutdownGracefully()) }
         _ = try client.connect().wait()
         do {
             _ = try client.v5.publish(
@@ -307,11 +309,11 @@ final class MQTTNIOv5Tests: XCTestCase {
             XCTFail("Should have errored")
         } catch let error as MQTTPacketError where error == .topicAliasOutOfRange {}
         try client.disconnect().wait()
-        try client.syncShutdownGracefully()
     }
 
     func testPublishWithSubscription() throws {
         let client = self.createClient(identifier: "testOutOfRangeTopicAlias")
+        defer { XCTAssertNoThrow(try client.syncShutdownGracefully()) }
         _ = try client.connect().wait()
         do {
             _ = try client.v5.publish(
@@ -323,7 +325,6 @@ final class MQTTNIOv5Tests: XCTestCase {
             XCTFail("Should have errored")
         } catch let error as MQTTPacketError where error == .publishIncludesSubscription {}
         try client.disconnect().wait()
-        try client.syncShutdownGracefully()
     }
 
     func testSubscribeAll() throws {
@@ -338,11 +339,11 @@ final class MQTTNIOv5Tests: XCTestCase {
             logger: self.logger,
             configuration: .init(version: .v5_0)
         )
+        defer { XCTAssertNoThrow(try client.syncShutdownGracefully()) }
         _ = try client.v5.connect().wait()
         _ = try client.v5.subscribe(to: [.init(topicFilter: "#", qos: .exactlyOnce)]).wait()
         Thread.sleep(forTimeInterval: 5)
         try client.v5.disconnect().wait()
-        try client.syncShutdownGracefully()
     }
 
     // MARK: Helper variables and functions
@@ -360,10 +361,10 @@ final class MQTTNIOv5Tests: XCTestCase {
 
     func testConnectWithProperty(_ property: MQTTProperties.Property) throws {
         let client = self.createClient(identifier: "testConnectV5")
+        defer { XCTAssertNoThrow(try client.syncShutdownGracefully()) }
         _ = try client.v5.connect(properties: .init([property])).wait()
         try client.ping().wait()
         try client.disconnect().wait()
-        try client.syncShutdownGracefully()
     }
 
     let logger: Logger = {

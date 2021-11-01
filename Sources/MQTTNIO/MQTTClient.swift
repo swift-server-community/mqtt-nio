@@ -125,7 +125,7 @@ public final class MQTTClient {
 
     deinit {
         guard isShutdown.load() else {
-            preconditionFailure("Client not shut down before the deinit. Please call client.syncShutdown() when no longer needed.")
+            preconditionFailure("Client not shut down before the deinit. Please call client.syncShutdownGracefully() when no longer needed.")
         }
     }
 
@@ -380,7 +380,7 @@ public final class MQTTClient {
     private var lock = Lock()
 }
 
-extension MQTTClient {
+internal extension MQTTClient {
     /// connect to broker
     func connect(
         packet: MQTTConnectPacket,
