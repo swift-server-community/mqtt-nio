@@ -140,7 +140,7 @@ final class MQTTNIOv5Tests: XCTestCase {
 
         try client.publish(to: "testMQTTSubscribeFlags1", payload: payload, qos: .atLeastOnce, retain: false).wait()
 
-        wait(for: [expectation], timeout: 2)
+        wait(for: [expectation], timeout: 5)
 
         try client.disconnect().wait()
         try client.syncShutdownGracefully()
@@ -181,7 +181,7 @@ final class MQTTNIOv5Tests: XCTestCase {
             properties: [.contentType("application/json")]
         ).wait()
 
-        wait(for: [expectation], timeout: 2.0)
+        wait(for: [expectation], timeout: 5.0)
 
         try client.disconnect().wait()
         try client.syncShutdownGracefully()
@@ -218,7 +218,7 @@ final class MQTTNIOv5Tests: XCTestCase {
         XCTAssertEqual(unsub.reasons[1], .noSubscriptionExisted)
         try client.publish(to: "testUnsubscribe", payload: payload, qos: .atLeastOnce).wait()
 
-        wait(for: [expectation], timeout: 2.0)
+        wait(for: [expectation], timeout: 5.0)
 
         try client.disconnect().wait()
         try client2.disconnect().wait()
@@ -275,7 +275,7 @@ final class MQTTNIOv5Tests: XCTestCase {
         // should not receive previous publish on connect as this is a cleanSession
         _ = try client2.v5.connect(cleanStart: true).wait()
         
-        wait(for: [expectation], timeout: 2.0)
+        wait(for: [expectation], timeout: 5.0)
 
         try client.disconnect().wait()
         try client2.disconnect().wait()

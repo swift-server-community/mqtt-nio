@@ -130,7 +130,7 @@ final class MQTTNIOTests: XCTestCase {
             expectation.fulfill()
         }
         
-        wait(for: [expectation], timeout: 1.0)
+        wait(for: [expectation], timeout: 5.0)
         
         XCTAssertFalse(client.isActive())
         try client.syncShutdownGracefully()
@@ -159,7 +159,7 @@ final class MQTTNIOTests: XCTestCase {
         try client.publish(to: "testMQTTPublishRetain", payload: payload, qos: .atLeastOnce, retain: true).wait()
         _ = try client.subscribe(to: [.init(topicFilter: "testMQTTPublishRetain", qos: .atLeastOnce)]).wait()
 
-        wait(for: [expectation], timeout: 2.0)
+        wait(for: [expectation], timeout: 5.0)
 
         try client.disconnect().wait()
         try client.syncShutdownGracefully()
@@ -193,7 +193,7 @@ final class MQTTNIOTests: XCTestCase {
         try client.publish(to: "testAtLeastOnce", payload: payload, qos: .atLeastOnce).wait()
         try client.publish(to: "testExactlyOnce", payload: payload, qos: .exactlyOnce).wait()
         
-        wait(for: [expectation], timeout: 2.0)
+        wait(for: [expectation], timeout: 5.0)
 
         try client.disconnect().wait()
         try client2.disconnect().wait()
@@ -230,7 +230,7 @@ final class MQTTNIOTests: XCTestCase {
         try client2.unsubscribe(from: ["testUnsubscribe"]).wait()
         try client.publish(to: "testUnsubscribe", payload: payload, qos: .atLeastOnce).wait()
 
-        wait(for: [expectation], timeout: 2.0)
+        wait(for: [expectation], timeout: 5.0)
 
         try client.disconnect().wait()
         try client2.disconnect().wait()
@@ -265,7 +265,7 @@ final class MQTTNIOTests: XCTestCase {
         _ = try client2.subscribe(to: [.init(topicFilter: "testLargeAtLeastOnce", qos: .atLeastOnce)]).wait()
         try client.publish(to: "testLargeAtLeastOnce", payload: payload, qos: .atLeastOnce).wait()
         
-        wait(for: [expectation], timeout: 2.0)
+        wait(for: [expectation], timeout: 5.0)
 
         try client.disconnect().wait()
         try client2.disconnect().wait()
@@ -361,7 +361,7 @@ final class MQTTNIOTests: XCTestCase {
         // should not receive previous publish on connect as this is a cleanSession
         _ = try client2.connect(cleanSession: true).wait()
         
-        wait(for: [expectation], timeout: 2.0)
+        wait(for: [expectation], timeout: 5.0)
 
         try client.disconnect().wait()
         try client2.disconnect().wait()
