@@ -345,12 +345,12 @@ public final class MQTTClient {
         self.closeListeners.removeListener(named: name)
     }
 
-    /// Add close listener. Called whenever the connection is closed
+    /// Add shutdown listener. Called whenever the client is shutdown
     public func addShutdownListener(named name: String, _ listener: @escaping (Result<Void, Swift.Error>) -> Void) {
         self.shutdownListeners.addListener(named: name, listener: listener)
     }
 
-    /// Remove named close listener
+    /// Remove named shutdown listener
     public func removeShutdownListener(named name: String) {
         self.shutdownListeners.removeListener(named: name)
     }

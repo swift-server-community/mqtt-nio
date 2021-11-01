@@ -88,6 +88,21 @@ extension MQTTClient {
     }
 
     /// Create a publish listener AsyncSequence that yields a result whenever a PUBLISH message is received from the server
+    ///
+    /// To create listener and process results
+    /// ```
+    /// Task {
+    ///     let listener = client.createPublishListener()
+    ///     for result in listener {
+    ///         switch result {
+    ///         case .success(let packet):
+    ///             ...
+    ///         case .failure:
+    ///             break
+    ///         }
+    ///     }
+    /// }
+    /// ```
     public func createPublishListener() -> MQTTPublishListener {
         return .init(self)
     }
