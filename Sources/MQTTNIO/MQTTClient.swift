@@ -145,7 +145,7 @@ public final class MQTTClient {
         let errorStorageLock = Lock()
         var errorStorage: Error?
         let continuation = DispatchWorkItem {}
-        self.shutdown(queue: DispatchQueue(label: "aws-client.shutdown")) { error in
+        self.shutdown(queue: DispatchQueue(label: "mqtt-client.shutdown")) { error in
             if let error = error {
                 errorStorageLock.withLock {
                     errorStorage = error
