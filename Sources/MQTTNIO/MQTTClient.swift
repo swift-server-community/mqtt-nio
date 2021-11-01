@@ -65,6 +65,8 @@ public final class MQTTClient {
     private static let loggingDisabled = Logger(label: "MQTT-do-not-log", factory: { _ in SwiftLogNoOpLogHandler() })
     /// inflight messages
     private var inflight: MQTTInflight
+    /// flag to tell is client is shutdown
+    private let isShutdown = NIOAtomic<Bool>.makeAtomic(value: false)
 
     /// Create MQTT client
     /// - Parameters:
@@ -121,15 +123,88 @@ public final class MQTTClient {
         self.inflight = .init()
     }
 
-    /// Close down client. Must be called before the client is destroyed
+    deinit {
+        guard isShutdown.load() else {
+            preconditionFailure("Client not shut down before the deinit. Please call client.syncShutdown() when no longer needed.")
+        }
+    }
+    
+    /// Shutdown client synchronously. Before an `MQTTClient` is deleted you need to call this function or the async version `shutdown`
+    /// to do a clean shutdown of the client. It closes the connection, notifies everything listening for shutdown and shuts down the
+    /// EventLoopGroup if the client created it
+    ///
+    /// - Throws: MQTTError.alreadyShutdown: You have already shutdown the client
     public func syncShutdownGracefully() throws {
-        try self.connection?.close().wait()
+        if let eventLoop = MultiThreadedEventLoopGroup.currentEventLoop {
+            preconditionFailure("""
+            BUG DETECTED: syncShutdown() must not be called when on an EventLoop.
+            Calling syncShutdown() on any EventLoop can lead to deadlocks.
+            Current eventLoop: \(eventLoop)
+            """)
+        }
+        let errorStorageLock = Lock()
+        var errorStorage: Error?
+        let continuation = DispatchWorkItem {}
+        self.shutdown(queue: DispatchQueue(label: "aws-client.shutdown")) { error in
+            if let error = error {
+                errorStorageLock.withLock {
+                    errorStorage = error
+                }
+            }
+            continuation.perform()
+        }
+        continuation.wait()
+        try errorStorageLock.withLock {
+            if let error = errorStorage {
+                throw error
+            }
+        }
+    }
+
+    /// Shutdown MQTTClient asynchronously. Before an `AWSClient` is deleted you need to call this function or the synchronous
+    /// version `syncShutdownGracefully` to do a clean shutdown of the client. It closes the connection, notifies everything
+    /// listening for shutdown and shuts down the EventLoopGroup if the client created it
+    ///
+    /// - Parameters:
+    ///   - queue: Dispatch Queue to run shutdown on
+    ///   - callback: Callback called when shutdown is complete. If there was an error it will return with Error in callback
+    public func shutdown(queue: DispatchQueue = .global(), _ callback: @escaping (Error?) -> Void) {
+        guard self.isShutdown.compareAndExchange(expected: false, desired: true) else {
+            callback(MQTTError.alreadyShutdown)
+            return
+        }
+        let eventLoop = eventLoopGroup.next()
+        let closeFuture: EventLoopFuture<Void>
         self.shutdownListeners.notify(.success(()))
+        if let connection = self.connection {
+            closeFuture = connection.close()
+        } else {
+            closeFuture = eventLoop.makeSucceededVoidFuture()
+        }
+        closeFuture.whenComplete { result in
+            let closeError: Error?
+            switch result {
+            case .failure(let error):
+                closeError = error
+            case .success:
+                closeError = nil
+            }
+            self.shutdownListeners.notify(.success(()))
+            self.shutdownEventLoopGroup(queue: queue) { error in
+                callback(closeError ?? error)
+            }
+        }
+    }
+
+    /// shutdown EventLoopGroup
+    private func shutdownEventLoopGroup(queue: DispatchQueue, _ callback: @escaping (Error?) -> Void) {
         switch self.eventLoopGroupProvider {
-        case .createNew:
-            try self.eventLoopGroup.syncShutdownGracefully()
         case .shared:
-            break
+            queue.async {
+                callback(nil)
+            }
+        case .createNew:
+            self.eventLoopGroup.shutdownGracefully(queue: queue, callback)
         }
     }
 

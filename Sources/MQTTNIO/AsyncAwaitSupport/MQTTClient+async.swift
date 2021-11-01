@@ -5,6 +5,18 @@ import NIOCore
 
 @available(macOS 12.0, iOS 15.0, watchOS 8.0, tvOS 15.0, *)
 extension MQTTClient {
+    public func shutdown(queue: DispatchQueue = .global()) async throws {
+        return try await withUnsafeThrowingContinuation { cont in
+            shutdown(queue: queue) { error in
+                if let error = error {
+                    cont.resume(throwing: error)
+                } else {
+                    cont.resume()
+                }
+            }
+        }
+    }
+                           
     /// Connect to MQTT server
     ///
     /// Completes when CONNACK is received
