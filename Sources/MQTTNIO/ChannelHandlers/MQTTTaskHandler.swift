@@ -39,13 +39,13 @@ final class MQTTTaskHandler: ChannelInboundHandler, RemovableChannelHandler {
         for task in self.tasks {
             do {
                 if try task.checkInbound(response) {
-                    task.succeed(response)
                     self.removeTask(task)
+                    task.succeed(response)
                     return
                 }
             } catch {
-                task.fail(error)
                 self.removeTask(task)
+                task.fail(error)
                 return
             }
         }
