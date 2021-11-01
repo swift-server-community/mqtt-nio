@@ -16,7 +16,7 @@ extension MQTTClient {
             }
         }
     }
-                           
+
     /// Connect to MQTT server
     ///
     /// Completes when CONNACK is received
@@ -123,7 +123,7 @@ public class MQTTPublishListener: AsyncSequence {
     }
 
     public __consuming func makeAsyncIterator() -> AsyncStream<Element>.AsyncIterator {
-        return stream.makeAsyncIterator()
+        return self.stream.makeAsyncIterator()
     }
 }
 

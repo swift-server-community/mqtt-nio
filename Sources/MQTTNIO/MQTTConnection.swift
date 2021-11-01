@@ -181,7 +181,7 @@ final class MQTTConnection {
         let task = MQTTTask(on: channel.eventLoop, timeout: self.timeout, checkInbound: checkInbound)
         let taskHandler = MQTTTaskHandler(task: task, channel: channel)
 
-        channel.pipeline.addHandler(taskHandler, position: .before(self.unhandledHandler))
+        self.channel.pipeline.addHandler(taskHandler, position: .before(self.unhandledHandler))
             .flatMap {
                 self.channel.writeAndFlush(message)
             }

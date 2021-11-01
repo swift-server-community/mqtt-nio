@@ -128,7 +128,7 @@ public final class MQTTClient {
             preconditionFailure("Client not shut down before the deinit. Please call client.syncShutdown() when no longer needed.")
         }
     }
-    
+
     /// Shutdown client synchronously. Before an `MQTTClient` is deleted you need to call this function or the async version `shutdown`
     /// to do a clean shutdown of the client. It closes the connection, notifies everything listening for shutdown and shuts down the
     /// EventLoopGroup if the client created it
@@ -173,7 +173,7 @@ public final class MQTTClient {
             callback(MQTTError.alreadyShutdown)
             return
         }
-        let eventLoop = eventLoopGroup.next()
+        let eventLoop = self.eventLoopGroup.next()
         let closeFuture: EventLoopFuture<Void>
         self.shutdownListeners.notify(.success(()))
         if let connection = self.connection {

@@ -25,7 +25,7 @@ final class WebSocketHandler: ChannelDuplexHandler {
         guard context.channel.isActive else { return }
 
         let buffer = unwrapOutboundIn(data)
-        send(context: context, buffer: buffer, opcode: .binary, fin: true, promise: promise)
+        self.send(context: context, buffer: buffer, opcode: .binary, fin: true, promise: promise)
     }
 
     /// Read WebSocket frame

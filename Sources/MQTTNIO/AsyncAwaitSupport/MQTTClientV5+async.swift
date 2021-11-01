@@ -130,9 +130,8 @@ public class MQTTPublishIdListener: AsyncSequence {
     }
 
     public __consuming func makeAsyncIterator() -> AsyncStream<Element>.AsyncIterator {
-        return stream.makeAsyncIterator()
+        return self.stream.makeAsyncIterator()
     }
 }
-
 
 #endif // compiler(>=5.5)
