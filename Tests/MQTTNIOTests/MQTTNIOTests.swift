@@ -58,12 +58,9 @@ final class MQTTNIOTests: XCTestCase {
     #if canImport(Network)
     func testSSLConnectFromP12() throws {
         func getTLSConfigurationFromP12() throws -> MQTTClient.TLSConfigurationType {
-            let caData = try Data(contentsOf: URL(fileURLWithPath: MQTTNIOTests.rootPath + "/mosquitto/certs/ca.der"))
-            let trustRootCertificates = SecCertificateCreateWithData(nil, caData as CFData).map { [$0] }
-            return .ts(.init(
-                trustRoots: trustRootCertificates,
-                p12Filename: MQTTNIOTests.rootPath + "/mosquitto/certs/client.p12",
-                p12Password: "BoQOxr1HFWb5poBJ0Z9tY1xcB"
+            return try .ts(.init(
+                trustRoots: .der(MQTTNIOTests.rootPath + "/mosquitto/certs/ca.der"),
+                clientIdentity: .p12(filename: MQTTNIOTests.rootPath + "/mosquitto/certs/client.p12", password: "BoQOxr1HFWb5poBJ0Z9tY1xcB")
             ))
         }
         let client = try MQTTClient(

@@ -2,6 +2,9 @@
 
 import Foundation
 import Network
+#if canImport(NIOSSL)
+import NIOSSL
+#endif
 
 extension tls_protocol_version_t {
     var sslProtocol: SSLProtocol {
@@ -36,6 +39,59 @@ public enum TSCertificateVerification {
 
 /// TLS configuration for NIO Transport Services
 public struct TSTLSConfiguration {
+    enum Error: Swift.Error {
+        case invalidData
+    }
+    /// Struct defining identity
+    public struct Certificates {
+        let certificates: [SecCertificate]
+
+        public static func certificates(_ secCertificates: [SecCertificate]) -> Self { .init(certificates: secCertificates) }
+
+        #if canImport(NIOSSL)
+        public static func pem(_ filename: String) throws -> Self {
+            let certificates = try NIOSSLCertificate.fromPEMFile(filename)
+            let secCertificates = try certificates.map { certificate -> SecCertificate in
+                guard let certificate = SecCertificateCreateWithData(nil, Data(try certificate.toDERBytes()) as CFData) else { throw TSTLSConfiguration.Error.invalidData }
+                return certificate
+            }
+            return .init(certificates: secCertificates)
+        }
+        #endif
+
+        public static func der(_ filename: String) throws -> Self {
+            let certificateData = try Data(contentsOf: URL(fileURLWithPath: filename))
+            guard let secCertificate = SecCertificateCreateWithData(nil, certificateData as CFData) else { throw TSTLSConfiguration.Error.invalidData }
+            return .init(certificates: [secCertificate])
+        }
+    }
+
+    /// Struct defining identity
+    public struct Identity {
+        let identity: SecIdentity
+
+        public static func secIdentity(_ secIdentity: SecIdentity) -> Self { .init(identity: secIdentity) }
+
+        public static func p12(filename: String, password: String) throws -> Self {
+            let secIdentity = try Self.loadP12(filename: filename, password: password)
+            return .init(identity: secIdentity)
+        }
+
+        /// Load P12 file
+        private static func loadP12(filename: String, password: String) throws -> SecIdentity {
+            let data = try Data(contentsOf: URL(fileURLWithPath: filename))
+            let options: [String: String] = [kSecImportExportPassphrase as String: password]
+            var rawItems: CFArray?
+            guard SecPKCS12Import(data as CFData, options as CFDictionary, &rawItems) == errSecSuccess else { throw TSTLSConfiguration.Error.invalidData }
+            let items = rawItems! as! [[String: Any]]
+            guard let firstItem = items.first,
+                  let identity = firstItem[kSecImportItemIdentity as String] as! SecIdentity? else {
+                      throw TSTLSConfiguration.Error.invalidData
+                  }
+            return identity
+        }
+    }
+
     /// The minimum TLS version to allow in negotiation. Defaults to tlsv1.
     public var minimumTLSVersion: tls_protocol_version_t
 
@@ -84,16 +140,15 @@ public struct TSTLSConfiguration {
     public init(
         minimumTLSVersion: tls_protocol_version_t = .TLSv10,
         maximumTLSVersion: tls_protocol_version_t? = nil,
-        trustRoots: [SecCertificate]? = nil,
-        p12Filename: String,
-        p12Password: String,
+        trustRoots: Certificates,
+        clientIdentity: Identity,
         applicationProtocols: [String] = [],
         certificateVerification: TSCertificateVerification = .fullVerification
     ) {
         self.minimumTLSVersion = minimumTLSVersion
         self.maximumTLSVersion = maximumTLSVersion
-        self.trustRoots = trustRoots
-        self.clientIdentity = TSTLSConfiguration.loadP12(filename: p12Filename, password: p12Password)
+        self.trustRoots = trustRoots.certificates
+        self.clientIdentity = clientIdentity.identity
         self.applicationProtocols = applicationProtocols
         self.certificateVerification = certificateVerification
     }
@@ -162,17 +217,6 @@ extension TSTLSConfiguration {
             )
         }
         return options
-    }
-
-    /// Load P12 file
-    private static func loadP12(filename: String, password: String) -> SecIdentity? {
-        guard let data = try? Data(contentsOf: URL(fileURLWithPath: filename)) else { return nil }
-        let options: [String: String] = [kSecImportExportPassphrase as String: password]
-        var rawItems: CFArray?
-        guard SecPKCS12Import(data as CFData, options as CFDictionary, &rawItems) == errSecSuccess else { return nil }
-        let items = rawItems! as! [[String: Any]]
-        guard let firstItem = items.first else { return nil }
-        return firstItem[kSecImportItemIdentity as String] as! SecIdentity?
     }
 
     /// Dispatch queue used by Network framework TLS to control certificate verification
