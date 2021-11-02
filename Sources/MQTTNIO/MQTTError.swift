@@ -32,7 +32,8 @@ public enum MQTTError: Error {
     case noConnection
     /// the server disconnected
     case serverDisconnection(MQTTAckV5)
-    /// the server closed the connection
+    /// the server closed the connection. If this happens during a publish you can resend
+    /// the publish packet by reconnecting to server with `cleanSession` set to false.
     case serverClosedConnection
     /// received unexpected message from broker
     case unexpectedMessage

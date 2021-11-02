@@ -22,7 +22,7 @@ final class MQTTConnection {
     }
 
     static func create(client: MQTTClient, pingInterval: TimeAmount) -> EventLoopFuture<MQTTConnection> {
-        let taskHandler = MQTTTaskHandler()
+        let taskHandler = MQTTTaskHandler(client: client)
         return self.createBootstrap(client: client, pingInterval: pingInterval, taskHandler: taskHandler)
             .map { MQTTConnection(channel: $0, timeout: client.configuration.timeout, taskHandler: taskHandler) }
     }
