@@ -54,7 +54,7 @@ final class MQTTTaskHandler: ChannelInboundHandler, RemovableChannelHandler {
             }
         }
 
-        processUnhandledPacket(response)
+        self.processUnhandledPacket(response)
     }
 
     /// process packets where no equivalent task was found
@@ -72,7 +72,7 @@ final class MQTTTaskHandler: ChannelInboundHandler, RemovableChannelHandler {
             break
         }
     }
-    
+
     func channelInactive(context: ChannelHandlerContext) {
         // channel is inactive so we should fail or tasks in progress
         self.tasks.forEach { $0.fail(MQTTError.serverClosedConnection) }
