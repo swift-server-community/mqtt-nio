@@ -5,14 +5,12 @@ import NIO
 final class MQTTTask {
     let promise: EventLoopPromise<MQTTPacket>
     let checkInbound: (MQTTPacket) throws -> Bool
-    let timeout: TimeAmount?
     let timeoutTask: Scheduled<Void>?
 
     init(on eventLoop: EventLoop, timeout: TimeAmount?, checkInbound: @escaping (MQTTPacket) throws -> Bool) {
         let promise = eventLoop.makePromise(of: MQTTPacket.self)
         self.promise = promise
         self.checkInbound = checkInbound
-        self.timeout = timeout
         if let timeout = timeout {
             self.timeoutTask = eventLoop.scheduleTask(in: timeout) {
                 promise.fail(MQTTError.timeout)
