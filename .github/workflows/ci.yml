@@ -2,22 +2,16 @@ name: CI
 
 on:
   push:
-    branches:
-    - main
-  pull_request:
-    branches:
-    - main
-  release:
-    types: [published]
+  workflow_dispatch:
 
 jobs:
-  macos:
-    runs-on: macOS-latest
-    steps:
-    - name: Checkout
-      uses: actions/checkout@v2
-    - name: SPM tests
-      run: swift build
+#  macos:
+#    runs-on: macOS-latest
+#    steps:
+#    - name: Checkout
+#      uses: actions/checkout@v2
+#    - name: SPM tests
+#      run: swift build
 
   ios:
     runs-on: macOS-latest
@@ -30,23 +24,31 @@ jobs:
 
   linux:
     runs-on: ubuntu-latest
-    # swift docker images don't have docker-compose installed
-    #strategy:
-    #  matrix:
-    #    tag:
-    #      - swift:5.1
-    #       - swift:5.2
-    #       - swift:5.3
-    # container:
-    #   image: ${{ matrix.tag }}
+    strategy:
+      matrix:
+        tag:
+          - swift:5.5
+    container:
+      image: ${{ matrix.tag }}
+#    services:
+#      localhost:
+#        image: eclipse-mosquitto
+#        volumes:
+#          - /mosquitto/config/:/mosquitto/config/
+#          - /mosquitto/certs/:/mosquitto/certs/
+#        ports:
+#          - "1883:1883"
+#          - "8883:8883"
+#          - "8080:8080"
+#          - "8081:8081"
     steps:
     - name: Checkout
       uses: actions/checkout@v2
-    - name: Mosquitto
-      run: |
-        docker-compose --version
-        swift --version
-        ./scripts/mosquitto.sh start
+    - uses: addnab/docker-run-action@v3
+      with:
+        image: eclipse-mosquitto:latest
+        options: |
+            -p 1883:1883
     - name: Test
       run: |
         swift test --enable-test-discovery --enable-code-coverage
@@ -61,4 +63,3 @@ jobs:
     #  uses: codecov/codecov-action@v1
     #  with:
     #    file: info.lcov
-
