@@ -16,15 +16,19 @@ jobs:
     steps:
     - name: Checkout
       uses: actions/checkout@v2
-    #- uses: addnab/docker-run-action@v3
-    #  with:
-    #    image: eclipse-mosquitto:latest
-    #    options: -p 1883:1883 -p 8883:8883 -p 8080:8080 -p 8081:8081 -v ${{ github.workspace }}/mosquitto:/mosquitto --network-alias mosquitto
+    - uses: addnab/docker-run-action@v3
+      with:
+        image: eclipse-mosquitto:latest
+        options: >
+          -p 1883:1883
+          -p 8883:8883
+          -p 8080:8080
+          -p 8081:8081
+          -v ${{ github.workspace }}/mosquitto:/mosquitto
     - name: Test
       env:
         MOSQUITTO_SERVER: localhost
       run: |
-        docker run -d -p 1883:1883 -p 8883:8883 -p 8080:8080 -p 8081:8081 -v ${{ github.workspace }}/mosquitto:/mosquitto eclipse-mosquitto
         swift test --enable-test-discovery --enable-code-coverage
     - name: Convert coverage files
       run: |
