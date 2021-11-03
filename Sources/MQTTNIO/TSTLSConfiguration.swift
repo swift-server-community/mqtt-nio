@@ -1,12 +1,10 @@
-//
-//  File.swift
-//
-//
-//  Created by Adam Fowler on 24/11/2020.
-//
 #if canImport(Network)
 
+import Foundation
 import Network
+#if canImport(NIOSSL)
+import NIOSSL
+#endif
 
 extension tls_protocol_version_t {
     var sslProtocol: SSLProtocol {
@@ -41,6 +39,61 @@ public enum TSCertificateVerification {
 
 /// TLS configuration for NIO Transport Services
 public struct TSTLSConfiguration {
+    /// Error loading TLS files
+    public enum Error: Swift.Error {
+        case invalidData
+    }
+
+    /// Struct defining an array of certificates
+    public struct Certificates {
+        let certificates: [SecCertificate]
+
+        /// Create certificate array from already loaded SecCertificate array
+        public static func certificates(_ secCertificates: [SecCertificate]) -> Self { .init(certificates: secCertificates) }
+
+        #if canImport(NIOSSL)
+        /// Create certificate array from PEM file
+        public static func pem(_ filename: String) throws -> Self {
+            let certificates = try NIOSSLCertificate.fromPEMFile(filename)
+            let secCertificates = try certificates.map { certificate -> SecCertificate in
+                guard let certificate = SecCertificateCreateWithData(nil, Data(try certificate.toDERBytes()) as CFData) else { throw TSTLSConfiguration.Error.invalidData }
+                return certificate
+            }
+            return .init(certificates: secCertificates)
+        }
+        #endif
+
+        /// Create certificate array from DER file
+        public static func der(_ filename: String) throws -> Self {
+            let certificateData = try Data(contentsOf: URL(fileURLWithPath: filename))
+            guard let secCertificate = SecCertificateCreateWithData(nil, certificateData as CFData) else { throw TSTLSConfiguration.Error.invalidData }
+            return .init(certificates: [secCertificate])
+        }
+    }
+
+    /// Struct defining identity
+    public struct Identity {
+        let identity: SecIdentity
+
+        /// Create Identity from already loaded SecIdentity
+        public static func secIdentity(_ secIdentity: SecIdentity) -> Self { .init(identity: secIdentity) }
+
+        /// Create Identity from p12 file
+        public static func p12(filename: String, password: String) throws -> Self {
+            let data = try Data(contentsOf: URL(fileURLWithPath: filename))
+            let options: [String: String] = [kSecImportExportPassphrase as String: password]
+            var rawItems: CFArray?
+            guard SecPKCS12Import(data as CFData, options as CFDictionary, &rawItems) == errSecSuccess else { throw TSTLSConfiguration.Error.invalidData }
+            let items = rawItems! as! [[String: Any]]
+            guard let firstItem = items.first,
+                  let secIdentity = firstItem[kSecImportItemIdentity as String] as! SecIdentity?
+            else {
+                throw TSTLSConfiguration.Error.invalidData
+            }
+            return .init(identity: secIdentity)
+        }
+    }
+
     /// The minimum TLS version to allow in negotiation. Defaults to tlsv1.
     public var minimumTLSVersion: tls_protocol_version_t
 
@@ -73,6 +126,31 @@ public struct TSTLSConfiguration {
         self.maximumTLSVersion = maximumTLSVersion
         self.trustRoots = trustRoots
         self.clientIdentity = clientIdentity
+        self.applicationProtocols = applicationProtocols
+        self.certificateVerification = certificateVerification
+    }
+
+    /// Initialize TSTLSConfiguration
+    /// - Parameters:
+    ///   - minimumTLSVersion: minimum version of TLS supported
+    ///   - maximumTLSVersion: maximum version of TLS supported
+    ///   - p12: P12 filename
+    ///   - p12Password: Password for P12
+    ///   - trustRoots: The trust roots to use to validate certificates
+    ///   - applicationProtocols: The application protocols to use in the connection
+    ///   - certificateVerification: Should certificates be verified
+    public init(
+        minimumTLSVersion: tls_protocol_version_t = .TLSv10,
+        maximumTLSVersion: tls_protocol_version_t? = nil,
+        trustRoots: Certificates,
+        clientIdentity: Identity,
+        applicationProtocols: [String] = [],
+        certificateVerification: TSCertificateVerification = .fullVerification
+    ) {
+        self.minimumTLSVersion = minimumTLSVersion
+        self.maximumTLSVersion = maximumTLSVersion
+        self.trustRoots = trustRoots.certificates
+        self.clientIdentity = clientIdentity.identity
         self.applicationProtocols = applicationProtocols
         self.certificateVerification = certificateVerification
     }

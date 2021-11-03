@@ -39,17 +39,39 @@ final class MQTTNIOTests: XCTestCase {
         try client.disconnect().wait()
     }
 
-    #if canImport(NIOSSL)
     func testSSLConnect() throws {
         let client = try createSSLClient(identifier: "testSSLConnect")
+        defer { XCTAssertNoThrow(try client.syncShutdownGracefully()) }
         _ = try client.connect().wait()
         try client.ping().wait()
         try client.disconnect().wait()
-        try client.syncShutdownGracefully()
     }
 
     func testWebsocketAndSSLConnect() throws {
         let client = try createWebSocketAndSSLClient(identifier: "testWebsocketAndSSLConnect")
+        defer { XCTAssertNoThrow(try client.syncShutdownGracefully()) }
+        _ = try client.connect().wait()
+        try client.ping().wait()
+        try client.disconnect().wait()
+    }
+
+    #if canImport(Network)
+    func testSSLConnectFromP12() throws {
+        let client = try MQTTClient(
+            host: Self.hostname,
+            port: 8883,
+            identifier: "testSSLConnectFromP12",
+            eventLoopGroupProvider: .createNew,
+            logger: self.logger,
+            configuration: .init(
+                useSSL: true,
+                tlsConfiguration: .ts(.init(
+                    trustRoots: .der(MQTTNIOTests.rootPath + "/mosquitto/certs/ca.der"),
+                    clientIdentity: .p12(filename: MQTTNIOTests.rootPath + "/mosquitto/certs/client.p12", password: "BoQOxr1HFWb5poBJ0Z9tY1xcB")
+                )),
+                sniServerName: "soto.codes"
+            )
+        )
         defer { XCTAssertNoThrow(try client.syncShutdownGracefully()) }
         _ = try client.connect().wait()
         try client.ping().wait()
@@ -448,7 +470,6 @@ final class MQTTNIOTests: XCTestCase {
         )
     }
 
-    #if canImport(NIOSSL)
     func createSSLClient(identifier: String) throws -> MQTTClient {
         return try MQTTClient(
             host: Self.hostname,
@@ -470,7 +491,6 @@ final class MQTTNIOTests: XCTestCase {
             configuration: .init(timeout: .seconds(5), useSSL: true, useWebSockets: true, tlsConfiguration: Self.getTLSConfiguration(), sniServerName: "soto.codes", webSocketURLPath: "/mqtt")
         )
     }
-    #endif
 
     let logger: Logger = {
         var logger = Logger(label: "MQTTTests")
@@ -486,7 +506,6 @@ final class MQTTNIOTests: XCTestCase {
             .joined(separator: "/")
     }()
 
-    #if canImport(NIOSSL)
     static var _tlsConfiguration: Result<MQTTClient.TLSConfigurationType, Error> = {
         do {
             #if os(Linux)
@@ -503,12 +522,12 @@ final class MQTTNIOTests: XCTestCase {
 
             #else
 
-            let rootCertificate = try NIOSSLCertificate.fromPEMFile(MQTTNIOTests.rootPath + "/mosquitto/certs/ca.crt")
-            let trustRootCertificates = try rootCertificate.compactMap { SecCertificateCreateWithData(nil, Data(try $0.toDERBytes()) as CFData) }
-            let data = try Data(contentsOf: URL(fileURLWithPath: MQTTNIOTests.rootPath + "/mosquitto/certs/client.p12"))
+            let caData = try Data(contentsOf: URL(fileURLWithPath: MQTTNIOTests.rootPath + "/mosquitto/certs/ca.der"))
+            let trustRootCertificates = SecCertificateCreateWithData(nil, caData as CFData).map { [$0] }
+            let p12Data = try Data(contentsOf: URL(fileURLWithPath: MQTTNIOTests.rootPath + "/mosquitto/certs/client.p12"))
             let options: [String: String] = [kSecImportExportPassphrase as String: "BoQOxr1HFWb5poBJ0Z9tY1xcB"]
             var rawItems: CFArray?
-            let rt = SecPKCS12Import(data as CFData, options as CFDictionary, &rawItems)
+            let rt = SecPKCS12Import(p12Data as CFData, options as CFDictionary, &rawItems)
             let items = rawItems! as! [[String: Any]]
             let firstItem = items[0]
             let identity = firstItem[kSecImportItemIdentity as String] as! SecIdentity?
@@ -528,13 +547,15 @@ final class MQTTNIOTests: XCTestCase {
         switch self._tlsConfiguration {
         case .success(let config):
             switch config {
+            #if canImport(NIOSSL)
             case .niossl(let config):
                 var tlsConfig = TLSConfiguration.makeClientConfiguration()
                 tlsConfig.trustRoots = withTrustRoots == true ? (config.trustRoots ?? .default) : .default
                 tlsConfig.certificateChain = withClientKey ? config.certificateChain : []
                 tlsConfig.privateKey = withClientKey ? config.privateKey : nil
                 return .niossl(tlsConfig)
-            #if !os(Linux)
+            #endif
+            #if canImport(Network)
             case .ts(let config):
                 return .ts(TSTLSConfiguration(
                     trustRoots: withTrustRoots == true ? config.trustRoots : nil,
@@ -546,5 +567,4 @@ final class MQTTNIOTests: XCTestCase {
             throw error
         }
     }
-    #endif // canImport(NIOSSL)
 }

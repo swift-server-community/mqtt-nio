@@ -1,4 +1,4 @@
-import Foundation
+import Dispatch
 import Logging
 #if canImport(Network)
 import Network
