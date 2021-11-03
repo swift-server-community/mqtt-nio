@@ -24,7 +24,7 @@ jobs:
       env:
         MOSQUITTO_SERVER: localhost
       run: |
-        docker run -p 1883:1883 -p 8883:8883 -p 8080:8080 -p 8081:8081 -v ${{ github.workspace }}/mosquitto:/mosquitto eclipse-mosquitto
+        docker run -d -p 1883:1883 -p 8883:8883 -p 8080:8080 -p 8081:8081 -v ${{ github.workspace }}/mosquitto:/mosquitto eclipse-mosquitto
         swift test --enable-test-discovery --enable-code-coverage
     - name: Convert coverage files
       run: |
