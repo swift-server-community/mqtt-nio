@@ -36,7 +36,7 @@ jobs:
     #      -v ${{ github.workspace }}/mosquitto:/mosquitto
     - name: Test
       env:
-        MOSQUITTO_SERVER: localhost
+        MOSQUITTO_SERVER: mosquitto
       run: |
         swift test --enable-test-discovery --enable-code-coverage
     - name: Convert coverage files
