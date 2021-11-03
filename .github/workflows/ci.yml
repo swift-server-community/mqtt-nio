@@ -13,18 +13,27 @@ jobs:
           - swift:5.4
     container:
       image: ${{ matrix.tag }}
+    services:
+      mosquitto:
+        image: eclipse-mosquitto
+        ports:
+          - 1883:1883
+          - 8883:8883
+          - 8080:8080
+          - 8081:8081
+        options: -v ${{ github.workspace }}/mosquitto:/mosquitto
     steps:
     - name: Checkout
       uses: actions/checkout@v2
-    - uses: addnab/docker-run-action@v3
-      with:
-        image: eclipse-mosquitto:latest
-        options: >
-          -p 1883:1883
-          -p 8883:8883
-          -p 8080:8080
-          -p 8081:8081
-          -v ${{ github.workspace }}/mosquitto:/mosquitto
+    #- uses: addnab/docker-run-action@v3
+    #  with:
+    #    image: eclipse-mosquitto:latest
+    #    options: >
+    #      -p 1883:1883
+    #      -p 8883:8883
+    #      -p 8080:8080
+    #      -p 8081:8081
+    #      -v ${{ github.workspace }}/mosquitto:/mosquitto
     - name: Test
       env:
         MOSQUITTO_SERVER: localhost
