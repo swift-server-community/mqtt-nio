@@ -1,6 +1,6 @@
 # MQTT NIO 
 
-[<img src="http://img.shields.io/badge/swift-5.4-brightgreen.svg" alt="Swift 5.4" />](https://swift.org)
+[<img src="http://img.shields.io/badge/swift-5.5-brightgreen.svg" alt="Swift 5.5" />](https://swift.org)
 [<img src="https://github.com/adam-fowler/mqtt-nio/workflows/CI/badge.svg" />](https://github.com/adam-fowler/mqtt-nio/workflows/CI/badge.svg)
 
 A Swift NIO based MQTT v3.1.1 and v5.0 client supporting NIOTransportServices (required for iOS), WebSocket connections and TLS through both NIOSSL and NIOTransportServices.
