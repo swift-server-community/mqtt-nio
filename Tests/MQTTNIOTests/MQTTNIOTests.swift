@@ -57,19 +57,20 @@ final class MQTTNIOTests: XCTestCase {
 
     #if canImport(Network)
     func testSSLConnectFromP12() throws {
-        func getTLSConfigurationFromP12() throws -> MQTTClient.TLSConfigurationType {
-            return try .ts(.init(
-                trustRoots: .der(MQTTNIOTests.rootPath + "/mosquitto/certs/ca.der"),
-                clientIdentity: .p12(filename: MQTTNIOTests.rootPath + "/mosquitto/certs/client.p12", password: "BoQOxr1HFWb5poBJ0Z9tY1xcB")
-            ))
-        }
         let client = try MQTTClient(
             host: Self.hostname,
             port: 8883,
             identifier: "testSSLConnectFromP12",
             eventLoopGroupProvider: .createNew,
             logger: self.logger,
-            configuration: .init(useSSL: true, tlsConfiguration: getTLSConfigurationFromP12(), sniServerName: "soto.codes")
+            configuration: .init(
+                useSSL: true,
+                tlsConfiguration: .ts(.init(
+                    trustRoots: .der(MQTTNIOTests.rootPath + "/mosquitto/certs/ca.der"),
+                    clientIdentity: .p12(filename: MQTTNIOTests.rootPath + "/mosquitto/certs/client.p12", password: "BoQOxr1HFWb5poBJ0Z9tY1xcB")
+                )),
+                sniServerName: "soto.codes"
+            )
         )
         defer { XCTAssertNoThrow(try client.syncShutdownGracefully()) }
         _ = try client.connect().wait()
