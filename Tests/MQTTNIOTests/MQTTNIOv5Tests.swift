@@ -308,6 +308,26 @@ final class MQTTNIOv5Tests: XCTestCase {
         try client.disconnect().wait()
     }
 
+    /// Test Publish that will cause a server disconnection message
+    func testBadPublish() throws {
+        let client = self.createClient(identifier: "testBadPublish")
+        defer { XCTAssertNoThrow(try client.syncShutdownGracefully()) }
+        _ = try client.connect().wait()
+        do {
+            _ = try client.v5.publish(
+                to: "testBadPublish",
+                payload: ByteBufferAllocator().buffer(string: "Test payload"),
+                qos: .atLeastOnce,
+                properties: [.requestResponseInformation(1)]
+            ).wait()
+            XCTFail("Should have errored")
+        } catch MQTTError.serverDisconnection(let ack) {
+            XCTAssertEqual(ack.reason, .malformedPacket)
+        } catch {
+            XCTFail("\(error)")
+        }
+    }
+
     func testOutOfRangeTopicAlias() throws {
         let client = self.createClient(identifier: "testOutOfRangeTopicAlias")
         defer { XCTAssertNoThrow(try client.syncShutdownGracefully()) }
