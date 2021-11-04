@@ -185,7 +185,11 @@ public final class MQTTClient {
             let closeError: Error?
             switch result {
             case .failure(let error):
-                closeError = error
+                if case ChannelError.alreadyClosed = error {
+                    closeError = nil
+                } else {
+                    closeError = error
+                }
             case .success:
                 closeError = nil
             }
