@@ -67,7 +67,7 @@ final class MQTTNIOTests: XCTestCase {
                 useSSL: true,
                 tlsConfiguration: .ts(.init(
                     trustRoots: .der(MQTTNIOTests.rootPath + "/mosquitto/certs/ca.der"),
-                    clientIdentity: .p12(filename: MQTTNIOTests.rootPath + "/mosquitto/certs/client.p12", password: "BoQOxr1HFWb5poBJ0Z9tY1xcB")
+                    clientIdentity: .p12(filename: MQTTNIOTests.rootPath + "/mosquitto/certs/client.p12", password: "MQTTNIOClientCertPassword")
                 )),
                 sniServerName: "soto.codes"
             )
@@ -510,8 +510,8 @@ final class MQTTNIOTests: XCTestCase {
         do {
             #if os(Linux)
 
-            let rootCertificate = try NIOSSLCertificate.fromPEMFile(MQTTNIOTests.rootPath + "/mosquitto/certs/ca.crt")
-            let certificate = try NIOSSLCertificate.fromPEMFile(MQTTNIOTests.rootPath + "/mosquitto/certs/client.crt")
+            let rootCertificate = try NIOSSLCertificate.fromPEMFile(MQTTNIOTests.rootPath + "/mosquitto/certs/ca.pem")
+            let certificate = try NIOSSLCertificate.fromPEMFile(MQTTNIOTests.rootPath + "/mosquitto/certs/client.pem")
             let privateKey = try NIOSSLPrivateKey(file: MQTTNIOTests.rootPath + "/mosquitto/certs/client.key", format: .pem)
             var tlsConfiguration = TLSConfiguration.makeClientConfiguration()
             tlsConfiguration.trustRoots = .certificates(rootCertificate)
@@ -525,7 +525,7 @@ final class MQTTNIOTests: XCTestCase {
             let caData = try Data(contentsOf: URL(fileURLWithPath: MQTTNIOTests.rootPath + "/mosquitto/certs/ca.der"))
             let trustRootCertificates = SecCertificateCreateWithData(nil, caData as CFData).map { [$0] }
             let p12Data = try Data(contentsOf: URL(fileURLWithPath: MQTTNIOTests.rootPath + "/mosquitto/certs/client.p12"))
-            let options: [String: String] = [kSecImportExportPassphrase as String: "BoQOxr1HFWb5poBJ0Z9tY1xcB"]
+            let options: [String: String] = [kSecImportExportPassphrase as String: "MQTTNIOClientCertPassword"]
             var rawItems: CFArray?
             let rt = SecPKCS12Import(p12Data as CFData, options as CFDictionary, &rawItems)
             let items = rawItems! as! [[String: Any]]
