@@ -17,7 +17,7 @@ jobs:
     steps:
     - name: Checkout
       uses: actions/checkout@v2
-    - Install and run Mosquitto
+    - name: Install and run Mosquitto
       run: |
         brew install mosquitto
         mosquitto -d -c mosquitto/config/mosquitto.conf
