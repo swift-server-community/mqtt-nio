@@ -90,11 +90,11 @@ do
 done
 
 if test "$OUTPUT_ROOT" == 1; then
-    generateCA "/C=UK/ST=Edinburgh/L=Edinburgh/O=Soto/OU=MQTT/CN=${SERVER}"
+    generateCA "/C=UK/ST=Edinburgh/L=Edinburgh/O=MQTTNIO/OU=CA/CN=${SERVER}"
 fi
 if test "$OUTPUT_SERVER" == 1; then
-    generateServerCertificate "/C=UK/ST=Edinburgh/L=Edinburgh/O=Soto/OU=MQTT/CN=${SERVER}" server
+    generateServerCertificate "/C=UK/ST=Edinburgh/L=Edinburgh/O=MQTTNIO/OU=Server/CN=${SERVER}" server
 fi
 if test "$OUTPUT_CLIENT" == 1; then
-    generateClientCertificate "/C=UK/ST=Edinburgh/L=Edinburgh/O=Soto/OU=MQTT/CN=${SERVER}" client
+    generateClientCertificate "/C=UK/ST=Edinburgh/L=Edinburgh/O=MQTTNIO/OU=Client/CN=${SERVER}" client
 fi
