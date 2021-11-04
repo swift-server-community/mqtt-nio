@@ -16,7 +16,8 @@ function generateCA() {
         -subj "$SUBJECT" \
         -days 365 \
         -keyout ca.key \
-        -out ca.crt
+        -out ca.pem
+    openssl x509 -in ca.pem -out ca.der -outform DER
 }
 
 function generateServerCertificate() {
@@ -37,40 +38,39 @@ function generateServerCertificate() {
         -req \
         -sha256 \
         -in "$NAME".csr \
-        -CA ca.crt \
+        -CA ca.pem \
         -CAkey ca.key \
         -CAcreateserial \
         -extfile <(cat "$FULL_HOME"/openssl.cnf <(printf "subjectAltName=DNS:$SERVER\n")) \
         -extensions v3_req \
-        -out "$NAME".crt \
+        -out "$NAME".pem \
         -days 365
 }
 
 function generateClientCertificate() {
     SUBJECT=$1
     NAME=$2
-    PASSWORD=$(openssl rand -base64 29 | tr -d "=+/" | cut -c1-25)
+    #PASSWORD=$(openssl rand -base64 29 | tr -d "=+/" | cut -c1-25)
+    PASSWORD="MQTTNIOClientCertPassword"
     openssl req \
         -new \
         -nodes \
         -sha256 \
         -subj "$SUBJECT" \
         -keyout "$NAME".key \
-        -out "$NAME".csr \
-#        -passout pass:"$PASSWORD"
+        -out "$NAME".csr
         
     openssl x509 \
         -req \
         -sha256 \
         -in "$NAME".csr \
-        -CA ca.crt \
+        -CA ca.pem \
         -CAkey ca.key \
         -CAcreateserial \
-        -out "$NAME".crt \
-        -days 365 \
-#        -passin pass:"$PASSWORD"
+        -out "$NAME".pem \
+        -days 365
 
-    openssl pkcs12 -export -passout pass:"$PASSWORD" -out "$NAME".p12 -in "$NAME".crt -inkey "$NAME".key
+    openssl pkcs12 -export -passout pass:"$PASSWORD" -out "$NAME".p12 -in "$NAME".pem -inkey "$NAME".key
     
     echo "Password: $PASSWORD"
 }
@@ -90,11 +90,11 @@ do
 done
 
 if test "$OUTPUT_ROOT" == 1; then
-    generateCA "/C=UK/ST=Edinburgh/L=Edinburgh/O=Soto/OU=MQTT/CN=${SERVER}"
+    generateCA "/C=UK/ST=Edinburgh/L=Edinburgh/O=MQTTNIO/OU=CA/CN=${SERVER}"
 fi
 if test "$OUTPUT_SERVER" == 1; then
-    generateServerCertificate "/C=UK/ST=Edinburgh/L=Edinburgh/O=Soto/OU=MQTT/CN=${SERVER}" server
+    generateServerCertificate "/C=UK/ST=Edinburgh/L=Edinburgh/O=MQTTNIO/OU=Server/CN=${SERVER}" server
 fi
 if test "$OUTPUT_CLIENT" == 1; then
-    generateClientCertificate "/C=UK/ST=Edinburgh/L=Edinburgh/O=Soto/OU=MQTT/CN=${SERVER}" client
+    generateClientCertificate "/C=UK/ST=Edinburgh/L=Edinburgh/O=MQTTNIO/OU=Client/CN=${SERVER}" client
 fi
