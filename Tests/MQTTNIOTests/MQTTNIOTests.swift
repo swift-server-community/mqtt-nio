@@ -435,6 +435,19 @@ final class MQTTNIOTests: XCTestCase {
         try client2.disconnect().wait()
     }
 
+    func testInflight() throws {
+        let client = self.createClient(identifier: "testInflight")
+        defer { XCTAssertNoThrow(try client.syncShutdownGracefully()) }
+
+        _ = try client.connect(cleanSession: true).wait()
+        _ = try client.connect(cleanSession: false).wait()
+        _ = client.publish(to: "test/Inflight", payload: ByteBuffer(string: "Flying"), qos: .exactlyOnce)
+        try client.disconnect().wait()
+        _ = try client.connect(cleanSession: false).wait()
+        Thread.sleep(forTimeInterval: 1)
+        try client.disconnect().wait()
+    }
+
     func testSubscribeAll() throws {
         if ProcessInfo.processInfo.environment["CI"] != nil {
             return
