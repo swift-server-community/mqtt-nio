@@ -2,63 +2,42 @@ name: CI
 
 on:
   push:
-    branches:
-    - main
-  pull_request:
-    branches:
-    - main
-  release:
-    types: [published]
+  workflow_dispatch:
 
 jobs:
-  macos:
-    runs-on: macOS-latest
-    steps:
-    - name: Checkout
-      uses: actions/checkout@v2
-    - name: SPM tests
-      run: swift build
-
-  ios:
-    runs-on: macOS-latest
-    steps:
-    - name: Checkout
-      uses: actions/checkout@v2
-    - name: Xcodebuild
-      run: |
-        xcodebuild build -scheme mqtt-nio -destination 'platform=iOS Simulator,name=iPhone 11'
-
   linux:
     runs-on: ubuntu-latest
-    # swift docker images don't have docker-compose installed
-    #strategy:
-    #  matrix:
-    #    tag:
-    #      - swift:5.1
-    #       - swift:5.2
-    #       - swift:5.3
-    # container:
-    #   image: ${{ matrix.tag }}
+    strategy:
+      matrix:
+        tag:
+          - swift:5.3
+          - swift:5.4
+          - swift:5.5
+    container:
+      image: ${{ matrix.tag }}
+    services:
+      mosquitto:
+        image: adamfowlerphoto/mqttnio-mosquitto
+        ports:
+          - 1883:1883
+          - 8883:8883
+          - 8080:8080
+          - 8081:8081
     steps:
     - name: Checkout
       uses: actions/checkout@v2
-    - name: Mosquitto
-      run: |
-        docker-compose --version
-        swift --version
-        ./scripts/mosquitto.sh start
     - name: Test
+      env:
+        MOSQUITTO_SERVER: mosquitto
       run: |
         swift test --enable-test-discovery --enable-code-coverage
-    # ubuntu latest docker image doesn't have llvm-cov installed
-    #- name: Convert coverage files
-    #  run: |
-    #    llvm-cov export -format="lcov" \
-    #      .build/debug/soto-corePackageTests.xctest \
-    #      -ignore-filename-regex="\/Tests\/" \
-    #      -instr-profile .build/debug/codecov/default.profdata > info.lcov
-    #- name: Upload to codecov.io
-    #  uses: codecov/codecov-action@v1
-    #  with:
-    #    file: info.lcov
-
+    - name: Convert coverage files
+      run: |
+        llvm-cov export -format="lcov" \
+          .build/debug/mqtt-nioPackageTests.xctest \
+          -ignore-filename-regex="\/Tests\/" \
+          -instr-profile .build/debug/codecov/default.profdata > info.lcov
+    - name: Upload to codecov.io
+      uses: codecov/codecov-action@v2
+      with:
+        file: info.lcov
