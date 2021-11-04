@@ -10,7 +10,9 @@ jobs:
     strategy:
       matrix:
         tag:
+          - swift:5.3
           - swift:5.4
+          - swift:5.5
     container:
       image: ${{ matrix.tag }}
     services:
@@ -32,7 +34,7 @@ jobs:
     - name: Convert coverage files
       run: |
         llvm-cov export -format="lcov" \
-          .build/debug/soto-corePackageTests.xctest \
+          .build/debug/mqtt-nioPackageTests.xctest \
           -ignore-filename-regex="\/Tests\/" \
           -instr-profile .build/debug/codecov/default.profdata > info.lcov
     - name: Upload to codecov.io
