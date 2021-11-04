@@ -56,6 +56,7 @@ final class MQTTNIOTests: XCTestCase {
                 XCTFail("\(error)")
             }
         }
+        try client.connection?.closeFuture.wait()
     }
 
     func testWebsocketConnect() throws {
