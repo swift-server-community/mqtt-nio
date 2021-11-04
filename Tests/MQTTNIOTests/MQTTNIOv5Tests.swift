@@ -287,7 +287,7 @@ final class MQTTNIOv5Tests: XCTestCase {
     func testBadAuthenticationMethod() throws {
         let client = self.createClient(identifier: "testSessionExpiryInterval")
         defer { XCTAssertNoThrow(try client.syncShutdownGracefully()) }
-        XCTAssertThrowsError( _ = try client.v5.connect(properties: [.authenticationMethod("test")]).wait()) { error in
+        XCTAssertThrowsError(_ = try client.v5.connect(properties: [.authenticationMethod("test")]).wait()) { error in
             switch error {
             case MQTTError.reasonError(let reason):
                 XCTAssertEqual(reason, .badAuthenticationMethod)
@@ -345,7 +345,7 @@ final class MQTTNIOv5Tests: XCTestCase {
         defer { XCTAssertNoThrow(try client.syncShutdownGracefully()) }
 
         _ = try client.v5.connect().wait()
-        let authFuture = client.v5.auth(properties: []) { auth, eventLoop in
+        let authFuture = client.v5.auth(properties: []) { _, eventLoop in
             return eventLoop.makeSucceededFuture(.init(reason: .continueAuthentication, properties: []))
         }
         XCTAssertThrowsError(try authFuture.wait()) { error in
