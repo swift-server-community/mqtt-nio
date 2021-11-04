@@ -22,7 +22,7 @@ jobs:
         brew install mosquitto
         mosquitto -d -c mosquitto/config/mosquitto.conf
     - name: SPM tests
-      run: swift test
+      run: swift test --enable-code-coverage
     - name: Convert coverage files
       run: |
         xcrun llvm-cov export -format "lcov" \
