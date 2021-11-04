@@ -38,6 +38,6 @@ jobs:
           -ignore-filename-regex="\/Tests\/" \
           -instr-profile .build/debug/codecov/default.profdata > info.lcov
     - name: Upload to codecov.io
-      uses: codecov/codecov-action@v1
+      uses: codecov/codecov-action@v2
       with:
         file: info.lcov
