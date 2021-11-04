@@ -24,11 +24,38 @@ final class MQTTNIOTests: XCTestCase {
     }
 
     func testConnectWithUsernameAndPassword() throws {
-        let client = self.createClient(identifier: "testConnectWithWill", configuration: .init(userName: "adam", password: "password123"))
+        let client = MQTTClient(
+            host: Self.hostname,
+            port: 1884,
+            identifier: "testConnectWithUsernameAndPassword",
+            eventLoopGroupProvider: .createNew,
+            logger: self.logger,
+            configuration: .init(userName: "mqttnio", password: "mqttnio-password")
+        )
         defer { XCTAssertNoThrow(try client.syncShutdownGracefully()) }
         _ = try client.connect().wait()
         try client.ping().wait()
         try client.disconnect().wait()
+    }
+
+    func testConnectWithWrongUsernameAndPassword() throws {
+        let client = MQTTClient(
+            host: Self.hostname,
+            port: 1884,
+            identifier: "testConnectWithWrongUsernameAndPassword",
+            eventLoopGroupProvider: .createNew,
+            logger: self.logger,
+            configuration: .init(userName: "mqttnio", password: "wrong-password")
+        )
+        defer { XCTAssertNoThrow(try client.syncShutdownGracefully()) }
+        XCTAssertThrowsError(try client.connect().wait()) { error in
+            switch error {
+            case MQTTError.connectionError(let reason):
+                XCTAssertEqual(reason, .notAuthorized)
+            default:
+                XCTFail("\(error)")
+            }
+        }
     }
 
     func testWebsocketConnect() throws {
@@ -451,7 +478,6 @@ final class MQTTNIOTests: XCTestCase {
     func createClient(identifier: String, configuration: MQTTClient.Configuration = .init()) -> MQTTClient {
         MQTTClient(
             host: Self.hostname,
-            port: 1883,
             identifier: identifier,
             eventLoopGroupProvider: .createNew,
             logger: self.logger,
@@ -473,7 +499,6 @@ final class MQTTNIOTests: XCTestCase {
     func createSSLClient(identifier: String) throws -> MQTTClient {
         return try MQTTClient(
             host: Self.hostname,
-            port: 8883,
             identifier: identifier,
             eventLoopGroupProvider: .createNew,
             logger: self.logger,
