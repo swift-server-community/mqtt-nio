@@ -23,6 +23,16 @@ jobs:
         mosquitto -d -c mosquitto/config/mosquitto.conf
     - name: SPM tests
       run: swift test
+    - name: Convert coverage files
+      run: |
+        xcrun llvm-cov export -format "lcov" \
+          .build/debug/mqtt-nioPackageTests.xctest/Contents/MacOs/mqtt-nioPackageTests \
+          -ignore-filename-regex="\/Tests\/" \
+          -instr-profile=.build/debug/codecov/default.profdata > info.lcov
+    - name: Upload to codecov.io
+      uses: codecov/codecov-action@v2
+      with:
+        file: info.lcov
 
   ios:
     runs-on: macOS-latest
