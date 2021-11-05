@@ -630,7 +630,8 @@ internal extension MQTTClient {
         .flatMapErrorThrowing { error in
             // if publish caused server to close the connection then remove from inflight array
             if case MQTTError.serverDisconnection(let ack) = error,
-               ack.reason == .malformedPacket {
+               ack.reason == .malformedPacket
+            {
                 self.inflight.remove(id: packet.packetId)
             }
             throw error
