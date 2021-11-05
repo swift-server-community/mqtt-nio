@@ -18,16 +18,22 @@ let client = MQTTClient(
     identifier: "My Client",
     eventLoopGroupProvider: .createNew
 )
-try client.connect().wait()
+client.connect().whenComplete { result in
+    switch result {
+    case .success:
+        print("Succesfully connected")
+    case .failure(let error):
+        print("Error while connecting \(error)")
+    }
+}
 ```
 
-Subscribe to a topic and add a publish listener to report publish messages from the broker.
+Subscribe to a topic and add a publish listener to report publish messages sent from the server/broker.
 ```swift
-let subscription = MQTTSubscribeInfo(
-    topicFilter: "my-topics",
-    qos: .atLeastOnce
-)
-try client.subscribe(to: [subscription]).wait()
+let subscription = MQTTSubscribeInfo(topicFilter: "my-topics", qos: .atLeastOnce)
+client.subscribe(to: [subscription]).whenComplete { result in
+    ...
+}
 client.addPublishListener("My Listener") { result in
     switch result {
     case .success(let publish):
@@ -42,13 +48,53 @@ client.addPublishListener("My Listener") { result in
 
 Publish to a topic.
 ```swift
-let payload = ByteBufferAllocator().buffer(string: "This is the Test payload")
-try client.publish(
+client.publish(
     to: "my-topics",
-    payload: payload,
+    payload: ByteBuffer(string: "This is the Test payload"),
     qos: .atLeastOnce
-).wait()
+).whenComplete { result in
+    ...
+}
 ```
+Each MQTTClient function returns a Swift NIO `EventLoopFuture`. In the examples above I just use `whenComplete` to process the results, but you can use various methods to chain `EventLoopFuture` together. You can find out more about Swift NIO [here](https://apple.github.io/swift-nio/docs/current/NIO/Classes/EventLoopFuture.html).
+
+## Swift Concurrency
+
+Alongside the `EventLoopFuture` APIs MQTTNIO also includes async/await versions. So where with `EventLoopFutures` you would write
+```swift
+client.connect()
+    .flatMap { _ -> EventLoopFuture<MQTTSuback> in
+        let subscription = MQTTSubscribeInfo(topicFilter: "my-topics", qos: .atLeastOnce)
+        return client.subscribe(to: [subscription])
+    }
+    .whenComplete { result in
+        doStuff()
+    }
+```
+you can now replace it with
+```swift
+_ = try await client.connect()
+let subscription = MQTTSubscribeInfo(topicFilter: "my-topics", qos: .atLeastOnce)
+_ = try await client.subscribe(to: [subscription])
+doStuff()
+```
+
+### PUBLISH listener AsyncSequence
+If you don't want to parse incoming PUBLISH packets via a callback the Swift concurrency support also includes an `AsyncSequence` for this purpose. 
+```swift
+let listener = client.createPublishListener()
+for await result in listener {
+    switch result {
+    case .success(let publish):
+        var buffer = publish.payload
+        let string = buffer.readString(length: buffer.readableBytes)
+        print(string)
+    case .failure(let error):
+        print("Error while receiving PUBLISH event")
+    }
+}
+```
+
 ## TLS
 
 MQTT NIO supports TLS connections. You can enable this through the `Configuration` provided at initialization. Set`Configuration.useSSL` to `true` and provide your SSL certificates via the `Configuration.tlsConfiguration` struct. For example to connect to the mosquitto test server `test.mosquitto.org` on port 8884 you need to provide their root certificate and your own certificate. They provide details on the website [https://test.mosquitto.org/](https://test.mosquitto.org/) on how to generate these.
