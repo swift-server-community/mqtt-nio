@@ -436,16 +436,36 @@ final class MQTTNIOTests: XCTestCase {
     }
 
     func testInflight() throws {
+        let expectation = XCTestExpectation(description: "testPersistentSession")
+        expectation.expectedFulfillmentCount = 1
+
         let client = self.createClient(identifier: "testInflight")
         defer { XCTAssertNoThrow(try client.syncShutdownGracefully()) }
+        let client2 = self.createClient(identifier: "testPersistentSession_subscriber")
+        defer { XCTAssertNoThrow(try client2.syncShutdownGracefully()) }
+        _ = try client2.connect(cleanSession: true).wait()
+        client2.addPublishListener(named: "test") { result in
+            switch result {
+            case .success:
+                expectation.fulfill()
+
+            case .failure(let error):
+                XCTFail("\(error)")
+            }
+        }
 
         _ = try client.connect(cleanSession: true).wait()
         _ = try client.connect(cleanSession: false).wait()
         _ = client.publish(to: "test/Inflight", payload: ByteBuffer(string: "Flying"), qos: .exactlyOnce)
         try client.disconnect().wait()
+
+        _ = try client2.subscribe(to: [.init(topicFilter: "test/Inflight", qos: .atLeastOnce)]).wait()
         _ = try client.connect(cleanSession: false).wait()
-        Thread.sleep(forTimeInterval: 1)
+
+        wait(for: [expectation], timeout: 5.0)
+
         try client.disconnect().wait()
+        try client2.disconnect().wait()
     }
 
     func testSubscribeAll() throws {
