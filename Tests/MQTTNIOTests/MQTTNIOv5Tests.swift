@@ -187,6 +187,40 @@ final class MQTTNIOv5Tests: XCTestCase {
         try client.disconnect().wait()
     }
 
+    func testUserProperty() throws {
+        let expectation = XCTestExpectation(description: "testUserProperty")
+        expectation.expectedFulfillmentCount = 1
+
+        let client = self.createClient(identifier: "testUserProperty")
+        defer { XCTAssertNoThrow(try client.syncShutdownGracefully()) }
+        _ = try client.connect().wait()
+        client.addPublishListener(named: "test") { result in
+            switch result {
+            case .success(let publish):
+                XCTAssertNotNil(publish.properties.first { $0 == .userProperty("key", "value") })
+                expectation.fulfill()
+
+            case .failure(let error):
+                XCTFail("\(error)")
+            }
+        }
+        let sub = try client.v5.subscribe(
+            to: [.init(topicFilter: "testMQTTContentType", qos: .atLeastOnce)]
+        ).wait()
+        XCTAssert(sub.reasons.count == 1)
+
+        _ = try client.v5.publish(
+            to: "testMQTTContentType",
+            payload: ByteBuffer(string: "test"),
+            qos: .atLeastOnce,
+            properties: [.userProperty("key", "value")]
+        ).wait()
+
+        wait(for: [expectation], timeout: 5.0)
+
+        try client.disconnect().wait()
+    }
+
     func testUnsubscribe() throws {
         let expectation = XCTestExpectation(description: "testMQTTContentType")
         expectation.expectedFulfillmentCount = 1
