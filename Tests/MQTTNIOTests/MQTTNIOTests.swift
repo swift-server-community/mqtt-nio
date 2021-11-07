@@ -23,6 +23,14 @@ final class MQTTNIOTests: XCTestCase {
         try client.disconnect().wait()
     }
 
+    func testPing() throws {
+        let client = self.createClient(identifier: "testConnectWithWill", configuration: .init(pingInterval: .seconds(2)))
+        defer { XCTAssertNoThrow(try client.syncShutdownGracefully()) }
+        _ = try client.connect().wait()
+        Thread.sleep(forTimeInterval: 5)
+        try client.disconnect().wait()
+    }
+
     func testConnectWithUsernameAndPassword() throws {
         let client = MQTTClient(
             host: Self.hostname,
@@ -419,15 +427,15 @@ final class MQTTNIOTests: XCTestCase {
         try client.publish(to: "testPersistentAtLeastOnce", payload: payload, qos: .atLeastOnce).wait()
         Thread.sleep(forTimeInterval: 1)
         try client2.disconnect().wait()
-        try client.publish(to: "testPersistentAtLeastOnce", payload: payload, qos: .atLeastOnce).wait()
-        Thread.sleep(forTimeInterval: 1)
-        // should receive previous publish on new connect as this is not a cleanSession
         _ = try client2.connect(cleanSession: false).wait()
+        // client2 should receive this publish as we have reconnected with clean session set to false
+        try client.publish(to: "testPersistentAtLeastOnce", payload: payload, qos: .atLeastOnce).wait()
         Thread.sleep(forTimeInterval: 1)
         try client2.disconnect().wait()
-        try client.publish(to: "testPersistentAtLeastOnce", payload: payload, qos: .atLeastOnce).wait()
         // should not receive previous publish on connect as this is a cleanSession
         _ = try client2.connect(cleanSession: true).wait()
+        // client2 should not receive this publish as we have reconnected with clean session set to true
+        try client.publish(to: "testPersistentAtLeastOnce", payload: payload, qos: .atLeastOnce).wait()
 
         wait(for: [expectation], timeout: 5.0)
 

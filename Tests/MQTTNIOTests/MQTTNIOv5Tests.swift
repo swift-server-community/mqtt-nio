@@ -356,7 +356,7 @@ final class MQTTNIOv5Tests: XCTestCase {
             ).wait()
             XCTFail("Should have errored")
         } catch MQTTError.serverDisconnection(let ack) {
-            XCTAssertEqual(ack.reason, .malformedPacket)
+            XCTAssertEqual(ack.reason, .protocolError)
         } catch {
             XCTFail("\(error)")
         }
@@ -404,8 +404,8 @@ final class MQTTNIOv5Tests: XCTestCase {
         }
         XCTAssertThrowsError(try authFuture.wait()) { error in
             switch error {
-            case MQTTError.serverClosedConnection:
-                break
+            case MQTTError.serverDisconnection(let ack):
+                XCTAssertEqual(ack.reason, .protocolError)
             default:
                 XCTFail("\(error)")
             }
