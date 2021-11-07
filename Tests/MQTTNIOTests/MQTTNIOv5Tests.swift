@@ -279,10 +279,10 @@ final class MQTTNIOv5Tests: XCTestCase {
         let payloadString = #"{"from":1000000,"to":1234567,"type":1,"content":"I am a beginner in swift and I am studying hard!!测试\n\n test, message","timestamp":1607243024,"nonce":"pAx2EsUuXrVuiIU3GGOGHNbUjzRRdT5b","sign":"ff902e31a6a5f5343d70a3a93ac9f946adf1caccab539c6f3a6"}"#
         let payload = ByteBufferAllocator().buffer(string: payloadString)
 
-        let client = self.createClient(identifier: "testPersistentSession_publisher")
+        let client = self.createClient(identifier: "testPersistentSession_publisherV5")
         defer { XCTAssertNoThrow(try client.syncShutdownGracefully()) }
         _ = try client.v5.connect().wait()
-        let client2 = self.createClient(identifier: "testPersistentSession_subscriber")
+        let client2 = self.createClient(identifier: "testPersistentSession_subscriberV5")
         defer { XCTAssertNoThrow(try client2.syncShutdownGracefully()) }
 
         client2.addPublishListener(named: "test") { result in
@@ -303,14 +303,15 @@ final class MQTTNIOv5Tests: XCTestCase {
         try client.publish(to: "testPersistentAtLeastOnceV5", payload: payload, qos: .atLeastOnce).wait()
         Thread.sleep(forTimeInterval: 1)
         try client2.disconnect().wait()
+        _ = try client2.connect(cleanSession: false).wait()
+        // client2 should receive this publish as we have reconnected with clean session set to false
         try client.publish(to: "testPersistentAtLeastOnceV5", payload: payload, qos: .atLeastOnce).wait()
-        // should receive previous publish on new connect as this is not a cleanSession
-        _ = try client2.v5.connect(cleanStart: false, properties: [.sessionExpiryInterval(3600)]).wait()
         Thread.sleep(forTimeInterval: 1)
         try client2.disconnect().wait()
-        try client.publish(to: "testPersistentAtLeastOnceV5", payload: payload, qos: .atLeastOnce).wait()
         // should not receive previous publish on connect as this is a cleanSession
-        _ = try client2.v5.connect(cleanStart: true).wait()
+        _ = try client2.connect(cleanSession: true).wait()
+        // client2 should not receive this publish as we have reconnected with clean session set to true
+        try client.publish(to: "testPersistentAtLeastOnceV5", payload: payload, qos: .atLeastOnce).wait()
 
         wait(for: [expectation], timeout: 5.0)
 
