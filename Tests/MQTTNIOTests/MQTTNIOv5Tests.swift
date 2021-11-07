@@ -406,7 +406,7 @@ final class MQTTNIOv5Tests: XCTestCase {
         }
         XCTAssertThrowsError(try authFuture.wait()) { error in
             switch error {
-                // different version of mosquitto error in different ways
+            // different version of mosquitto error in different ways
             case MQTTError.serverClosedConnection:
                 break
             case MQTTError.serverDisconnection(let ack):
