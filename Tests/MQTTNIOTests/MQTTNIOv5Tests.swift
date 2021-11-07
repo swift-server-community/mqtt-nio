@@ -356,7 +356,8 @@ final class MQTTNIOv5Tests: XCTestCase {
             ).wait()
             XCTFail("Should have errored")
         } catch MQTTError.serverDisconnection(let ack) {
-            XCTAssertEqual(ack.reason, .protocolError)
+            // some versions of mosquitto return protocol error and others malformed packet
+            XCTAssert(ack.reason == .protocolError || ack.reason == .malformedPacket)
         } catch {
             XCTFail("\(error)")
         }
@@ -404,6 +405,9 @@ final class MQTTNIOv5Tests: XCTestCase {
         }
         XCTAssertThrowsError(try authFuture.wait()) { error in
             switch error {
+                // different version of mosquitto error in different ways
+            case MQTTError.serverClosedConnection:
+                break
             case MQTTError.serverDisconnection(let ack):
                 XCTAssertEqual(ack.reason, .protocolError)
             default:
