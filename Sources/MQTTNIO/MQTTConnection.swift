@@ -40,7 +40,8 @@ final class MQTTConnection {
                 .channelInitializer { channel in
                     // Work out what handlers to add
                     var handlers: [ChannelHandler] = [
-                        ByteToMessageHandler(ByteToMQTTMessageDecoder(client: client)),
+                        MQTTChannelHandler(client),
+//                        ByteToMessageHandler(ByteToMQTTMessageDecoder(client: client)),
                         taskHandler,
                         MQTTEncodeHandler(client: client),
                     ]

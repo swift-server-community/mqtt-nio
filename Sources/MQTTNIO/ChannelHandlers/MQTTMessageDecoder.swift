@@ -2,7 +2,11 @@ import Logging
 import NIO
 
 /// Decode ByteBuffers into MQTT Messages
-struct ByteToMQTTMessageDecoder: ByteToMessageDecoder {
+struct ByteToMQTTMessageDecoder: NIOSingleStepByteToMessageDecoder {
+    mutating func decodeLast(buffer: inout ByteBuffer, seenEOF: Bool) throws -> MQTTPacket? {
+        try decode(buffer: &buffer)
+    }
+
     typealias InboundOut = MQTTPacket
 
     let client: MQTTClient
@@ -11,105 +15,35 @@ struct ByteToMQTTMessageDecoder: ByteToMessageDecoder {
         self.client = client
     }
 
-    mutating func decode(context: ChannelHandlerContext, buffer: inout ByteBuffer) throws -> DecodingState {
-        var readBuffer = buffer
+    mutating func decode(buffer: inout ByteBuffer) throws -> MQTTPacket? {
+        let origBuffer = buffer
         do {
-            let packet = try MQTTIncomingPacket.read(from: &readBuffer)
+            let packet = try MQTTIncomingPacket.read(from: &buffer)
             let message: MQTTPacket
             switch packet.type {
             case .PUBLISH:
-                do {
-                    let publishMessage = try MQTTPublishPacket.read(version: self.client.configuration.version, from: packet)
-                    // let publish = try MQTTSerializer.readPublish(from: packet)
-                    // let publishMessage = MQTTPublishPacket(publish: publish.publishInfo, packetId: publish.packetId)
-                    self.client.logger.trace("MQTT In", metadata: [
-                        "mqtt_message": .string("\(publishMessage)"),
-                        "mqtt_packet_id": .string("\(publishMessage.packetId)"),
-                        "mqtt_topicName": .string("\(publishMessage.publish.topicName)"),
-                    ])
-                    self.respondToPublish(publishMessage)
-                } catch InternalError.incompletePacket {
-                    return .needMoreData
-                } catch {
-                    self.client.publishListeners.notify(.failure(error))
-                }
-                buffer = readBuffer
-                return .continue
+                message = try MQTTPublishPacket.read(version: self.client.configuration.version, from: packet)
             case .CONNACK:
                 message = try MQTTConnAckPacket.read(version: self.client.configuration.version, from: packet)
             case .PUBACK, .PUBREC, .PUBREL, .PUBCOMP:
                 message = try MQTTPubAckPacket.read(version: self.client.configuration.version, from: packet)
-                if packet.type == .PUBREL {
-                    self.respondToPubrel(message)
-                }
             case .SUBACK, .UNSUBACK:
                 message = try MQTTSubAckPacket.read(version: self.client.configuration.version, from: packet)
             case .PINGRESP:
                 message = try MQTTPingrespPacket.read(version: self.client.configuration.version, from: packet)
             case .DISCONNECT:
-                let disconnectMessage = try MQTTDisconnectPacket.read(version: self.client.configuration.version, from: packet)
-                let ack = MQTTAckV5(reason: disconnectMessage.reason, properties: disconnectMessage.properties)
-                context.fireErrorCaught(MQTTError.serverDisconnection(ack))
-                context.close(promise: nil)
-                buffer = readBuffer
-                return .continue
+                message = try MQTTDisconnectPacket.read(version: self.client.configuration.version, from: packet)
             case .AUTH:
                 message = try MQTTAuthPacket.read(version: self.client.configuration.version, from: packet)
             default:
                 throw MQTTError.decodeError
             }
-            self.client.logger.trace("MQTT In", metadata: ["mqtt_message": .string("\(message)"), "mqtt_packet_id": .string("\(message.packetId)")])
-            context.fireChannelRead(wrapInboundOut(message))
+            return message
         } catch InternalError.incompletePacket {
-            return .needMoreData
+            buffer = origBuffer
+            return nil
         } catch {
-            context.fireErrorCaught(error)
+            throw error
         }
-        buffer = readBuffer
-        return .continue
-    }
-
-    /// Respond to PUBLISH message
-    func respondToPublish(_ message: MQTTPublishPacket) {
-        guard let connection = client.connection else { return }
-        switch message.publish.qos {
-        case .atMostOnce:
-            self.client.publishListeners.notify(.success(message.publish))
-
-        case .atLeastOnce:
-            connection.sendMessageNoWait(MQTTPubAckPacket(type: .PUBACK, packetId: message.packetId))
-                .map { _ in return message.publish }
-                .whenComplete { self.client.publishListeners.notify($0) }
-
-        case .exactlyOnce:
-            var publish = message.publish
-            connection.sendMessage(MQTTPubAckPacket(type: .PUBREC, packetId: message.packetId)) { newMessage in
-                guard newMessage.packetId == message.packetId else { return false }
-                // if we receive a publish message while waiting for a PUBREL from broker then replace data to be published and retry PUBREC
-                if newMessage.type == .PUBLISH, let publishMessage = newMessage as? MQTTPublishPacket {
-                    publish = publishMessage.publish
-                    throw MQTTError.retrySend
-                }
-                // if we receive anything but a PUBREL then throw unexpected message
-                guard newMessage.type == .PUBREL else { throw MQTTError.unexpectedMessage }
-                // now we have received the PUBREL we can process the published message. PUBCOMP is sent by `respondToPubrel`
-                return true
-            }
-            .map { _ in return publish }
-            .whenComplete { result in
-                // do not report retrySend error
-                if case .failure(let error) = result, case MQTTError.retrySend = error {
-                    return
-                }
-                self.client.publishListeners.notify(result)
-            }
-        }
-    }
-
-    /// Respond to PUBREL message by sending PUBCOMP. Do this separate from `responeToPublish` as the broker might send
-    /// multiple PUBREL messages, if the client is slow to respond
-    func respondToPubrel(_ message: MQTTPacket) {
-        guard let connection = client.connection else { return }
-        _ = connection.sendMessageNoWait(MQTTPubAckPacket(type: .PUBCOMP, packetId: message.packetId))
     }
 }
