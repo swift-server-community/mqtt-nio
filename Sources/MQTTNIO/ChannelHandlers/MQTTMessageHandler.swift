@@ -57,7 +57,7 @@ class MQTTMessageHandler: ChannelDuplexHandler {
                     context.close(promise: nil)
 
                 case .CONNECT, .SUBSCRIBE, .UNSUBSCRIBE, .PINGREQ:
-                    context.fireErrorCaught(MQTTError.decodeError)
+                    context.fireErrorCaught(MQTTError.unexpectedMessage)
                 }
                 self.client.logger.trace("MQTT In", metadata: ["mqtt_message": .string("\(message)"), "mqtt_packet_id": .string("\(message.packetId)")])
             }
@@ -74,7 +74,7 @@ class MQTTMessageHandler: ChannelDuplexHandler {
             self.client.publishListeners.notify(.success(message.publish))
 
         case .atLeastOnce:
-            connection.sendMessageNoWait(MQTTPubAckPacket(type: .PUBACK, packetId: message.packetId))
+            self.sendMessage(MQTTPubAckPacket(type: .PUBACK, packetId: message.packetId))
                 .map { _ in return message.publish }
                 .whenComplete { self.client.publishListeners.notify($0) }
 
@@ -108,5 +108,10 @@ class MQTTMessageHandler: ChannelDuplexHandler {
     func respondToPubrel(_ message: MQTTPacket) {
         guard let connection = client.connection else { return }
         _ = connection.sendMessageNoWait(MQTTPubAckPacket(type: .PUBCOMP, packetId: message.packetId))
+    }
+
+    /// send message
+    func sendMessage(_ message: MQTTPacket) -> EventLoopFuture<Void> {
+        return self.channel.writeAndFlush(message)
     }
 }
