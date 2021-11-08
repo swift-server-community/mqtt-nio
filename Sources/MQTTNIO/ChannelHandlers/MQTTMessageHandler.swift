@@ -22,13 +22,13 @@ class MQTTMessageHandler: ChannelDuplexHandler {
     }
 
     func channelActive(context: ChannelHandlerContext) {
-        pingreqHandler?.start(context: context)
+        self.pingreqHandler?.start(context: context)
     }
-    
+
     func channelInactive(context: ChannelHandlerContext) {
-        pingreqHandler?.stop()
+        self.pingreqHandler?.stop()
     }
-    
+
     func write(context: ChannelHandlerContext, data: NIOAny, promise: EventLoopPromise<Void>?) {
         let message = unwrapOutboundIn(data)
         self.client.logger.trace("MQTT Out", metadata: ["mqtt_message": .string("\(message)"), "mqtt_packet_id": .string("\(message.packetId)")])
@@ -39,7 +39,7 @@ class MQTTMessageHandler: ChannelDuplexHandler {
         } catch {
             promise?.fail(error)
         }
-        pingreqHandler?.write()
+        self.pingreqHandler?.write()
     }
 
     func channelRead(context: ChannelHandlerContext, data: NIOAny) {
@@ -84,18 +84,17 @@ class MQTTMessageHandler: ChannelDuplexHandler {
             context.fireErrorCaught(error)
             context.close(promise: nil)
             self.client.logger.error("Error processing MQTT message", metadata: ["mqtt_error": .string("\(error)")])
-
         }
     }
 
     func updatePingreqTimeout(_ timeout: TimeAmount) {
-        pingreqHandler?.updateTimeout(timeout)
+        self.pingreqHandler?.updateTimeout(timeout)
     }
-    
+
     /// Respond to PUBLISH message
-    /// If QoS is at most once then no response is required
-    /// If QoS is at least once then send PUBACK
-    /// If QoS is exactly once then send PUBREC, wait for PUBREL and then respond with PUBCOMP (in `respondToPubrel`)
+    /// If QoS is `.atMostOnce` then no response is required
+    /// If QoS is `.atLeastOnce` then send PUBACK
+    /// If QoS is `.exactlyOnce` then send PUBREC, wait for PUBREL and then respond with PUBCOMP (in `respondToPubrel`)
     private func respondToPublish(_ message: MQTTPublishPacket) {
         guard let connection = client.connection else { return }
         switch message.publish.qos {

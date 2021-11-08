@@ -4,7 +4,7 @@ import NIO
 /// Decode ByteBuffers into MQTT Messages
 struct ByteToMQTTMessageDecoder: NIOSingleStepByteToMessageDecoder {
     mutating func decodeLast(buffer: inout ByteBuffer, seenEOF: Bool) throws -> MQTTPacket? {
-        try decode(buffer: &buffer)
+        try self.decode(buffer: &buffer)
     }
 
     typealias InboundOut = MQTTPacket

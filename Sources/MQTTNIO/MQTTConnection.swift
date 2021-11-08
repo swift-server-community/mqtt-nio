@@ -41,7 +41,7 @@ final class MQTTConnection {
                     // Work out what handlers to add
                     let handlers: [ChannelHandler] = [
                         MQTTMessageHandler(client, pingInterval: pingInterval),
-                        taskHandler
+                        taskHandler,
                     ]
                     // are we using websockets
                     if client.configuration.useWebSockets {
