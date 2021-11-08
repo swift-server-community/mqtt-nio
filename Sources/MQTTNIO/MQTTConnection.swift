@@ -39,13 +39,10 @@ final class MQTTConnection {
                 .connectTimeout(client.configuration.connectTimeout)
                 .channelInitializer { channel in
                     // Work out what handlers to add
-                    var handlers: [ChannelHandler] = [
-                        MQTTMessageHandler(client),
+                    let handlers: [ChannelHandler] = [
+                        MQTTMessageHandler(client, pingInterval: pingInterval),
                         taskHandler
                     ]
-                    if !client.configuration.disablePing {
-                        handlers = [PingreqHandler(client: client, timeout: pingInterval)] + handlers
-                    }
                     // are we using websockets
                     if client.configuration.useWebSockets {
                         // prepare for websockets and on upgrade add handlers
@@ -190,8 +187,8 @@ final class MQTTConnection {
     }
 
     func updatePingreqTimeout(_ timeout: TimeAmount) {
-        self.channel.pipeline.handler(type: PingreqHandler.self).whenSuccess { pingreq in
-            pingreq.updateTimeout(timeout)
+        self.channel.pipeline.handler(type: MQTTMessageHandler.self).whenSuccess { handler in
+            handler.updatePingreqTimeout(timeout)
         }
     }
 
