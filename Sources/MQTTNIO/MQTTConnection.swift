@@ -41,9 +41,7 @@ final class MQTTConnection {
                     // Work out what handlers to add
                     var handlers: [ChannelHandler] = [
                         MQTTChannelHandler(client),
-//                        ByteToMessageHandler(ByteToMQTTMessageDecoder(client: client)),
-                        taskHandler,
-                        MQTTEncodeHandler(client: client),
+                        taskHandler
                     ]
                     if !client.configuration.disablePing {
                         handlers = [PingreqHandler(client: client, timeout: pingInterval)] + handlers

@@ -5,7 +5,7 @@ class MQTTChannelHandler: ChannelDuplexHandler {
     typealias InboundIn = ByteBuffer
     typealias InboundOut = MQTTPacket
     typealias OutboundIn = MQTTPacket
-    typealias OutboundOut = MQTTPacket
+    typealias OutboundOut = ByteBuffer
 
     let client: MQTTClient
     var decoder: NIOSingleStepByteToMessageProcessor<ByteToMQTTMessageDecoder>
@@ -13,6 +13,18 @@ class MQTTChannelHandler: ChannelDuplexHandler {
     init(_ client: MQTTClient) {
         self.client = client
         self.decoder = .init(.init(client: client))
+    }
+
+    func write(context: ChannelHandlerContext, data: NIOAny, promise: EventLoopPromise<Void>?) {
+        let message = unwrapOutboundIn(data)
+        self.client.logger.trace("MQTT Out", metadata: ["mqtt_message": .string("\(message)"), "mqtt_packet_id": .string("\(message.packetId)")])
+        var bb = context.channel.allocator.buffer(capacity: 0)
+        do {
+            try message.write(version: self.client.configuration.version, to: &bb)
+            context.write(wrapOutboundOut(bb), promise: promise)
+        } catch {
+            promise?.fail(error)
+        }
     }
 
     func channelRead(context: ChannelHandlerContext, data: NIOAny) {
