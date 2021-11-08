@@ -9,10 +9,10 @@ struct ByteToMQTTMessageDecoder: NIOSingleStepByteToMessageDecoder {
 
     typealias InboundOut = MQTTPacket
 
-    let client: MQTTClient
+    let version: MQTTClient.Version
 
-    init(client: MQTTClient) {
-        self.client = client
+    init(version: MQTTClient.Version) {
+        self.version = version
     }
 
     mutating func decode(buffer: inout ByteBuffer) throws -> MQTTPacket? {
@@ -22,19 +22,19 @@ struct ByteToMQTTMessageDecoder: NIOSingleStepByteToMessageDecoder {
             let message: MQTTPacket
             switch packet.type {
             case .PUBLISH:
-                message = try MQTTPublishPacket.read(version: self.client.configuration.version, from: packet)
+                message = try MQTTPublishPacket.read(version: self.version, from: packet)
             case .CONNACK:
-                message = try MQTTConnAckPacket.read(version: self.client.configuration.version, from: packet)
+                message = try MQTTConnAckPacket.read(version: self.version, from: packet)
             case .PUBACK, .PUBREC, .PUBREL, .PUBCOMP:
-                message = try MQTTPubAckPacket.read(version: self.client.configuration.version, from: packet)
+                message = try MQTTPubAckPacket.read(version: self.version, from: packet)
             case .SUBACK, .UNSUBACK:
-                message = try MQTTSubAckPacket.read(version: self.client.configuration.version, from: packet)
+                message = try MQTTSubAckPacket.read(version: self.version, from: packet)
             case .PINGRESP:
-                message = try MQTTPingrespPacket.read(version: self.client.configuration.version, from: packet)
+                message = try MQTTPingrespPacket.read(version: self.version, from: packet)
             case .DISCONNECT:
-                message = try MQTTDisconnectPacket.read(version: self.client.configuration.version, from: packet)
+                message = try MQTTDisconnectPacket.read(version: self.version, from: packet)
             case .AUTH:
-                message = try MQTTAuthPacket.read(version: self.client.configuration.version, from: packet)
+                message = try MQTTAuthPacket.read(version: self.version, from: packet)
             default:
                 throw MQTTError.decodeError
             }

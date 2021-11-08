@@ -18,7 +18,7 @@ class MQTTMessageHandler: ChannelDuplexHandler {
         } else {
             self.pingreqHandler = .init(client: client, timeout: pingInterval)
         }
-        self.decoder = .init(.init(client: client))
+        self.decoder = .init(.init(version: client.configuration.version))
     }
 
     func channelActive(context: ChannelHandlerContext) {
