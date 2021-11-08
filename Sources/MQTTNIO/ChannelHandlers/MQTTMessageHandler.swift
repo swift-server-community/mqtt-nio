@@ -1,7 +1,7 @@
 import Logging
 import NIO
 
-class MQTTChannelHandler: ChannelDuplexHandler {
+class MQTTMessageHandler: ChannelDuplexHandler {
     typealias InboundIn = ByteBuffer
     typealias InboundOut = MQTTPacket
     typealias OutboundIn = MQTTPacket

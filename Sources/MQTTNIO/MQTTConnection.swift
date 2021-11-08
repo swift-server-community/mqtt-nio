@@ -40,7 +40,7 @@ final class MQTTConnection {
                 .channelInitializer { channel in
                     // Work out what handlers to add
                     var handlers: [ChannelHandler] = [
-                        MQTTChannelHandler(client),
+                        MQTTMessageHandler(client),
                         taskHandler
                     ]
                     if !client.configuration.disablePing {
