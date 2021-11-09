@@ -1,7 +1,7 @@
 import NIO
 
 /// Channel handler for sending PINGREQ messages to keep connect alive
-final class PingreqHandler: ChannelDuplexHandler {
+final class PingreqHandler {
     typealias OutboundIn = MQTTPacket
     typealias OutboundOut = MQTTPacket
     typealias InboundIn = MQTTPacket
@@ -23,26 +23,18 @@ final class PingreqHandler: ChannelDuplexHandler {
         self.timeout = timeout
     }
 
-    public func handlerAdded(context: ChannelHandlerContext) {
-        if context.channel.isActive {
-            self.scheduleTask(context)
-        }
+    func start(context: ChannelHandlerContext) {
+        guard self.task == nil else { return }
+        self.scheduleTask(context)
     }
 
-    public func handlerRemoved(context: ChannelHandlerContext) {
-        self.cancelTask()
+    func stop() {
+        self.task?.cancel()
+        self.task = nil
     }
 
-    public func channelActive(context: ChannelHandlerContext) {
-        if self.task == nil {
-            self.scheduleTask(context)
-        }
-        context.fireChannelActive()
-    }
-
-    func write(context: ChannelHandlerContext, data: NIOAny, promise: EventLoopPromise<Void>?) {
+    func write() {
         self.lastEventTime = .now()
-        context.write(data, promise: promise)
     }
 
     func scheduleTask(_ context: ChannelHandlerContext) {
@@ -68,10 +60,5 @@ final class PingreqHandler: ChannelDuplexHandler {
                 self.scheduleTask(context)
             }
         }
-    }
-
-    func cancelTask() {
-        self.task?.cancel()
-        self.task = nil
     }
 }
