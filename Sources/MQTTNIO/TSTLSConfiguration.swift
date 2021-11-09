@@ -6,12 +6,14 @@ import Network
 import NIOSSL
 #endif
 
+/// TLS Version enumeration
 public enum TSTLSVersion {
     case tlsV10
     case tlsV11
     case tlsV12
     case tlsV13
 
+    /// return `SSLProtocol` for iOS12 api
     var sslProtocol: SSLProtocol {
         switch self {
         case .tlsV10:
@@ -25,6 +27,7 @@ public enum TSTLSVersion {
         }
     }
 
+    /// return `tls_protocol_version_t` for iOS13 and later apis
     @available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
     var tlsProtocolVersion: tls_protocol_version_t {
         switch self {
