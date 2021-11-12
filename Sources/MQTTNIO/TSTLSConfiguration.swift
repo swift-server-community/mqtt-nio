@@ -6,23 +6,57 @@ import Network
 import NIOSSL
 #endif
 
-extension tls_protocol_version_t {
+/// TLS Version enumeration
+public enum TSTLSVersion {
+    case tlsV10
+    case tlsV11
+    case tlsV12
+    case tlsV13
+
+    /// return `SSLProtocol` for iOS12 api
     var sslProtocol: SSLProtocol {
         switch self {
-        case .TLSv10:
+        case .tlsV10:
             return .tlsProtocol1
-        case .TLSv11:
+        case .tlsV11:
             return .tlsProtocol11
-        case .TLSv12:
+        case .tlsV12:
             return .tlsProtocol12
-        case .TLSv13:
+        case .tlsV13:
             return .tlsProtocol13
-        case .DTLSv10:
-            return .dtlsProtocol1
-        case .DTLSv12:
-            return .dtlsProtocol12
-        @unknown default:
-            return .tlsProtocol1
+        }
+    }
+
+    /// return `tls_protocol_version_t` for iOS13 and later apis
+    @available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+    var tlsProtocolVersion: tls_protocol_version_t {
+        switch self {
+        case .tlsV10:
+            return .TLSv10
+        case .tlsV11:
+            return .TLSv11
+        case .tlsV12:
+            return .TLSv12
+        case .tlsV13:
+            return .TLSv13
+        }
+    }
+}
+
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension tls_protocol_version_t {
+    var tsTLSVersion: TSTLSVersion {
+        switch self {
+        case .TLSv10:
+            return .tlsV10
+        case .TLSv11:
+            return .tlsV11
+        case .TLSv12:
+            return .tlsV12
+        case .TLSv13:
+            return .tlsV13
+        default:
+            preconditionFailure("Invalid TLS version")
         }
     }
 }
@@ -95,10 +129,10 @@ public struct TSTLSConfiguration {
     }
 
     /// The minimum TLS version to allow in negotiation. Defaults to tlsv1.
-    public var minimumTLSVersion: tls_protocol_version_t
+    public var minimumTLSVersion: TSTLSVersion
 
     /// The maximum TLS version to allow in negotiation. If nil, there is no upper limit. Defaults to nil.
-    public var maximumTLSVersion: tls_protocol_version_t?
+    public var maximumTLSVersion: TSTLSVersion?
 
     /// The trust roots to use to validate certificates. This only needs to be provided if you intend to validate
     /// certificates.
@@ -114,9 +148,16 @@ public struct TSTLSConfiguration {
     public var certificateVerification: TSCertificateVerification
 
     /// Initialize TSTLSConfiguration
+    /// - Parameters:
+    ///   - minimumTLSVersion: minimum version of TLS supported
+    ///   - maximumTLSVersion: maximum version of TLS supported
+    ///   - trustRoots: The trust roots to use to validate certificates
+    ///   - clientIdentity: Client identity
+    ///   - applicationProtocols: The application protocols to use in the connection
+    ///   - certificateVerification: Should certificates be verified
     public init(
-        minimumTLSVersion: tls_protocol_version_t = .TLSv10,
-        maximumTLSVersion: tls_protocol_version_t? = nil,
+        minimumTLSVersion: TSTLSVersion = .tlsV10,
+        maximumTLSVersion: TSTLSVersion? = nil,
         trustRoots: [SecCertificate]? = nil,
         clientIdentity: SecIdentity? = nil,
         applicationProtocols: [String] = [],
@@ -134,14 +175,13 @@ public struct TSTLSConfiguration {
     /// - Parameters:
     ///   - minimumTLSVersion: minimum version of TLS supported
     ///   - maximumTLSVersion: maximum version of TLS supported
-    ///   - p12: P12 filename
-    ///   - p12Password: Password for P12
     ///   - trustRoots: The trust roots to use to validate certificates
+    ///   - clientIdentity: Client identity
     ///   - applicationProtocols: The application protocols to use in the connection
     ///   - certificateVerification: Should certificates be verified
     public init(
-        minimumTLSVersion: tls_protocol_version_t = .TLSv10,
-        maximumTLSVersion: tls_protocol_version_t? = nil,
+        minimumTLSVersion: TSTLSVersion = .tlsV10,
+        maximumTLSVersion: TSTLSVersion? = nil,
         trustRoots: Certificates,
         clientIdentity: Identity,
         applicationProtocols: [String] = [],
@@ -162,7 +202,7 @@ extension TSTLSConfiguration {
 
         // minimum TLS protocol
         if #available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *) {
-            sec_protocol_options_set_min_tls_protocol_version(options.securityProtocolOptions, self.minimumTLSVersion)
+            sec_protocol_options_set_min_tls_protocol_version(options.securityProtocolOptions, self.minimumTLSVersion.tlsProtocolVersion)
         } else {
             sec_protocol_options_set_tls_min_version(options.securityProtocolOptions, self.minimumTLSVersion.sslProtocol)
         }
@@ -170,7 +210,7 @@ extension TSTLSConfiguration {
         // maximum TLS protocol
         if let maximumTLSVersion = self.maximumTLSVersion {
             if #available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *) {
-                sec_protocol_options_set_max_tls_protocol_version(options.securityProtocolOptions, maximumTLSVersion)
+                sec_protocol_options_set_max_tls_protocol_version(options.securityProtocolOptions, maximumTLSVersion.tlsProtocolVersion)
             } else {
                 sec_protocol_options_set_tls_max_version(options.securityProtocolOptions, maximumTLSVersion.sslProtocol)
             }
@@ -224,4 +264,44 @@ extension TSTLSConfiguration {
     /// Dispatch queue used by Network framework TLS to control certificate verification
     static var tlsDispatchQueue = DispatchQueue(label: "TSTLSConfiguration")
 }
+
+/// Deprecated TSTLSConfiguration
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+@available(*, deprecated, message: "Use the init using TSTLSVersion")
+extension TSTLSConfiguration {
+    /// Initialize TSTLSConfiguration
+    public init(
+        minimumTLSVersion: tls_protocol_version_t,
+        maximumTLSVersion: tls_protocol_version_t? = nil,
+        trustRoots: Certificates,
+        clientIdentity: Identity,
+        applicationProtocols: [String] = [],
+        certificateVerification: TSCertificateVerification = .fullVerification
+    ) {
+        self.minimumTLSVersion = minimumTLSVersion.tsTLSVersion
+        self.maximumTLSVersion = maximumTLSVersion?.tsTLSVersion
+        self.trustRoots = trustRoots.certificates
+        self.clientIdentity = clientIdentity.identity
+        self.applicationProtocols = applicationProtocols
+        self.certificateVerification = certificateVerification
+    }
+
+    /// Initialize TSTLSConfiguration
+    public init(
+        minimumTLSVersion: tls_protocol_version_t,
+        maximumTLSVersion: tls_protocol_version_t? = nil,
+        trustRoots: [SecCertificate]? = nil,
+        clientIdentity: SecIdentity? = nil,
+        applicationProtocols: [String] = [],
+        certificateVerification: TSCertificateVerification = .fullVerification
+    ) {
+        self.minimumTLSVersion = minimumTLSVersion.tsTLSVersion
+        self.maximumTLSVersion = maximumTLSVersion?.tsTLSVersion
+        self.trustRoots = trustRoots
+        self.clientIdentity = clientIdentity
+        self.applicationProtocols = applicationProtocols
+        self.certificateVerification = certificateVerification
+    }
+}
+
 #endif

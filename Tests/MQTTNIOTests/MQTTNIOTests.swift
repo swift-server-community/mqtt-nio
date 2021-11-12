@@ -173,10 +173,7 @@ final class MQTTNIOTests: XCTestCase {
         try client.disconnect().wait()
     }
 
-    func testMQTTServerDisconnect() throws {
-        let expectation = XCTestExpectation(description: "testMQTTServerDisconnect")
-        expectation.expectedFulfillmentCount = 1
-
+    func testMQTTServerClose() throws {
         struct MQTTForceDisconnectMessage: MQTTPacket {
             var type: MQTTPacketType { .PUBLISH }
             var description: String { "FORCEDISCONNECT" }
@@ -195,12 +192,14 @@ final class MQTTNIOTests: XCTestCase {
         let client = self.createClient(identifier: "testMQTTServerDisconnect")
         defer { XCTAssertNoThrow(try client.syncShutdownGracefully()) }
         _ = try client.connect().wait()
-        try client.connection?.sendMessageNoWait(MQTTForceDisconnectMessage()).wait()
-        client.addCloseListener(named: "Test") { _ in
-            expectation.fulfill()
+        XCTAssertThrowsError(_ = try client.connection?.sendMessage(MQTTForceDisconnectMessage()) { _ in true }.wait()) { error in
+            switch error {
+            case MQTTError.serverClosedConnection:
+                break
+            default:
+                XCTFail("\(error)")
+            }
         }
-
-        wait(for: [expectation], timeout: 5.0)
 
         XCTAssertFalse(client.isActive())
     }
