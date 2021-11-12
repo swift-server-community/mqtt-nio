@@ -1,3 +1,16 @@
+//===----------------------------------------------------------------------===//
+//
+// This source file is part of the MQTTNIO project
+//
+// Copyright (c) 2020-2021 Adam Fowler
+// Licensed under Apache License v2.0
+//
+// See LICENSE.txt for license information
+//
+// SPDX-License-Identifier: Apache-2.0
+//
+//===----------------------------------------------------------------------===//
+
 /// MQTT v5.0 reason codes. A reason code is a one byte unsigned value that indicates the result of an operation.
 /// Reason codes less than 128 are considered successful. Codes greater than or equal to 128 are considered
 /// a failure. These are returned by CONNACK, PUBACK, PUBREC, PUBREL, PUBCOMP, DISCONNECT and
