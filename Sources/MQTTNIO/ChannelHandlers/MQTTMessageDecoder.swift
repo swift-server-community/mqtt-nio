@@ -53,7 +53,7 @@ struct ByteToMQTTMessageDecoder: NIOSingleStepByteToMessageDecoder {
                 throw MQTTError.decodeError
             }
             return message
-        } catch InternalError.incompletePacket {
+        } catch MQTTInternalError.incompletePacket {
             buffer = origBuffer
             return nil
         } catch {

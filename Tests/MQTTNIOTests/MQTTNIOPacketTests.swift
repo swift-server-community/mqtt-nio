@@ -38,7 +38,7 @@ final class MQTTNIOPacketTests: XCTestCase {
             }
 
             static func read(version: MQTTVersion, from packet: MQTTIncomingPacket) throws -> Self {
-                throw InternalError.notImplemented
+                throw MQTTInternalError.notImplemented
             }
         }
 

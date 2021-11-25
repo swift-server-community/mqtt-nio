@@ -60,7 +60,7 @@ enum MQTTSerializer {
         var value = 0
         var shift = 0
         repeat {
-            guard let byte: UInt8 = byteBuffer.readInteger() else { throw InternalError.incompletePacket }
+            guard let byte: UInt8 = byteBuffer.readInteger() else { throw MQTTInternalError.incompletePacket }
             value += (Int(byte) & 0x7F) << shift
             if byte & 0x80 == 0 {
                 break

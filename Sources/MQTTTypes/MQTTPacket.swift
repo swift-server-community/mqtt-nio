@@ -14,7 +14,7 @@
 import NIO
 import Foundation
 
-public enum InternalError: Swift.Error {
+public enum MQTTInternalError: Swift.Error {
     case incompletePacket
     case notImplemented
 }
@@ -133,7 +133,7 @@ public struct MQTTConnectPacket: MQTTPacket {
 
     /// read connect packet from incoming packet (not implemented)
     public static func read(version: MQTTVersion, from: MQTTIncomingPacket) throws -> Self {
-        throw InternalError.notImplemented
+        throw MQTTInternalError.notImplemented
     }
 
     /// calculate size of connect packet
@@ -312,7 +312,7 @@ public struct MQTTSubscribePacket: MQTTPacket {
     }
 
     public static func read(version: MQTTVersion, from packet: MQTTIncomingPacket) throws -> Self {
-        throw InternalError.notImplemented
+        throw MQTTInternalError.notImplemented
     }
 
     /// calculate size of subscribe packet
@@ -361,7 +361,7 @@ public struct MQTTUnsubscribePacket: MQTTPacket {
     }
 
     public static func read(version: MQTTVersion, from packet: MQTTIncomingPacket) throws -> Self {
-        throw InternalError.notImplemented
+        throw MQTTInternalError.notImplemented
     }
 
     /// calculate size of subscribe packet
@@ -456,7 +456,7 @@ public struct MQTTSubAckPacket: MQTTPacket {
     }
 
     public func write(version: MQTTVersion, to byteBuffer: inout ByteBuffer) throws {
-        throw InternalError.notImplemented
+        throw MQTTInternalError.notImplemented
     }
 
     public static func read(version: MQTTVersion, from packet: MQTTIncomingPacket) throws -> Self {
@@ -500,7 +500,7 @@ public struct MQTTPingreqPacket: MQTTPacket {
     }
 
     public static func read(version: MQTTVersion, from packet: MQTTIncomingPacket) throws -> Self {
-        throw InternalError.notImplemented
+        throw MQTTInternalError.notImplemented
     }
 
     var packetSize: Int { 0 }
@@ -590,7 +590,7 @@ public struct MQTTConnAckPacket: MQTTPacket {
     }
 
     public func write(version: MQTTVersion, to: inout ByteBuffer) throws {
-        throw InternalError.notImplemented
+        throw MQTTInternalError.notImplemented
     }
 
     public static func read(version: MQTTVersion, from packet: MQTTIncomingPacket) throws -> Self {
@@ -674,7 +674,7 @@ public struct MQTTIncomingPacket: MQTTPacket {
     }
 
     public static func read(version: MQTTVersion, from packet: MQTTIncomingPacket) throws -> Self {
-        throw InternalError.notImplemented
+        throw MQTTInternalError.notImplemented
     }
 
     /// read incoming packet
@@ -682,12 +682,12 @@ public struct MQTTIncomingPacket: MQTTPacket {
     /// read fixed header and data attached. Throws incomplete packet error if if cannot read
     /// everything
     public static func read(from byteBuffer: inout ByteBuffer) throws -> MQTTIncomingPacket {
-        guard let byte: UInt8 = byteBuffer.readInteger() else { throw InternalError.incompletePacket }
+        guard let byte: UInt8 = byteBuffer.readInteger() else { throw MQTTInternalError.incompletePacket }
         guard let type = MQTTPacketType(rawValue: byte) ?? MQTTPacketType(rawValue: byte & 0xF0) else {
             throw MQTTPacketError.badParameter
         }
         let length = try MQTTSerializer.readVariableLengthInteger(from: &byteBuffer)
-        guard let bytes = byteBuffer.readSlice(length: length) else { throw InternalError.incompletePacket }
+        guard let bytes = byteBuffer.readSlice(length: length) else { throw MQTTInternalError.incompletePacket }
         return MQTTIncomingPacket(type: type, flags: byte & 0xF, remainingData: bytes)
     }
 }
