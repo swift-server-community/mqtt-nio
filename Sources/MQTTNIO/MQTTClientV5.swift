@@ -11,7 +11,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-import MQTTPackets
+import MQTTTypes
 import NIO
 
 extension MQTTClient {

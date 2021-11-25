@@ -186,37 +186,6 @@ final class MQTTNIOTests: XCTestCase {
         try client.disconnect().wait()
     }
 
-    func testMQTTServerClose() throws {
-        struct MQTTForceDisconnectMessage: MQTTPacket {
-            var type: MQTTPacketType { .PUBLISH }
-            var description: String { "FORCEDISCONNECT" }
-
-            func write(version: MQTTVersion, to byteBuffer: inout ByteBuffer) throws {
-                // writing publish header with no content will cause a disconnect from the server
-                byteBuffer.writeInteger(UInt8(0x30))
-                byteBuffer.writeInteger(UInt8(0x0))
-            }
-
-            static func read(version: MQTTVersion, from packet: MQTTIncomingPacket) throws -> Self {
-                throw InternalError.notImplemented
-            }
-        }
-
-        let client = self.createClient(identifier: "testMQTTServerDisconnect")
-        defer { XCTAssertNoThrow(try client.syncShutdownGracefully()) }
-        _ = try client.connect().wait()
-        XCTAssertThrowsError(_ = try client.connection?.sendMessage(MQTTForceDisconnectMessage()) { _ in true }.wait()) { error in
-            switch error {
-            case MQTTError.serverClosedConnection:
-                break
-            default:
-                XCTFail("\(error)")
-            }
-        }
-
-        XCTAssertFalse(client.isActive())
-    }
-
     func testMQTTPublishRetain() throws {
         let expectation = XCTestExpectation(description: "testMQTTPublishRetain")
         expectation.expectedFulfillmentCount = 1

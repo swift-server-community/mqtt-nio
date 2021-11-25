@@ -127,7 +127,7 @@ extension MQTTProperties {
             return .init()
         }
         let packetSize = try MQTTSerializer.readVariableLengthInteger(from: &byteBuffer)
-        guard var propertyBuffer = byteBuffer.readSlice(length: packetSize) else { throw MQTTError.badResponse }
+        guard var propertyBuffer = byteBuffer.readSlice(length: packetSize) else { throw MQTTPacketError.badParameter }
         while propertyBuffer.readableBytes > 0 {
             let property = try Property.read(from: &propertyBuffer)
             properties.append(property)
@@ -290,14 +290,14 @@ extension MQTTProperties.Property {
     }
 
     static func read(from byteBuffer: inout ByteBuffer) throws -> Self {
-        guard let idValue: UInt8 = byteBuffer.readInteger() else { throw MQTTError.badResponse }
-        guard let id = MQTTProperties.PropertyId(rawValue: idValue) else { throw MQTTError.badResponse }
+        guard let idValue: UInt8 = byteBuffer.readInteger() else { throw MQTTPacketError.badParameter }
+        guard let id = MQTTProperties.PropertyId(rawValue: idValue) else { throw MQTTPacketError.badParameter }
         switch id {
         case .payloadFormat:
-            guard let value: UInt8 = byteBuffer.readInteger() else { throw MQTTError.badResponse }
+            guard let value: UInt8 = byteBuffer.readInteger() else { throw MQTTPacketError.badParameter }
             return .payloadFormat(value)
         case .messageExpiry:
-            guard let value: UInt32 = byteBuffer.readInteger() else { throw MQTTError.badResponse }
+            guard let value: UInt32 = byteBuffer.readInteger() else { throw MQTTPacketError.badParameter }
             return .messageExpiry(value)
         case .contentType:
             let string = try MQTTSerializer.readString(from: &byteBuffer)
@@ -312,13 +312,13 @@ extension MQTTProperties.Property {
             let value = try MQTTSerializer.readVariableLengthInteger(from: &byteBuffer)
             return .subscriptionIdentifier(UInt(value))
         case .sessionExpiryInterval:
-            guard let value: UInt32 = byteBuffer.readInteger() else { throw MQTTError.badResponse }
+            guard let value: UInt32 = byteBuffer.readInteger() else { throw MQTTPacketError.badParameter }
             return .sessionExpiryInterval(value)
         case .assignedClientIdentifier:
             let string = try MQTTSerializer.readString(from: &byteBuffer)
             return .assignedClientIdentifier(string)
         case .serverKeepAlive:
-            guard let value: UInt16 = byteBuffer.readInteger() else { throw MQTTError.badResponse }
+            guard let value: UInt16 = byteBuffer.readInteger() else { throw MQTTPacketError.badParameter }
             return .serverKeepAlive(value)
         case .authenticationMethod:
             let string = try MQTTSerializer.readString(from: &byteBuffer)
@@ -327,13 +327,13 @@ extension MQTTProperties.Property {
             let buffer = try MQTTSerializer.readBuffer(from: &byteBuffer)
             return .authenticationData(buffer)
         case .requestProblemInformation:
-            guard let value: UInt8 = byteBuffer.readInteger() else { throw MQTTError.badResponse }
+            guard let value: UInt8 = byteBuffer.readInteger() else { throw MQTTPacketError.badParameter }
             return .requestProblemInformation(value)
         case .willDelayInterval:
-            guard let value: UInt32 = byteBuffer.readInteger() else { throw MQTTError.badResponse }
+            guard let value: UInt32 = byteBuffer.readInteger() else { throw MQTTPacketError.badParameter }
             return .willDelayInterval(value)
         case .requestResponseInformation:
-            guard let value: UInt8 = byteBuffer.readInteger() else { throw MQTTError.badResponse }
+            guard let value: UInt8 = byteBuffer.readInteger() else { throw MQTTPacketError.badParameter }
             return .requestResponseInformation(value)
         case .responseInformation:
             let string = try MQTTSerializer.readString(from: &byteBuffer)
@@ -345,36 +345,36 @@ extension MQTTProperties.Property {
             let string = try MQTTSerializer.readString(from: &byteBuffer)
             return .reasonString(string)
         case .receiveMaximum:
-            guard let value: UInt16 = byteBuffer.readInteger() else { throw MQTTError.badResponse }
+            guard let value: UInt16 = byteBuffer.readInteger() else { throw MQTTPacketError.badParameter }
             return .receiveMaximum(value)
         case .topicAliasMaximum:
-            guard let value: UInt16 = byteBuffer.readInteger() else { throw MQTTError.badResponse }
+            guard let value: UInt16 = byteBuffer.readInteger() else { throw MQTTPacketError.badParameter }
             return .topicAliasMaximum(value)
         case .topicAlias:
-            guard let value: UInt16 = byteBuffer.readInteger() else { throw MQTTError.badResponse }
+            guard let value: UInt16 = byteBuffer.readInteger() else { throw MQTTPacketError.badParameter }
             return .topicAlias(value)
         case .maximumQoS:
             guard let value: UInt8 = byteBuffer.readInteger(),
-                  let qos = MQTTQoS(rawValue: value) else { throw MQTTError.badResponse }
+                  let qos = MQTTQoS(rawValue: value) else { throw MQTTPacketError.badParameter }
             return .maximumQoS(qos)
         case .retainAvailable:
-            guard let value: UInt8 = byteBuffer.readInteger() else { throw MQTTError.badResponse }
+            guard let value: UInt8 = byteBuffer.readInteger() else { throw MQTTPacketError.badParameter }
             return .retainAvailable(value)
         case .userProperty:
             let string1 = try MQTTSerializer.readString(from: &byteBuffer)
             let string2 = try MQTTSerializer.readString(from: &byteBuffer)
             return .userProperty(string1, string2)
         case .maximumPacketSize:
-            guard let value: UInt32 = byteBuffer.readInteger() else { throw MQTTError.badResponse }
+            guard let value: UInt32 = byteBuffer.readInteger() else { throw MQTTPacketError.badParameter }
             return .maximumPacketSize(value)
         case .wildcardSubscriptionAvailable:
-            guard let value: UInt8 = byteBuffer.readInteger() else { throw MQTTError.badResponse }
+            guard let value: UInt8 = byteBuffer.readInteger() else { throw MQTTPacketError.badParameter }
             return .wildcardSubscriptionAvailable(value)
         case .subscriptionIdentifierAvailable:
-            guard let value: UInt8 = byteBuffer.readInteger() else { throw MQTTError.badResponse }
+            guard let value: UInt8 = byteBuffer.readInteger() else { throw MQTTPacketError.badParameter }
             return .subscriptionIdentifierAvailable(value)
         case .sharedSubscriptionAvailable:
-            guard let value: UInt8 = byteBuffer.readInteger() else { throw MQTTError.badResponse }
+            guard let value: UInt8 = byteBuffer.readInteger() else { throw MQTTPacketError.badParameter }
             return .sharedSubscriptionAvailable(value)
         }
     }

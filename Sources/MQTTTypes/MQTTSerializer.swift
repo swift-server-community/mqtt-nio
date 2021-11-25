@@ -72,15 +72,15 @@ enum MQTTSerializer {
 
     /// read string from bytebuffer
     static func readString(from byteBuffer: inout ByteBuffer) throws -> String {
-        guard let length: UInt16 = byteBuffer.readInteger() else { throw MQTTError.badResponse }
-        guard let string = byteBuffer.readString(length: Int(length)) else { throw MQTTError.badResponse }
+        guard let length: UInt16 = byteBuffer.readInteger() else { throw MQTTPacketError.badParameter }
+        guard let string = byteBuffer.readString(length: Int(length)) else { throw MQTTPacketError.badParameter }
         return string
     }
 
     /// read slice from bytebuffer
     static func readBuffer(from byteBuffer: inout ByteBuffer) throws -> ByteBuffer {
-        guard let length: UInt16 = byteBuffer.readInteger() else { throw MQTTError.badResponse }
-        guard let buffer = byteBuffer.readSlice(length: Int(length)) else { throw MQTTError.badResponse }
+        guard let length: UInt16 = byteBuffer.readInteger() else { throw MQTTPacketError.badParameter }
+        guard let buffer = byteBuffer.readSlice(length: Int(length)) else { throw MQTTPacketError.badParameter }
         return buffer
     }
 }

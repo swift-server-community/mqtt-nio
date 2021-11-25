@@ -11,7 +11,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-import MQTTPackets
+import MQTTTypes
 import NIO
 
 /// Channel handler for sending PINGREQ messages to keep connect alive

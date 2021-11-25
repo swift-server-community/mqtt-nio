@@ -45,16 +45,6 @@ extension MQTTPacket {
 }
 
 public struct MQTTConnectPacket: MQTTPacket {
-    public init(cleanSession: Bool, keepAliveSeconds: UInt16, clientIdentifier: String, userName: String?, password: String?, properties: MQTTProperties, will: MQTTPublishInfo?) {
-        self.cleanSession = cleanSession
-        self.keepAliveSeconds = keepAliveSeconds
-        self.clientIdentifier = clientIdentifier
-        self.userName = userName
-        self.password = password
-        self.properties = properties
-        self.will = will
-    }
-
     enum ConnectFlags {
         static let reserved: UInt8 = 1
         static let cleanSession: UInt8 = 2
@@ -89,6 +79,16 @@ public struct MQTTConnectPacket: MQTTPacket {
 
     /// will published when connected
     public let will: MQTTPublishInfo?
+
+    public init(cleanSession: Bool, keepAliveSeconds: UInt16, clientIdentifier: String, userName: String?, password: String?, properties: MQTTProperties, will: MQTTPublishInfo?) {
+        self.cleanSession = cleanSession
+        self.keepAliveSeconds = keepAliveSeconds
+        self.clientIdentifier = clientIdentifier
+        self.userName = userName
+        self.password = password
+        self.properties = properties
+        self.will = will
+    }
 
     /// write connect packet to bytebuffer
     public func write(version: MQTTVersion, to byteBuffer: inout ByteBuffer) throws {
@@ -173,11 +173,6 @@ public struct MQTTConnectPacket: MQTTPacket {
 }
 
 public struct MQTTPublishPacket: MQTTPacket {
-    public init(publish: MQTTPublishInfo, packetId: UInt16) {
-        self.publish = publish
-        self.packetId = packetId
-    }
-
     enum PublishFlags {
         static let duplicate: UInt8 = 8
         static let retain: UInt8 = 1
@@ -190,6 +185,11 @@ public struct MQTTPublishPacket: MQTTPacket {
 
     public let publish: MQTTPublishInfo
     public let packetId: UInt16
+
+    public init(publish: MQTTPublishInfo, packetId: UInt16) {
+        self.publish = publish
+        self.packetId = packetId
+    }
 
     public func write(version: MQTTVersion, to byteBuffer: inout ByteBuffer) throws {
         var flags: UInt8 = self.publish.retain ? PublishFlags.retain : 0
@@ -216,10 +216,10 @@ public struct MQTTPublishPacket: MQTTPacket {
         var packetId: UInt16 = 0
         // read topic name
         let topicName = try MQTTSerializer.readString(from: &remainingData)
-        guard let qos = MQTTQoS(rawValue: (packet.flags & PublishFlags.qosMask) >> PublishFlags.qosShift) else { throw MQTTError.badResponse }
+        guard let qos = MQTTQoS(rawValue: (packet.flags & PublishFlags.qosMask) >> PublishFlags.qosShift) else { throw MQTTPacketError.badParameter }
         // read packet id if QoS is not atMostOnce
         if qos != .atMostOnce {
-            guard let readPacketId: UInt16 = remainingData.readInteger() else { throw MQTTError.badResponse }
+            guard let readPacketId: UInt16 = remainingData.readInteger() else { throw MQTTPacketError.badParameter }
             packetId = readPacketId
         }
         // read properties
@@ -265,12 +265,6 @@ public struct MQTTPublishPacket: MQTTPacket {
 }
 
 public struct MQTTSubscribePacket: MQTTPacket {
-    public init(subscriptions: [MQTTSubscribeInfoV5], properties: MQTTProperties?, packetId: UInt16) {
-        self.subscriptions = subscriptions
-        self.properties = properties
-        self.packetId = packetId
-    }
-
     enum SubscribeFlags {
         static let qosMask: UInt8 = 3
         static let noLocal: UInt8 = 4
@@ -285,6 +279,12 @@ public struct MQTTSubscribePacket: MQTTPacket {
     public let subscriptions: [MQTTSubscribeInfoV5]
     public let properties: MQTTProperties?
     public let packetId: UInt16
+
+    public init(subscriptions: [MQTTSubscribeInfoV5], properties: MQTTProperties?, packetId: UInt16) {
+        self.subscriptions = subscriptions
+        self.properties = properties
+        self.packetId = packetId
+    }
 
     public func write(version: MQTTVersion, to byteBuffer: inout ByteBuffer) throws {
         writeFixedHeader(packetType: .SUBSCRIBE, size: self.packetSize(version: version), to: &byteBuffer)
@@ -332,18 +332,18 @@ public struct MQTTSubscribePacket: MQTTPacket {
 }
 
 public struct MQTTUnsubscribePacket: MQTTPacket {
-    public init(subscriptions: [String], properties: MQTTProperties?, packetId: UInt16) {
-        self.subscriptions = subscriptions
-        self.properties = properties
-        self.packetId = packetId
-    }
-
     public var type: MQTTPacketType { .UNSUBSCRIBE }
     public var description: String { "UNSUBSCRIBE" }
 
     public let subscriptions: [String]
     public let properties: MQTTProperties?
     public let packetId: UInt16
+
+    public init(subscriptions: [String], properties: MQTTProperties?, packetId: UInt16) {
+        self.subscriptions = subscriptions
+        self.properties = properties
+        self.packetId = packetId
+    }
 
     public func write(version: MQTTVersion, to byteBuffer: inout ByteBuffer) throws {
         writeFixedHeader(packetType: .UNSUBSCRIBE, size: self.packetSize(version: version), to: &byteBuffer)
@@ -412,7 +412,7 @@ public struct MQTTPubAckPacket: MQTTPacket {
 
     public static func read(version: MQTTVersion, from packet: MQTTIncomingPacket) throws -> Self {
         var remainingData = packet.remainingData
-        guard let packetId: UInt16 = remainingData.readInteger() else { throw MQTTError.badResponse }
+        guard let packetId: UInt16 = remainingData.readInteger() else { throw MQTTPacketError.badParameter }
         switch version {
         case .v3_1_1:
             return MQTTPubAckPacket(type: packet.type, packetId: packetId)
@@ -423,7 +423,7 @@ public struct MQTTPubAckPacket: MQTTPacket {
             guard let reasonByte: UInt8 = remainingData.readInteger(),
                   let reason = MQTTReasonCode(rawValue: reasonByte)
             else {
-                throw MQTTError.badResponse
+                throw MQTTPacketError.badParameter
             }
             let properties = try MQTTProperties.read(from: &remainingData)
             return MQTTPubAckPacket(type: packet.type, packetId: packetId, reason: reason, properties: properties)
@@ -461,7 +461,7 @@ public struct MQTTSubAckPacket: MQTTPacket {
 
     public static func read(version: MQTTVersion, from packet: MQTTIncomingPacket) throws -> Self {
         var remainingData = packet.remainingData
-        guard let packetId: UInt16 = remainingData.readInteger() else { throw MQTTError.badResponse }
+        guard let packetId: UInt16 = remainingData.readInteger() else { throw MQTTPacketError.badParameter }
         var properties: MQTTProperties
         if version == .v5_0 {
             properties = try MQTTProperties.read(from: &remainingData)
@@ -472,7 +472,7 @@ public struct MQTTSubAckPacket: MQTTPacket {
         if let reasonBytes = remainingData.readBytes(length: remainingData.readableBytes) {
             reasons = try reasonBytes.map { byte -> MQTTReasonCode in
                 guard let reason = MQTTReasonCode(rawValue: byte) else {
-                    throw MQTTError.badResponse
+                    throw MQTTPacketError.badParameter
                 }
                 return reason
             }
@@ -556,7 +556,7 @@ public struct MQTTDisconnectPacket: MQTTPacket {
             guard let reasonByte: UInt8 = buffer.readInteger(),
                   let reason = MQTTReasonCode(rawValue: reasonByte)
             else {
-                throw MQTTError.badResponse
+                throw MQTTPacketError.badParameter
             }
             let properties = try MQTTProperties.read(from: &buffer)
             return MQTTDisconnectPacket(reason: reason, properties: properties)
@@ -575,12 +575,6 @@ public struct MQTTDisconnectPacket: MQTTPacket {
 }
 
 public struct MQTTConnAckPacket: MQTTPacket {
-    public init(returnCode: UInt8, acknowledgeFlags: UInt8, properties: MQTTProperties) {
-        self.returnCode = returnCode
-        self.acknowledgeFlags = acknowledgeFlags
-        self.properties = properties
-    }
-
     public var type: MQTTPacketType { .CONNACK }
     public var description: String { "CONNACK" }
     public let returnCode: UInt8
@@ -589,13 +583,19 @@ public struct MQTTConnAckPacket: MQTTPacket {
 
     public var sessionPresent: Bool { self.acknowledgeFlags & 0x1 == 0x1 }
 
+    public init(returnCode: UInt8, acknowledgeFlags: UInt8, properties: MQTTProperties) {
+        self.returnCode = returnCode
+        self.acknowledgeFlags = acknowledgeFlags
+        self.properties = properties
+    }
+
     public func write(version: MQTTVersion, to: inout ByteBuffer) throws {
         throw InternalError.notImplemented
     }
 
     public static func read(version: MQTTVersion, from packet: MQTTIncomingPacket) throws -> Self {
         var remainingData = packet.remainingData
-        guard let bytes = remainingData.readBytes(length: 2) else { throw MQTTError.badResponse }
+        guard let bytes = remainingData.readBytes(length: 2) else { throw MQTTPacketError.badParameter }
         let properties: MQTTProperties
         if version == .v5_0 {
             properties = try MQTTProperties.read(from: &remainingData)
@@ -611,15 +611,15 @@ public struct MQTTConnAckPacket: MQTTPacket {
 }
 
 public struct MQTTAuthPacket: MQTTPacket {
-    public init(reason: MQTTReasonCode, properties: MQTTProperties) {
-        self.reason = reason
-        self.properties = properties
-    }
-
     public var type: MQTTPacketType { .AUTH }
     public var description: String { "AUTH" }
     public let reason: MQTTReasonCode
     public let properties: MQTTProperties
+
+    public init(reason: MQTTReasonCode, properties: MQTTProperties) {
+        self.reason = reason
+        self.properties = properties
+    }
 
     public func write(version: MQTTVersion, to byteBuffer: inout ByteBuffer) throws {
         writeFixedHeader(packetType: self.type, size: self.packetSize, to: &byteBuffer)
@@ -639,7 +639,7 @@ public struct MQTTAuthPacket: MQTTPacket {
         guard let reasonByte: UInt8 = remainingData.readInteger(),
               let reason = MQTTReasonCode(rawValue: reasonByte)
         else {
-            throw MQTTError.badResponse
+            throw MQTTPacketError.badParameter
         }
         let properties = try MQTTProperties.read(from: &remainingData)
         return MQTTAuthPacket(reason: reason, properties: properties)
@@ -684,7 +684,7 @@ public struct MQTTIncomingPacket: MQTTPacket {
     public static func read(from byteBuffer: inout ByteBuffer) throws -> MQTTIncomingPacket {
         guard let byte: UInt8 = byteBuffer.readInteger() else { throw InternalError.incompletePacket }
         guard let type = MQTTPacketType(rawValue: byte) ?? MQTTPacketType(rawValue: byte & 0xF0) else {
-            throw MQTTError.unrecognisedPacketType
+            throw MQTTPacketError.badParameter
         }
         let length = try MQTTSerializer.readVariableLengthInteger(from: &byteBuffer)
         guard let bytes = byteBuffer.readSlice(length: length) else { throw InternalError.incompletePacket }

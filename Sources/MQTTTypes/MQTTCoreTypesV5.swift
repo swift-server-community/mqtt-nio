@@ -15,18 +15,18 @@ import NIO
 
 /// MQTT V5 Connack
 public struct MQTTConnackV5 {
-    public init(sessionPresent: Bool, reason: MQTTReasonCode, properties: MQTTProperties) {
-        self.sessionPresent = sessionPresent
-        self.reason = reason
-        self.properties = properties
-    }
-
     /// is using session state from previous session
     public let sessionPresent: Bool
     /// connect reason code
     public let reason: MQTTReasonCode
     /// properties
     public let properties: MQTTProperties
+
+    public init(sessionPresent: Bool, reason: MQTTReasonCode, properties: MQTTProperties) {
+        self.sessionPresent = sessionPresent
+        self.reason = reason
+        self.properties = properties
+    }
 }
 
 /// MQTT V5 ACK information. Returned with PUBACK, PUBREL

@@ -11,7 +11,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-@testable import MQTTNIO
+import MQTTTypes
 import NIO
 import XCTest
 

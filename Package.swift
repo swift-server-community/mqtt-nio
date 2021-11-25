@@ -16,7 +16,7 @@ let package = Package(
     ],
     targets: [
         .target(name: "MQTTNIO", dependencies: [
-            .byName(name: "MQTTPackets"),
+            .byName(name: "MQTTTypes"),
             .product(name: "Logging", package: "swift-log"),
             .product(name: "NIO", package: "swift-nio"),
             .product(name: "NIOConcurrencyHelpers", package: "swift-nio"),
@@ -25,9 +25,10 @@ let package = Package(
             .product(name: "NIOSSL", package: "swift-nio-ssl", condition: .when(platforms: [.linux, .macOS])),
             .product(name: "NIOTransportServices", package: "swift-nio-transport-services"),
         ]),
-        .target(name: "MQTTPackets", dependencies: [
+        .target(name: "MQTTTypes", dependencies: [
             .product(name: "NIO", package: "swift-nio"),
         ]),
         .testTarget(name: "MQTTNIOTests", dependencies: ["MQTTNIO"]),
+        .testTarget(name: "MQTTTypesTests", dependencies: ["MQTTTypes"]),
     ]
 )
