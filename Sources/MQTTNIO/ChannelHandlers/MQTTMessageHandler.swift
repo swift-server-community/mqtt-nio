@@ -12,6 +12,7 @@
 //===----------------------------------------------------------------------===//
 
 import Logging
+import MQTTPackets
 import NIO
 
 class MQTTMessageHandler: ChannelDuplexHandler {

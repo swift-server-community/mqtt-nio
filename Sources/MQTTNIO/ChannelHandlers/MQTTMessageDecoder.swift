@@ -12,6 +12,7 @@
 //===----------------------------------------------------------------------===//
 
 import Logging
+import MQTTPackets
 import NIO
 
 /// Decode ByteBuffers into MQTT Messages
@@ -22,9 +23,9 @@ struct ByteToMQTTMessageDecoder: NIOSingleStepByteToMessageDecoder {
 
     typealias InboundOut = MQTTPacket
 
-    let version: MQTTClient.Version
+    let version: MQTTVersion
 
-    init(version: MQTTClient.Version) {
+    init(version: MQTTVersion) {
         self.version = version
     }
 

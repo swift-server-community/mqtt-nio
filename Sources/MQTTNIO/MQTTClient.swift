@@ -13,6 +13,7 @@
 
 import Dispatch
 import Logging
+import MQTTPackets
 #if canImport(Network)
 import Network
 #endif

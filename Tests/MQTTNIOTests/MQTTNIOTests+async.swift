@@ -48,7 +48,7 @@ final class AsyncMQTTNIOTests: XCTestCase {
         dg.wait()
     }
 
-    func createClient(identifier: String, version: MQTTClient.Version = .v3_1_1, timeout: TimeAmount? = .seconds(10)) -> MQTTClient {
+    func createClient(identifier: String, version: MQTTVersion = .v3_1_1, timeout: TimeAmount? = .seconds(10)) -> MQTTClient {
         MQTTClient(
             host: Self.hostname,
             port: 1883,

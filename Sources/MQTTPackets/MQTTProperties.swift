@@ -89,7 +89,7 @@ public struct MQTTProperties {
         self.properties.append(property)
     }
 
-    var properties: [Property]
+    public var properties: [Property]
 }
 
 extension MQTTProperties: ExpressibleByArrayLiteral {
@@ -135,7 +135,7 @@ extension MQTTProperties {
         return .init(properties)
     }
 
-    var packetSize: Int {
+    public var packetSize: Int {
         return self.properties.reduce(0) { $0 + 1 + $1.value.packetSize }
     }
 

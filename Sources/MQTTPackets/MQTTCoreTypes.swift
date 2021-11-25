@@ -100,7 +100,7 @@ public struct MQTTSuback {
     /// MQTT v5 subscribute return codes
     public let returnCodes: [ReturnCode]
 
-    init(returnCodes: [MQTTSuback.ReturnCode]) {
+    public init(returnCodes: [MQTTSuback.ReturnCode]) {
         self.returnCodes = returnCodes
     }
 }

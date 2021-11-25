@@ -11,18 +11,13 @@
 //
 //===----------------------------------------------------------------------===//
 
+import MQTTPackets
 import NIO
 #if canImport(NIOSSL)
 import NIOSSL
 #endif
 
 extension MQTTClient {
-    /// Version of MQTT server to connect to
-    public enum Version {
-        case v3_1_1
-        case v5_0
-    }
-
     /// Enum for different TLS Configuration types. The TLS Configuration type to use if defined by the EventLoopGroup the
     /// client is using. If you don't provide an EventLoopGroup then the EventLoopGroup created will be defined by this variable
     /// It is recommended on iOS you use NIO Transport Services.
@@ -41,7 +36,7 @@ extension MQTTClient {
     public struct Configuration {
         /// Initialize MQTTClient configuration struct
         public init(
-            version: Version = .v3_1_1,
+            version: MQTTVersion = .v3_1_1,
             disablePing: Bool = false,
             keepAliveInterval: TimeAmount = .seconds(90),
             pingInterval: TimeAmount? = nil,
@@ -75,7 +70,7 @@ extension MQTTClient {
         }
 
         /// Version of MQTT server client is connecting to
-        public let version: Version
+        public let version: MQTTVersion
         /// disable the sending of pingreq messages
         public let disablePing: Bool
         /// MQTT keep alive period.

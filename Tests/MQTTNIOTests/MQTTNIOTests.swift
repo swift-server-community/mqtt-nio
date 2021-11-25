@@ -191,13 +191,13 @@ final class MQTTNIOTests: XCTestCase {
             var type: MQTTPacketType { .PUBLISH }
             var description: String { "FORCEDISCONNECT" }
 
-            func write(version: MQTTClient.Version, to byteBuffer: inout ByteBuffer) throws {
+            func write(version: MQTTVersion, to byteBuffer: inout ByteBuffer) throws {
                 // writing publish header with no content will cause a disconnect from the server
                 byteBuffer.writeInteger(UInt8(0x30))
                 byteBuffer.writeInteger(UInt8(0x0))
             }
 
-            static func read(version: MQTTClient.Version, from packet: MQTTIncomingPacket) throws -> Self {
+            static func read(version: MQTTVersion, from packet: MQTTIncomingPacket) throws -> Self {
                 throw InternalError.notImplemented
             }
         }

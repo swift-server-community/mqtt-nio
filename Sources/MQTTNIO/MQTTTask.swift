@@ -11,6 +11,7 @@
 //
 //===----------------------------------------------------------------------===//
 
+import MQTTPackets
 import NIO
 
 /// Class encapsulating a single task

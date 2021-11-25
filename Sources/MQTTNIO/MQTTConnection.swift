@@ -12,6 +12,7 @@
 //===----------------------------------------------------------------------===//
 
 import Foundation
+import MQTTPackets
 #if canImport(Network)
 import Network
 #endif

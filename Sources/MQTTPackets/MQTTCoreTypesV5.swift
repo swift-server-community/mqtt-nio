@@ -15,6 +15,12 @@ import NIO
 
 /// MQTT V5 Connack
 public struct MQTTConnackV5 {
+    public init(sessionPresent: Bool, reason: MQTTReasonCode, properties: MQTTProperties) {
+        self.sessionPresent = sessionPresent
+        self.reason = reason
+        self.properties = properties
+    }
+
     /// is using session state from previous session
     public let sessionPresent: Bool
     /// connect reason code
@@ -30,7 +36,7 @@ public struct MQTTAckV5 {
     /// MQTT v5 properties
     public let properties: MQTTProperties
 
-    init(reason: MQTTReasonCode = .success, properties: MQTTProperties = .init()) {
+    public init(reason: MQTTReasonCode = .success, properties: MQTTProperties = .init()) {
         self.reason = reason
         self.properties = properties
     }
@@ -87,7 +93,7 @@ public struct MQTTSubackV5 {
     /// MQTT v5 properties
     public let properties: MQTTProperties
 
-    init(reasons: [MQTTReasonCode], properties: MQTTProperties = .init()) {
+    public init(reasons: [MQTTReasonCode], properties: MQTTProperties = .init()) {
         self.reasons = reasons
         self.properties = properties
     }
@@ -102,7 +108,7 @@ public struct MQTTAuthV5 {
     /// MQTT v5 properties
     public let properties: MQTTProperties
 
-    init(reason: MQTTReasonCode, properties: MQTTProperties) {
+    public init(reason: MQTTReasonCode, properties: MQTTProperties) {
         self.reason = reason
         self.properties = properties
     }
