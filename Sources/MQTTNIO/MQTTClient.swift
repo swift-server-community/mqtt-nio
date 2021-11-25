@@ -85,9 +85,10 @@ public final class MQTTClient {
     /// - Parameters:
     ///   - host: host name
     ///   - port: port to connect on
+    ///   - identifier: Client identifier. This must be unique
     ///   - eventLoopGroupProvider: EventLoopGroup to run on
+    ///   - logger: Logger client should use
     ///   - configuration: Configuration of client
-    ///   - publishCallback: called whenever there is a publish event
     public init(
         host: String,
         port: Int? = nil,
