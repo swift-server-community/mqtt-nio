@@ -35,10 +35,16 @@ class MQTTMessageHandler: ChannelDuplexHandler {
     }
 
     func handlerAdded(context: ChannelHandlerContext) {
+        if context.channel.isActive {
+            self.pingreqHandler?.start(context: context)
+        }
+    }
+
+    func channelActive(context: ChannelHandlerContext) {
         self.pingreqHandler?.start(context: context)
     }
 
-    func handlerRemoved(context: ChannelHandlerContext) {
+    func channelInactive(context: ChannelHandlerContext) {
         self.pingreqHandler?.stop()
     }
 
