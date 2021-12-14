@@ -26,6 +26,10 @@ import NIOSSL
 final class MQTTNIOTests: XCTestCase {
     static let hostname = ProcessInfo.processInfo.environment["MOSQUITTO_SERVER"] ?? "localhost"
 
+    func isVSCodeDebugging() -> Bool {
+        return ProcessInfo.processInfo.environment["VSCODE_PID"] != nil
+    }
+
     func testConnectWithWill() throws {
         let client = self.createClient(identifier: "testConnectWithWill")
         defer { XCTAssertNoThrow(try client.syncShutdownGracefully()) }
@@ -89,6 +93,11 @@ final class MQTTNIOTests: XCTestCase {
     }
 
     func testSSLConnect() throws {
+        #if os(macOS)
+        // p12 loading crashes when debugger other than Xcode is attached
+        guard !isVSCodeDebugging() else { throw XCTSkip() }
+        #endif
+
         let client = try createSSLClient(identifier: "testSSLConnect")
         defer { XCTAssertNoThrow(try client.syncShutdownGracefully()) }
         _ = try client.connect().wait()
@@ -97,6 +106,11 @@ final class MQTTNIOTests: XCTestCase {
     }
 
     func testWebsocketAndSSLConnect() throws {
+        #if os(macOS)
+        // p12 loading crashes when debugger other than Xcode is attached
+        guard !isVSCodeDebugging() else { throw XCTSkip() }
+        #endif
+
         let client = try createWebSocketAndSSLClient(identifier: "testWebsocketAndSSLConnect")
         defer { XCTAssertNoThrow(try client.syncShutdownGracefully()) }
         _ = try client.connect().wait()
@@ -106,6 +120,11 @@ final class MQTTNIOTests: XCTestCase {
 
     #if canImport(Network)
     func testSSLConnectFromP12() throws {
+        #if os(macOS)
+        // p12 loading crashes when debugger other than Xcode is attached
+        guard !isVSCodeDebugging() else { throw XCTSkip() }
+        #endif
+
         let client = try MQTTClient(
             host: Self.hostname,
             port: 8883,
