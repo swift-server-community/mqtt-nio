@@ -42,10 +42,12 @@ class MQTTMessageHandler: ChannelDuplexHandler {
 
     func channelActive(context: ChannelHandlerContext) {
         self.pingreqHandler?.start(context: context)
+        context.fireChannelActive()
     }
 
     func channelInactive(context: ChannelHandlerContext) {
         self.pingreqHandler?.stop()
+        context.fireChannelInactive()
     }
 
     func write(context: ChannelHandlerContext, data: NIOAny, promise: EventLoopPromise<Void>?) {
