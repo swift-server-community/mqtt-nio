@@ -2,7 +2,7 @@
 //
 // This source file is part of the MQTTNIO project
 //
-// Copyright (c) 2020-2021 Adam Fowler
+// Copyright (c) 2020-2022 Adam Fowler
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -121,7 +121,8 @@ public final class MQTTClient {
         case .createNew:
             #if canImport(Network)
             switch configuration.tlsConfiguration {
-            #if canImport(NIOSSL)
+            // This should use canImport(NIOSSL), will change when it works with SwiftUI previews.
+            #if os(macOS) || os(Linux)
             case .niossl:
                 self.eventLoopGroup = MultiThreadedEventLoopGroup(numberOfThreads: 1)
             #endif

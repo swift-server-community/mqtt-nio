@@ -2,7 +2,7 @@
 //
 // This source file is part of the MQTTNIO project
 //
-// Copyright (c) 2020-2021 Adam Fowler
+// Copyright (c) 2020-2022 Adam Fowler
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -28,7 +28,8 @@ extension MQTTClient {
     /// It is recommended on iOS you use NIO Transport Services.
     public enum TLSConfigurationType {
         /// NIOSSL TLS configuration
-        #if canImport(NIOSSL)
+        // This should use canImport(NIOSSL), will change when it works with SwiftUI previews.
+        #if os(macOS) || os(Linux)
         case niossl(TLSConfiguration)
         #endif
         #if canImport(Network)
