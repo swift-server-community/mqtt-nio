@@ -23,4 +23,4 @@
 --wrapcollections before-first
 
 #file header
---header "//===----------------------------------------------------------------------===//\n//\n// This source file is part of the MQTTNIO project\n//\n// Copyright (c) 2020-{year} Adam Fowler\n// Licensed under Apache License v2.0\n//\n// See LICENSE.txt for license information\n//\n// SPDX-License-Identifier: Apache-2.0\n//\n//===----------------------------------------------------------------------===//"
+#--header "//===----------------------------------------------------------------------===//\n//\n// This source file is part of the MQTTNIO project\n//\n// Copyright (c) 2020-{year} Adam Fowler\n// Licensed under Apache License v2.0\n//\n// See LICENSE.txt for license information\n//\n// SPDX-License-Identifier: Apache-2.0\n//\n//===----------------------------------------------------------------------===//"
