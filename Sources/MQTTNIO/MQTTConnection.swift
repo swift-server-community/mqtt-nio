@@ -2,7 +2,7 @@
 //
 // This source file is part of the MQTTNIO project
 //
-// Copyright (c) 2020-2021 Adam Fowler
+// Copyright (c) 2020-2022 Adam Fowler
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -96,7 +96,8 @@ final class MQTTConnection {
             switch client.configuration.tlsConfiguration {
             case .ts(let config):
                 options = try config.getNWProtocolTLSOptions()
-            #if canImport(NIOSSL)
+            // This should use canImport(NIOSSL), will change when it works with SwiftUI previews.
+            #if os(macOS) || os(Linux)
             case .niossl:
                 throw MQTTError.wrongTLSConfig
             #endif
@@ -112,7 +113,8 @@ final class MQTTConnection {
             return bootstrap
         }
         #endif
-        #if canImport(NIOSSL) // canImport(Network)
+        // This should use canImport(NIOSSL), will change when it works with SwiftUI previews.
+        #if os(macOS) || os(Linux) // canImport(Network)
         if let clientBootstrap = ClientBootstrap(validatingGroup: client.eventLoopGroup) {
             let tlsConfiguration: TLSConfiguration
             switch client.configuration.tlsConfiguration {

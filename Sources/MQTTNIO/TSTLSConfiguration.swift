@@ -2,7 +2,7 @@
 //
 // This source file is part of the MQTTNIO project
 //
-// Copyright (c) 2020-2021 Adam Fowler
+// Copyright (c) 2020-2022 Adam Fowler
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -98,7 +98,8 @@ public struct TSTLSConfiguration {
         /// Create certificate array from already loaded SecCertificate array
         public static func certificates(_ secCertificates: [SecCertificate]) -> Self { .init(certificates: secCertificates) }
 
-        #if canImport(NIOSSL)
+        // This should use canImport(NIOSSL), will change when it works with SwiftUI previews.
+        #if os(macOS) || os(Linux)
         /// Create certificate array from PEM file
         public static func pem(_ filename: String) throws -> Self {
             let certificates = try NIOSSLCertificate.fromPEMFile(filename)
