@@ -11,12 +11,16 @@
 //
 //===----------------------------------------------------------------------===//
 
-import NIO
+#if compiler(>=5.6)
+@preconcurrency import NIOCore
+#else
+import NIOCore
+#endif
 
 /// MQTT v5.0 properties. A property consists of a identifier and a value
-public struct MQTTProperties {
+public struct MQTTProperties: _MQTTSendable {
     /// MQTT Property
-    public enum Property: Equatable {
+    public enum Property: Equatable, _MQTTSendable {
         /// Payload format: 0 = bytes, 1 = UTF8 string (available for PUBLISH)
         case payloadFormat(UInt8)
         /// Message expiry indicates the lifetime of the message (available for PUBLISH)

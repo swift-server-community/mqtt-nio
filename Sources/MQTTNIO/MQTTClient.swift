@@ -48,7 +48,7 @@ public final class MQTTClient {
     /// client identifier
     public private(set) var identifier: String
     /// logger
-    public var logger: Logger
+    public let logger: Logger
     /// Client configuration
     public let configuration: Configuration
 
@@ -739,3 +739,9 @@ extension Logger {
         return logger
     }
 }
+
+#if compiler(>=5.6)
+// All public members of the class are immutable and the class manages the others 
+// internally
+extension MQTTClient: @unchecked Sendable {}
+#endif

@@ -11,7 +11,11 @@
 //
 //===----------------------------------------------------------------------===//
 
-import NIO
+#if compiler(>=5.6)
+@preconcurrency import NIOCore
+#else
+import NIOCore
+#endif
 
 internal enum InternalError: Swift.Error {
     case incompletePacket
@@ -19,7 +23,7 @@ internal enum InternalError: Swift.Error {
 }
 
 /// Protocol for all MQTT packet types
-protocol MQTTPacket: CustomStringConvertible {
+protocol MQTTPacket: CustomStringConvertible, _MQTTSendableProtocol {
     /// packet type
     var type: MQTTPacketType { get }
     /// packet id (default to zero if not used)

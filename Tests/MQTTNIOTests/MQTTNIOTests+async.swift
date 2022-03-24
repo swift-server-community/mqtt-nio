@@ -13,13 +13,16 @@
 
 #if compiler(>=5.5) && canImport(_Concurrency)
 
-import Foundation
+#if compiler(>=5.6)
+@preconcurrency import XCTest
+#else
+import XCTest
+#endif
 import Logging
 import NIO
 import NIOConcurrencyHelpers
 import NIOFoundationCompat
 import NIOHTTP1
-import XCTest
 #if canImport(NIOSSL)
 import NIOSSL
 #endif
