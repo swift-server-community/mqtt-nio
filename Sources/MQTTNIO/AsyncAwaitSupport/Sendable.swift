@@ -13,8 +13,6 @@
 
 #if compiler(>=5.6)
 public typealias _MQTTSendable = Sendable
-public protocol _MQTTSendableProtocol: Sendable {}
 #else
 public typealias _MQTTSendable = Any
-public protocol _MQTTSendableProtocol {}
 #endif
