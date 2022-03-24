@@ -95,7 +95,7 @@ final class MQTTNIOTests: XCTestCase {
     func testSSLConnect() throws {
         #if os(macOS)
         // p12 loading crashes when debugger other than Xcode is attached
-        guard !isVSCodeDebugging() else { throw XCTSkip() }
+        guard !self.isVSCodeDebugging() else { throw XCTSkip() }
         #endif
 
         let client = try createSSLClient(identifier: "testSSLConnect")
@@ -108,7 +108,7 @@ final class MQTTNIOTests: XCTestCase {
     func testWebsocketAndSSLConnect() throws {
         #if os(macOS)
         // p12 loading crashes when debugger other than Xcode is attached
-        guard !isVSCodeDebugging() else { throw XCTSkip() }
+        guard !self.isVSCodeDebugging() else { throw XCTSkip() }
         #endif
 
         let client = try createWebSocketAndSSLClient(identifier: "testWebsocketAndSSLConnect")
@@ -122,7 +122,7 @@ final class MQTTNIOTests: XCTestCase {
     func testSSLConnectFromP12() throws {
         #if os(macOS)
         // p12 loading crashes when debugger other than Xcode is attached
-        guard !isVSCodeDebugging() else { throw XCTSkip() }
+        guard !self.isVSCodeDebugging() else { throw XCTSkip() }
         #endif
 
         let client = try MQTTClient(
