@@ -741,7 +741,7 @@ extension Logger {
 }
 
 #if compiler(>=5.6)
-// All public members of the class are immutable and the class manages the others 
+// All public members of the class are immutable and the class manages the others
 // internally
 extension MQTTClient: @unchecked Sendable {}
 #endif
