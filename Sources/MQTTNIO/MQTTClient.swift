@@ -48,7 +48,7 @@ public final class MQTTClient {
     /// client identifier
     public private(set) var identifier: String
     /// logger
-    public let logger: Logger
+    public var logger: Logger
     /// Client configuration
     public let configuration: Configuration
 
