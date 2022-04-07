@@ -1,0 +1,13 @@
+{
+    "name": "MQTT Swift 5.6",
+    "dockerComposeFile": "docker-compose.yml",
+    "service": "setup",
+    "workspaceFolder": "/workspace",
+    "extensions": [
+      "sswg.swift-lang",
+    ],
+    "settings": {
+      "lldb.library": "/usr/lib/liblldb.so"
+    },
+    "forwardPorts": [8080]
+}
