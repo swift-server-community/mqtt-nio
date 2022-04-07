@@ -129,6 +129,8 @@ final class AsyncMQTTNIOTests: XCTestCase {
         try await client.publish(to: "TestSubject", payload: ByteBufferAllocator().buffer(string: "Goodbye"), qos: .atLeastOnce)
         try await client.disconnect()
 
+        _ = try await Task.sleep(nanoseconds: 500_000_000)
+
         try await client2.disconnect()
         try await client.shutdown()
         try await client2.shutdown()
@@ -168,10 +170,12 @@ final class AsyncMQTTNIOTests: XCTestCase {
         try await client.publish(to: "TestSubject", payload: ByteBufferAllocator().buffer(string: payloadString), qos: .atLeastOnce)
         try await client.publish(to: "TestSubject", payload: ByteBufferAllocator().buffer(string: payloadString), qos: .atLeastOnce)
         try await client.publish(to: "TestSubject2", payload: ByteBufferAllocator().buffer(string: payloadString), qos: .atLeastOnce)
+
         try await client.disconnect()
-        Thread.sleep(forTimeInterval: 0.5)
+
+        _ = try await Task.sleep(nanoseconds: 500_000_000)
+
         try await client2.disconnect()
-        Thread.sleep(forTimeInterval: 0.5)
         try client.syncShutdownGracefully()
         try client2.syncShutdownGracefully()
 
