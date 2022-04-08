@@ -2,7 +2,7 @@
 version: "3.3"
 
 services:
-  setup:
+  app:
     image: swift:5.6-focal
     volumes:
       - ..:/workspace
@@ -10,6 +10,7 @@ services:
       - mosquitto
     environment:
       - MOSQUITTO_SERVER=mosquitto
+      - CI=true
     command: sleep infinity
 
   mosquitto:
