@@ -27,9 +27,18 @@ final class MQTTTaskHandler: ChannelInboundHandler, RemovableChannelHandler {
     }
 
     func addTask(_ task: MQTTTask) -> EventLoopFuture<Void> {
-        return self.eventLoop.submit {
-            self.tasks.append(task)
+        if self.eventLoop.inEventLoop {
+            self._addTask(task)
+            return self.eventLoop.makeSucceededVoidFuture()
+        } else {
+            return self.eventLoop.submit {
+                self.tasks.append(task)
+            }
         }
+    }
+
+    private func _addTask(_ task: MQTTTask) {
+        self.tasks.append(task)
     }
 
     private func _removeTask(_ task: MQTTTask) {

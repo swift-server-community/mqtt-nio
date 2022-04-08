@@ -100,10 +100,8 @@ final class AsyncMQTTNIOTests: XCTestCase {
     }
 
     func testAsyncSequencePublishListener() async throws {
-        let expectation = XCTestExpectation(description: "testAsyncSequencePublishListener")
-        expectation.expectedFulfillmentCount = 2
-        let finishExpectation = XCTestExpectation(description: "testAsyncSequencePublishListener.finish")
-        finishExpectation.expectedFulfillmentCount = 1
+        let expectation = NIOAtomic.makeAtomic(value: 0)
+        let finishExpectation = NIOAtomic.makeAtomic(value: 0)
 
         let client = self.createClient(identifier: "testAsyncSequencePublishListener+async", version: .v5_0)
         let client2 = self.createClient(identifier: "testAsyncSequencePublishListener+async2", version: .v5_0)
@@ -119,34 +117,33 @@ final class AsyncMQTTNIOTests: XCTestCase {
                     var buffer = publish.payload
                     let string = buffer.readString(length: buffer.readableBytes)
                     print("Received: \(string ?? "nothing")")
-                    expectation.fulfill()
+                    expectation.add(1)
 
                 case .failure(let error):
                     XCTFail("\(error)")
                 }
             }
-            finishExpectation.fulfill()
+            finishExpectation.add(1)
         }
         try await client.publish(to: "TestSubject", payload: ByteBufferAllocator().buffer(string: "Hello"), qos: .atLeastOnce)
         try await client.publish(to: "TestSubject", payload: ByteBufferAllocator().buffer(string: "Goodbye"), qos: .atLeastOnce)
         try await client.disconnect()
 
-        self.wait(for: [expectation], timeout: 5.0)
+        _ = try await Task.sleep(nanoseconds: 500_000_000)
 
         try await client2.disconnect()
         try await client.shutdown()
         try await client2.shutdown()
 
-        self.wait(for: [finishExpectation], timeout: 5.0)
-
         _ = await task.result
+
+        XCTAssertEqual(expectation.load(), 2)
+        XCTAssertEqual(finishExpectation.load(), 1)
     }
 
     func testAsyncSequencePublishSubscriptionIdListener() async throws {
-        let expectation = XCTestExpectation(description: "publish listener")
-        let expectation2 = XCTestExpectation(description: "publish listener2")
-        expectation.expectedFulfillmentCount = 3
-        expectation2.expectedFulfillmentCount = 2
+        let expectation = NIOAtomic.makeAtomic(value: 0)
+        let expectation2 = NIOAtomic.makeAtomic(value: 0)
 
         let client = self.createClient(identifier: "testAsyncSequencePublishSubscriptionIdListener+async", version: .v5_0)
         let client2 = self.createClient(identifier: "testAsyncSequencePublishSubscriptionIdListener+async2", version: .v5_0)
@@ -159,31 +156,34 @@ final class AsyncMQTTNIOTests: XCTestCase {
         let task = Task {
             let publishListener = client2.v5.createPublishListener(subscriptionId: 1)
             for await _ in publishListener {
-                expectation.fulfill()
+                expectation.add(1)
             }
-            expectation.fulfill()
+            expectation.add(1)
         }
         let task2 = Task {
             let publishListener = client2.v5.createPublishListener(subscriptionId: 2)
             for await _ in publishListener {
-                expectation2.fulfill()
+                expectation2.add(1)
             }
-            expectation2.fulfill()
+            expectation2.add(1)
         }
         try await client.publish(to: "TestSubject", payload: ByteBufferAllocator().buffer(string: payloadString), qos: .atLeastOnce)
         try await client.publish(to: "TestSubject", payload: ByteBufferAllocator().buffer(string: payloadString), qos: .atLeastOnce)
         try await client.publish(to: "TestSubject2", payload: ByteBufferAllocator().buffer(string: payloadString), qos: .atLeastOnce)
+
         try await client.disconnect()
-        Thread.sleep(forTimeInterval: 0.5)
+
+        _ = try await Task.sleep(nanoseconds: 500_000_000)
+
         try await client2.disconnect()
-        Thread.sleep(forTimeInterval: 0.5)
         try client.syncShutdownGracefully()
         try client2.syncShutdownGracefully()
 
         _ = await task.result
         _ = await task2.result
 
-        wait(for: [expectation, expectation2], timeout: 5.0)
+        XCTAssertEqual(expectation.load(), 3)
+        XCTAssertEqual(expectation2.load(), 2)
     }
 }
 
