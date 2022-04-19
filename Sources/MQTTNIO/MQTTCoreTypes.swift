@@ -11,9 +11,13 @@
 //
 //===----------------------------------------------------------------------===//
 
-import NIO
+#if compiler(>=5.6)
+@preconcurrency import NIOCore
+#else
+import NIOCore
+#endif
 
-public enum MQTTQoS: UInt8 {
+public enum MQTTQoS: UInt8, _MQTTSendable {
     /// fire and forget
     case atMostOnce = 0
     /// wait for PUBACK, if you don't receive it after a period of time retry sending
@@ -22,7 +26,7 @@ public enum MQTTQoS: UInt8 {
     case exactlyOnce = 2
 }
 
-public enum MQTTPacketType: UInt8 {
+public enum MQTTPacketType: UInt8, _MQTTSendable {
     case CONNECT = 0x10
     case CONNACK = 0x20
     case PUBLISH = 0x30
@@ -41,7 +45,7 @@ public enum MQTTPacketType: UInt8 {
 }
 
 /// MQTT PUBLISH packet parameters.
-public struct MQTTPublishInfo {
+public struct MQTTPublishInfo: _MQTTSendable {
     /// Quality of Service for message.
     public let qos: MQTTQoS
 
@@ -73,7 +77,7 @@ public struct MQTTPublishInfo {
 }
 
 /// MQTT SUBSCRIBE packet parameters.
-public struct MQTTSubscribeInfo {
+public struct MQTTSubscribeInfo: _MQTTSendable {
     /// Topic filter to subscribe to.
     public let topicFilter: String
 
@@ -89,8 +93,8 @@ public struct MQTTSubscribeInfo {
 /// MQTT Sub ACK
 ///
 /// Contains data returned in subscribe ack packets
-public struct MQTTSuback {
-    public enum ReturnCode: UInt8 {
+public struct MQTTSuback: _MQTTSendable {
+    public enum ReturnCode: UInt8, _MQTTSendable {
         case grantedQoS0 = 0
         case grantedQoS1 = 1
         case grantedQoS2 = 2

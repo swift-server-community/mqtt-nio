@@ -739,3 +739,9 @@ extension Logger {
         return logger
     }
 }
+
+#if compiler(>=5.6)
+// All public members of the class are immutable and the class manages access to the
+// internal mutable state via Locks
+extension MQTTClient: @unchecked Sendable {}
+#endif

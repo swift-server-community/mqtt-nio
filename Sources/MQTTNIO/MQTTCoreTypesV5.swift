@@ -11,10 +11,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-import NIO
-
 /// MQTT V5 Connack
-public struct MQTTConnackV5 {
+public struct MQTTConnackV5: _MQTTSendable {
     /// is using session state from previous session
     public let sessionPresent: Bool
     /// connect reason code
@@ -24,7 +22,7 @@ public struct MQTTConnackV5 {
 }
 
 /// MQTT V5 ACK information. Returned with PUBACK, PUBREL
-public struct MQTTAckV5 {
+public struct MQTTAckV5: _MQTTSendable {
     /// MQTT v5 reason code
     public let reason: MQTTReasonCode
     /// MQTT v5 properties
@@ -37,9 +35,9 @@ public struct MQTTAckV5 {
 }
 
 /// MQTT SUBSCRIBE packet parameters.
-public struct MQTTSubscribeInfoV5 {
+public struct MQTTSubscribeInfoV5: _MQTTSendable {
     /// Retain handling options
-    public enum RetainHandling: UInt8 {
+    public enum RetainHandling: UInt8, _MQTTSendable {
         /// always send retain message
         case sendAlways = 0
         /// send retain if new
@@ -81,7 +79,7 @@ public struct MQTTSubscribeInfoV5 {
 /// MQTT V5 Sub ACK
 ///
 /// Contains data returned in subscribe/unsubscribe ack packets
-public struct MQTTSubackV5 {
+public struct MQTTSubackV5: _MQTTSendable {
     /// MQTT v5 subscription reason code
     public let reasons: [MQTTReasonCode]
     /// MQTT v5 properties
@@ -96,7 +94,7 @@ public struct MQTTSubackV5 {
 /// MQTT V5 Sub ACK
 ///
 /// Contains data returned in subscribe/unsubscribe ack packets
-public struct MQTTAuthV5 {
+public struct MQTTAuthV5: _MQTTSendable {
     /// MQTT v5 authentication reason code
     public let reason: MQTTReasonCode
     /// MQTT v5 properties

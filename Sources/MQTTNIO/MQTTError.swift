@@ -14,7 +14,7 @@
 /// MQTTClient errors
 public enum MQTTError: Error {
     /// Value returned in connection error
-    public enum ConnectionReturnValue: UInt8 {
+    public enum ConnectionReturnValue: UInt8, _MQTTSendable {
         /// connection was accepted
         case accepted = 0
         /// The Server does not support the version of the MQTT protocol requested by the Client.

@@ -13,7 +13,6 @@
 
 #if compiler(>=5.5) && canImport(_Concurrency)
 
-import Foundation
 import Logging
 import NIO
 import NIOConcurrencyHelpers
