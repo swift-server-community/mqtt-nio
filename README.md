@@ -1,4 +1,4 @@
-# MQTT NIO 
+# MQTT NIO
 
 [![sswg:sandbox|94x20](https://img.shields.io/badge/sswg-sandbox-lightgrey.svg)](https://github.com/swift-server/sswg/blob/master/process/incubation.md#sandbox-level)
 [<img src="http://img.shields.io/badge/swift-5.5-brightgreen.svg" alt="Swift 5.5" />](https://swift.org)
@@ -10,11 +10,11 @@ MQTT (Message Queuing Telemetry Transport) is a lightweight messaging protocol t
 
 ## Usage
 
-Create a client and connect to the MQTT broker.  
+Create a client and connect to the MQTT broker.
 
 ```swift
 let client = MQTTClient(
-    host: "mqtt.eclipse.org", 
+    host: "mqtt.eclipse.org",
     port: 1883,
     identifier: "My Client",
     eventLoopGroupProvider: .createNew
@@ -81,7 +81,7 @@ doStuff()
 ```
 
 ### PUBLISH listener AsyncSequence
-If you don't want to parse incoming PUBLISH packets via a callback the Swift concurrency support also includes an `AsyncSequence` for this purpose. 
+If you don't want to parse incoming PUBLISH packets via a callback the Swift concurrency support also includes an `AsyncSequence` for this purpose.
 ```swift
 let listener = client.createPublishListener()
 for await result in listener {
@@ -124,7 +124,7 @@ MQTT also supports Web Socket connections. Set `Configuration.useWebSockets` to 
 
 ## NIO Transport Services
 
-On macOS and iOS you can use the NIO Transport Services library (NIOTS) and Apple's `Network.framework` for communication with the MQTT broker. If you don't provide an `eventLoopGroup` or a `TLSConfigurationType` then this is the default for both platforms. If you do provide either of these then the library will base it's decision on whether to use NIOTS or NIOSSL on what you provide. Provide a `MultiThreadedEventLoopGroup` or `NIOSSL.TLSConfiguration` and the client will use NIOSSL. Provide a `NIOTSEventLoopGroup` or `TSTLSConfiguration` and the client will use NIOTS. If you provide a `MultiThreadedEventLoopGroup` and a `TSTLSConfiguration` then the client will throw an error. If you are running on iOS you should always choose NIOTS. 
+On macOS and iOS you can use the NIO Transport Services library (NIOTS) and Apple's `Network.framework` for communication with the MQTT broker. If you don't provide an `eventLoopGroup` or a `TLSConfigurationType` then this is the default for both platforms. If you do provide either of these then the library will base it's decision on whether to use NIOTS or NIOSSL on what you provide. Provide a `MultiThreadedEventLoopGroup` or `NIOSSL.TLSConfiguration` and the client will use NIOSSL. Provide a `NIOTSEventLoopGroup` or `TSTLSConfiguration` and the client will use NIOTS. If you provide a `MultiThreadedEventLoopGroup` and a `TSTLSConfiguration` then the client will throw an error. If you are running on iOS you should always choose NIOTS.
 
 ## AWS IoT
 
@@ -137,15 +137,15 @@ import SotoSignerV4
 let host = "MY_AWS_IOT_ENDPOINT.iot.eu-west-1.amazonaws.com"
 let headers = HTTPHeaders([("host", host)])
 let signer = AWSSigner(
-    credentials: StaticCredential(accessKeyId: "MYACCESSKEY", secretAccessKey: "MYSECRETKEY"), 
-    name: "iotdata", 
+    credentials: StaticCredential(accessKeyId: "MYACCESSKEY", secretAccessKey: "MYSECRETKEY"),
+    name: "iotdata",
     region: "eu-west-1"
 )
 let signedURL = signer.signURL(
-    url: URL(string: "https://\(host)/mqtt")!, 
-    method: .GET, 
-    headers: headers, 
-    body: .none, 
+    url: URL(string: "https://\(host)/mqtt")!,
+    method: .GET,
+    headers: headers,
+    body: .none,
     expires: .minutes(30)
 )
 let requestURI = "/mqtt?\(signedURL.query!)"
@@ -175,9 +175,9 @@ You can then use the same functions available to the v3.1.1 client but there are
 
 ```swift
 let futureResponse = client.v5.publish(
-    to: "JSONTest", 
-    payload: payload, 
-    qos: .atLeastOnce, 
+    to: "JSONTest",
+    payload: payload,
+    qos: .atLeastOnce,
     properties: [.contentType("application/json")]
 )
 ```
@@ -186,4 +186,5 @@ Whoever subscribes to the "JSONTest" topic with a v5.0 client will also receive 
 
 ## Documentation
 
-You can find reference documentation for MQTTNIO [here](https://adam-fowler.github.io/mqtt-nio/). There is also a sample demonstrating using MQTTNIO within an iOS app found [here](https://github.com/adam-fowler/EmCuTeeTee)
+You can find reference documentation for MQTTNIO
+[here](https://swift-server-community.github.io/mqtt-nio/). There is also a sample demonstrating using MQTTNIO within an iOS app found [here](https://github.com/adam-fowler/EmCuTeeTee)
