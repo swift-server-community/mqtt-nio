@@ -4,7 +4,7 @@ DOCC=$(xcrun --find docc)
 export DOCC_HTML_DIR="$(dirname $DOCC)/../share/docc/render"
 SG_FOLDER=.build/symbol-graphs
 MQTTNIO_SG_FOLDER=.build/mqtt-nio-symbol-graphs
-OUTPUT_PATH=docs/swift-server-community/mqtt-nio/current
+OUTPUT_PATH=docs/mqtt-nio/current
 
 BUILD_SYMBOLS=1
 
@@ -31,7 +31,7 @@ mkdir -p $OUTPUT_PATH
 rm -rf $OUTPUT_PATH/*
 docc convert MQTTNIO.docc \
     --transform-for-static-hosting \
-    --hosting-base-path /swift-server-community/mqtt-nio/current \
+    --hosting-base-path /mqtt-nio/current \
     --fallback-display-name MQTTNIO \
     --fallback-bundle-identifier org.swift-server-community.mqtt-nio \
     --fallback-bundle-version 1 \
