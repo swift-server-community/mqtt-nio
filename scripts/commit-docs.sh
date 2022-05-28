@@ -12,7 +12,7 @@ mv docs _docs
 git checkout gh-pages
 # copy contents of docs to docs/current replacing the ones that are already there
 rm -rf current
-mv _docs/swift-server-community/mqtt-nio/current current
+mv _docs/mqtt-nio/current current
 # commit
 git add --all current
 
