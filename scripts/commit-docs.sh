@@ -11,8 +11,8 @@ REVISION_HASH=$(git rev-parse HEAD)
 mv docs _docs
 git checkout gh-pages
 # copy contents of docs to docs/current replacing the ones that are already there
-rm -rf docs
-mv _docs/ docs/
+rm -rf current
+mv _docs/mqtt-nio current
 # commit
 git add --all docs
 
