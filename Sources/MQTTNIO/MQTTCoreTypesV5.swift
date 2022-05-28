@@ -11,7 +11,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-/// MQTT V5 Connack
+/// MQTT v5 Connack
 public struct MQTTConnackV5: _MQTTSendable {
     /// is using session state from previous session
     public let sessionPresent: Bool
@@ -21,7 +21,7 @@ public struct MQTTConnackV5: _MQTTSendable {
     public let properties: MQTTProperties
 }
 
-/// MQTT V5 ACK information. Returned with PUBACK, PUBREL
+/// MQTT v5 ACK information. Returned with PUBACK, PUBREL
 public struct MQTTAckV5: _MQTTSendable {
     /// MQTT v5 reason code
     public let reason: MQTTReasonCode
@@ -34,7 +34,7 @@ public struct MQTTAckV5: _MQTTSendable {
     }
 }
 
-/// MQTT SUBSCRIBE packet parameters.
+/// MQTT v5 SUBSCRIBE packet parameters.
 public struct MQTTSubscribeInfoV5: _MQTTSendable {
     /// Retain handling options
     public enum RetainHandling: UInt8, _MQTTSendable {
@@ -76,7 +76,7 @@ public struct MQTTSubscribeInfoV5: _MQTTSendable {
     }
 }
 
-/// MQTT V5 Sub ACK
+/// MQTT v5 Sub ACK packet
 ///
 /// Contains data returned in subscribe/unsubscribe ack packets
 public struct MQTTSubackV5: _MQTTSendable {
@@ -91,9 +91,11 @@ public struct MQTTSubackV5: _MQTTSendable {
     }
 }
 
-/// MQTT V5 Sub ACK
+/// MQTT V5 Auth packet
 ///
-/// Contains data returned in subscribe/unsubscribe ack packets
+/// An AUTH packet is sent from Client to Server or Server to Client as
+/// part of an extended authentication exchange, such as challenge / response
+/// authentication
 public struct MQTTAuthV5: _MQTTSendable {
     /// MQTT v5 authentication reason code
     public let reason: MQTTReasonCode

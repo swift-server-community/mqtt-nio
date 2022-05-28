@@ -74,7 +74,7 @@ client.connect()
 ```
 you can now replace it with
 ```swift
-_ = try await client.connect()
+try await client.connect()
 let subscription = MQTTSubscribeInfo(topicFilter: "my-topics", qos: .atLeastOnce)
 _ = try await client.subscribe(to: [subscription])
 doStuff()

@@ -18,6 +18,15 @@ import NIOCore
 
 @available(macOS 12.0, iOS 15.0, watchOS 8.0, tvOS 15.0, *)
 extension MQTTClient {
+    /// Shutdown MQTTClient asynchronously.
+    ///
+    /// Before an `MQTTClient` is deleted you need to call this function or the synchronous
+    /// version `syncShutdownGracefully` to do a clean shutdown of the client. It closes the
+    /// connection, notifies everything listening for shutdown and shuts down the EventLoopGroup
+    /// if the client created it
+    ///
+    /// - Parameters:
+    ///   - queue: Dispatch Queue to run shutdown on
     public func shutdown(queue: DispatchQueue = .global()) async throws {
         return try await withUnsafeThrowingContinuation { cont in
             shutdown(queue: queue) { error in
@@ -38,12 +47,10 @@ extension MQTTClient {
     /// If there is no Session associated with the Client identifier the Server MUST create a new Session. The Client and Server MUST store the Session
     /// after the Client and Server are disconnected. If set to true then the Client and Server MUST discard any previous Session and start a new one
     ///
-    /// The function returns an EventLoopFuture which will be updated with whether the server has restored a session for this client.
-    ///
     /// - Parameters:
     ///   - cleanSession: should we start with a new session
     ///   - will: Publish message to be posted as soon as connection is made
-    /// - Returns: Whether server holds a session for this client
+    /// - Returns: Whether server held a session for this client and has restored it.
     @discardableResult public func connect(
         cleanSession: Bool = true,
         will: (topicName: String, payload: ByteBuffer, qos: MQTTQoS, retain: Bool)? = nil

@@ -25,7 +25,7 @@ import NIOTransportServices
 
 /// Swift NIO MQTT Client
 ///
-/// Main public interface providing methods for connecting to a server, publishing
+/// Main interface providing methods for connecting to a server, publishing
 /// and subscribing to MQTT topics
 /// ```
 /// let client = MQTTClient(
@@ -33,8 +33,8 @@ import NIOTransportServices
 ///     port: 1883,
 ///     identifier: "My Client",
 ///     eventLoopGroupProvider: .createNew
-///     )
-///     try client.connect().wait()
+/// )
+/// try await client.connect()
 /// ```
 public final class MQTTClient {
     /// EventLoopGroup used by MQTTCllent
@@ -45,9 +45,9 @@ public final class MQTTClient {
     public let host: String
     /// Port to connect to
     public let port: Int
-    /// client identifier
+    /// Client identifier
     public private(set) var identifier: String
-    /// logger
+    /// Logger
     public var logger: Logger
     /// Client configuration
     public let configuration: Configuration
@@ -144,7 +144,9 @@ public final class MQTTClient {
         }
     }
 
-    /// Shutdown client synchronously. Before an `MQTTClient` is deleted you need to call this function or the async version `shutdown`
+    /// Shutdown client synchronously.
+    ///
+    /// Before an `MQTTClient` is deleted you need to call this function or the async version `shutdown`
     /// to do a clean shutdown of the client. It closes the connection, notifies everything listening for shutdown and shuts down the
     /// EventLoopGroup if the client created it
     ///
@@ -176,7 +178,9 @@ public final class MQTTClient {
         }
     }
 
-    /// Shutdown MQTTClient asynchronously. Before an `AWSClient` is deleted you need to call this function or the synchronous
+    /// Shutdown MQTTClient asynchronously.
+    ///
+    /// Before an `MQTTClient` is deleted you need to call this function or the synchronous
     /// version `syncShutdownGracefully` to do a clean shutdown of the client. It closes the connection, notifies everything
     /// listening for shutdown and shuts down the EventLoopGroup if the client created it
     ///
