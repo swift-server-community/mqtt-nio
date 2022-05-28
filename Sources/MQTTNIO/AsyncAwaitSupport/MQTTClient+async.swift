@@ -47,12 +47,10 @@ extension MQTTClient {
     /// If there is no Session associated with the Client identifier the Server MUST create a new Session. The Client and Server MUST store the Session
     /// after the Client and Server are disconnected. If set to true then the Client and Server MUST discard any previous Session and start a new one
     ///
-    /// The function returns an EventLoopFuture which will be updated with whether the server has restored a session for this client.
-    ///
     /// - Parameters:
     ///   - cleanSession: should we start with a new session
     ///   - will: Publish message to be posted as soon as connection is made
-    /// - Returns: Whether server holds a session for this client
+    /// - Returns: Whether server held a session for this client and has restored it.
     @discardableResult public func connect(
         cleanSession: Bool = true,
         will: (topicName: String, payload: ByteBuffer, qos: MQTTQoS, retain: Bool)? = nil
