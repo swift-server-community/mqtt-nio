@@ -14,7 +14,7 @@ git checkout gh-pages
 rm -rf current
 mv _docs/mqtt-nio current
 # commit
-git add --all docs
+git add --all current
 
 git status
 git commit -m "Documentation for https://github.com/adam-fowler/mqtt-nio/tree/$REVISION_HASH"
