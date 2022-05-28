@@ -187,4 +187,4 @@ Whoever subscribes to the "JSONTest" topic with a v5.0 client will also receive 
 ## Documentation
 
 You can find reference documentation for MQTTNIO
-[here](https://swift-server-community.github.io/mqtt-nio/). There is also a sample demonstrating using MQTTNIO within an iOS app found [here](https://github.com/adam-fowler/EmCuTeeTee)
+[here](https://swift-server-community.github.io/mqtt-nio/documentation/mqttnio/). There is also a sample demonstrating using MQTTNIO within an iOS app found [here](https://github.com/adam-fowler/EmCuTeeTee)
