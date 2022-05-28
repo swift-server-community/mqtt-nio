@@ -1,6 +1,6 @@
 # Connections
 
-MQTTNIO provides support for a number of connection types.
+Support for TLS and WebSockets.
 
 ## TLS
 
