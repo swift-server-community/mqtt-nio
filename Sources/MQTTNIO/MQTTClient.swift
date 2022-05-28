@@ -45,9 +45,9 @@ public final class MQTTClient {
     public let host: String
     /// Port to connect to
     public let port: Int
-    /// client identifier
+    /// Client identifier
     public private(set) var identifier: String
-    /// logger
+    /// Logger
     public var logger: Logger
     /// Client configuration
     public let configuration: Configuration
