@@ -18,6 +18,15 @@ import NIOCore
 
 @available(macOS 12.0, iOS 15.0, watchOS 8.0, tvOS 15.0, *)
 extension MQTTClient {
+    /// Shutdown MQTTClient asynchronously.
+    ///
+    /// Before an `MQTTClient` is deleted you need to call this function or the synchronous
+    /// version `syncShutdownGracefully` to do a clean shutdown of the client. It closes the
+    /// connection, notifies everything listening for shutdown and shuts down the EventLoopGroup
+    /// if the client created it
+    ///
+    /// - Parameters:
+    ///   - queue: Dispatch Queue to run shutdown on
     public func shutdown(queue: DispatchQueue = .global()) async throws {
         return try await withUnsafeThrowingContinuation { cont in
             shutdown(queue: queue) { error in

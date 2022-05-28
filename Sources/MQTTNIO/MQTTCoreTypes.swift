@@ -17,6 +17,7 @@
 import NIOCore
 #endif
 
+/// Indicates the level of assurance for delivery of a packet.
 public enum MQTTQoS: UInt8, _MQTTSendable {
     /// fire and forget
     case atMostOnce = 0
@@ -26,6 +27,7 @@ public enum MQTTQoS: UInt8, _MQTTSendable {
     case exactlyOnce = 2
 }
 
+/// MQTT Packet type enumeration
 public enum MQTTPacketType: UInt8, _MQTTSendable {
     case CONNECT = 0x10
     case CONNACK = 0x20

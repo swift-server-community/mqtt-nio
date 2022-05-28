@@ -2,9 +2,10 @@
 
 A Swift NIO based MQTT client
 
-MQTTNIO is a Swift NIO based MQTT v3.1.1 and v5.0 client supporting NIOTransportServices (required for iOS), WebSocket connections and TLS through both NIOSSL and NIOTransportServices.
+MQTTNIO is a Swift NIO based MQTT v3.1.1 and v5.0 client supporting unencrypted, WebSocket connections and TLS through both NIOSSL and NIOTransportServices.
 
 MQTT (Message Queuing Telemetry Transport) is a lightweight messaging protocol that was developed by IBM and first released in 1999. It uses the pub/sub pattern and translates messages between devices, servers, and applications. It is commonly used in Internet of things (IoT) technologies.
+
 ## Usage
 
 Create a client and connect to the MQTT broker.
@@ -17,7 +18,7 @@ let client = MQTTClient(
     eventLoopGroupProvider: .createNew
 )
 do {
-    _ = try await client.connect()
+    try await client.connect()
     print("Succesfully connected")
 } catch {
     print("Error while connecting \(error)")
@@ -27,7 +28,7 @@ do {
 Subscribe to a topic and add a publish listener to report publish messages sent from the server/broker.
 ```swift
 let subscription = MQTTSubscribeInfo(topicFilter: "my-topics", qos: .atLeastOnce)
-try await client.subscribe(to: [subscription])
+_ = try await client.subscribe(to: [subscription])
 let listener = client.createPublishListener()
 for await result in listener {
     switch result {
@@ -45,14 +46,14 @@ for await result in listener {
 
 Publish to a topic.
 ```swift
-try await _ = client.publish(
+try await client.publish(
     to: "my-topics",
     payload: ByteBuffer(string: "This is the Test payload"),
     qos: .atLeastOnce
 )
 ```
 
-MQTTClient supports both Swift concurrency and SwiftNIO `EventLoopFuture`. The above examples use Swift concurrency but there are equivalent versions of these functions that return `EventLoopFuture`s. You can find out more about Swift NIO [here](https://apple.github.io/swift-nio/docs/current/NIO/Classes/EventLoopFuture.html).
+MQTTClient supports both Swift concurrency and SwiftNIO `EventLoopFuture`. The above examples use Swift concurrency but there are equivalent versions of these functions that return `EventLoopFuture`s. You can find out more about Swift NIO and `EventLoopFuture` [here](https://apple.github.io/swift-nio/docs/current/NIOCore/Classes/EventLoopFuture.html).
 
 ## Topics
 
@@ -66,46 +67,39 @@ MQTTClient supports both Swift concurrency and SwiftNIO `EventLoopFuture`. The a
 
 - ``MQTTClient``
 
-### Connection
-
-- ``MQTTConnackV5``
-- ``TSTLSConfiguration``
-- ``TSTLSVersion``
-- ``TSCertificateVerification``
-
-### Publish
-
-- ``MQTTPublishInfo``
-- ``MQTTPublishListener``
-- ``MQTTAckV5``
-
-### Subscribe
+### Subscribe/Publish
 
 - ``MQTTSubscribeInfo``
 - ``MQTTSuback``
-
-### Packets
-
-- ``MQTTPacketType``
+- ``MQTTPublishInfo``
+- ``MQTTPublishListener``
 - ``MQTTQoS``
+- ``MQTTPacketType``
 
 ### Errors
 
 - ``MQTTError``
 - ``MQTTPacketError``
 
-### V5 Publish
+### V5 Connection
 
-- ``MQTTProperties``
-- ``MQTTReasonCode``
-- ``MQTTPublishIdListener``
+- ``MQTTConnackV5``
 
-
-### V5 Subscribe
+### V5 Subscribe/Publish
 
 - ``MQTTSubscribeInfoV5``
+- ``MQTTProperties``
+- ``MQTTReasonCode``
+- ``MQTTAckV5``
 - ``MQTTSubackV5``
+- ``MQTTPublishIdListener``
 
 ### V5 Authentication
 
 - ``MQTTAuthV5``
+
+### TLS
+
+- ``TSTLSConfiguration``
+- ``TSTLSVersion``
+- ``TSCertificateVerification``

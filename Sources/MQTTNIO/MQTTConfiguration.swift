@@ -23,9 +23,11 @@ extension MQTTClient {
         case v5_0
     }
 
-    /// Enum for different TLS Configuration types. The TLS Configuration type to use if defined by the EventLoopGroup the
-    /// client is using. If you don't provide an EventLoopGroup then the EventLoopGroup created will be defined by this variable
-    /// It is recommended on iOS you use NIO Transport Services.
+    /// Enum for different TLS Configuration types.
+    ///
+    /// The TLS Configuration type to use if defined by the EventLoopGroup the client is using.
+    /// If you don't provide an EventLoopGroup then the EventLoopGroup created will be defined
+    /// by this variable. It is recommended on iOS you use NIO Transport Services.
     public enum TLSConfigurationType {
         /// NIOSSL TLS configuration
         // This should use canImport(NIOSSL), will change when it works with SwiftUI previews.
