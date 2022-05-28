@@ -15,6 +15,8 @@
 - ``port``
 - ``eventLoopGroup``
 - ``logger``
+- ``v5-swift.property``
+- ``V5-swift.struct``
 
 ### Shutdown
 
@@ -43,18 +45,13 @@
 - ``subscribe(to:)-1y95e``
 - ``unsubscribe(from:)-48i9t``
 - ``unsubscribe(from:)-1wjnz``
+- ``createPublishListener()``
+- ``addPublishListener(named:_:)``
+- ``removePublishListener(named:)``
 
 ### Listeners
 
-- ``createPublishListener()``
-- ``addPublishListener(named:_:)``
 - ``addCloseListener(named:_:)``
 - ``addShutdownListener(named:_:)``
-- ``removePublishListener(named:)``
 - ``removeCloseListener(named:)``
 - ``removeShutdownListener(named:)``
-
-### Version 5 Protocol
-
-- ``v5-swift.property``
-- ``V5-swift.struct``

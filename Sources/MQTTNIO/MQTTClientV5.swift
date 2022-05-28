@@ -20,16 +20,17 @@ extension MQTTClient {
 
         /// Connect to MQTT server
         ///
-        /// If `cleanSession` is set to false the Server MUST resume communications with the Client based on state from the current Session (as identified by the Client identifier).
+        /// If `cleanStart` is set to false the Server MUST resume communications with the Client based on state from the current Session (as identified by the Client identifier).
         /// If there is no Session associated with the Client identifier the Server MUST create a new Session. The Client and Server MUST store the Session
         /// after the Client and Server are disconnected. If set to true then the Client and Server MUST discard any previous Session and start a new one
         ///
         /// The function returns an EventLoopFuture which will be updated with whether the server has restored a session for this client.
         ///
         /// - Parameters:
-        ///   - cleanSession: should we start with a new session
+        ///   - cleanStart: should we start with a new session
         ///   - properties: properties to attach to connect message
         ///   - will: Publish message to be posted as soon as connection is made
+        ///   - authWorkflow: The authentication workflow. This is currently unimplemented.
         /// - Returns: EventLoopFuture to be updated with connack
         public func connect(
             cleanStart: Bool = true,
@@ -182,7 +183,7 @@ extension MQTTClient {
         }
     }
 
-    /// v5 client
+    /// access MQTT v5 functionality
     public var v5: V5 {
         precondition(self.configuration.version == .v5_0, "Cannot use v5 functions with v3.1 client")
         return V5(client: self)
