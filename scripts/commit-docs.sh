@@ -12,10 +12,10 @@ rm -rf _docs
 mv docs _docs
 git checkout gh-pages
 # copy contents of docs to docs/current replacing the ones that are already there
-rm -rf current
-mv _docs/mqtt-nio/current current
+rm -rf docs
+mv _docs/mqtt-nio docs
 # commit
-git add --all current
+git add --all docs
 
 git status
 git commit -m "Documentation for https://github.com/adam-fowler/mqtt-nio/tree/$REVISION_HASH"
