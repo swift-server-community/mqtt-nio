@@ -28,7 +28,6 @@ let package = Package(
     ]
 )
 
-
 #if swift(>=5.6)
 // Add the documentation compiler plugin if possible
 package.dependencies.append(
