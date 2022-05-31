@@ -1,10 +1,32 @@
 #!/usr/bin/env bash
 
-DOCC=$(xcrun --find docc)
-export DOCC_HTML_DIR="$(dirname $DOCC)/../share/docc/render"
+# if plugin worked for us then would use it over everything below
+usePlugin()
+{
+    mkdir -p ./docs/mqtt-nio
+
+    swift package \
+        --allow-writing-to-directory ./docs \
+        generate-documentation \
+        --target MQTTNIO \
+        --output-path ./docs/mqtt-nio \
+        --transform-for-static-hosting \
+        --hosting-base-path /mqtt-nio
+}
+
+TEMP_DIR="$(pwd)/temp"
+
+cleanup()
+{
+    if [ -n "$TEMP_DIR" ]; then
+        rm -rf $TEMP_DIR
+    fi
+}
+trap cleanup exit $?
+
 SG_FOLDER=.build/symbol-graphs
 MQTTNIO_SG_FOLDER=.build/mqtt-nio-symbol-graphs
-OUTPUT_PATH=docs/mqtt-nio
+OUTPUT_PATH=docs/mqtt-nio/
 
 BUILD_SYMBOLS=1
 
@@ -15,6 +37,11 @@ do
     esac
 done
 
+if [ -z "${DOCC_HTML_DIR:-}" ]; then
+    git clone https://github.com/apple/swift-docc-render-artifact $TEMP_DIR/swift-docc-render-artifact
+     export DOCC_HTML_DIR="$TEMP_DIR/swift-docc-render-artifact/dist"
+fi
+
 if test "$BUILD_SYMBOLS" == 1; then
     # build symbol graphs
     mkdir -p $SG_FOLDER
@@ -23,7 +50,7 @@ if test "$BUILD_SYMBOLS" == 1; then
         -Xswiftc -emit-symbol-graph-dir -Xswiftc $SG_FOLDER
     # Copy MQTTNIO symbol graph into separate folder
     mkdir -p $MQTTNIO_SG_FOLDER
-    cp -f $SG_FOLDER/MQTTNIO* $MQTTNIO_SG_FOLDER
+    cp $SG_FOLDER/MQTTNIO* $MQTTNIO_SG_FOLDER
 fi
 
 # Build documentation
