@@ -4,7 +4,6 @@
 usePlugin()
 {
     mkdir -p ./docs/mqtt-nio
-
     swift package \
         --allow-writing-to-directory ./docs \
         generate-documentation \
@@ -56,7 +55,7 @@ fi
 # Build documentation
 mkdir -p $OUTPUT_PATH
 rm -rf $OUTPUT_PATH/*
-docc convert MQTTNIO.docc \
+docc convert Sources/MQTTNIO/MQTTNIO.docc \
     --transform-for-static-hosting \
     --hosting-base-path /mqtt-nio \
     --fallback-display-name MQTTNIO \
