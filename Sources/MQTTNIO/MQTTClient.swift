@@ -11,6 +11,7 @@
 //
 //===----------------------------------------------------------------------===//
 
+import Atomics
 import Dispatch
 import Logging
 #if canImport(Network)
@@ -73,13 +74,13 @@ public final class MQTTClient {
         return self.host
     }
 
-    private let globalPacketId = NIOAtomic<UInt16>.makeAtomic(value: 1)
+    internal let globalPacketId = ManagedAtomic<UInt16>(1)
     /// default logger that logs nothing
     private static let loggingDisabled = Logger(label: "MQTT-do-not-log", factory: { _ in SwiftLogNoOpLogHandler() })
     /// inflight messages
     private var inflight: MQTTInflight
     /// flag to tell is client is shutdown
-    private let isShutdown = NIOAtomic<Bool>.makeAtomic(value: false)
+    private let isShutdown = ManagedAtomic(false)
 
     /// Create MQTT client
     /// - Parameters:
@@ -139,7 +140,7 @@ public final class MQTTClient {
     }
 
     deinit {
-        guard isShutdown.load() else {
+        guard isShutdown.load(ordering: .relaxed) else {
             preconditionFailure("Client not shut down before the deinit. Please call client.syncShutdownGracefully() when no longer needed.")
         }
     }
@@ -188,7 +189,7 @@ public final class MQTTClient {
     ///   - queue: Dispatch Queue to run shutdown on
     ///   - callback: Callback called when shutdown is complete. If there was an error it will return with Error in callback
     public func shutdown(queue: DispatchQueue = .global(), _ callback: @escaping (Error?) -> Void) {
-        guard self.isShutdown.compareAndExchange(expected: false, desired: true) else {
+        guard self.isShutdown.compareExchange(expected: false, desired: true, ordering: .relaxed).exchanged else {
             callback(MQTTError.alreadyShutdown)
             return
         }
@@ -379,11 +380,13 @@ public final class MQTTClient {
     }
 
     internal func updatePacketId() -> UInt16 {
+        let id = self.globalPacketId.wrappingIncrementThenLoad(by: 1, ordering: .relaxed)
+
         // packet id must be non-zero
-        if self.globalPacketId.compareAndExchange(expected: 0, desired: 1) {
-            return 1
+        if id == 0 {
+            return self.globalPacketId.wrappingIncrementThenLoad(by: 1, ordering: .relaxed)
         } else {
-            return self.globalPacketId.add(1)
+            return id
         }
     }
 
@@ -490,7 +493,7 @@ internal extension MQTTClient {
 
     func processConnack(_ connack: MQTTConnAckPacket) throws -> MQTTConnAckPacket {
         // connack doesn't return a packet id so this is alway 32767. Need a better way to choose first packet id
-        _ = self.globalPacketId.exchange(with: connack.packetId + 32767)
+        self.globalPacketId.store(connack.packetId + 32767, ordering: .relaxed)
         switch self.configuration.version {
         case .v3_1_1:
             if connack.returnCode != 0 {
