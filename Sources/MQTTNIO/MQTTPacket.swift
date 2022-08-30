@@ -11,11 +11,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-#if compiler(>=5.6)
-@preconcurrency import NIOCore
-#else
 import NIOCore
-#endif
 
 internal enum InternalError: Swift.Error {
     case incompletePacket

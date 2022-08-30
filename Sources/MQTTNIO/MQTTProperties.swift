@@ -11,11 +11,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-#if compiler(>=5.6)
-@preconcurrency import NIOCore
-#else
 import NIOCore
-#endif
 
 /// MQTT v5.0 properties. A property consists of a identifier and a value
 public struct MQTTProperties: _MQTTSendable {

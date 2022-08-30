@@ -14,7 +14,6 @@
 import Foundation
 import Logging
 import NIO
-import NIOConcurrencyHelpers
 import NIOFoundationCompat
 import NIOHTTP1
 import XCTest
@@ -544,6 +543,37 @@ final class MQTTNIOTests: XCTestCase {
         _ = try client.ping().wait()
         try client.disconnect().wait()
         #endif
+    }
+
+    func testDoubleShutdown() throws {
+        let client = self.createClient(identifier: "DoubleShutdown")
+        try client.syncShutdownGracefully()
+        do {
+            try client.syncShutdownGracefully()
+            XCTFail("testDoubleShutdown: Should fail after second shutdown")
+        } catch MQTTError.alreadyShutdown {}
+    }
+
+    func testPacketId() throws {
+        var logger = Logger(label: "MQTTTests")
+        logger.logLevel = .info
+        let client = MQTTClient(
+            host: Self.hostname,
+            port: 1883,
+            identifier: "testPacketId",
+            eventLoopGroupProvider: .createNew,
+            logger: logger
+        )
+        defer { XCTAssertNoThrow(try client.syncShutdownGracefully()) }
+
+        _ = try client.connect().wait()
+        let packetId = client.globalPacketId.load(ordering: .relaxed)
+        try client.publish(to: "testPersistentAtLeastOnce", payload: ByteBufferAllocator().buffer(capacity: 0), qos: .atLeastOnce).wait()
+        XCTAssertEqual(packetId + 1, client.globalPacketId.load(ordering: .relaxed))
+        try client.publish(to: "testPersistentAtLeastOnce", payload: ByteBufferAllocator().buffer(capacity: 0), qos: .atLeastOnce).wait()
+        XCTAssertEqual(packetId + 2, client.globalPacketId.load(ordering: .relaxed))
+
+        try client.disconnect().wait()
     }
 
     // MARK: Helper variables and functions
