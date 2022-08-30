@@ -11,11 +11,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-#if compiler(>=5.6)
-@preconcurrency import NIOCore
-#else
 import NIOCore
-#endif
 
 /// Indicates the level of assurance for delivery of a packet.
 public enum MQTTQoS: UInt8, _MQTTSendable {
