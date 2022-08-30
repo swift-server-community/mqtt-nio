@@ -13,6 +13,7 @@
 
 #if compiler(>=5.5) && canImport(_Concurrency)
 
+import Atomics
 import Logging
 import NIO
 import NIOConcurrencyHelpers
@@ -99,8 +100,8 @@ final class AsyncMQTTNIOTests: XCTestCase {
     }
 
     func testAsyncSequencePublishListener() async throws {
-        let expectation = NIOAtomic.makeAtomic(value: 0)
-        let finishExpectation = NIOAtomic.makeAtomic(value: 0)
+        let expectation = ManagedAtomic(0)
+        let finishExpectation = ManagedAtomic(0)
 
         let client = self.createClient(identifier: "testAsyncSequencePublishListener+async", version: .v5_0)
         let client2 = self.createClient(identifier: "testAsyncSequencePublishListener+async2", version: .v5_0)
@@ -116,13 +117,13 @@ final class AsyncMQTTNIOTests: XCTestCase {
                     var buffer = publish.payload
                     let string = buffer.readString(length: buffer.readableBytes)
                     print("Received: \(string ?? "nothing")")
-                    expectation.add(1)
+                    expectation.wrappingIncrement(ordering: .relaxed)
 
                 case .failure(let error):
                     XCTFail("\(error)")
                 }
             }
-            finishExpectation.add(1)
+            finishExpectation.wrappingIncrement(ordering: .relaxed)
         }
         try await client.publish(to: "TestSubject", payload: ByteBufferAllocator().buffer(string: "Hello"), qos: .atLeastOnce)
         try await client.publish(to: "TestSubject", payload: ByteBufferAllocator().buffer(string: "Goodbye"), qos: .atLeastOnce)
@@ -136,13 +137,13 @@ final class AsyncMQTTNIOTests: XCTestCase {
 
         _ = await task.result
 
-        XCTAssertEqual(expectation.load(), 2)
-        XCTAssertEqual(finishExpectation.load(), 1)
+        XCTAssertEqual(expectation.load(ordering: .relaxed), 2)
+        XCTAssertEqual(finishExpectation.load(ordering: .relaxed), 1)
     }
 
     func testAsyncSequencePublishSubscriptionIdListener() async throws {
-        let expectation = NIOAtomic.makeAtomic(value: 0)
-        let expectation2 = NIOAtomic.makeAtomic(value: 0)
+        let expectation = ManagedAtomic(0)
+        let expectation2 = ManagedAtomic(0)
 
         let client = self.createClient(identifier: "testAsyncSequencePublishSubscriptionIdListener+async", version: .v5_0)
         let client2 = self.createClient(identifier: "testAsyncSequencePublishSubscriptionIdListener+async2", version: .v5_0)
@@ -155,16 +156,16 @@ final class AsyncMQTTNIOTests: XCTestCase {
         let task = Task {
             let publishListener = client2.v5.createPublishListener(subscriptionId: 1)
             for await _ in publishListener {
-                expectation.add(1)
+                expectation.wrappingIncrement(ordering: .relaxed)
             }
-            expectation.add(1)
+            expectation.wrappingIncrement(ordering: .relaxed)
         }
         let task2 = Task {
             let publishListener = client2.v5.createPublishListener(subscriptionId: 2)
             for await _ in publishListener {
-                expectation2.add(1)
+                expectation2.wrappingIncrement(ordering: .relaxed)
             }
-            expectation2.add(1)
+            expectation2.wrappingIncrement(ordering: .relaxed)
         }
         try await client.publish(to: "TestSubject", payload: ByteBufferAllocator().buffer(string: payloadString), qos: .atLeastOnce)
         try await client.publish(to: "TestSubject", payload: ByteBufferAllocator().buffer(string: payloadString), qos: .atLeastOnce)
@@ -181,8 +182,8 @@ final class AsyncMQTTNIOTests: XCTestCase {
         _ = await task.result
         _ = await task2.result
 
-        XCTAssertEqual(expectation.load(), 3)
-        XCTAssertEqual(expectation2.load(), 2)
+        XCTAssertEqual(expectation.load(ordering: .relaxed), 3)
+        XCTAssertEqual(expectation2.load(ordering: .relaxed), 2)
     }
 }
 
