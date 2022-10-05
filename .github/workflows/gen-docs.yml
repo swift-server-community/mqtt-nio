@@ -24,7 +24,7 @@ jobs:
       env:
         DOCC: docc
       run: |
-        ./scripts/build-docc.sh
+        ./scripts/build-docc-gh.sh
     - name: Commit
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
