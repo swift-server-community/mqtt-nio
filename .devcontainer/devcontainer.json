@@ -4,9 +4,9 @@
     "service": "app",
     "workspaceFolder": "/workspace",
     "extensions": [
-      "sswg.swift-lang",
+      "sswg.swift-lang"
     ],
     "settings": {
       "lldb.library": "/usr/lib/liblldb.so"
-    },
+    }
 }
