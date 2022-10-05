@@ -2,7 +2,7 @@
 //
 // This source file is part of the MQTTNIO project
 //
-// Copyright (c) 2020-2021 Adam Fowler
+// Copyright (c) 2020-2022 Adam Fowler
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -37,6 +37,6 @@ struct MQTTListeners<ReturnType> {
         }
     }
 
-    private let lock = Lock()
+    private let lock = NIOLock()
     private var listeners: [String: Listener] = [:]
 }
