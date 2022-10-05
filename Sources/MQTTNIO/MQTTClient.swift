@@ -82,6 +82,12 @@ public final class MQTTClient {
     /// flag to tell is client is shutdown
     private let isShutdown = ManagedAtomic(false)
 
+    #if swift(>=5.6)
+    typealias ShutdownCallback = @Sendable (Error?) -> Void
+    #else
+    typealias ShutdownCallback = (Error?) -> Void
+    #endif
+
     /// Create MQTT client
     /// - Parameters:
     ///   - host: host name
@@ -160,7 +166,7 @@ public final class MQTTClient {
             Current eventLoop: \(eventLoop)
             """)
         }
-        let errorStorageLock = Lock()
+        let errorStorageLock = NIOLock()
         var errorStorage: Error?
         let continuation = DispatchWorkItem {}
         self.shutdown(queue: DispatchQueue(label: "mqtt-client.shutdown")) { error in
@@ -403,7 +409,7 @@ public final class MQTTClient {
     var closeListeners = MQTTListeners<Void>()
     var shutdownListeners = MQTTListeners<Void>()
     private var _connection: MQTTConnection?
-    private var lock = Lock()
+    private var lock = NIOLock()
 }
 
 internal extension MQTTClient {

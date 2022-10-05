@@ -2,7 +2,7 @@
 //
 // This source file is part of the MQTTNIO project
 //
-// Copyright (c) 2020-2021 Adam Fowler
+// Copyright (c) 2020-2022 Adam Fowler
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -17,7 +17,7 @@ import NIOConcurrencyHelpers
 /// Array of inflight packets. Used to resend packets when reconnecting to server
 struct MQTTInflight {
     init() {
-        self.lock = Lock()
+        self.lock = NIOLock()
         self.packets = .init(initialCapacity: 4)
     }
 
@@ -43,6 +43,6 @@ struct MQTTInflight {
         }
     }
 
-    private let lock: Lock
+    private let lock: NIOLock
     private(set) var packets: CircularBuffer<MQTTPacket>
 }
