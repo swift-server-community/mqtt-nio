@@ -8,9 +8,12 @@ A Swift NIO based MQTT v3.1.1 and v5.0 client.
 
 MQTT (Message Queuing Telemetry Transport) is a lightweight messaging protocol that was developed by IBM and first released in 1999. It uses the pub/sub pattern and translates messages between devices, servers, and applications. It is commonly used in Internet of things (IoT) technologies.
 
-MQTTNIO is a Swift NIO based implementation of a MQTT client. It supports both MQTT versions 3.1.1 and 5.0, connections made through WebSockets and TLS. It can be setup to run with Posix sockets or use the Network framework via [NIOTransportServices](https://github.com/apple/swift-nio-transport-services) (required for iOS).
-
-## Documentation
+MQTTNIO is a Swift NIO based implementation of a MQTT client. It supports
+- MQTT versions 3.1.1 and 5.0.
+- Unencrypted and encrypted (via TLS) connections
+- WebSocket connections
+- Posix sockets
+- Apple's Network framework via [NIOTransportServices](https://github.com/apple/swift-nio-transport-services) (required for iOS).
 
 You can find documentation for MQTTNIO
-[here](https://swift-server-community.github.io/mqtt-nio/documentation/mqttnio/). There is also a sample demonstrating using MQTTNIO within an iOS app found [here](https://github.com/adam-fowler/EmCuTeeTee)
+[here](https://swift-server-community.github.io/mqtt-nio/documentation/mqttnio/). There is also a sample demonstrating the use MQTTNIO in an iOS app found [here](https://github.com/adam-fowler/EmCuTeeTee)
