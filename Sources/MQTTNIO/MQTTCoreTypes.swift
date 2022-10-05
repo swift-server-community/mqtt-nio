@@ -99,7 +99,7 @@ public struct MQTTSuback: _MQTTSendable {
         case failure = 0x80
     }
 
-    /// MQTT v5 subscribute return codes
+    /// MQTT v5 subscribe return codes
     public let returnCodes: [ReturnCode]
 
     init(returnCodes: [MQTTSuback.ReturnCode]) {
