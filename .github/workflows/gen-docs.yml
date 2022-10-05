@@ -8,17 +8,23 @@ on:
 jobs:
   build:
 
-    runs-on: ubuntu-latest
-    container:
-      image: swift:5.7
+    runs-on: macOS-latest
+
     steps:
     - name: Checkout
       uses: actions/checkout@v3
       with:
         fetch-depth: 0
-    - name: Build
+    - name: Install Dependencies
       run: |
-        ./scripts/build-docc.sh
+        brew install mint
+        mint install apple/swift-docc@main
+        echo "$HOME/.mint/bin" >> $GITHUB_PATH
+    - name: Build
+      env:
+        DOCC: docc
+      run: |
+        ./scripts/build-docc-gh.sh
     - name: Commit
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
