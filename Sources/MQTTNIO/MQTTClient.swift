@@ -220,6 +220,12 @@ public final class MQTTClient {
                 closeError = nil
                 self.shutdownListeners.notify(.success(()))
             }
+            // remove all listeners as they may contain references to the client and cause
+            // a reference cycle
+            self.publishListeners.removeAll()
+            self.closeListeners.removeAll()
+            self.shutdownListeners.removeAll()
+
             self.shutdownEventLoopGroup(queue: queue) { error in
                 callback(closeError ?? error)
             }

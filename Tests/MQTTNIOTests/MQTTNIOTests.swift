@@ -506,6 +506,20 @@ final class MQTTNIOTests: XCTestCase {
         try client2.disconnect().wait()
     }
 
+    /// Check listeners don't create a reference cycle if they reference the client
+    func testListenerReferenceCycle() throws {
+        func createClient() throws -> MQTTClient? {
+            let client = self.createClient(identifier: "testListenerReferenceCycle")
+            client.addPublishListener(named: "refcycle") { _ in
+                print(client)
+            }
+            try client.syncShutdownGracefully()
+            return client
+        }
+        weak var client = try createClient()
+        XCTAssertNil(client)
+    }
+
     func testSubscribeAll() throws {
         if ProcessInfo.processInfo.environment["CI"] != nil {
             return
