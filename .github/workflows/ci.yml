@@ -55,6 +55,8 @@ jobs:
     container:
       image: ${{ matrix.tag }}
     services:
+      # need to update docker image if you update the certificates
+      # run `build-docker-ci-image.sh` 
       mosquitto:
         image: adamfowlerphoto/mqttnio-mosquitto
         ports:
