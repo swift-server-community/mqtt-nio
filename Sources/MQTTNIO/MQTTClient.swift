@@ -201,7 +201,6 @@ public final class MQTTClient {
         }
         let eventLoop = self.eventLoopGroup.next()
         let closeFuture: EventLoopFuture<Void>
-        self.shutdownListeners.notify(.success(()))
         if let connection = self.connection {
             closeFuture = connection.close()
         } else {
@@ -216,10 +215,17 @@ public final class MQTTClient {
                 } else {
                     closeError = error
                 }
+                self.shutdownListeners.notify(.failure(error))
             case .success:
                 closeError = nil
+                self.shutdownListeners.notify(.success(()))
             }
-            self.shutdownListeners.notify(.success(()))
+            // remove all listeners as they may contain references to the client and cause
+            // a reference cycle
+            self.publishListeners.removeAll()
+            self.closeListeners.removeAll()
+            self.shutdownListeners.removeAll()
+
             self.shutdownEventLoopGroup(queue: queue) { error in
                 callback(closeError ?? error)
             }

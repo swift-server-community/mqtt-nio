@@ -94,7 +94,7 @@ final class MQTTNIOTests: XCTestCase {
     func testSSLConnect() throws {
         #if os(macOS)
         // p12 loading crashes when debugger other than Xcode is attached
-        guard !self.isVSCodeDebugging() else { throw XCTSkip() }
+        // guard !self.isVSCodeDebugging() else { throw XCTSkip() }
         #endif
 
         let client = try createSSLClient(identifier: "testSSLConnect")
@@ -107,7 +107,7 @@ final class MQTTNIOTests: XCTestCase {
     func testWebsocketAndSSLConnect() throws {
         #if os(macOS)
         // p12 loading crashes when debugger other than Xcode is attached
-        guard !self.isVSCodeDebugging() else { throw XCTSkip() }
+        // guard !self.isVSCodeDebugging() else { throw XCTSkip() }
         #endif
 
         let client = try createWebSocketAndSSLClient(identifier: "testWebsocketAndSSLConnect")
@@ -121,7 +121,7 @@ final class MQTTNIOTests: XCTestCase {
     func testSSLConnectFromP12() throws {
         #if os(macOS)
         // p12 loading crashes when debugger other than Xcode is attached
-        guard !self.isVSCodeDebugging() else { throw XCTSkip() }
+        // guard !self.isVSCodeDebugging() else { throw XCTSkip() }
         #endif
 
         let client = try MQTTClient(
@@ -504,6 +504,20 @@ final class MQTTNIOTests: XCTestCase {
 
         try client.disconnect().wait()
         try client2.disconnect().wait()
+    }
+
+    /// Check listeners don't create a reference cycle if they reference the client
+    func testListenerReferenceCycle() throws {
+        func createClient() throws -> MQTTClient? {
+            let client = self.createClient(identifier: "testListenerReferenceCycle")
+            client.addPublishListener(named: "refcycle") { _ in
+                print(client)
+            }
+            try client.syncShutdownGracefully()
+            return client
+        }
+        weak var client = try createClient()
+        XCTAssertNil(client)
     }
 
     func testSubscribeAll() throws {

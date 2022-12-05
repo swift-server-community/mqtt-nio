@@ -37,6 +37,10 @@ struct MQTTListeners<ReturnType> {
         }
     }
 
+    mutating func removeAll() {
+        self.listeners = [:]
+    }
+
     private let lock = NIOLock()
     private var listeners: [String: Listener] = [:]
 }
