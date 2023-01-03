@@ -14,7 +14,7 @@
 import NIO
 import NIOConcurrencyHelpers
 
-struct MQTTListeners<ReturnType> {
+class MQTTListeners<ReturnType> {
     typealias Listener = (Result<ReturnType, Error>) -> Void
 
     func notify(_ result: Result<ReturnType, Error>) {
@@ -25,19 +25,19 @@ struct MQTTListeners<ReturnType> {
         }
     }
 
-    mutating func addListener(named name: String, listener: @escaping Listener) {
+    func addListener(named name: String, listener: @escaping Listener) {
         self.lock.withLock {
             listeners[name] = listener
         }
     }
 
-    mutating func removeListener(named name: String) {
+    func removeListener(named name: String) {
         self.lock.withLock {
             listeners[name] = nil
         }
     }
 
-    mutating func removeAll() {
+    func removeAll() {
         self.listeners = [:]
     }
 
