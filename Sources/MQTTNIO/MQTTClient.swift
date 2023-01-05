@@ -411,9 +411,9 @@ public final class MQTTClient {
     }
 
     var connectionParameters = ConnectionParameters()
-    var publishListeners = MQTTListeners<MQTTPublishInfo>()
-    var closeListeners = MQTTListeners<Void>()
-    var shutdownListeners = MQTTListeners<Void>()
+    let publishListeners = MQTTListeners<MQTTPublishInfo>()
+    let closeListeners = MQTTListeners<Void>()
+    let shutdownListeners = MQTTListeners<Void>()
     private var _connection: MQTTConnection?
     private var lock = NIOLock()
 }
