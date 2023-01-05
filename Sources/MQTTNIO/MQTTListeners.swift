@@ -44,7 +44,6 @@ final class MQTTListeners<ReturnType> {
         }
     }
 
-    // private let eventLoop: EventLoop
     private let lock = NIOLock()
     private var listeners: [String: Listener] = [:]
 }
