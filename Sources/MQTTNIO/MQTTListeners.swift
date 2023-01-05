@@ -14,14 +14,15 @@
 import NIO
 import NIOConcurrencyHelpers
 
-class MQTTListeners<ReturnType> {
+final class MQTTListeners<ReturnType> {
     typealias Listener = (Result<ReturnType, Error>) -> Void
 
     func notify(_ result: Result<ReturnType, Error>) {
-        self.lock.withLock {
-            listeners.values.forEach { listener in
-                listener(result)
-            }
+        let listeners = self.lock.withLock {
+            return self.listeners
+        }
+        listeners.values.forEach { listener in
+            listener(result)
         }
     }
 
@@ -38,7 +39,9 @@ class MQTTListeners<ReturnType> {
     }
 
     func removeAll() {
-        self.listeners = [:]
+        self.lock.withLock {
+            self.listeners = [:]
+        }
     }
 
     private let lock = NIOLock()
