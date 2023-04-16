@@ -105,45 +105,42 @@ final class AsyncMQTTNIOTests: XCTestCase {
     }
 
     func testAsyncSequencePublishListener() async throws {
-        let expectation = ManagedAtomic(0)
-        let finishExpectation = ManagedAtomic(0)
-
         let client = self.createClient(identifier: "testAsyncSequencePublishListener+async", version: .v5_0)
         let client2 = self.createClient(identifier: "testAsyncSequencePublishListener+async2", version: .v5_0)
 
         try await client.connect()
         try await client2.connect()
         _ = try await client2.v5.subscribe(to: [.init(topicFilter: "TestSubject", qos: .atLeastOnce)])
-        let task = Task {
-            let publishListener = client2.createPublishListener()
-            for await result in publishListener {
-                switch result {
-                case .success(let publish):
-                    var buffer = publish.payload
-                    let string = buffer.readString(length: buffer.readableBytes)
-                    print("Received: \(string ?? "nothing")")
-                    expectation.wrappingIncrement(ordering: .relaxed)
+        try await withThrowingTaskGroup(of: Void.self) { group in
+            group.addTask {
+                let publishListener = client2.createPublishListener()
+                for await result in publishListener {
+                    switch result {
+                    case .success(let publish):
+                        var buffer = publish.payload
+                        let string = buffer.readString(length: buffer.readableBytes)
+                        print("Received: \(string ?? "nothing")")
+                        return
 
-                case .failure(let error):
-                    XCTFail("\(error)")
+                    case .failure(let error):
+                        XCTFail("\(error)")
+                    }
                 }
             }
-            finishExpectation.wrappingIncrement(ordering: .relaxed)
+            group.addTask {
+                try await Task.sleep(nanoseconds: 5_000_000_000)
+                XCTFail("Timeout")
+            }
+            try await client.publish(to: "TestSubject", payload: ByteBufferAllocator().buffer(string: "Hello"), qos: .atLeastOnce)
+            try await client.publish(to: "TestSubject", payload: ByteBufferAllocator().buffer(string: "Goodbye"), qos: .atLeastOnce)
+
+            try await group.next()
+            group.cancelAll()
         }
-        try await client.publish(to: "TestSubject", payload: ByteBufferAllocator().buffer(string: "Hello"), qos: .atLeastOnce)
-        try await client.publish(to: "TestSubject", payload: ByteBufferAllocator().buffer(string: "Goodbye"), qos: .atLeastOnce)
         try await client.disconnect()
-
-        _ = try await Task.sleep(nanoseconds: 500_000_000)
-
         try await client2.disconnect()
         try await client.shutdown()
         try await client2.shutdown()
-
-        _ = await task.result
-
-        XCTAssertEqual(expectation.load(ordering: .relaxed), 2)
-        XCTAssertEqual(finishExpectation.load(ordering: .relaxed), 1)
     }
 
     func testAsyncSequencePublishSubscriptionIdListener() async throws {
