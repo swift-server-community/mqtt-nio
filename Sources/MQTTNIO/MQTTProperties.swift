@@ -14,9 +14,9 @@
 import NIOCore
 
 /// MQTT v5.0 properties. A property consists of a identifier and a value
-public struct MQTTProperties: _MQTTSendable {
+public struct MQTTProperties: Sendable {
     /// MQTT Property
-    public enum Property: Equatable, _MQTTSendable {
+    public enum Property: Equatable, Sendable {
         /// Payload format: 0 = bytes, 1 = UTF8 string (available for PUBLISH)
         case payloadFormat(UInt8)
         /// Message expiry indicates the lifetime of the message (available for PUBLISH)

@@ -11,8 +11,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-#if compiler(>=5.5) && canImport(_Concurrency)
-
 import Atomics
 import Logging
 import NIO
@@ -224,5 +222,3 @@ final class AsyncMQTTNIOTests: XCTestCase {
         try await client2.disconnect()
     }
 }
-
-#endif // compiler(>=5.5)

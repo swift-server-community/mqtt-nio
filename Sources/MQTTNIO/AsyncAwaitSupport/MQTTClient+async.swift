@@ -11,8 +11,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-#if compiler(>=5.5) && canImport(_Concurrency)
-
 import Foundation
 import NIOCore
 
@@ -161,5 +159,3 @@ public class MQTTPublishListener: AsyncSequence {
         return self.stream.makeAsyncIterator()
     }
 }
-
-#endif // compiler(>=5.5)

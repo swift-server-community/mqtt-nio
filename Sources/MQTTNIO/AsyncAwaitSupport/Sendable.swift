@@ -11,8 +11,5 @@
 //
 //===----------------------------------------------------------------------===//
 
-#if compiler(>=5.6)
+@available(*, deprecated, renamed: "Sendable")
 public typealias _MQTTSendable = Sendable
-#else
-public typealias _MQTTSendable = Any
-#endif

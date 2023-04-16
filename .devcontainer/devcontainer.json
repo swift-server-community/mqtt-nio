@@ -3,10 +3,29 @@
     "dockerComposeFile": "docker-compose.yml",
     "service": "app",
     "workspaceFolder": "/workspace",
-    "extensions": [
-      "sswg.swift-lang"
-    ],
-    "settings": {
-      "lldb.library": "/usr/lib/liblldb.so"
+    "features": {
+        "ghcr.io/devcontainers/features/common-utils:2": {
+            "installZsh": "false",
+            "username": "vscode",
+            "userUid": "1000",
+            "userGid": "1000",
+            "upgradePackages": "false"
+        },
+        "ghcr.io/devcontainers/features/git:1": {
+            "version": "os-provided",
+            "ppa": "false"
+        }
+    },
+    // Configure tool-specific properties.
+    "customizations": {
+        // Configure properties specific to VS Code.
+        "vscode": {
+            "extensions": [
+              "sswg.swift-lang"
+            ],
+            "settings": {
+              "lldb.library": "/usr/lib/liblldb.so"
+            }
+        }
     }
 }

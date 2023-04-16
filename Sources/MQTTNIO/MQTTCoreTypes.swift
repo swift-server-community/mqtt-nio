@@ -14,7 +14,7 @@
 import NIOCore
 
 /// Indicates the level of assurance for delivery of a packet.
-public enum MQTTQoS: UInt8, _MQTTSendable {
+public enum MQTTQoS: UInt8, Sendable {
     /// fire and forget
     case atMostOnce = 0
     /// wait for PUBACK, if you don't receive it after a period of time retry sending
@@ -24,7 +24,7 @@ public enum MQTTQoS: UInt8, _MQTTSendable {
 }
 
 /// MQTT Packet type enumeration
-public enum MQTTPacketType: UInt8, _MQTTSendable {
+public enum MQTTPacketType: UInt8, Sendable {
     case CONNECT = 0x10
     case CONNACK = 0x20
     case PUBLISH = 0x30
@@ -43,7 +43,7 @@ public enum MQTTPacketType: UInt8, _MQTTSendable {
 }
 
 /// MQTT PUBLISH packet parameters.
-public struct MQTTPublishInfo: _MQTTSendable {
+public struct MQTTPublishInfo: Sendable {
     /// Quality of Service for message.
     public let qos: MQTTQoS
 
@@ -75,7 +75,7 @@ public struct MQTTPublishInfo: _MQTTSendable {
 }
 
 /// MQTT SUBSCRIBE packet parameters.
-public struct MQTTSubscribeInfo: _MQTTSendable {
+public struct MQTTSubscribeInfo: Sendable {
     /// Topic filter to subscribe to.
     public let topicFilter: String
 
@@ -91,8 +91,8 @@ public struct MQTTSubscribeInfo: _MQTTSendable {
 /// MQTT Sub ACK
 ///
 /// Contains data returned in subscribe ack packets
-public struct MQTTSuback: _MQTTSendable {
-    public enum ReturnCode: UInt8, _MQTTSendable {
+public struct MQTTSuback: Sendable {
+    public enum ReturnCode: UInt8, Sendable {
         case grantedQoS0 = 0
         case grantedQoS1 = 1
         case grantedQoS2 = 2
