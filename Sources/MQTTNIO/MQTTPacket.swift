@@ -19,7 +19,7 @@ internal enum InternalError: Swift.Error {
 }
 
 /// Protocol for all MQTT packet types
-protocol MQTTPacket: CustomStringConvertible, _MQTTSendable {
+protocol MQTTPacket: CustomStringConvertible, Sendable {
     /// packet type
     var type: MQTTPacketType { get }
     /// packet id (default to zero if not used)

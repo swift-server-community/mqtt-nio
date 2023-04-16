@@ -17,7 +17,7 @@
 /// Reason codes less than 128 are considered successful. Codes greater than or equal to 128 are considered
 /// a failure. These are returned by CONNACK, PUBACK, PUBREC, PUBREL, PUBCOMP, DISCONNECT and
 /// AUTH packets
-public enum MQTTReasonCode: UInt8, _MQTTSendable {
+public enum MQTTReasonCode: UInt8, Sendable {
     /// Success (available for all). For SUBACK mean QoS0 is available
     case success = 0
     /// The subscription is accepted and the maximum QoS sent will be QoS 1. This might be a lower QoS than was requested.
