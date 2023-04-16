@@ -72,7 +72,7 @@ extension MQTTClient {
     ///     - qos: Quality of Service for message.
     ///     - retain: Whether this is a retained message.
     public func publish(to topicName: String, payload: ByteBuffer, qos: MQTTQoS, retain: Bool = false) async throws {
-        return try await self.publish(to: topicName, payload: payload, qos: qos).get()
+        return try await self.publish(to: topicName, payload: payload, qos: qos, retain: retain).get()
     }
 
     /// Subscribe to topic
