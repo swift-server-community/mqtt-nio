@@ -590,6 +590,46 @@ final class MQTTNIOTests: XCTestCase {
         try client.disconnect().wait()
     }
 
+    func testWebSocketInitialRequest() throws {
+        let el = EmbeddedEventLoop()
+        defer { XCTAssertNoThrow(try el.syncShutdownGracefully()) }
+        let promise = el.makePromise(of: Void.self)
+        let initialRequestHandler = WebSocketInitialRequestHandler(
+            host: "test.mosquitto.org",
+            urlPath: "/mqtt",
+            additionalHeaders: ["Test": "Value"],
+            upgradePromise: promise
+        )
+        let channel = EmbeddedChannel(handler: initialRequestHandler, loop: el)
+        try channel.connect(to: SocketAddress(ipAddress: "127.0.0.1", port: 0)).wait()
+        let requestHead = try channel.readOutbound(as: HTTPClientRequestPart.self)
+        let requestBody = try channel.readOutbound(as: HTTPClientRequestPart.self)
+        let requestEnd = try channel.readOutbound(as: HTTPClientRequestPart.self)
+        switch requestHead {
+        case .head(let head):
+            XCTAssertEqual(head.uri, "/mqtt")
+            XCTAssertEqual(head.headers["host"].first, "test.mosquitto.org")
+            XCTAssertEqual(head.headers["Sec-WebSocket-Protocol"].first, "mqtt")
+            XCTAssertEqual(head.headers["Test"].first, "Value")
+        default:
+            XCTFail("Did not expect \(String(describing: requestHead))")
+        }
+        switch requestBody {
+        case .body(let data):
+            XCTAssertEqual(data, .byteBuffer(ByteBuffer()))
+        default:
+            XCTFail("Did not expect \(String(describing: requestBody))")
+        }
+        switch requestEnd {
+        case .end(nil):
+            break
+        default:
+            XCTFail("Did not expect \(String(describing: requestEnd))")
+        }
+        _ = try channel.finish()
+        promise.succeed()
+    }
+
     // MARK: Helper variables and functions
 
     func createClient(identifier: String, configuration: MQTTClient.Configuration = .init()) -> MQTTClient {
