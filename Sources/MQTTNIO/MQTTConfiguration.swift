@@ -12,6 +12,7 @@
 //===----------------------------------------------------------------------===//
 
 import NIO
+import NIOHTTP1
 #if canImport(NIOSSL)
 import NIOSSL
 #endif
@@ -38,6 +39,30 @@ extension MQTTClient {
         /// NIO Transport Serviecs TLS configuration
         case ts(TSTLSConfiguration)
         #endif
+    }
+
+    public struct WebSocketConfiguration {
+        /// Initialize MQTTClient WebSocket configuration struct
+        /// - Parameters:
+        ///   - urlPath: WebSocket URL, defaults to "/mqtt"
+        ///   - maxFrameSize: Max frame size WebSocket client will allow
+        ///   - additionalHeaders: Additional headers to add to initial HTTP request
+        public init(
+            urlPath: String,
+            maxFrameSize: Int = 1 << 14,
+            additionalHeaders: HTTPHeaders = [:]
+        ) {
+            self.urlPath = urlPath
+            self.maxFrameSize = maxFrameSize
+            self.additionalHeaders = additionalHeaders
+        }
+
+        /// WebSocket URL, defaults to "/mqtt"
+        public let urlPath: String
+        /// Max frame size WebSocket client will allow
+        public let maxFrameSize: Int
+        /// Additional headers to add to initial HTTP request
+        public let additionalHeaders: HTTPHeaders
     }
 
     /// Configuration for MQTTClient
@@ -83,11 +108,55 @@ extension MQTTClient {
             self.userName = userName
             self.password = password
             self.useSSL = useSSL
-            self.useWebSockets = useWebSockets
             self.tlsConfiguration = tlsConfiguration
             self.sniServerName = sniServerName
-            self.webSocketURLPath = webSocketURLPath
-            self.webSocketMaxFrameSize = webSocketMaxFrameSize
+            if useWebSockets {
+                self.webSocketConfiguration = .init(urlPath: webSocketURLPath ?? "/mqtt", maxFrameSize: webSocketMaxFrameSize)
+            } else {
+                self.webSocketConfiguration = nil
+            }
+        }
+
+        /// Initialize MQTTClient configuration struct
+        /// - Parameters:
+        ///   - version: Version of MQTT server client is connecting to
+        ///   - disablePing: Disable the automatic sending of pingreq messages
+        ///   - keepAliveInterval: MQTT keep alive period.
+        ///   - pingInterval: Override calculated interval between each pingreq message
+        ///   - connectTimeout: Timeout for connecting to server
+        ///   - timeout: Timeout for server ACK responses
+        ///   - userName: MQTT user name
+        ///   - password: MQTT password
+        ///   - useSSL: Use encrypted connection to server
+        ///   - tlsConfiguration: TLS configuration, for SSL connection
+        ///   - sniServerName: Server name used by TLS. This will default to host name if not set
+        ///   - webSocketConfiguration: Set this if you want to use WebSockets
+        public init(
+            version: Version = .v3_1_1,
+            disablePing: Bool = false,
+            keepAliveInterval: TimeAmount = .seconds(90),
+            pingInterval: TimeAmount? = nil,
+            connectTimeout: TimeAmount = .seconds(10),
+            timeout: TimeAmount? = nil,
+            userName: String? = nil,
+            password: String? = nil,
+            useSSL: Bool = false,
+            tlsConfiguration: TLSConfigurationType? = nil,
+            sniServerName: String? = nil,
+            webSocketConfiguration: WebSocketConfiguration? = nil
+        ) {
+            self.version = version
+            self.disablePing = disablePing
+            self.keepAliveInterval = keepAliveInterval
+            self.pingInterval = pingInterval
+            self.connectTimeout = connectTimeout
+            self.timeout = timeout
+            self.userName = userName
+            self.password = password
+            self.useSSL = useSSL
+            self.tlsConfiguration = tlsConfiguration
+            self.sniServerName = sniServerName
+            self.webSocketConfiguration = webSocketConfiguration
         }
 
         /// Initialize MQTTClient configuration struct
@@ -135,11 +204,28 @@ extension MQTTClient {
             self.userName = userName
             self.password = password
             self.useSSL = useSSL
-            self.useWebSockets = useWebSockets
             self.tlsConfiguration = tlsConfiguration
             self.sniServerName = sniServerName
-            self.webSocketURLPath = webSocketURLPath
-            self.webSocketMaxFrameSize = webSocketMaxFrameSize
+            if useWebSockets {
+                self.webSocketConfiguration = .init(urlPath: webSocketURLPath ?? "/mqtt", maxFrameSize: webSocketMaxFrameSize)
+            } else {
+                self.webSocketConfiguration = nil
+            }
+        }
+
+        /// use a websocket connection to server
+        public var useWebSockets: Bool {
+            self.webSocketConfiguration != nil
+        }
+
+        /// URL Path for web socket. Defaults to "/mqtt"
+        public var webSocketURLPath: String? {
+            self.webSocketConfiguration?.urlPath
+        }
+
+        /// Maximum frame size for a web socket connection
+        public var webSocketMaxFrameSize: Int {
+            self.webSocketConfiguration?.maxFrameSize ?? 1 << 14
         }
 
         /// Version of MQTT server client is connecting to
@@ -160,15 +246,11 @@ extension MQTTClient {
         public let password: String?
         /// use encrypted connection to server
         public let useSSL: Bool
-        /// use a websocket connection to server
-        public let useWebSockets: Bool
         /// TLS configuration
         public let tlsConfiguration: TLSConfigurationType?
         /// server name used by TLS
         public let sniServerName: String?
-        /// URL Path for web socket. Defaults to "/mqtt"
-        public let webSocketURLPath: String?
-        /// Maximum frame size for a web socket connection
-        public let webSocketMaxFrameSize: Int
+        /// WebSocket configuration
+        public let webSocketConfiguration: WebSocketConfiguration?
     }
 }

@@ -595,6 +595,7 @@ final class MQTTNIOTests: XCTestCase {
     func createClient(identifier: String, configuration: MQTTClient.Configuration = .init()) -> MQTTClient {
         MQTTClient(
             host: Self.hostname,
+            port: 1883,
             identifier: identifier,
             eventLoopGroupProvider: .createNew,
             logger: self.logger,
@@ -640,13 +641,11 @@ final class MQTTNIOTests: XCTestCase {
         return logger
     }()
 
-    static var rootPath: String = {
-        return #file
-            .split(separator: "/", omittingEmptySubsequences: false)
-            .dropLast(3)
-            .map { String(describing: $0) }
-            .joined(separator: "/")
-    }()
+    static var rootPath: String = #file
+        .split(separator: "/", omittingEmptySubsequences: false)
+        .dropLast(3)
+        .map { String(describing: $0) }
+        .joined(separator: "/")
 
     static var _tlsConfiguration: Result<MQTTClient.TLSConfigurationType, Error> = {
         do {

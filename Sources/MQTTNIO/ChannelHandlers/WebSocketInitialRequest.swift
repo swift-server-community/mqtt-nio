@@ -23,12 +23,14 @@ final class WebSocketInitialRequestHandler: ChannelInboundHandler, RemovableChan
 
     let host: String
     let urlPath: String
+    let additionalHeaders: HTTPHeaders
     let upgradePromise: EventLoopPromise<Void>
 
-    init(host: String, urlPath: String, upgradePromise: EventLoopPromise<Void>) {
+    init(host: String, urlPath: String, additionalHeaders: HTTPHeaders, upgradePromise: EventLoopPromise<Void>) {
         self.host = host
-        self.upgradePromise = upgradePromise
         self.urlPath = urlPath
+        self.additionalHeaders = additionalHeaders
+        self.upgradePromise = upgradePromise
     }
 
     public func channelActive(context: ChannelHandlerContext) {
@@ -37,6 +39,7 @@ final class WebSocketInitialRequestHandler: ChannelInboundHandler, RemovableChan
         headers.add(name: "Content-Length", value: "0")
         headers.add(name: "host", value: self.host)
         headers.add(name: "Sec-WebSocket-Protocol", value: "mqttv3.1")
+        headers.add(contentsOf: self.additionalHeaders)
 
         let requestHead = HTTPRequestHead(
             version: HTTPVersion(major: 1, minor: 1),

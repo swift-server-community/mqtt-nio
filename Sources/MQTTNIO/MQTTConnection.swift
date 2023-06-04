@@ -57,13 +57,18 @@ final class MQTTConnection {
                         taskHandler,
                     ]
                     // are we using websockets
-                    if client.configuration.useWebSockets {
+                    if let webSocketConfiguration = client.configuration.webSocketConfiguration {
                         // prepare for websockets and on upgrade add handlers
                         let promise = eventLoop.makePromise(of: Void.self)
                         promise.futureResult.map { _ in channel }
                             .cascade(to: channelPromise)
 
-                        return Self.setupChannelForWebsockets(client: client, channel: channel, upgradePromise: promise) {
+                        return Self.setupChannelForWebsockets(
+                            client: client,
+                            channel: channel,
+                            webSocketConfiguration: webSocketConfiguration,
+                            upgradePromise: promise
+                        ) {
                             return channel.pipeline.addHandlers(handlers)
                         }
                     } else {
@@ -140,13 +145,15 @@ final class MQTTConnection {
     static func setupChannelForWebsockets(
         client: MQTTClient,
         channel: Channel,
+        webSocketConfiguration: MQTTClient.WebSocketConfiguration,
         upgradePromise promise: EventLoopPromise<Void>,
         afterHandlerAdded: @escaping () -> EventLoopFuture<Void>
     ) -> EventLoopFuture<Void> {
         // initial HTTP request handler, before upgrade
         let httpHandler = WebSocketInitialRequestHandler(
             host: client.configuration.sniServerName ?? client.hostHeader,
-            urlPath: client.configuration.webSocketURLPath ?? "/mqtt",
+            urlPath: webSocketConfiguration.urlPath,
+            additionalHeaders: webSocketConfiguration.additionalHeaders,
             upgradePromise: promise
         )
         // create random key for request key
