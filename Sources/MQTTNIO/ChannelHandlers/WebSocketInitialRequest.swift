@@ -38,7 +38,7 @@ final class WebSocketInitialRequestHandler: ChannelInboundHandler, RemovableChan
         var headers = HTTPHeaders()
         headers.add(name: "Content-Length", value: "0")
         headers.add(name: "host", value: self.host)
-        headers.add(name: "Sec-WebSocket-Protocol", value: "mqttv3.1")
+        headers.add(name: "Sec-WebSocket-Protocol", value: "mqtt")
         headers.add(contentsOf: self.additionalHeaders)
 
         let requestHead = HTTPRequestHead(
