@@ -78,6 +78,48 @@ extension MQTTClient {
         ///   - userName: MQTT user name
         ///   - password: MQTT password
         ///   - useSSL: Use encrypted connection to server
+        ///   - tlsConfiguration: TLS configuration, for SSL connection
+        ///   - sniServerName: Server name used by TLS. This will default to host name if not set
+        ///   - webSocketConfiguration: Set this if you want to use WebSockets
+        public init(
+            version: Version = .v3_1_1,
+            disablePing: Bool = false,
+            keepAliveInterval: TimeAmount = .seconds(90),
+            pingInterval: TimeAmount? = nil,
+            connectTimeout: TimeAmount = .seconds(10),
+            timeout: TimeAmount? = nil,
+            userName: String? = nil,
+            password: String? = nil,
+            useSSL: Bool = false,
+            tlsConfiguration: TLSConfigurationType? = nil,
+            sniServerName: String? = nil,
+            webSocketConfiguration: WebSocketConfiguration
+        ) {
+            self.version = version
+            self.disablePing = disablePing
+            self.keepAliveInterval = keepAliveInterval
+            self.pingInterval = pingInterval
+            self.connectTimeout = connectTimeout
+            self.timeout = timeout
+            self.userName = userName
+            self.password = password
+            self.useSSL = useSSL
+            self.tlsConfiguration = tlsConfiguration
+            self.sniServerName = sniServerName
+            self.webSocketConfiguration = webSocketConfiguration
+        }
+
+        /// Initialize MQTTClient configuration struct
+        /// - Parameters:
+        ///   - version: Version of MQTT server client is connecting to
+        ///   - disablePing: Disable the automatic sending of pingreq messages
+        ///   - keepAliveInterval: MQTT keep alive period.
+        ///   - pingInterval: Override calculated interval between each pingreq message
+        ///   - connectTimeout: Timeout for connecting to server
+        ///   - timeout: Timeout for server ACK responses
+        ///   - userName: MQTT user name
+        ///   - password: MQTT password
+        ///   - useSSL: Use encrypted connection to server
         ///   - useWebSockets: Use a websocket connection to server
         ///   - tlsConfiguration: TLS configuration, for SSL connection
         ///   - sniServerName: Server name used by TLS. This will default to host name if not set
@@ -125,48 +167,6 @@ extension MQTTClient {
         ///   - pingInterval: Override calculated interval between each pingreq message
         ///   - connectTimeout: Timeout for connecting to server
         ///   - timeout: Timeout for server ACK responses
-        ///   - userName: MQTT user name
-        ///   - password: MQTT password
-        ///   - useSSL: Use encrypted connection to server
-        ///   - tlsConfiguration: TLS configuration, for SSL connection
-        ///   - sniServerName: Server name used by TLS. This will default to host name if not set
-        ///   - webSocketConfiguration: Set this if you want to use WebSockets
-        public init(
-            version: Version = .v3_1_1,
-            disablePing: Bool = false,
-            keepAliveInterval: TimeAmount = .seconds(90),
-            pingInterval: TimeAmount? = nil,
-            connectTimeout: TimeAmount = .seconds(10),
-            timeout: TimeAmount? = nil,
-            userName: String? = nil,
-            password: String? = nil,
-            useSSL: Bool = false,
-            tlsConfiguration: TLSConfigurationType? = nil,
-            sniServerName: String? = nil,
-            webSocketConfiguration: WebSocketConfiguration? = nil
-        ) {
-            self.version = version
-            self.disablePing = disablePing
-            self.keepAliveInterval = keepAliveInterval
-            self.pingInterval = pingInterval
-            self.connectTimeout = connectTimeout
-            self.timeout = timeout
-            self.userName = userName
-            self.password = password
-            self.useSSL = useSSL
-            self.tlsConfiguration = tlsConfiguration
-            self.sniServerName = sniServerName
-            self.webSocketConfiguration = webSocketConfiguration
-        }
-
-        /// Initialize MQTTClient configuration struct
-        /// - Parameters:
-        ///   - version: Version of MQTT server client is connecting to
-        ///   - disablePing: Disable the automatic sending of pingreq messages
-        ///   - keepAliveInterval: MQTT keep alive period.
-        ///   - pingInterval: Override calculated interval between each pingreq message
-        ///   - connectTimeout: Timeout for connecting to server
-        ///   - timeout: Timeout for server ACK responses
         ///   - maxRetryAttempts: Max number of times to send a message. This is deprecated
         ///   - userName: MQTT user name
         ///   - password: MQTT password
@@ -176,7 +176,6 @@ extension MQTTClient {
         ///   - sniServerName: Server name used by TLS. This will default to host name if not set
         ///   - webSocketURLPath: URL Path for web socket. Defaults to "/mqtt"
         ///   - webSocketMaxFrameSize: Maximum frame size for a web socket connection
-        ///
         @available(*, deprecated, message: "maxRetryAttempts is no longer used")
         public init(
             version: Version = .v3_1_1,
