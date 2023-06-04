@@ -504,7 +504,7 @@ internal extension MQTTClient {
     }
 
     func processConnack(_ connack: MQTTConnAckPacket) throws -> MQTTConnAckPacket {
-        // connack doesn't return a packet id so this is alway 32767. Need a better way to choose first packet id
+        // connack doesn't return a packet id so this is always 32767. Need a better way to choose first packet id
         self.globalPacketId.store(connack.packetId + 32767, ordering: .relaxed)
         switch self.configuration.version {
         case .v3_1_1:
