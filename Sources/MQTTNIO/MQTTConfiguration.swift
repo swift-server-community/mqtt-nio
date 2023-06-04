@@ -46,15 +46,15 @@ extension MQTTClient {
         /// - Parameters:
         ///   - urlPath: WebSocket URL, defaults to "/mqtt"
         ///   - maxFrameSize: Max frame size WebSocket client will allow
-        ///   - additionalHeaders: Additional headers to add to initial HTTP request
+        ///   - initialRequestHeaders: Additional headers to add to initial HTTP request
         public init(
             urlPath: String,
             maxFrameSize: Int = 1 << 14,
-            additionalHeaders: HTTPHeaders = [:]
+            initialRequestHeaders: HTTPHeaders = [:]
         ) {
             self.urlPath = urlPath
             self.maxFrameSize = maxFrameSize
-            self.additionalHeaders = additionalHeaders
+            self.initialRequestHeaders = initialRequestHeaders
         }
 
         /// WebSocket URL, defaults to "/mqtt"
@@ -62,7 +62,7 @@ extension MQTTClient {
         /// Max frame size WebSocket client will allow
         public let maxFrameSize: Int
         /// Additional headers to add to initial HTTP request
-        public let additionalHeaders: HTTPHeaders
+        public let initialRequestHeaders: HTTPHeaders
     }
 
     /// Configuration for MQTTClient

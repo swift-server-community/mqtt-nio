@@ -153,7 +153,7 @@ final class MQTTConnection {
         let httpHandler = WebSocketInitialRequestHandler(
             host: client.configuration.sniServerName ?? client.hostHeader,
             urlPath: webSocketConfiguration.urlPath,
-            additionalHeaders: webSocketConfiguration.additionalHeaders,
+            additionalHeaders: webSocketConfiguration.initialRequestHeaders,
             upgradePromise: promise
         )
         // create random key for request key
