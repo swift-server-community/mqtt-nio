@@ -610,7 +610,7 @@ final class MQTTNIOTests: XCTestCase {
             identifier: identifier,
             eventLoopGroupProvider: .createNew,
             logger: self.logger,
-            configuration: .init(useWebSockets: true, webSocketURLPath: "/mqtt")
+            configuration: .init(webSocketConfiguration: .init(urlPath: "/mqtt"))
         )
     }
 
@@ -631,7 +631,13 @@ final class MQTTNIOTests: XCTestCase {
             identifier: identifier,
             eventLoopGroupProvider: .createNew,
             logger: self.logger,
-            configuration: .init(timeout: .seconds(5), useSSL: true, useWebSockets: true, tlsConfiguration: Self.getTLSConfiguration(), sniServerName: "soto.codes", webSocketURLPath: "/mqtt")
+            configuration: .init(
+                timeout: .seconds(5),
+                useSSL: true,
+                tlsConfiguration: Self.getTLSConfiguration(),
+                sniServerName: "soto.codes",
+                webSocketConfiguration: .init(urlPath: "/mqtt")
+            )
         )
     }
 
