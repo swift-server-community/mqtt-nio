@@ -27,7 +27,7 @@ let client = MQTTClient(
     host: host,
     identifier: "MyAWSClient",
     eventLoopGroupProvider: .createNew,
-    configuration: .init(useSSL: true, useWebSockets: true, webSocketURLPath: requestUri)
+    configuration: .init(useSSL: true, webSocketConfiguration: .init(urlPath: requestUri))
 )
 ```
 You can find out more about connecting to AWS brokers [here](https://docs.aws.amazon.com/iot/latest/developerguide/protocols.html)

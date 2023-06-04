@@ -590,11 +590,52 @@ final class MQTTNIOTests: XCTestCase {
         try client.disconnect().wait()
     }
 
+    func testWebSocketInitialRequest() throws {
+        let el = EmbeddedEventLoop()
+        defer { XCTAssertNoThrow(try el.syncShutdownGracefully()) }
+        let promise = el.makePromise(of: Void.self)
+        let initialRequestHandler = WebSocketInitialRequestHandler(
+            host: "test.mosquitto.org",
+            urlPath: "/mqtt",
+            additionalHeaders: ["Test": "Value"],
+            upgradePromise: promise
+        )
+        let channel = EmbeddedChannel(handler: initialRequestHandler, loop: el)
+        try channel.connect(to: SocketAddress(ipAddress: "127.0.0.1", port: 0)).wait()
+        let requestHead = try channel.readOutbound(as: HTTPClientRequestPart.self)
+        let requestBody = try channel.readOutbound(as: HTTPClientRequestPart.self)
+        let requestEnd = try channel.readOutbound(as: HTTPClientRequestPart.self)
+        switch requestHead {
+        case .head(let head):
+            XCTAssertEqual(head.uri, "/mqtt")
+            XCTAssertEqual(head.headers["host"].first, "test.mosquitto.org")
+            XCTAssertEqual(head.headers["Sec-WebSocket-Protocol"].first, "mqtt")
+            XCTAssertEqual(head.headers["Test"].first, "Value")
+        default:
+            XCTFail("Did not expect \(String(describing: requestHead))")
+        }
+        switch requestBody {
+        case .body(let data):
+            XCTAssertEqual(data, .byteBuffer(ByteBuffer()))
+        default:
+            XCTFail("Did not expect \(String(describing: requestBody))")
+        }
+        switch requestEnd {
+        case .end(nil):
+            break
+        default:
+            XCTFail("Did not expect \(String(describing: requestEnd))")
+        }
+        _ = try channel.finish()
+        promise.succeed()
+    }
+
     // MARK: Helper variables and functions
 
     func createClient(identifier: String, configuration: MQTTClient.Configuration = .init()) -> MQTTClient {
         MQTTClient(
             host: Self.hostname,
+            port: 1883,
             identifier: identifier,
             eventLoopGroupProvider: .createNew,
             logger: self.logger,
@@ -609,7 +650,7 @@ final class MQTTNIOTests: XCTestCase {
             identifier: identifier,
             eventLoopGroupProvider: .createNew,
             logger: self.logger,
-            configuration: .init(useWebSockets: true, webSocketURLPath: "/mqtt")
+            configuration: .init(webSocketConfiguration: .init(urlPath: "/mqtt"))
         )
     }
 
@@ -630,7 +671,13 @@ final class MQTTNIOTests: XCTestCase {
             identifier: identifier,
             eventLoopGroupProvider: .createNew,
             logger: self.logger,
-            configuration: .init(timeout: .seconds(5), useSSL: true, useWebSockets: true, tlsConfiguration: Self.getTLSConfiguration(), sniServerName: "soto.codes", webSocketURLPath: "/mqtt")
+            configuration: .init(
+                timeout: .seconds(5),
+                useSSL: true,
+                tlsConfiguration: Self.getTLSConfiguration(),
+                sniServerName: "soto.codes",
+                webSocketConfiguration: .init(urlPath: "/mqtt")
+            )
         )
     }
 
@@ -640,13 +687,11 @@ final class MQTTNIOTests: XCTestCase {
         return logger
     }()
 
-    static var rootPath: String = {
-        return #file
-            .split(separator: "/", omittingEmptySubsequences: false)
-            .dropLast(3)
-            .map { String(describing: $0) }
-            .joined(separator: "/")
-    }()
+    static var rootPath: String = #file
+        .split(separator: "/", omittingEmptySubsequences: false)
+        .dropLast(3)
+        .map { String(describing: $0) }
+        .joined(separator: "/")
 
     static var _tlsConfiguration: Result<MQTTClient.TLSConfigurationType, Error> = {
         do {

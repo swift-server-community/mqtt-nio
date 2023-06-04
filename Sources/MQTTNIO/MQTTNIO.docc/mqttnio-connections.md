@@ -26,7 +26,7 @@ let client = MQTTClient(
 
 ## WebSockets
 
-MQTT also supports Web Socket connections. Set `Configuration.useWebSockets` to `true` and set the URL path in `Configuration.webSocketsURLPath` to enable these.
+MQTT also supports Web Socket connections. Provide a `WebSocketConfiguration` when initializing `MQTTClient.Configuration` to enable this.
 
 ## NIO Transport Services
 

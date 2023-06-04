@@ -57,12 +57,12 @@ public final class MQTTClient {
     var connection: MQTTConnection? {
         get {
             self.lock.withLock {
-                _connection
+                self._connection
             }
         }
         set {
             self.lock.withLock {
-                _connection = newValue
+                self._connection = newValue
             }
         }
     }
@@ -480,7 +480,7 @@ internal extension MQTTClient {
     func resendOnRestart() {
         let inflight = self.inflight.packets
         self.inflight.clear()
-        inflight.forEach { packet -> Void in
+        inflight.forEach { packet in
             switch packet {
             case let publish as MQTTPublishPacket:
                 let newPacket = MQTTPublishPacket(
