@@ -1,8 +1,11 @@
 #!/bin/bash
 
-CONTAINER_ID=$(docker container ls | grep eclipse-mosquitto | awk {'print $1'})
-COMMAND=$1
-HOME=$(dirname $0)
+set -ex
+
+CONTAINER_ID="$(docker container ls | grep eclipse-mosquitto | awk {'print $1'})"
+COMMAND="$1"
+SCRIPTS=$(dirname $0)
+ROOT=$(dirname $SCRIPTS)
 
 usage()
 {
@@ -19,8 +22,8 @@ run()
             -p 8883:8883 \
             -p 8080:8080 \
             -p 8081:8081 \
-            -v $(pwd)/$HOME/../mosquitto/config:/mosquitto/config \
-            -v $(pwd)/$HOME/../mosquitto/certs:/mosquitto/certs \
+            -v $(pwd)/$ROOT/mosquitto/config:/mosquitto/config \
+            -v $(pwd)/$ROOT/mosquitto/certs:/mosquitto/certs \
             eclipse-mosquitto
     else
         echo "Mosquitto is already running"
