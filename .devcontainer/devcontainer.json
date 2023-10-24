@@ -1,5 +1,5 @@
 {
-    "name": "MQTT Swift 5.6",
+    "name": "MQTT Swift",
     "dockerComposeFile": "docker-compose.yml",
     "service": "app",
     "workspaceFolder": "/workspace",

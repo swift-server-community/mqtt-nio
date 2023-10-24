@@ -3,7 +3,7 @@ version: "3.3"
 
 services:
   test:
-    image: swift:5.5
+    image: swift:5.9
     working_dir: /mqtt-nio
     volumes:
       - .:/mqtt-nio

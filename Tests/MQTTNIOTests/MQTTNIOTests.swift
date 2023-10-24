@@ -664,7 +664,7 @@ final class MQTTNIOTests: XCTestCase {
             XCTFail("Did not expect \(String(describing: requestEnd))")
         }
         _ = try channel.finish()
-        promise.succeed()
+        promise.succeed(())
     }
 
     // MARK: Helper variables and functions
