@@ -82,11 +82,7 @@ public final class MQTTClient {
     /// flag to tell is client is shutdown
     private let isShutdown = ManagedAtomic(false)
 
-    #if swift(>=5.6)
     typealias ShutdownCallback = @Sendable (Error?) -> Void
-    #else
-    typealias ShutdownCallback = (Error?) -> Void
-    #endif
 
     /// Create MQTT client
     /// - Parameters:
