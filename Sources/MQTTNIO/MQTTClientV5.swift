@@ -20,9 +20,11 @@ extension MQTTClient {
 
         /// Connect to MQTT server
         ///
-        /// If `cleanStart` is set to false the Server MUST resume communications with the Client based on state from the current Session (as identified by the Client identifier).
-        /// If there is no Session associated with the Client identifier the Server MUST create a new Session. The Client and Server MUST store the Session
-        /// after the Client and Server are disconnected. If set to true then the Client and Server MUST discard any previous Session and start a new one
+        /// If `cleanStart` is set to false the Server MUST resume communications with the Client based on
+        /// state from the current Session (as identified by the Client identifier). If there is no Session
+        /// associated with the Client identifier the Server MUST create a new Session. The Client and Server
+        /// MUST store the Session after the Client and Server are disconnected. If set to true then the
+        /// Client and Server MUST discard any previous Session and start a new one
         ///
         /// The function returns an EventLoopFuture which will be updated with whether the server has restored a session for this client.
         ///
@@ -38,6 +40,39 @@ extension MQTTClient {
             will: (topicName: String, payload: ByteBuffer, qos: MQTTQoS, retain: Bool, properties: MQTTProperties)? = nil,
             authWorkflow: ((MQTTAuthV5, EventLoop) -> EventLoopFuture<MQTTAuthV5>)? = nil
         ) -> EventLoopFuture<MQTTConnackV5> {
+            self.connect(
+                cleanStart: cleanStart,
+                properties: properties,
+                will: will,
+                authWorkflow: authWorkflow,
+                connectConfiguration: .init()
+            )
+        }
+
+        /// Connect to MQTT server
+        ///
+        /// If `cleanStart` is set to false the Server MUST resume communications with the Client based on
+        /// state from the current Session (as identified by the Client identifier). If there is no Session
+        /// associated with the Client identifier the Server MUST create a new Session. The Client and Server
+        /// MUST store the Session after the Client and Server are disconnected. If set to true then the
+        /// Client and Server MUST discard any previous Session and start a new one
+        ///
+        /// The function returns an EventLoopFuture which will be updated with whether the server has restored a session for this client.
+        ///
+        /// - Parameters:
+        ///   - cleanStart: should we start with a new session
+        ///   - properties: properties to attach to connect message
+        ///   - will: Publish message to be posted as soon as connection is made
+        ///   - authWorkflow: The authentication workflow. This is currently unimplemented.
+        ///   - connectConfiguration: Override client configuration during connection
+        /// - Returns: EventLoopFuture to be updated with connack
+        public func connect(
+            cleanStart: Bool = true,
+            properties: MQTTProperties = .init(),
+            will: (topicName: String, payload: ByteBuffer, qos: MQTTQoS, retain: Bool, properties: MQTTProperties)? = nil,
+            authWorkflow: ((MQTTAuthV5, EventLoop) -> EventLoopFuture<MQTTAuthV5>)? = nil,
+            connectConfiguration: ConnectConfiguration
+        ) -> EventLoopFuture<MQTTConnackV5> {
             let publish = will.map {
                 MQTTPublishInfo(
                     qos: .atMostOnce,
@@ -48,17 +83,18 @@ extension MQTTClient {
                     properties: $0.properties
                 )
             }
+            let keepAliveInterval = connectConfiguration.keepAliveInterval ?? self.client.configuration.keepAliveInterval
             let packet = MQTTConnectPacket(
                 cleanSession: cleanStart,
-                keepAliveSeconds: UInt16(client.configuration.keepAliveInterval.nanoseconds / 1_000_000_000),
+                keepAliveSeconds: UInt16(keepAliveInterval.nanoseconds / 1_000_000_000),
                 clientIdentifier: self.client.identifier,
-                userName: self.client.configuration.userName,
-                password: self.client.configuration.password,
+                userName: connectConfiguration.userName ?? self.client.configuration.userName,
+                password: connectConfiguration.password ?? self.client.configuration.password,
                 properties: properties,
                 will: publish
             )
 
-            return self.client.connect(packet: packet).map {
+            return self.client.connect(packet: packet, authWorkflow: authWorkflow).map {
                 .init(
                     sessionPresent: $0.sessionPresent,
                     reason: MQTTReasonCode(rawValue: $0.returnCode) ?? .unrecognisedReason,
@@ -152,7 +188,7 @@ extension MQTTClient {
                     return eventLoop.makeSucceededFuture(auth)
                 }
                 guard let authWorkflow = authWorkflow else { return eventLoop.makeFailedFuture(MQTTError.authWorkflowRequired) }
-                return client.processAuth(authPacket, authWorkflow: authWorkflow, on: eventLoop)
+                return self.client.processAuth(authPacket, authWorkflow: authWorkflow, on: eventLoop)
             }
             .flatMapThrowing { response -> MQTTAuthV5 in
                 guard let auth = response as? MQTTAuthPacket else { throw MQTTError.unexpectedMessage }

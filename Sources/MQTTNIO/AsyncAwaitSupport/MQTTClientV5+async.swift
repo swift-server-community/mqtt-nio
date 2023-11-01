@@ -18,9 +18,11 @@ import NIOCore
 extension MQTTClient.V5 {
     /// Connect to MQTT server
     ///
-    /// If `cleanStart` is set to false the Server MUST resume communications with the Client based on state from the current Session (as identified by the Client identifier).
-    /// If there is no Session associated with the Client identifier the Server MUST create a new Session. The Client and Server MUST store the Session
-    /// after the Client and Server are disconnected. If set to true then the Client and Server MUST discard any previous Session and start a new one
+    /// If `cleanStart` is set to false the Server MUST resume communications with the Client based on
+    /// state from the current Session (as identified by the Client identifier). If there is no Session
+    /// associated with the Client identifier the Server MUST create a new Session. The Client and Server
+    /// MUST store the Session after the Client and Server are disconnected. If set to true then the
+    /// Client and Server MUST discard any previous Session and start a new one
     ///
     /// The function returns an EventLoopFuture which will be updated with whether the server has restored a session for this client.
     ///
@@ -29,7 +31,7 @@ extension MQTTClient.V5 {
     ///   - properties: properties to attach to connect message
     ///   - will: Publish message to be posted as soon as connection is made
     ///   - authWorkflow: The authentication workflow. This is currently unimplemented.
-    /// - Returns: EventLoopFuture to be updated with connack
+    /// - Returns: CONNACK response
     public func connect(
         cleanStart: Bool = true,
         properties: MQTTProperties = .init(),
@@ -37,6 +39,39 @@ extension MQTTClient.V5 {
         authWorkflow: ((MQTTAuthV5, EventLoop) -> EventLoopFuture<MQTTAuthV5>)? = nil
     ) async throws -> MQTTConnackV5 {
         return try await self.connect(cleanStart: cleanStart, properties: properties, will: will, authWorkflow: authWorkflow).get()
+    }
+
+    /// Connect to MQTT server
+    ///
+    /// If `cleanStart` is set to false the Server MUST resume communications with the Client based on
+    /// state from the current Session (as identified by the Client identifier). If there is no Session
+    /// associated with the Client identifier the Server MUST create a new Session. The Client and Server
+    /// MUST store the Session after the Client and Server are disconnected. If set to true then the
+    /// Client and Server MUST discard any previous Session and start a new one
+    ///
+    /// The function returns an EventLoopFuture which will be updated with whether the server has restored a session for this client.
+    ///
+    /// - Parameters:
+    ///   - cleanStart: should we start with a new session
+    ///   - properties: properties to attach to connect message
+    ///   - will: Publish message to be posted as soon as connection is made
+    ///   - authWorkflow: The authentication workflow. This is currently unimplemented.
+    ///   - connectConfiguration: Override client configuration during connection
+    /// - Returns: CONNACK response
+    public func connect(
+        cleanStart: Bool = true,
+        properties: MQTTProperties = .init(),
+        will: (topicName: String, payload: ByteBuffer, qos: MQTTQoS, retain: Bool, properties: MQTTProperties)? = nil,
+        authWorkflow: ((MQTTAuthV5, EventLoop) -> EventLoopFuture<MQTTAuthV5>)? = nil,
+        connectConfiguration: MQTTClient.ConnectConfiguration
+    ) async throws -> MQTTConnackV5 {
+        return try await self.connect(
+            cleanStart: cleanStart,
+            properties: properties,
+            will: will,
+            authWorkflow: authWorkflow,
+            connectConfiguration: connectConfiguration
+        ).get()
     }
 
     /// Publish message to topic
