@@ -252,4 +252,30 @@ extension MQTTClient {
         /// WebSocket configuration
         public let webSocketConfiguration: WebSocketConfiguration?
     }
+
+    /// Configuration used at connection time to override values stored in the MQTTClient.Configuration
+    public struct ConnectConfiguration {
+        /// MQTT user name.
+        public let userName: String?
+        /// MQTT password.
+        public let password: String?
+        /// MQTT keep alive period.
+        public let keepAliveInterval: TimeAmount?
+
+        /// Initialize MQTTClient connect configuration struct
+        ///
+        /// - Parameters:
+        ///   - keepAliveInterval: MQTT keep alive period.
+        ///   - userName: MQTT user name
+        ///   - password: MQTT password
+        public init(
+            keepAliveInterval: TimeAmount? = nil,
+            userName: String? = nil,
+            password: String? = nil
+        ) {
+            self.keepAliveInterval = keepAliveInterval
+            self.userName = userName
+            self.password = password
+        }
+    }
 }
