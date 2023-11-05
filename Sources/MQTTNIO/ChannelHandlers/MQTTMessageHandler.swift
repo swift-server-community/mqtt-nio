@@ -158,4 +158,12 @@ class MQTTMessageHandler: ChannelDuplexHandler {
         guard let connection = client.connection else { return }
         _ = connection.sendMessageNoWait(MQTTPubAckPacket(type: .PUBCOMP, packetId: message.packetId))
     }
+
+    func errorCaught(context: ChannelHandlerContext, error: any Error) {
+        print("Error: \(error)")
+    }
+
+    func userInboundEventTriggered(context: ChannelHandlerContext, event: Any) {
+        print("Event: \(event)")
+    }
 }
