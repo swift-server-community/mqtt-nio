@@ -1,83 +1,61 @@
 #!/bin/bash
 
-set -ex
+# Run mosquitto MQTT broker with configuration needed for the test suite.
+#
+# If mosquitto is installed locally, it will be run. Otherwise, fall back to
+# running a containerized version of mosquitto. The --container/-C option may be
+# supplied to force running a containerized mosquitto.
+#
+# N.B. On MacOS, a native mosquitto executable must be run to connect to
+# mosquitto using a unix domain socket.
 
-CONTAINER_ID="$(docker container ls | grep eclipse-mosquitto | awk {'print $1'})"
-COMMAND="$1"
-SCRIPTS=$(dirname $0)
-ROOT=$(dirname $SCRIPTS)
+set -eu -o pipefail
 
 usage()
 {
-    echo "Usage: mosquitto.sh [start] [stop] [status]"
+    echo "Usage: mosquitto.sh [--container|-C]"
     exit 2
 }
 
-run()
+run-installed-mosquitto()
 {
-    if [ -z "$CONTAINER_ID" ]; then
-        docker run \
-            -p 1883:1883 \
-            -p 1884:1884 \
-            -p 8883:8883 \
-            -p 8080:8080 \
-            -p 8081:8081 \
-            -v $(pwd)/$ROOT/mosquitto/config:/mosquitto/config \
-            -v $(pwd)/$ROOT/mosquitto/certs:/mosquitto/certs \
-            eclipse-mosquitto
-    else
-        echo "Mosquitto is already running"
-    fi
+    mosquitto -c mosquitto/config/mosquitto.conf
 }
 
-start()
+run-containerized-mosquitto()
 {
-    if [ -z "$CONTAINER_ID" ]; then
-        docker run \
-            -d \
-            -p 1883:1883 \
-            -p 1884:1884 \
-            -p 8883:8883 \
-            -p 8080:8080 \
-            -p 8081:8081 \
-            -v $(pwd)/$HOME/../mosquitto/config:/mosquitto/config \
-            -v $(pwd)/$HOME/../mosquitto/certs:/mosquitto/certs \
-            eclipse-mosquitto
-    else
-        echo "Mosquitto is already running"
-    fi
+    docker run \
+        -p 1883:1883 \
+        -p 1884:1884 \
+        -p 8883:8883 \
+        -p 8080:8080 \
+        -p 8081:8081 \
+        -v "$(pwd)"/mosquitto/config:/mosquitto/config \
+        -v "$(pwd)"/mosquitto/certs:/mosquitto/certs \
+        eclipse-mosquitto
 }
 
-stop()
-{
-    if [ -n "$CONTAINER_ID" ]; then
-        echo "Stopping mosquitto"
-        docker container stop "$CONTAINER_ID"
-        docker rm "$CONTAINER_ID"
-    else
-        echo "Mosquitto is already stopped"
-    fi
-}
+USE_CONTAINER=0
 
-status()
-{
-    if [ -n "$CONTAINER_ID" ]; then
-        echo "Mosquitto is running"
-    else
-        echo "Mosquitto is not running"
-    fi
-}
-
-if [ "$COMMAND" == "start" ]; then
-    start
-elif [ "$COMMAND" == "stop" ]; then
-    stop
-elif [ "$COMMAND" == "status" ]; then
-    status
-elif [ -z "$COMMAND" ]; then
-    run
-else
+if [[ $# -gt 1 ]]; then
     usage
-    exit -1
+elif [[ $# -eq 1 ]]; then
+    case "$1" in
+        -C|--container) USE_CONTAINER=1 ;;
+        *) usage ;;
+    esac
 fi
 
+cd "$(dirname "$(dirname "$0")")"
+
+if [[ $USE_CONTAINER -eq 1 ]]; then
+    run-containerized-mosquitto
+elif command -v mosquitto >/dev/null; then
+    run-installed-mosquitto
+else
+    if [ "$(uname)" = "Darwin" ]; then
+        echo "mosquitto can be installed on MacOS with: brew install mosquitto"
+    fi
+    echo "notice: mosquitto not installed; running eclipse-mosquitto container instead..."
+    run-containerized-mosquitto
+fi
