@@ -14,6 +14,7 @@ MQTTNIO is a Swift NIO based implementation of a MQTT client. It supports
 - WebSocket connections
 - Posix sockets
 - Apple's Network framework via [NIOTransportServices](https://github.com/apple/swift-nio-transport-services) (required for iOS).
+- Unix domain sockets
 
 You can find documentation for MQTTNIO
 [here](https://swift-server-community.github.io/mqtt-nio/documentation/mqttnio/). There is also a sample demonstrating the use MQTTNIO in an iOS app found [here](https://github.com/adam-fowler/EmCuTeeTee)

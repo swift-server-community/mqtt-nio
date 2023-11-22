@@ -1,6 +1,6 @@
 # Connections
 
-Support for TLS and WebSockets.
+Support for TLS, WebSockets, and Unix Domain Sockets.
 
 ## TLS
 
@@ -31,3 +31,22 @@ MQTT also supports Web Socket connections. Provide a `WebSocketConfiguration` wh
 ## NIO Transport Services
 
 On macOS and iOS you can use the NIO Transport Services library (NIOTS) and Apple's `Network.framework` for communication with the MQTT broker. If you don't provide an `eventLoopGroup` or a `TLSConfigurationType` then this is the default for both platforms. If you do provide either of these then the library will base it's decision on whether to use NIOTS or NIOSSL on what you provide. Provide a `MultiThreadedEventLoopGroup` or `NIOSSL.TLSConfiguration` and the client will use NIOSSL. Provide a `NIOTSEventLoopGroup` or `TSTLSConfiguration` and the client will use NIOTS. If you provide a `MultiThreadedEventLoopGroup` and a `TSTLSConfiguration` then the client will throw an error. If you are running on iOS you should always choose NIOTS.
+
+## Unix Domain Sockets
+
+MQTT NIO can connect to a local MQTT broker via a Unix Domain Socket. Specifying `port: 0` causes `host` string to be interpreted as a path to a local unix domain socket instead of as a hostname or IP address.
+
+```swift
+let client = MQTTClient(
+    host: "/path/to/broker.socket",
+    port: 0,
+    identifier: "UDSClient",
+    eventLoopGroupProvider: .createNew
+)
+```
+
+Note that mosquitto supports listening on a unix domain socket. This can be enabled by adding a `listener` option to the mosquitto config.
+
+```
+listener 0 /path/to/broker.socket
+```
