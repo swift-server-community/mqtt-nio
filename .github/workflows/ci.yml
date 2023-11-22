@@ -55,19 +55,29 @@ jobs:
     container:
       image: ${{ matrix.tag }}
     services:
-      # need to update docker image if you update the certificates
-      # run `build-docker-ci-image.sh` 
       mosquitto:
-        image: adamfowlerphoto/mqttnio-mosquitto
+        image: eclipse-mosquitto
+        options: --name mosquitto
         ports:
           - 1883:1883
           - 1884:1884
           - 8883:8883
           - 8080:8080
           - 8081:8081
+        volumes:
+          - ${{ github.workspace }}/mosquitto/config:/mosquitto/config
+          - ${{ github.workspace }}/mosquitto/certs:/mosquitto/certs
+
     steps:
     - name: Checkout
       uses: actions/checkout@v2
+    - name: Restart Mosquitto
+      # The mosquitto service container is started *before* mqtt-nio is checked
+      # out. Restarting the container after the checkout step is needed for the
+      # container to see volumes populated from the checked out workspace.
+      uses: docker://docker
+      with:
+        args: docker restart mosquitto
     - name: Test
       env:
         MOSQUITTO_SERVER: mosquitto
