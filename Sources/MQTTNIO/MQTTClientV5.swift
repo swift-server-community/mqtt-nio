@@ -155,7 +155,7 @@ extension MQTTClient {
             properties: MQTTProperties = .init()
         ) -> EventLoopFuture<MQTTSubackV5> {
             let packetId = self.client.updatePacketId()
-            let packet = MQTTUnsubscribePacket(subscriptions: subscriptions, properties: .init(), packetId: packetId)
+            let packet = MQTTUnsubscribePacket(subscriptions: subscriptions, properties: properties, packetId: packetId)
             return self.client.unsubscribe(packet: packet)
                 .map { message in
                     return MQTTSubackV5(reasons: message.reasons, properties: message.properties)
