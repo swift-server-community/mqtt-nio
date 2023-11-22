@@ -1,8 +1,8 @@
 # Minimum swiftformat version
---minversion 0.47.4
+--minversion 0.52.0
 
 # Swift version
---swiftversion 5.1
+--swiftversion 5.7
 
 # file options
 --exclude .build
