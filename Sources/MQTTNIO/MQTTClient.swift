@@ -141,6 +141,30 @@ public final class MQTTClient {
         self.inflight = .init()
     }
 
+    /// Create MQTT client
+    /// - Parameters:
+    ///   - unixSocketPath: Path to unix socket of MQTT broker
+    ///   - identifier: Client identifier. This must be unique
+    ///   - eventLoopGroupProvider: EventLoopGroup to run on
+    ///   - logger: Logger client should use
+    ///   - configuration: Configuration of client
+    public convenience init(
+        unixSocketPath: String,
+        identifier: String,
+        eventLoopGroupProvider: NIOEventLoopGroupProvider,
+        logger: Logger? = nil,
+        configuration: Configuration = Configuration()
+    ) {
+        self.init(
+            host: unixSocketPath,
+            port: 0,
+            identifier: identifier,
+            eventLoopGroupProvider: eventLoopGroupProvider,
+            logger: logger,
+            configuration: configuration
+        )
+    }
+
     deinit {
         guard isShutdown.load(ordering: .relaxed) else {
             preconditionFailure("Client not shut down before the deinit. Please call client.syncShutdownGracefully() when no longer needed.")

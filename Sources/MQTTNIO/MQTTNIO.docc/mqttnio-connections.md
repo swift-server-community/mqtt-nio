@@ -34,16 +34,17 @@ On macOS and iOS you can use the NIO Transport Services library (NIOTS) and Appl
 
 ## Unix Domain Sockets
 
-MQTT NIO can connect to a local MQTT broker via a Unix Domain Socket. Specifying `port: 0` causes `host` string to be interpreted as a path to a local unix domain socket instead of as a hostname or IP address.
+MQTT NIO can connect to a local MQTT broker via a Unix Domain Socket.
 
 ```swift
 let client = MQTTClient(
-    host: "/path/to/broker.socket",
-    port: 0,
+    unixSocketPath: "/path/to/broker.socket",
     identifier: "UDSClient",
     eventLoopGroupProvider: .createNew
 )
 ```
+
+Under the hood, `MQTTClient.port` will be 0 and `MQTTClient.host` will be the specified unix socket path when connecting to a unix socket.
 
 Note that mosquitto supports listening on a unix domain socket. This can be enabled by adding a `listener` option to the mosquitto config.
 

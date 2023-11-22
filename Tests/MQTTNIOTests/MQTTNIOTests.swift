@@ -148,8 +148,7 @@ final class MQTTNIOTests: XCTestCase {
 
     func testUnixDomainConnect() throws {
         let client = MQTTClient(
-            host: MQTTNIOTests.rootPath + "/mosquitto/socket/mosquitto.sock",
-            port: 0,
+            unixSocketPath: MQTTNIOTests.rootPath + "/mosquitto/socket/mosquitto.sock",
             identifier: "testUnixDomainConnect",
             eventLoopGroupProvider: .createNew,
             logger: self.logger,
