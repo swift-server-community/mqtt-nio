@@ -104,7 +104,7 @@ public struct TSTLSConfiguration {
         public static func pem(_ filename: String) throws -> Self {
             let certificates = try NIOSSLCertificate.fromPEMFile(filename)
             let secCertificates = try certificates.map { certificate -> SecCertificate in
-                guard let certificate = SecCertificateCreateWithData(nil, Data(try certificate.toDERBytes()) as CFData) else { throw TSTLSConfiguration.Error.invalidData }
+                guard let certificate = try SecCertificateCreateWithData(nil, Data(certificate.toDERBytes()) as CFData) else { throw TSTLSConfiguration.Error.invalidData }
                 return certificate
             }
             return .init(certificates: secCertificates)
@@ -254,7 +254,7 @@ extension TSTLSConfiguration {
                     }
                     if #available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *) {
                         SecTrustEvaluateAsyncWithError(trust, Self.tlsDispatchQueue) { _, result, error in
-                            if let error = error {
+                            if let error {
                                 print("Trust failed: \(error.localizedDescription)")
                             }
                             sec_protocol_verify_complete(result)

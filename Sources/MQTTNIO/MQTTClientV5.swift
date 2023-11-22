@@ -187,7 +187,7 @@ extension MQTTClient {
                 if auth.reason == .success {
                     return eventLoop.makeSucceededFuture(auth)
                 }
-                guard let authWorkflow = authWorkflow else { return eventLoop.makeFailedFuture(MQTTError.authWorkflowRequired) }
+                guard let authWorkflow else { return eventLoop.makeFailedFuture(MQTTError.authWorkflowRequired) }
                 return self.client.processAuth(authPacket, authWorkflow: authWorkflow, on: eventLoop)
             }
             .flatMapThrowing { response -> MQTTAuthV5 in

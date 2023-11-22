@@ -13,7 +13,7 @@
 
 import NIOCore
 
-internal enum InternalError: Swift.Error {
+enum InternalError: Swift.Error {
     case incompletePacket
     case notImplemented
 }
@@ -99,7 +99,7 @@ struct MQTTConnectPacket: MQTTPacket {
         byteBuffer.writeInteger(version.versionByte)
         // connect flags
         var flags = self.cleanSession ? ConnectFlags.cleanSession : 0
-        if let will = will {
+        if let will {
             flags |= ConnectFlags.willFlag
             flags |= will.retain ? ConnectFlags.willRetain : 0
             flags |= will.qos.rawValue << ConnectFlags.willQoSShift
@@ -116,17 +116,17 @@ struct MQTTConnectPacket: MQTTPacket {
 
         // payload
         try MQTTSerializer.writeString(self.clientIdentifier, to: &byteBuffer)
-        if let will = will {
+        if let will {
             if version == .v5_0 {
                 try will.properties.write(to: &byteBuffer)
             }
             try MQTTSerializer.writeString(will.topicName, to: &byteBuffer)
             try MQTTSerializer.writeBuffer(will.payload, to: &byteBuffer)
         }
-        if let userName = userName {
+        if let userName {
             try MQTTSerializer.writeString(userName, to: &byteBuffer)
         }
-        if let password = password {
+        if let password {
             try MQTTSerializer.writeString(password, to: &byteBuffer)
         }
     }
@@ -149,7 +149,7 @@ struct MQTTConnectPacket: MQTTPacket {
         // client identifier
         size += self.clientIdentifier.utf8.count + 2
         // will publish
-        if let will = will {
+        if let will {
             // properties
             if version == .v5_0 {
                 let propertiesPacketSize = will.properties.packetSize
@@ -161,11 +161,11 @@ struct MQTTConnectPacket: MQTTPacket {
             size += will.payload.readableBytes + 2
         }
         // user name
-        if let userName = userName {
+        if let userName {
             size += userName.utf8.count + 2
         }
         // password
-        if let password = password {
+        if let password {
             size += password.utf8.count + 2
         }
         return size
@@ -370,7 +370,7 @@ struct MQTTPubAckPacket: MQTTPacket {
     let reason: MQTTReasonCode
     let properties: MQTTProperties
 
-    internal init(
+    init(
         type: MQTTPacketType,
         packetId: UInt16,
         reason: MQTTReasonCode = .success,

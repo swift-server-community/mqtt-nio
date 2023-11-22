@@ -74,7 +74,7 @@ public final class MQTTClient {
         return self.host
     }
 
-    internal let globalPacketId = ManagedAtomic<UInt16>(1)
+    let globalPacketId = ManagedAtomic<UInt16>(1)
     /// default logger that logs nothing
     private static let loggingDisabled = Logger(label: "MQTT-do-not-log", factory: { _ in SwiftLogNoOpLogHandler() })
     /// inflight messages
@@ -101,7 +101,7 @@ public final class MQTTClient {
         configuration: Configuration = Configuration()
     ) {
         self.host = host
-        if let port = port {
+        if let port {
             self.port = port
         } else {
             switch (configuration.useSSL, configuration.useWebSockets) {
@@ -190,7 +190,7 @@ public final class MQTTClient {
         var errorStorage: Error?
         let continuation = DispatchWorkItem {}
         self.shutdown(queue: DispatchQueue(label: "mqtt-client.shutdown")) { error in
-            if let error = error {
+            if let error {
                 errorStorageLock.withLock {
                     errorStorage = error
                 }
@@ -334,7 +334,7 @@ public final class MQTTClient {
             will: publish
         )
 
-        return self.connect(packet: packet).map { $0.sessionPresent }
+        return self.connect(packet: packet).map(\.sessionPresent)
     }
 
     /// Publish message to topic
@@ -441,7 +441,7 @@ public final class MQTTClient {
         self.shutdownListeners.removeListener(named: name)
     }
 
-    internal func updatePacketId() -> UInt16 {
+    func updatePacketId() -> UInt16 {
         let id = self.globalPacketId.wrappingIncrementThenLoad(by: 1, ordering: .relaxed)
 
         // packet id must be non-zero
@@ -468,7 +468,7 @@ public final class MQTTClient {
     private var lock = NIOLock()
 }
 
-internal extension MQTTClient {
+extension MQTTClient {
     /// connect to broker
     func connect(
         packet: MQTTConnectPacket,
@@ -513,7 +513,7 @@ internal extension MQTTClient {
                     }
                 case let auth as MQTTAuthPacket:
                     // auth messages require an auth workflow closure
-                    guard let authWorkflow = authWorkflow else { return eventLoop.makeFailedFuture(MQTTError.authWorkflowRequired) }
+                    guard let authWorkflow else { return eventLoop.makeFailedFuture(MQTTError.authWorkflowRequired) }
                     return self.processAuth(auth, authWorkflow: authWorkflow, on: eventLoop)
                         .flatMapThrowing { result -> MQTTConnAckPacket in
                             // once auth workflow is finished we should receive a connack

@@ -23,7 +23,7 @@ final class MQTTTask {
         let promise = eventLoop.makePromise(of: MQTTPacket.self)
         self.promise = promise
         self.checkInbound = checkInbound
-        if let timeout = timeout {
+        if let timeout {
             self.timeoutTask = eventLoop.scheduleTask(in: timeout) {
                 promise.fail(MQTTError.timeout)
             }

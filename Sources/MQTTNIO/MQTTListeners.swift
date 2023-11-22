@@ -28,13 +28,13 @@ final class MQTTListeners<ReturnType> {
 
     func addListener(named name: String, listener: @escaping Listener) {
         self.lock.withLock {
-            listeners[name] = listener
+            self.listeners[name] = listener
         }
     }
 
     func removeListener(named name: String) {
         self.lock.withLock {
-            listeners[name] = nil
+            self.listeners[name] = nil
         }
     }
 
