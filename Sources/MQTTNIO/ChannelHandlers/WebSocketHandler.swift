@@ -107,7 +107,7 @@ final class WebSocketHandler: ChannelDuplexHandler {
 
     /// Send ping and setup task to check for pong and send new ping
     private func sendPingAndWait(context: ChannelHandlerContext) {
-        guard context.channel.isActive, let pingInterval = pingInterval else {
+        guard context.channel.isActive, let pingInterval else {
             return
         }
         if self.waitingOnPong {

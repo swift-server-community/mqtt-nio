@@ -13,21 +13,22 @@
 ##
 ##===----------------------------------------------------------------------===##
 
-SWIFT_VERSION=5.3
-SWIFT_FORMAT_VERSION=0.48.17
+SWIFT_FORMAT_VERSION=0.52.10
 
 set -eu
-here="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
-which swiftformat > /dev/null 2>&1 || (echo "swiftformat not installed. You can install it using 'mint install nicklockwood/swiftformat'" ; exit -1)
+command -v swiftformat >/dev/null || {
+  echo "swiftformat not installed. You can install it using 'mint install nicklockwood/swiftformat'"
+  exit 1
+}
 
 printf "=> Checking format... "
 FIRST_OUT="$(git status --porcelain)"
 if [[ -n "${CI-""}" ]]; then
-  printf "(using v$(mint run NickLockwood/SwiftFormat@$SWIFT_FORMAT_VERSION --version)) "
+  printf "(using v%s) " "$(mint run NickLockwood/SwiftFormat@$SWIFT_FORMAT_VERSION --version)"
   mint run NickLockwood/SwiftFormat@$SWIFT_FORMAT_VERSION . > /dev/null 2>&1
 else
-  printf "(using v$(swiftformat --version)) "
+  printf "(using v%s) " "$(swiftformat --version)"
   swiftformat . > /dev/null 2>&1
 fi
 SECOND_OUT="$(git status --porcelain)"
