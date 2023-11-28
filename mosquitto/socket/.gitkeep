@@ -1,0 +1,7 @@
+A local mosquitto server using `mosquitto/config/mosquitto.conf` will create a `mosquitto.sock` socket in this directory.
+
+If using the `docker-compose.yml` container environment, a shared container volume will be mounted here.
+
+This allows tests that connect to mosquitto via unix domain socket to assume the socket(s) will be found in this directory and work from multiple environments.
+
+Do not remove this directory.

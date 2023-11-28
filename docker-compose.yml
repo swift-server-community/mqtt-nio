@@ -1,4 +1,4 @@
-# run this with docker-compose -f docker/docker-compose.yml run test
+# run this with: docker-compose -f docker-compose.yml run test
 version: "3.3"
 
 services:
@@ -7,20 +7,25 @@ services:
     working_dir: /mqtt-nio
     volumes:
       - .:/mqtt-nio
+      - mosquitto-socket:/mqtt-nio/mosquitto/socket
     depends_on:
       - mosquitto
     environment:
       - MOSQUITTO_SERVER=mosquitto
       - CI=true
-    command: /bin/bash -xcl "swift test --enable-test-discovery"
+    command: /bin/bash -xcl "swift test"
 
   mosquitto:
     image: eclipse-mosquitto
     volumes:
       - ./mosquitto/config:/mosquitto/config
       - ./mosquitto/certs:/mosquitto/certs
+      - mosquitto-socket:/mosquitto/socket
     ports:
       - "1883:1883"
       - "8883:8883"
       - "8080:8080"
       - "8081:8081"
+
+volumes:
+  mosquitto-socket:

@@ -1,4 +1,4 @@
-# run this with docker-compose -f docker/docker-compose.yml run test
+# run this with: docker-compose -f docker-compose.yml run test
 version: "3.3"
 
 services:
@@ -6,6 +6,7 @@ services:
     image: swift:5.9
     volumes:
       - ..:/workspace
+      - mosquitto-socket:/workspace/mosquitto/socket
     depends_on:
       - mosquitto
     environment:
@@ -18,8 +19,12 @@ services:
     volumes:
       - ../mosquitto/config:/mosquitto/config
       - ../mosquitto/certs:/mosquitto/certs
+      - mosquitto-socket:/mosquitto/socket
     ports:
       - "1883:1883"
       - "8883:8883"
       - "8080:8080"
       - "8081:8081"
+
+volumes:
+  mosquitto-socket:

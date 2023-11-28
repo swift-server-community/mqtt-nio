@@ -146,6 +146,20 @@ final class MQTTNIOTests: XCTestCase {
     }
     #endif
 
+    func testUnixDomainConnect() throws {
+        let client = MQTTClient(
+            unixSocketPath: MQTTNIOTests.rootPath + "/mosquitto/socket/mosquitto.sock",
+            identifier: "testUnixDomainConnect",
+            eventLoopGroupProvider: .createNew,
+            logger: self.logger,
+            configuration: .init()
+        )
+        defer { XCTAssertNoThrow(try client.syncShutdownGracefully()) }
+        _ = try client.connect().wait()
+        try client.ping().wait()
+        try client.disconnect().wait()
+    }
+
     func testMQTTPublishQoS0() throws {
         let client = self.createClient(identifier: "testMQTTPublishQoS0")
         defer { XCTAssertNoThrow(try client.syncShutdownGracefully()) }

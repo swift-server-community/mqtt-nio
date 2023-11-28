@@ -67,6 +67,7 @@ jobs:
         volumes:
           - ${{ github.workspace }}/mosquitto/config:/mosquitto/config
           - ${{ github.workspace }}/mosquitto/certs:/mosquitto/certs
+          - ${{ github.workspace }}/mosquitto/socket:/mosquitto/socket
 
     steps:
     - name: Checkout

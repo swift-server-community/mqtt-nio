@@ -46,7 +46,6 @@ final class MQTTConnection {
         do {
             // get bootstrap based off what eventloop we are running on
             let bootstrap = try getBootstrap(client: client)
-            bootstrap
                 .channelOption(ChannelOptions.socketOption(.so_reuseaddr), value: 1)
                 .channelOption(ChannelOptions.socket(IPPROTO_TCP, TCP_NODELAY), value: 1)
                 .connectTimeout(client.configuration.connectTimeout)
@@ -75,7 +74,16 @@ final class MQTTConnection {
                         return channel.pipeline.addHandlers(handlers)
                     }
                 }
-                .connect(host: client.host, port: client.port)
+
+            let channelFuture: EventLoopFuture<Channel>
+
+            if client.port == 0 {
+                channelFuture = bootstrap.connect(unixDomainSocketPath: client.host)
+            } else {
+                channelFuture = bootstrap.connect(host: client.host, port: client.port)
+            }
+
+            channelFuture
                 .map { channel in
                     if !client.configuration.useWebSockets {
                         channelPromise.succeed(channel)

@@ -32,6 +32,7 @@ run-containerized-mosquitto()
         -p 8081:8081 \
         -v "$(pwd)"/mosquitto/config:/mosquitto/config \
         -v "$(pwd)"/mosquitto/certs:/mosquitto/certs \
+        -v "$(pwd)"/mosquitto/socket:/mosquitto/socket \
         eclipse-mosquitto
 }
 
@@ -49,13 +50,19 @@ fi
 cd "$(dirname "$(dirname "$0")")"
 
 if [[ $USE_CONTAINER -eq 1 ]]; then
+    if [ "$(uname)" != "Linux" ]; then
+        echo "warning: unix domain socket connections will not work with a mosquitto container on $(uname)"
+    fi
     run-containerized-mosquitto
 elif command -v mosquitto >/dev/null; then
     run-installed-mosquitto
+elif [ "$(uname)" = "Linux" ]; then
+    echo "notice: mosquitto not installed; running eclipse-mosquitto container instead..."
+    run-containerized-mosquitto
 else
+    echo "error: mosquitto must be installed"
     if [ "$(uname)" = "Darwin" ]; then
         echo "mosquitto can be installed on MacOS with: brew install mosquitto"
     fi
-    echo "notice: mosquitto not installed; running eclipse-mosquitto container instead..."
-    run-containerized-mosquitto
+    exit 1
 fi
