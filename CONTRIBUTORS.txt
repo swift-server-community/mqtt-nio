@@ -12,6 +12,7 @@ needs to be listed here.
 - Adam Fowler <adamfowler71@gmail.com>
 - Michael Housh <m-housh@users.noreply.github.com>
 - Michal Šrůtek <35694712+michalsrutek@users.noreply.github.com>
+- Pete Grayson <pete@jpgrayson.net>
 - Sean Patrick O'Brien <sean.patrick.obrien@me.com>
 - Sven A. Schmidt <sas@finestructure.co>
 
