@@ -59,7 +59,7 @@ try await client.publish(
 )
 ```
 
-MQTTClient supports both Swift concurrency and SwiftNIO `EventLoopFuture`. The above examples use Swift concurrency but there are equivalent versions of these functions that return `EventLoopFuture`s. You can find out more about Swift NIO and `EventLoopFuture` [here](https://apple.github.io/swift-nio/docs/current/NIOCore/Classes/EventLoopFuture.html).
+MQTTClient supports both Swift concurrency and SwiftNIO `EventLoopFuture`. The above examples use Swift concurrency but there are equivalent versions of these functions that return `EventLoopFuture`s. You can find out more about Swift NIO and `EventLoopFuture` [here](https://swiftpackageindex.com/apple/swift-nio/main/documentation/niocore/eventloopfuture).
 
 ## Topics
 
