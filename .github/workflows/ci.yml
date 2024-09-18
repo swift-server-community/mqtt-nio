@@ -51,7 +51,8 @@ jobs:
           - swift:5.7
           - swift:5.8
           - swift:5.9
-          - swiftlang/swift:nightly-5.10-jammy
+          - swift:5.10
+          - swift:6.0
     container:
       image: ${{ matrix.tag }}
     services:
