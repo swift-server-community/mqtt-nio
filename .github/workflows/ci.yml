@@ -16,7 +16,7 @@ jobs:
     runs-on: macOS-latest
     steps:
     - name: Checkout
-      uses: actions/checkout@v2
+      uses: actions/checkout@v4
     - name: Install and run Mosquitto
       run: |
         brew install mosquitto
@@ -38,7 +38,7 @@ jobs:
     runs-on: macOS-latest
     steps:
     - name: Checkout
-      uses: actions/checkout@v2
+      uses: actions/checkout@v4
     - name: Xcodebuild
       run: |
         xcodebuild build -scheme mqtt-nio -destination 'platform=iOS Simulator,name=iPhone 11'
@@ -71,7 +71,7 @@ jobs:
 
     steps:
     - name: Checkout
-      uses: actions/checkout@v2
+      uses: actions/checkout@v4
     - name: Restart Mosquitto
       # The mosquitto service container is started *before* mqtt-nio is checked
       # out. Restarting the container after the checkout step is needed for the
