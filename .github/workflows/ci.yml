@@ -16,7 +16,7 @@ jobs:
     runs-on: macOS-latest
     steps:
     - name: Checkout
-      uses: actions/checkout@v2
+      uses: actions/checkout@v4
     - name: Install and run Mosquitto
       run: |
         brew install mosquitto
@@ -30,7 +30,9 @@ jobs:
           -ignore-filename-regex="\/Tests\/" \
           -instr-profile=.build/debug/codecov/default.profdata > info.lcov
     - name: Upload to codecov.io
-      uses: codecov/codecov-action@v2
+      uses: codecov/codecov-action@v4
+      env:
+        CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
       with:
         file: info.lcov
 
@@ -38,7 +40,7 @@ jobs:
     runs-on: macOS-latest
     steps:
     - name: Checkout
-      uses: actions/checkout@v2
+      uses: actions/checkout@v4
     - name: Xcodebuild
       run: |
         xcodebuild build -scheme mqtt-nio -destination 'platform=iOS Simulator,name=iPhone 11'
@@ -51,7 +53,8 @@ jobs:
           - swift:5.7
           - swift:5.8
           - swift:5.9
-          - swiftlang/swift:nightly-5.10-jammy
+          - swift:5.10
+          - swift:6.0
     container:
       image: ${{ matrix.tag }}
     services:
@@ -71,7 +74,7 @@ jobs:
 
     steps:
     - name: Checkout
-      uses: actions/checkout@v2
+      uses: actions/checkout@v4
     - name: Restart Mosquitto
       # The mosquitto service container is started *before* mqtt-nio is checked
       # out. Restarting the container after the checkout step is needed for the
@@ -91,6 +94,8 @@ jobs:
           -ignore-filename-regex="\/Tests\/" \
           -instr-profile .build/debug/codecov/default.profdata > info.lcov
     - name: Upload to codecov.io
-      uses: codecov/codecov-action@v2
+      uses: codecov/codecov-action@v4
+      env:
+        CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
       with:
         file: info.lcov
