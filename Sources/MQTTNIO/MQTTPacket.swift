@@ -623,7 +623,7 @@ struct MQTTAuthPacket: MQTTPacket {
 
 /// MQTT incoming packet parameters.
 struct MQTTIncomingPacket: MQTTPacket {
-    var description: String { "Incoming Packet 0x\(String(format: "%x", self.type.rawValue))" }
+    var description: String { "Incoming Packet 0x\(String(self.type.rawValue, radix: 16))" }
 
     /// Type of incoming MQTT packet.
     let type: MQTTPacketType
