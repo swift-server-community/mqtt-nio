@@ -12,8 +12,8 @@
 //===----------------------------------------------------------------------===//
 
 #if canImport(FoundationEssentials)
-import FoundationEssentials
 import Dispatch
+import FoundationEssentials
 #else
 import Foundation
 #endif
