@@ -11,7 +11,12 @@
 //
 //===----------------------------------------------------------------------===//
 
+#if canImport(FoundationEssentials)
+import Dispatch
+import FoundationEssentials
+#else
 import Foundation
+#endif
 import NIOCore
 
 @available(macOS 12.0, iOS 15.0, watchOS 8.0, tvOS 15.0, *)
