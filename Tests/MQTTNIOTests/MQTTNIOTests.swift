@@ -20,7 +20,10 @@ import XCTest
 
 @testable import MQTTNIO
 
-#if canImport(NIOSSL)
+#if canImport(Network)
+import NIOTransportServices
+#endif
+#if os(macOS) || os(Linux)
 import NIOSSL
 #endif
 
@@ -717,7 +720,7 @@ final class MQTTNIOTests: XCTestCase {
         try MQTTClient(
             host: Self.hostname,
             identifier: identifier,
-            eventLoopGroupProvider: .shared(MultiThreadedEventLoopGroup.singleton),
+            eventLoopGroupProvider: .shared(Self.eventLoopGroupSingleton),
             logger: self.logger,
             configuration: .init(useSSL: true, tlsConfiguration: Self.getTLSConfiguration(withClientKey: true), sniServerName: "soto.codes")
         )
@@ -728,7 +731,7 @@ final class MQTTNIOTests: XCTestCase {
             host: Self.hostname,
             port: 8081,
             identifier: identifier,
-            eventLoopGroupProvider: .shared(MultiThreadedEventLoopGroup.singleton),
+            eventLoopGroupProvider: .shared(Self.eventLoopGroupSingleton),
             logger: self.logger,
             configuration: .init(
                 timeout: .seconds(5),
@@ -751,6 +754,15 @@ final class MQTTNIOTests: XCTestCase {
         .dropLast(3)
         .map { String(describing: $0) }
         .joined(separator: "/")
+
+    static var eventLoopGroupSingleton: EventLoopGroup {
+#if os(Linux)
+        MultiThreadedEventLoopGroup.singleton
+#else
+        // Return TS Eventloop for non-Linux builds, as we use TS TLS 
+        NIOTSEventLoopGroup.singleton
+#endif        
+    }
 
     static var _tlsConfiguration: Result<MQTTClient.TLSConfigurationType, Error> = {
         do {
@@ -793,7 +805,7 @@ final class MQTTNIOTests: XCTestCase {
         switch self._tlsConfiguration {
         case .success(let config):
             switch config {
-            #if canImport(NIOSSL)
+            #if os(macOS) || os(Linux)
             case .niossl(let config):
                 var tlsConfig = TLSConfiguration.makeClientConfiguration()
                 tlsConfig.trustRoots = withTrustRoots == true ? (config.trustRoots ?? .default) : .default

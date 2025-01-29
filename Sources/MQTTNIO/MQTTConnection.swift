@@ -13,7 +13,6 @@
 
 import NIO
 import NIOHTTP1
-import NIOTransportServices
 import NIOWebSocket
 
 #if canImport(FoundationEssentials)
@@ -22,9 +21,10 @@ import FoundationEssentials
 import Foundation
 #endif
 #if canImport(Network)
+import NIOTransportServices
 import Network
 #endif
-#if canImport(NIOSSL)
+#if os(macOS) || os(Linux)
 import NIOSSL
 #endif
 
@@ -114,7 +114,6 @@ final class MQTTConnection {
             switch client.configuration.tlsConfiguration {
             case .ts(let config):
                 options = try config.getNWProtocolTLSOptions()
-            // This should use canImport(NIOSSL), will change when it works with SwiftUI previews.
             #if os(macOS) || os(Linux)
             case .niossl:
                 throw MQTTError.wrongTLSConfig
@@ -131,7 +130,7 @@ final class MQTTConnection {
             return bootstrap
         }
         #endif
-        // This should use canImport(NIOSSL), will change when it works with SwiftUI previews.
+
         #if os(macOS) || os(Linux) // canImport(Network)
         if let clientBootstrap = ClientBootstrap(validatingGroup: client.eventLoopGroup) {
             let tlsConfiguration: TLSConfiguration

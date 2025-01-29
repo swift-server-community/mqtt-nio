@@ -17,7 +17,7 @@ import NIO
 import NIOFoundationCompat
 import NIOHTTP1
 import XCTest
-#if canImport(NIOSSL)
+#if os(macOS) || os(Linux)
 import NIOSSL
 #endif
 @testable import MQTTNIO
@@ -437,7 +437,7 @@ final class MQTTNIOv5Tests: XCTestCase {
             host: "test.mosquitto.org",
             port: 1883,
             identifier: "testSubscribeAllV5",
-            eventLoopGroupProvider: .createNew,
+            eventLoopGroupProvider: .shared(MultiThreadedEventLoopGroup.singleton),
             logger: self.logger,
             configuration: .init(version: .v5_0)
         )
@@ -455,7 +455,7 @@ final class MQTTNIOv5Tests: XCTestCase {
             host: Self.hostname,
             port: 1883,
             identifier: identifier,
-            eventLoopGroupProvider: .createNew,
+            eventLoopGroupProvider: .shared(MultiThreadedEventLoopGroup.singleton),
             logger: self.logger,
             configuration: .init(version: .v5_0)
         )

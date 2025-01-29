@@ -16,9 +16,9 @@ import Dispatch
 import Logging
 import NIO
 import NIOConcurrencyHelpers
-import NIOTransportServices
 
 #if canImport(Network)
+import NIOTransportServices
 import Network
 #endif
 #if os(macOS) || os(Linux)
@@ -125,7 +125,6 @@ public final class MQTTClient {
         case .createNew:
             #if canImport(Network)
             switch configuration.tlsConfiguration {
-            // This should use canImport(NIOSSL), will change when it works with SwiftUI previews.
             #if os(macOS) || os(Linux)
             case .niossl:
                 self.eventLoopGroup = MultiThreadedEventLoopGroup(numberOfThreads: 1)
