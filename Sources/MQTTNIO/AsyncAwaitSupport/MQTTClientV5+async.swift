@@ -11,12 +11,13 @@
 //
 //===----------------------------------------------------------------------===//
 
+import NIOCore
+
 #if canImport(FoundationEssentials)
 import FoundationEssentials
 #else
 import Foundation
 #endif
-import NIOCore
 
 @available(macOS 12.0, iOS 15.0, watchOS 8.0, tvOS 15.0, *)
 extension MQTTClient.V5 {
@@ -42,7 +43,7 @@ extension MQTTClient.V5 {
         will: (topicName: String, payload: ByteBuffer, qos: MQTTQoS, retain: Bool, properties: MQTTProperties)? = nil,
         authWorkflow: ((MQTTAuthV5, EventLoop) -> EventLoopFuture<MQTTAuthV5>)? = nil
     ) async throws -> MQTTConnackV5 {
-        return try await self.connect(cleanStart: cleanStart, properties: properties, will: will, authWorkflow: authWorkflow).get()
+        try await self.connect(cleanStart: cleanStart, properties: properties, will: will, authWorkflow: authWorkflow).get()
     }
 
     /// Connect to MQTT server
@@ -69,7 +70,7 @@ extension MQTTClient.V5 {
         authWorkflow: ((MQTTAuthV5, EventLoop) -> EventLoopFuture<MQTTAuthV5>)? = nil,
         connectConfiguration: MQTTClient.ConnectConfiguration
     ) async throws -> MQTTConnackV5 {
-        return try await self.connect(
+        try await self.connect(
             cleanStart: cleanStart,
             properties: properties,
             will: will,
@@ -95,7 +96,7 @@ extension MQTTClient.V5 {
         retain: Bool = false,
         properties: MQTTProperties = .init()
     ) async throws -> MQTTAckV5? {
-        return try await self.publish(to: topicName, payload: payload, qos: qos, retain: retain, properties: properties).get()
+        try await self.publish(to: topicName, payload: payload, qos: qos, retain: retain, properties: properties).get()
     }
 
     /// Subscribe to topic
@@ -108,7 +109,7 @@ extension MQTTClient.V5 {
         to subscriptions: [MQTTSubscribeInfoV5],
         properties: MQTTProperties = .init()
     ) async throws -> MQTTSubackV5 {
-        return try await self.subscribe(to: subscriptions, properties: properties).get()
+        try await self.subscribe(to: subscriptions, properties: properties).get()
     }
 
     /// Unsubscribe from topic
@@ -121,14 +122,14 @@ extension MQTTClient.V5 {
         from subscriptions: [String],
         properties: MQTTProperties = .init()
     ) async throws -> MQTTSubackV5 {
-        return try await self.unsubscribe(from: subscriptions, properties: properties).get()
+        try await self.unsubscribe(from: subscriptions, properties: properties).get()
     }
 
     /// Disconnect from server
     /// - Parameter properties: properties to attach to disconnect packet
     /// - Returns: Future waiting on disconnect message to be sent
     public func disconnect(properties: MQTTProperties = .init()) async throws {
-        return try await self.disconnect(properties: properties).get()
+        try await self.disconnect(properties: properties).get()
     }
 
     /// Re-authenticate with server
@@ -141,13 +142,13 @@ extension MQTTClient.V5 {
         properties: MQTTProperties,
         authWorkflow: ((MQTTAuthV5, EventLoop) -> EventLoopFuture<MQTTAuthV5>)? = nil
     ) async throws -> MQTTAuthV5 {
-        return try await self.auth(properties: properties, authWorkflow: authWorkflow).get()
+        try await self.auth(properties: properties, authWorkflow: authWorkflow).get()
     }
 
     /// Create a publish listener AsyncSequence that yields a value whenever a PUBLISH message is received from the server
     /// with the specified subscription id
     public func createPublishListener(subscriptionId: UInt) -> MQTTPublishIdListener {
-        return .init(self, subscriptionId: subscriptionId)
+        .init(self, subscriptionId: subscriptionId)
     }
 }
 
@@ -181,6 +182,6 @@ public class MQTTPublishIdListener: AsyncSequence {
     }
 
     public __consuming func makeAsyncIterator() -> AsyncStream<Element>.AsyncIterator {
-        return self.stream.makeAsyncIterator()
+        self.stream.makeAsyncIterator()
     }
 }

@@ -134,7 +134,7 @@ final class WebSocketHandler: ChannelDuplexHandler {
     private func pong(context: ChannelHandlerContext, frame: WebSocketFrame) {
         var frameData = frame.unmaskedData
         guard let frameDataString = frameData.readString(length: Self.pingData.count),
-              frameDataString == Self.pingData
+            frameDataString == Self.pingData
         else {
             self.close(context: context, code: .goingAway, promise: nil)
             return
@@ -234,7 +234,7 @@ extension WebSocketErrorCode {
         case .invalidFrameLength:
             self = .messageTooLarge
         case .fragmentedControlFrame,
-             .multiByteControlFrameLength:
+            .multiByteControlFrameLength:
             self = .protocolError
         }
     }

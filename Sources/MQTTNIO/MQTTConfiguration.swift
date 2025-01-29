@@ -13,6 +13,7 @@
 
 import NIO
 import NIOHTTP1
+
 #if os(macOS) || os(Linux)
 import NIOSSL
 #endif

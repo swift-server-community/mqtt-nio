@@ -2,6 +2,9 @@ name: Validity Check
 
 on:
   pull_request:
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}-validate
+  cancel-in-progress: true
 
 jobs:
   validate:
@@ -11,9 +14,5 @@ jobs:
       uses: actions/checkout@v1
       with:
         fetch-depth: 1
-    - name: Install Dependencies
-      run: |
-        brew install mint
-        mint install nicklockwood/swiftformat@0.52.10 --no-link
     - name: run script
       run: ./scripts/validate.sh

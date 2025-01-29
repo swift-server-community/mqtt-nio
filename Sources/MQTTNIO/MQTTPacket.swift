@@ -315,7 +315,7 @@ struct MQTTSubscribePacket: MQTTPacket {
         }
         // payload
         return self.subscriptions.reduce(size) {
-            $0 + 2 + $1.topicFilter.utf8.count + 1 // topic filter length + topic filter + qos
+            $0 + 2 + $1.topicFilter.utf8.count + 1  // topic filter length + topic filter + qos
         }
     }
 }
@@ -358,7 +358,7 @@ struct MQTTUnsubscribePacket: MQTTPacket {
         }
         // payload
         return self.subscriptions.reduce(size) {
-            $0 + 2 + $1.utf8.count // topic filter length + topic filter
+            $0 + 2 + $1.utf8.count  // topic filter length + topic filter
         }
     }
 }
@@ -386,7 +386,7 @@ struct MQTTPubAckPacket: MQTTPacket {
         writeFixedHeader(packetType: self.type, size: self.packetSize(version: version), to: &byteBuffer)
         byteBuffer.writeInteger(self.packetId)
         if version == .v5_0,
-           self.reason != .success || self.properties.count > 0
+            self.reason != .success || self.properties.count > 0
         {
             byteBuffer.writeInteger(self.reason.rawValue)
             try self.properties.write(to: &byteBuffer)
@@ -404,7 +404,7 @@ struct MQTTPubAckPacket: MQTTPacket {
                 return MQTTPubAckPacket(type: packet.type, packetId: packetId)
             }
             guard let reasonByte: UInt8 = remainingData.readInteger(),
-                  let reason = MQTTReasonCode(rawValue: reasonByte)
+                let reason = MQTTReasonCode(rawValue: reasonByte)
             else {
                 throw MQTTError.badResponse
             }
@@ -415,7 +415,7 @@ struct MQTTPubAckPacket: MQTTPacket {
 
     func packetSize(version: MQTTClient.Version) -> Int {
         if version == .v5_0,
-           self.reason != .success || self.properties.count > 0
+            self.reason != .success || self.properties.count > 0
         {
             let propertiesPacketSize = self.properties.packetSize
             return 3 + MQTTSerializer.variableLengthIntegerPacketSize(propertiesPacketSize) + propertiesPacketSize
@@ -495,7 +495,7 @@ struct MQTTPingrespPacket: MQTTPacket {
     }
 
     static func read(version: MQTTClient.Version, from packet: MQTTIncomingPacket) throws -> Self {
-        return MQTTPingrespPacket()
+        MQTTPingrespPacket()
     }
 
     var packetSize: Int { 0 }
@@ -515,7 +515,7 @@ struct MQTTDisconnectPacket: MQTTPacket {
     func write(version: MQTTClient.Version, to byteBuffer: inout ByteBuffer) throws {
         writeFixedHeader(packetType: self.type, size: self.packetSize(version: version), to: &byteBuffer)
         if version == .v5_0,
-           self.reason != .success || self.properties.count > 0
+            self.reason != .success || self.properties.count > 0
         {
             byteBuffer.writeInteger(self.reason.rawValue)
             try self.properties.write(to: &byteBuffer)
@@ -532,7 +532,7 @@ struct MQTTDisconnectPacket: MQTTPacket {
                 return MQTTDisconnectPacket(reason: .success)
             }
             guard let reasonByte: UInt8 = buffer.readInteger(),
-                  let reason = MQTTReasonCode(rawValue: reasonByte)
+                let reason = MQTTReasonCode(rawValue: reasonByte)
             else {
                 throw MQTTError.badResponse
             }
@@ -543,7 +543,7 @@ struct MQTTDisconnectPacket: MQTTPacket {
 
     func packetSize(version: MQTTClient.Version) -> Int {
         if version == .v5_0,
-           self.reason != .success || self.properties.count > 0
+            self.reason != .success || self.properties.count > 0
         {
             let propertiesPacketSize = self.properties.packetSize
             return 1 + MQTTSerializer.variableLengthIntegerPacketSize(propertiesPacketSize) + propertiesPacketSize
@@ -604,7 +604,7 @@ struct MQTTAuthPacket: MQTTPacket {
             return MQTTAuthPacket(reason: .success, properties: .init())
         }
         guard let reasonByte: UInt8 = remainingData.readInteger(),
-              let reason = MQTTReasonCode(rawValue: reasonByte)
+            let reason = MQTTReasonCode(rawValue: reasonByte)
         else {
             throw MQTTError.badResponse
         }

@@ -31,10 +31,9 @@ jobs:
           -instr-profile=.build/debug/codecov/default.profdata > info.lcov
     - name: Upload to codecov.io
       uses: codecov/codecov-action@v4
-      env:
-        CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
       with:
-        file: info.lcov
+        files: info.lcov
+        token: ${{ secrets.CODECOV_TOKEN }}
 
   ios:
     runs-on: macOS-latest
@@ -94,7 +93,6 @@ jobs:
           -instr-profile .build/debug/codecov/default.profdata > info.lcov
     - name: Upload to codecov.io
       uses: codecov/codecov-action@v4
-      env:
-        CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
       with:
-        file: info.lcov
+        files: info.lcov
+        token: ${{ secrets.CODECOV_TOKEN }}

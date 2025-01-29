@@ -11,13 +11,14 @@
 //
 //===----------------------------------------------------------------------===//
 
+import NIOCore
+
 #if canImport(FoundationEssentials)
 import Dispatch
 import FoundationEssentials
 #else
 import Foundation
 #endif
-import NIOCore
 
 @available(macOS 12.0, iOS 15.0, watchOS 8.0, tvOS 15.0, *)
 extension MQTTClient {
@@ -31,7 +32,7 @@ extension MQTTClient {
     /// - Parameters:
     ///   - queue: Dispatch Queue to run shutdown on
     public func shutdown(queue: DispatchQueue = .global()) async throws {
-        return try await withUnsafeThrowingContinuation { cont in
+        try await withUnsafeThrowingContinuation { cont in
             self.shutdown(queue: queue) { error in
                 if let error {
                     cont.resume(throwing: error)
@@ -59,7 +60,7 @@ extension MQTTClient {
         cleanSession: Bool = true,
         will: (topicName: String, payload: ByteBuffer, qos: MQTTQoS, retain: Bool)? = nil
     ) async throws -> Bool {
-        return try await self.connect(cleanSession: cleanSession, will: will).get()
+        try await self.connect(cleanSession: cleanSession, will: will).get()
     }
 
     /// Connect to MQTT server
@@ -80,10 +81,11 @@ extension MQTTClient {
         will: (topicName: String, payload: ByteBuffer, qos: MQTTQoS, retain: Bool)? = nil,
         connectConfiguration: ConnectConfiguration
     ) async throws -> Bool {
-        return try await self.connect(
+        try await self.connect(
             cleanSession: cleanSession,
-            will: will, connectConfiguration:
-            connectConfiguration
+            will: will,
+            connectConfiguration:
+                connectConfiguration
         ).get()
     }
 
@@ -101,7 +103,7 @@ extension MQTTClient {
     ///     - qos: Quality of Service for message.
     ///     - retain: Whether this is a retained message.
     public func publish(to topicName: String, payload: ByteBuffer, qos: MQTTQoS, retain: Bool = false) async throws {
-        return try await self.publish(to: topicName, payload: payload, qos: qos, retain: retain).get()
+        try await self.publish(to: topicName, payload: payload, qos: qos, retain: retain).get()
     }
 
     /// Subscribe to topic
@@ -109,7 +111,7 @@ extension MQTTClient {
     /// Completes when SUBACK is received
     /// - Parameter subscriptions: Subscription infos
     public func subscribe(to subscriptions: [MQTTSubscribeInfo]) async throws -> MQTTSuback {
-        return try await self.subscribe(to: subscriptions).get()
+        try await self.subscribe(to: subscriptions).get()
     }
 
     /// Unsubscribe from topic
@@ -117,7 +119,7 @@ extension MQTTClient {
     /// Completes when UNSUBACK is received
     /// - Parameter subscriptions: List of subscriptions to unsubscribe from
     public func unsubscribe(from subscriptions: [String]) async throws {
-        return try await self.unsubscribe(from: subscriptions).get()
+        try await self.unsubscribe(from: subscriptions).get()
     }
 
     /// Ping the server to test if it is still alive and to tell it you are alive.
@@ -128,12 +130,12 @@ extension MQTTClient {
     /// the connection is still live. If you initialize the client with the configuration `disablePingReq: true` then these
     /// are disabled and it is up to you to send the PINGREQ messages yourself
     public func ping() async throws {
-        return try await self.ping().get()
+        try await self.ping().get()
     }
 
     /// Disconnect from server
     public func disconnect() async throws {
-        return try await self.disconnect().get()
+        try await self.disconnect().get()
     }
 
     /// Create a publish listener AsyncSequence that yields a result whenever a PUBLISH message is received from the server
@@ -153,7 +155,7 @@ extension MQTTClient {
     /// }
     /// ```
     public func createPublishListener() -> MQTTPublishListener {
-        return .init(self)
+        .init(self)
     }
 }
 
@@ -187,6 +189,6 @@ public class MQTTPublishListener: AsyncSequence {
     }
 
     public __consuming func makeAsyncIterator() -> AsyncStream<Element>.AsyncIterator {
-        return self.stream.makeAsyncIterator()
+        self.stream.makeAsyncIterator()
     }
 }

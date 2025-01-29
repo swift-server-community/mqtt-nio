@@ -480,7 +480,8 @@ extension MQTTClient {
 
         let connectFuture = MQTTConnection.create(client: self, pingInterval: pingInterval)
         let eventLoop = connectFuture.eventLoop
-        return connectFuture
+        return
+            connectFuture
             .flatMap { connection -> EventLoopFuture<MQTTPacket> in
                 self.connection = connection
                 connection.closeFuture.whenComplete { result in
@@ -716,7 +717,7 @@ extension MQTTClient {
         .flatMapErrorThrowing { error in
             // if publish caused server to close the connection then remove from inflight array
             if case MQTTError.serverDisconnection(let ack) = error,
-               ack.reason == .malformedPacket
+                ack.reason == .malformedPacket
             {
                 self.inflight.remove(id: packet.packetId)
             }

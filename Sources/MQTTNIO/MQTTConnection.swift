@@ -107,7 +107,7 @@ final class MQTTConnection {
         #if canImport(Network)
         // if eventLoop is compatible with NIOTransportServices create a NIOTSConnectionBootstrap
         if #available(OSX 10.14, iOS 12.0, tvOS 12.0, watchOS 6.0, *),
-           let tsBootstrap = NIOTSConnectionBootstrap(validatingGroup: client.eventLoopGroup)
+            let tsBootstrap = NIOTSConnectionBootstrap(validatingGroup: client.eventLoopGroup)
         {
             // create NIOClientTCPBootstrap with NIOTS TLS provider
             let options: NWProtocolTLS.Options
@@ -131,7 +131,7 @@ final class MQTTConnection {
         }
         #endif
 
-        #if os(macOS) || os(Linux) // canImport(Network)
+        #if os(macOS) || os(Linux)  // canImport(Network)
         if let clientBootstrap = ClientBootstrap(validatingGroup: client.eventLoopGroup) {
             let tlsConfiguration: TLSConfiguration
             switch client.configuration.tlsConfiguration {
@@ -196,7 +196,7 @@ final class MQTTConnection {
     }
 
     func sendMessageNoWait(_ message: MQTTPacket) -> EventLoopFuture<Void> {
-        return self.channel.writeAndFlush(message)
+        self.channel.writeAndFlush(message)
     }
 
     func close() -> EventLoopFuture<Void> {
