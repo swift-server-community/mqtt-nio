@@ -17,16 +17,21 @@ import NIO
 import NIOFoundationCompat
 import NIOHTTP1
 import XCTest
-#if canImport(NIOSSL)
+
+@testable import MQTTNIO
+
+#if canImport(Network)
+import NIOTransportServices
+#endif
+#if os(macOS) || os(Linux)
 import NIOSSL
 #endif
-@testable import MQTTNIO
 
 final class MQTTNIOTests: XCTestCase {
     static let hostname = ProcessInfo.processInfo.environment["MOSQUITTO_SERVER"] ?? "localhost"
 
     func isVSCodeDebugging() -> Bool {
-        return ProcessInfo.processInfo.environment["VSCODE_PID"] != nil
+        ProcessInfo.processInfo.environment["VSCODE_PID"] != nil
     }
 
     func testConnectWithWill() throws {
@@ -52,7 +57,7 @@ final class MQTTNIOTests: XCTestCase {
             host: Self.hostname,
             port: 1884,
             identifier: "testConnectWithUsernameAndPassword",
-            eventLoopGroupProvider: .createNew,
+            eventLoopGroupProvider: .shared(MultiThreadedEventLoopGroup.singleton),
             logger: self.logger,
             configuration: .init(userName: "mqttnio", password: "mqttnio-password")
         )
@@ -67,7 +72,7 @@ final class MQTTNIOTests: XCTestCase {
             host: Self.hostname,
             port: 1884,
             identifier: "testConnectWithWrongUsernameAndPassword",
-            eventLoopGroupProvider: .createNew,
+            eventLoopGroupProvider: .shared(MultiThreadedEventLoopGroup.singleton),
             logger: self.logger,
             configuration: .init(userName: "mqttnio", password: "wrong-password")
         )
@@ -128,14 +133,16 @@ final class MQTTNIOTests: XCTestCase {
             host: Self.hostname,
             port: 8883,
             identifier: "testSSLConnectFromP12",
-            eventLoopGroupProvider: .createNew,
+            eventLoopGroupProvider: .shared(Self.eventLoopGroupSingleton),
             logger: self.logger,
             configuration: .init(
                 useSSL: true,
-                tlsConfiguration: .ts(.init(
-                    trustRoots: .der(MQTTNIOTests.rootPath + "/mosquitto/certs/ca.der"),
-                    clientIdentity: .p12(filename: MQTTNIOTests.rootPath + "/mosquitto/certs/client.p12", password: "MQTTNIOClientCertPassword")
-                )),
+                tlsConfiguration: .ts(
+                    .init(
+                        trustRoots: .der(MQTTNIOTests.rootPath + "/mosquitto/certs/ca.der"),
+                        clientIdentity: .p12(filename: MQTTNIOTests.rootPath + "/mosquitto/certs/client.p12", password: "MQTTNIOClientCertPassword")
+                    )
+                ),
                 sniServerName: "soto.codes"
             )
         )
@@ -150,7 +157,7 @@ final class MQTTNIOTests: XCTestCase {
         let client = MQTTClient(
             unixSocketPath: MQTTNIOTests.rootPath + "/mosquitto/socket/mosquitto.sock",
             identifier: "testUnixDomainConnect",
-            eventLoopGroupProvider: .createNew,
+            eventLoopGroupProvider: .shared(MultiThreadedEventLoopGroup.singleton),
             logger: self.logger,
             configuration: .init()
         )
@@ -253,7 +260,8 @@ final class MQTTNIOTests: XCTestCase {
         let expectation = XCTestExpectation(description: "testMQTTPublishRetain")
         expectation.expectedFulfillmentCount = 1
 
-        let payloadString = #"{"from":1000000,"to":1234567,"type":1,"content":"I am a beginner in swift and I am studying hard!!测试\n\n test, message","timestamp":1607243024,"nonce":"pAx2EsUuXrVuiIU3GGOGHNbUjzRRdT5b","sign":"ff902e31a6a5f5343d70a3a93ac9f946adf1caccab539c6f3a6"}"#
+        let payloadString =
+            #"{"from":1000000,"to":1234567,"type":1,"content":"I am a beginner in swift and I am studying hard!!测试\n\n test, message","timestamp":1607243024,"nonce":"pAx2EsUuXrVuiIU3GGOGHNbUjzRRdT5b","sign":"ff902e31a6a5f5343d70a3a93ac9f946adf1caccab539c6f3a6"}"#
         let payload = ByteBufferAllocator().buffer(string: payloadString)
 
         let client = self.createWebSocketClient(identifier: "testMQTTPublishToClient_publisher")
@@ -282,7 +290,8 @@ final class MQTTNIOTests: XCTestCase {
         let expectation = XCTestExpectation(description: "testMQTTPublishToClient")
         expectation.expectedFulfillmentCount = 2
 
-        let payloadString = #"{"from":1000000,"to":1234567,"type":1,"content":"I am a beginner in swift and I am studying hard!!测试\n\n test, message","timestamp":1607243024,"nonce":"pAx2EsUuXrVuiIU3GGOGHNbUjzRRdT5b","sign":"ff902e31a6a5f5343d70a3a93ac9f946adf1caccab539c6f3a6"}"#
+        let payloadString =
+            #"{"from":1000000,"to":1234567,"type":1,"content":"I am a beginner in swift and I am studying hard!!测试\n\n test, message","timestamp":1607243024,"nonce":"pAx2EsUuXrVuiIU3GGOGHNbUjzRRdT5b","sign":"ff902e31a6a5f5343d70a3a93ac9f946adf1caccab539c6f3a6"}"#
         let payload = ByteBufferAllocator().buffer(string: payloadString)
 
         let client = self.createWebSocketClient(identifier: "testMQTTPublishToClient_publisher")
@@ -444,7 +453,8 @@ final class MQTTNIOTests: XCTestCase {
         expectation.expectedFulfillmentCount = 2
         expectation.assertForOverFulfill = true
 
-        let payloadString = #"{"from":1000000,"to":1234567,"type":1,"content":"I am a beginner in swift and I am studying hard!!测试\n\n test, message","timestamp":1607243024,"nonce":"pAx2EsUuXrVuiIU3GGOGHNbUjzRRdT5b","sign":"ff902e31a6a5f5343d70a3a93ac9f946adf1caccab539c6f3a6"}"#
+        let payloadString =
+            #"{"from":1000000,"to":1234567,"type":1,"content":"I am a beginner in swift and I am studying hard!!测试\n\n test, message","timestamp":1607243024,"nonce":"pAx2EsUuXrVuiIU3GGOGHNbUjzRRdT5b","sign":"ff902e31a6a5f5343d70a3a93ac9f946adf1caccab539c6f3a6"}"#
         let payload = ByteBufferAllocator().buffer(string: payloadString)
 
         let client = self.createClient(identifier: "testPersistentSession_publisher")
@@ -486,7 +496,8 @@ final class MQTTNIOTests: XCTestCase {
         expectation.expectedFulfillmentCount = 1
         expectation.assertForOverFulfill = true
 
-        let payloadString = #"{"from":1000000,"to":1234567,"type":1,"content":"I am a beginner in swift and I am studying hard!!测试\n\n test, message","timestamp":1607243024,"nonce":"pAx2EsUuXrVuiIU3GGOGHNbUjzRRdT5b","sign":"ff902e31a6a5f5343d70a3a93ac9f946adf1caccab539c6f3a6"}"#
+        let payloadString =
+            #"{"from":1000000,"to":1234567,"type":1,"content":"I am a beginner in swift and I am studying hard!!测试\n\n test, message","timestamp":1607243024,"nonce":"pAx2EsUuXrVuiIU3GGOGHNbUjzRRdT5b","sign":"ff902e31a6a5f5343d70a3a93ac9f946adf1caccab539c6f3a6"}"#
         let payload = ByteBufferAllocator().buffer(string: payloadString)
 
         let client = self.createClient(identifier: "testPersistentSession_publisher")
@@ -579,7 +590,7 @@ final class MQTTNIOTests: XCTestCase {
             host: "test.mosquitto.org",
             port: 1883,
             identifier: "testSubscribeAll",
-            eventLoopGroupProvider: .createNew,
+            eventLoopGroupProvider: .shared(MultiThreadedEventLoopGroup.singleton),
             logger: self.logger
         )
         defer { XCTAssertNoThrow(try client.syncShutdownGracefully()) }
@@ -626,7 +637,7 @@ final class MQTTNIOTests: XCTestCase {
             host: Self.hostname,
             port: 1883,
             identifier: "testPacketId",
-            eventLoopGroupProvider: .createNew,
+            eventLoopGroupProvider: .shared(MultiThreadedEventLoopGroup.singleton),
             logger: logger
         )
         defer { XCTAssertNoThrow(try client.syncShutdownGracefully()) }
@@ -688,7 +699,7 @@ final class MQTTNIOTests: XCTestCase {
             host: Self.hostname,
             port: 1883,
             identifier: identifier,
-            eventLoopGroupProvider: .createNew,
+            eventLoopGroupProvider: .shared(MultiThreadedEventLoopGroup.singleton),
             logger: self.logger,
             configuration: configuration
         )
@@ -699,28 +710,28 @@ final class MQTTNIOTests: XCTestCase {
             host: Self.hostname,
             port: 8080,
             identifier: identifier,
-            eventLoopGroupProvider: .createNew,
+            eventLoopGroupProvider: .shared(MultiThreadedEventLoopGroup.singleton),
             logger: self.logger,
             configuration: .init(webSocketConfiguration: .init(urlPath: "/mqtt"))
         )
     }
 
     func createSSLClient(identifier: String) throws -> MQTTClient {
-        return try MQTTClient(
+        try MQTTClient(
             host: Self.hostname,
             identifier: identifier,
-            eventLoopGroupProvider: .createNew,
+            eventLoopGroupProvider: .shared(Self.eventLoopGroupSingleton),
             logger: self.logger,
             configuration: .init(useSSL: true, tlsConfiguration: Self.getTLSConfiguration(withClientKey: true), sniServerName: "soto.codes")
         )
     }
 
     func createWebSocketAndSSLClient(identifier: String) throws -> MQTTClient {
-        return try MQTTClient(
+        try MQTTClient(
             host: Self.hostname,
             port: 8081,
             identifier: identifier,
-            eventLoopGroupProvider: .createNew,
+            eventLoopGroupProvider: .shared(Self.eventLoopGroupSingleton),
             logger: self.logger,
             configuration: .init(
                 timeout: .seconds(5),
@@ -743,6 +754,15 @@ final class MQTTNIOTests: XCTestCase {
         .dropLast(3)
         .map { String(describing: $0) }
         .joined(separator: "/")
+
+    static var eventLoopGroupSingleton: EventLoopGroup {
+        #if os(Linux)
+        MultiThreadedEventLoopGroup.singleton
+        #else
+        // Return TS Eventloop for non-Linux builds, as we use TS TLS
+        NIOTSEventLoopGroup.singleton
+        #endif
+    }
 
     static var _tlsConfiguration: Result<MQTTClient.TLSConfigurationType, Error> = {
         do {
@@ -785,7 +805,7 @@ final class MQTTNIOTests: XCTestCase {
         switch self._tlsConfiguration {
         case .success(let config):
             switch config {
-            #if canImport(NIOSSL)
+            #if os(macOS) || os(Linux)
             case .niossl(let config):
                 var tlsConfig = TLSConfiguration.makeClientConfiguration()
                 tlsConfig.trustRoots = withTrustRoots == true ? (config.trustRoots ?? .default) : .default
@@ -795,10 +815,12 @@ final class MQTTNIOTests: XCTestCase {
             #endif
             #if canImport(Network)
             case .ts(let config):
-                return .ts(TSTLSConfiguration(
-                    trustRoots: withTrustRoots == true ? config.trustRoots : nil,
-                    clientIdentity: withClientKey == true ? config.clientIdentity : nil
-                ))
+                return .ts(
+                    TSTLSConfiguration(
+                        trustRoots: withTrustRoots == true ? config.trustRoots : nil,
+                        clientIdentity: withClientKey == true ? config.clientIdentity : nil
+                    )
+                )
             #endif
             }
         case .failure(let error):

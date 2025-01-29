@@ -87,9 +87,21 @@ final class MQTTTaskHandler: ChannelInboundHandler, RemovableChannelHandler {
 
         switch packet.type {
         case .PUBREC:
-            _ = connection.sendMessageNoWait(MQTTPubAckPacket(type: .PUBREL, packetId: packet.packetId, reason: .packetIdentifierNotFound))
+            _ = connection.sendMessageNoWait(
+                MQTTPubAckPacket(
+                    type: .PUBREL,
+                    packetId: packet.packetId,
+                    reason: .packetIdentifierNotFound
+                )
+            )
         case .PUBREL:
-            _ = connection.sendMessageNoWait(MQTTPubAckPacket(type: .PUBCOMP, packetId: packet.packetId, reason: .packetIdentifierNotFound))
+            _ = connection.sendMessageNoWait(
+                MQTTPubAckPacket(
+                    type: .PUBCOMP,
+                    packetId: packet.packetId,
+                    reason: .packetIdentifierNotFound
+                )
+            )
         default:
             break
         }

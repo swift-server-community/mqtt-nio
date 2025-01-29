@@ -77,7 +77,6 @@ final class WebSocketHandler: ChannelDuplexHandler {
             }
         case .connectionClose:
             self.receivedClose(context: context, frame: frame)
-
         default:
             break
         }

@@ -62,7 +62,14 @@ public struct MQTTPublishInfo: Sendable {
     /// Message payload.
     public let payload: ByteBuffer
 
-    public init(qos: MQTTQoS, retain: Bool, dup: Bool = false, topicName: String, payload: ByteBuffer, properties: MQTTProperties) {
+    public init(
+        qos: MQTTQoS,
+        retain: Bool,
+        dup: Bool = false,
+        topicName: String,
+        payload: ByteBuffer,
+        properties: MQTTProperties
+    ) {
         self.qos = qos
         self.retain = retain
         self.dup = dup

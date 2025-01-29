@@ -14,15 +14,16 @@
 import Atomics
 import Dispatch
 import Logging
-#if canImport(Network)
-import Network
-#endif
 import NIO
 import NIOConcurrencyHelpers
-#if canImport(NIOSSL)
+
+#if canImport(Network)
+import Network
+import NIOTransportServices
+#endif
+#if os(macOS) || os(Linux)
 import NIOSSL
 #endif
-import NIOTransportServices
 
 /// Swift NIO MQTT Client
 ///
@@ -124,7 +125,6 @@ public final class MQTTClient {
         case .createNew:
             #if canImport(Network)
             switch configuration.tlsConfiguration {
-            // This should use canImport(NIOSSL), will change when it works with SwiftUI previews.
             #if os(macOS) || os(Linux)
             case .niossl:
                 self.eventLoopGroup = MultiThreadedEventLoopGroup(numberOfThreads: 1)
@@ -180,11 +180,13 @@ public final class MQTTClient {
     /// - Throws: MQTTError.alreadyShutdown: You have already shutdown the client
     public func syncShutdownGracefully() throws {
         if let eventLoop = MultiThreadedEventLoopGroup.currentEventLoop {
-            preconditionFailure("""
-            BUG DETECTED: syncShutdown() must not be called when on an EventLoop.
-            Calling syncShutdown() on any EventLoop can lead to deadlocks.
-            Current eventLoop: \(eventLoop)
-            """)
+            preconditionFailure(
+                """
+                BUG DETECTED: syncShutdown() must not be called when on an EventLoop.
+                Calling syncShutdown() on any EventLoop can lead to deadlocks.
+                Current eventLoop: \(eventLoop)
+                """
+            )
         }
         let errorStorageLock = NIOLock()
         var errorStorage: Error?
@@ -403,12 +405,12 @@ public final class MQTTClient {
     /// Disconnect from server
     /// - Returns: Future waiting on disconnect message to be sent
     public func disconnect() -> EventLoopFuture<Void> {
-        return self.disconnect(packet: MQTTDisconnectPacket())
+        self.disconnect(packet: MQTTDisconnectPacket())
     }
 
     /// Return if client has an active connection to broker
     public func isActive() -> Bool {
-        return self.connection?.channel.isActive ?? false
+        self.connection?.channel.isActive ?? false
     }
 
     /// Add named publish listener. Called whenever a PUBLISH message is received from the server
@@ -530,7 +532,7 @@ extension MQTTClient {
     func resendOnRestart() {
         let inflight = self.inflight.packets
         self.inflight.clear()
-        inflight.forEach { packet in
+        for packet in inflight {
             switch packet {
             case let publish as MQTTPublishPacket:
                 let newPacket = MQTTPublishPacket(

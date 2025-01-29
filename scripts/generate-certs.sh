@@ -14,7 +14,7 @@ function generateCA() {
         -sha256 \
         -newkey rsa:2048 \
         -subj "$SUBJECT" \
-        -days 365 \
+        -days 1825 \
         -keyout ca.key \
         -out ca.pem
     openssl x509 -in ca.pem -out ca.der -outform DER
@@ -44,7 +44,7 @@ function generateServerCertificate() {
         -extfile <(cat "$FULL_HOME"/openssl.cnf <(printf "subjectAltName=DNS:$SERVER\n")) \
         -extensions v3_req \
         -out "$NAME".pem \
-        -days 365
+        -days 1825
 }
 
 function generateClientCertificate() {
@@ -68,7 +68,7 @@ function generateClientCertificate() {
         -CAkey ca.key \
         -CAcreateserial \
         -out "$NAME".pem \
-        -days 365
+        -days 1825
 
     openssl pkcs12 -export -passout pass:"$PASSWORD" -out "$NAME".p12 -in "$NAME".pem -inkey "$NAME".key
     

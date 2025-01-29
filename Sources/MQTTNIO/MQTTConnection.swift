@@ -11,6 +11,10 @@
 //
 //===----------------------------------------------------------------------===//
 
+import NIO
+import NIOHTTP1
+import NIOWebSocket
+
 #if canImport(FoundationEssentials)
 import FoundationEssentials
 #else
@@ -18,14 +22,11 @@ import Foundation
 #endif
 #if canImport(Network)
 import Network
+import NIOTransportServices
 #endif
-import NIO
-import NIOHTTP1
-#if canImport(NIOSSL)
+#if os(macOS) || os(Linux)
 import NIOSSL
 #endif
-import NIOTransportServices
-import NIOWebSocket
 
 final class MQTTConnection {
     let channel: Channel
@@ -72,7 +73,7 @@ final class MQTTConnection {
                             webSocketConfiguration: webSocketConfiguration,
                             upgradePromise: promise
                         ) {
-                            return channel.pipeline.addHandlers(handlers)
+                            try channel.pipeline.syncOperations.addHandlers(handlers)
                         }
                     } else {
                         return channel.pipeline.addHandlers(handlers)
@@ -113,7 +114,6 @@ final class MQTTConnection {
             switch client.configuration.tlsConfiguration {
             case .ts(let config):
                 options = try config.getNWProtocolTLSOptions()
-            // This should use canImport(NIOSSL), will change when it works with SwiftUI previews.
             #if os(macOS) || os(Linux)
             case .niossl:
                 throw MQTTError.wrongTLSConfig
@@ -130,7 +130,7 @@ final class MQTTConnection {
             return bootstrap
         }
         #endif
-        // This should use canImport(NIOSSL), will change when it works with SwiftUI previews.
+
         #if os(macOS) || os(Linux) // canImport(Network)
         if let clientBootstrap = ClientBootstrap(validatingGroup: client.eventLoopGroup) {
             let tlsConfiguration: TLSConfiguration
@@ -159,7 +159,7 @@ final class MQTTConnection {
         channel: Channel,
         webSocketConfiguration: MQTTClient.WebSocketConfiguration,
         upgradePromise promise: EventLoopPromise<Void>,
-        afterHandlerAdded: @escaping () -> EventLoopFuture<Void>
+        afterHandlerAdded: @escaping () throws -> Void
     ) -> EventLoopFuture<Void> {
         // initial HTTP request handler, before upgrade
         let httpHandler = WebSocketInitialRequestHandler(
@@ -174,10 +174,10 @@ final class MQTTConnection {
             requestKey: Data(requestKey).base64EncodedString(),
             maxFrameSize: client.configuration.webSocketMaxFrameSize
         ) { channel, _ in
-            let future = channel.pipeline.addHandler(WebSocketHandler())
-                .flatMap { _ in
-                    afterHandlerAdded()
-                }
+            let future = channel.eventLoop.makeCompletedFuture {
+                try channel.pipeline.syncOperations.addHandler(WebSocketHandler())
+                try afterHandlerAdded()
+            }
             future.cascade(to: promise)
             return future
         }

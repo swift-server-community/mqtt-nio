@@ -13,7 +13,7 @@
 
 import NIO
 import NIOHTTP1
-#if canImport(NIOSSL)
+#if os(macOS) || os(Linux)
 import NIOSSL
 #endif
 
@@ -31,7 +31,6 @@ extension MQTTClient {
     /// by this variable. It is recommended on iOS you use NIO Transport Services.
     public enum TLSConfigurationType {
         /// NIOSSL TLS configuration
-        // This should use canImport(NIOSSL), will change when it works with SwiftUI previews.
         #if os(macOS) || os(Linux)
         case niossl(TLSConfiguration)
         #endif

@@ -15,7 +15,7 @@
 
 import Foundation
 import Network
-#if canImport(NIOSSL)
+#if os(macOS) || os(Linux)
 import NIOSSL
 #endif
 
@@ -98,7 +98,6 @@ public struct TSTLSConfiguration {
         /// Create certificate array from already loaded SecCertificate array
         public static func certificates(_ secCertificates: [SecCertificate]) -> Self { .init(certificates: secCertificates) }
 
-        // This should use canImport(NIOSSL), will change when it works with SwiftUI previews.
         #if os(macOS) || os(Linux)
         /// Create certificate array from PEM file
         public static func pem(_ filename: String) throws -> Self {
@@ -234,8 +233,8 @@ extension TSTLSConfiguration {
             sec_protocol_options_set_local_identity(options.securityProtocolOptions, secClientIdentity)
         }
 
-        self.applicationProtocols.forEach {
-            sec_protocol_options_add_tls_application_protocol(options.securityProtocolOptions, $0)
+        for applicationProtocol in self.applicationProtocols {
+            sec_protocol_options_add_tls_application_protocol(options.securityProtocolOptions, applicationProtocol)
         }
 
         if self.certificateVerification != .fullVerification || self.trustRoots != nil {
