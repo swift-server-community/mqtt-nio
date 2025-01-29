@@ -13,24 +13,13 @@
 ##
 ##===----------------------------------------------------------------------===##
 
-SWIFT_FORMAT_VERSION=0.52.10
-
 set -eu
-
-command -v swiftformat >/dev/null || {
-  echo "swiftformat not installed. You can install it using 'mint install nicklockwood/swiftformat'"
-  exit 1
-}
 
 printf "=> Checking format... "
 FIRST_OUT="$(git status --porcelain)"
-if [[ -n "${CI-""}" ]]; then
-  printf "(using v%s) " "$(mint run NickLockwood/SwiftFormat@$SWIFT_FORMAT_VERSION --version)"
-  mint run NickLockwood/SwiftFormat@$SWIFT_FORMAT_VERSION . > /dev/null 2>&1
-else
-  printf "(using v%s) " "$(swiftformat --version)"
-  swiftformat . > /dev/null 2>&1
-fi
+git ls-files -z '*.swift' | xargs -0 swift format format --parallel --in-place
+git diff --exit-code '*.swift'
+
 SECOND_OUT="$(git status --porcelain)"
 if [[ "$FIRST_OUT" != "$SECOND_OUT" ]]; then
   printf "\033[0;31mformatting issues!\033[0m\n"
@@ -39,4 +28,3 @@ if [[ "$FIRST_OUT" != "$SECOND_OUT" ]]; then
 else
   printf "\033[0;32mokay.\033[0m\n"
 fi
-

@@ -11,9 +11,10 @@
 //
 //===----------------------------------------------------------------------===//
 
-@testable import MQTTNIO
 import NIO
 import XCTest
+
+@testable import MQTTNIO
 
 final class CoreMQTTTests: XCTestCase {
     func testConnect() throws {

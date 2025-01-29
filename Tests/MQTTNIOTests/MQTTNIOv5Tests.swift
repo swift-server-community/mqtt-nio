@@ -17,10 +17,12 @@ import NIO
 import NIOFoundationCompat
 import NIOHTTP1
 import XCTest
+
+@testable import MQTTNIO
+
 #if os(macOS) || os(Linux)
 import NIOSSL
 #endif
-@testable import MQTTNIO
 
 final class MQTTNIOv5Tests: XCTestCase {
     static let hostname = ProcessInfo.processInfo.environment["MOSQUITTO_SERVER"] ?? "localhost"
@@ -288,7 +290,8 @@ final class MQTTNIOv5Tests: XCTestCase {
         expectation.expectedFulfillmentCount = 2
         expectation.assertForOverFulfill = true
 
-        let payloadString = #"{"from":1000000,"to":1234567,"type":1,"content":"I am a beginner in swift and I am studying hard!!测试\n\n test, message","timestamp":1607243024,"nonce":"pAx2EsUuXrVuiIU3GGOGHNbUjzRRdT5b","sign":"ff902e31a6a5f5343d70a3a93ac9f946adf1caccab539c6f3a6"}"#
+        let payloadString =
+            #"{"from":1000000,"to":1234567,"type":1,"content":"I am a beginner in swift and I am studying hard!!测试\n\n test, message","timestamp":1607243024,"nonce":"pAx2EsUuXrVuiIU3GGOGHNbUjzRRdT5b","sign":"ff902e31a6a5f5343d70a3a93ac9f946adf1caccab539c6f3a6"}"#
         let payload = ByteBufferAllocator().buffer(string: payloadString)
 
         let client = self.createClient(identifier: "testPersistentSession_publisherV5")

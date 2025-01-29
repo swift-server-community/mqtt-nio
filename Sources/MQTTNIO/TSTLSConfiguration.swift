@@ -103,7 +103,9 @@ public struct TSTLSConfiguration {
         public static func pem(_ filename: String) throws -> Self {
             let certificates = try NIOSSLCertificate.fromPEMFile(filename)
             let secCertificates = try certificates.map { certificate -> SecCertificate in
-                guard let certificate = try SecCertificateCreateWithData(nil, Data(certificate.toDERBytes()) as CFData) else { throw TSTLSConfiguration.Error.invalidData }
+                guard let certificate = try SecCertificateCreateWithData(nil, Data(certificate.toDERBytes()) as CFData) else {
+                    throw TSTLSConfiguration.Error.invalidData
+                }
                 return certificate
             }
             return .init(certificates: secCertificates)
@@ -113,7 +115,9 @@ public struct TSTLSConfiguration {
         /// Create certificate array from DER file
         public static func der(_ filename: String) throws -> Self {
             let certificateData = try Data(contentsOf: URL(fileURLWithPath: filename))
-            guard let secCertificate = SecCertificateCreateWithData(nil, certificateData as CFData) else { throw TSTLSConfiguration.Error.invalidData }
+            guard let secCertificate = SecCertificateCreateWithData(nil, certificateData as CFData) else {
+                throw TSTLSConfiguration.Error.invalidData
+            }
             return .init(certificates: [secCertificate])
         }
     }
@@ -130,10 +134,12 @@ public struct TSTLSConfiguration {
             let data = try Data(contentsOf: URL(fileURLWithPath: filename))
             let options: [String: String] = [kSecImportExportPassphrase as String: password]
             var rawItems: CFArray?
-            guard SecPKCS12Import(data as CFData, options as CFDictionary, &rawItems) == errSecSuccess else { throw TSTLSConfiguration.Error.invalidData }
+            guard SecPKCS12Import(data as CFData, options as CFDictionary, &rawItems) == errSecSuccess else {
+                throw TSTLSConfiguration.Error.invalidData
+            }
             let items = rawItems! as! [[String: Any]]
             guard let firstItem = items.first,
-                  let secIdentity = firstItem[kSecImportItemIdentity as String] as! SecIdentity?
+                let secIdentity = firstItem[kSecImportItemIdentity as String] as! SecIdentity?
             else {
                 throw TSTLSConfiguration.Error.invalidData
             }
@@ -268,7 +274,8 @@ extension TSTLSConfiguration {
                             }
                         }
                     }
-                }, Self.tlsDispatchQueue
+                },
+                Self.tlsDispatchQueue
             )
         }
         return options

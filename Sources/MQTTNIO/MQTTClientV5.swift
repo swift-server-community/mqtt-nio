@@ -140,7 +140,7 @@ extension MQTTClient {
             let packet = MQTTSubscribePacket(subscriptions: subscriptions, properties: properties, packetId: packetId)
             return self.client.subscribe(packet: packet)
                 .map { message in
-                    return MQTTSubackV5(reasons: message.reasons, properties: message.properties)
+                    MQTTSubackV5(reasons: message.reasons, properties: message.properties)
                 }
         }
 
@@ -158,7 +158,7 @@ extension MQTTClient {
             let packet = MQTTUnsubscribePacket(subscriptions: subscriptions, properties: properties, packetId: packetId)
             return self.client.unsubscribe(packet: packet)
                 .map { message in
-                    return MQTTSubackV5(reasons: message.reasons, properties: message.properties)
+                    MQTTSubackV5(reasons: message.reasons, properties: message.properties)
                 }
         }
 
@@ -166,7 +166,7 @@ extension MQTTClient {
         /// - Parameter properties: properties to attach to disconnect packet
         /// - Returns: Future waiting on disconnect message to be sent
         public func disconnect(properties: MQTTProperties = .init()) -> EventLoopFuture<Void> {
-            return self.client.disconnect(packet: MQTTDisconnectPacket(reason: .success, properties: properties))
+            self.client.disconnect(packet: MQTTDisconnectPacket(reason: .success, properties: properties))
         }
 
         /// Re-authenticate with server
@@ -208,7 +208,7 @@ extension MQTTClient {
                 if case .success(let info) = result {
                     for property in info.properties {
                         if case .subscriptionIdentifier(let id) = property,
-                           id == subscriptionId
+                            id == subscriptionId
                         {
                             listener(info)
                             break

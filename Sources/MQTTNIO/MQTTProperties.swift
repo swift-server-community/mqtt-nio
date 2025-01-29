@@ -104,11 +104,11 @@ extension MQTTProperties: Collection {
     public var endIndex: Index { self.properties.endIndex }
 
     public subscript(_ index: Index) -> Property {
-        return self.properties[index]
+        self.properties[index]
     }
 
     public func index(after index: Index) -> Index {
-        return self.properties.index(after: index)
+        self.properties.index(after: index)
     }
 }
 
@@ -136,7 +136,7 @@ extension MQTTProperties {
     }
 
     var packetSize: Int {
-        return self.properties.reduce(0) { $0 + 1 + $1.value.packetSize }
+        self.properties.reduce(0) { $0 + 1 + $1.value.packetSize }
     }
 
     enum PropertyId: UInt8 {
@@ -355,7 +355,8 @@ extension MQTTProperties.Property {
             return .topicAlias(value)
         case .maximumQoS:
             guard let value: UInt8 = byteBuffer.readInteger(),
-                  let qos = MQTTQoS(rawValue: value) else { throw MQTTError.badResponse }
+                let qos = MQTTQoS(rawValue: value)
+            else { throw MQTTError.badResponse }
             return .maximumQoS(qos)
         case .retainAvailable:
             guard let value: UInt8 = byteBuffer.readInteger() else { throw MQTTError.badResponse }
@@ -380,6 +381,6 @@ extension MQTTProperties.Property {
     }
 
     var packetSize: Int {
-        return self.value.packetSize
+        self.value.packetSize
     }
 }

@@ -6,7 +6,7 @@ let package = Package(
     name: "mqtt-nio",
     platforms: [.macOS(.v10_14), .iOS(.v12), .tvOS(.v12), .watchOS(.v6)],
     products: [
-        .library(name: "MQTTNIO", targets: ["MQTTNIO"]),
+        .library(name: "MQTTNIO", targets: ["MQTTNIO"])
     ],
     dependencies: [
         .package(url: "https://github.com/apple/swift-atomics.git", from: "1.0.0"),

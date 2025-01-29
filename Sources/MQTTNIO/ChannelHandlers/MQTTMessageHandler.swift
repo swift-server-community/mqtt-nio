@@ -72,11 +72,14 @@ class MQTTMessageHandler: ChannelDuplexHandler {
                 case .PUBLISH:
                     let publishMessage = message as! MQTTPublishPacket
                     // publish logging includes topic name
-                    self.client.logger.trace("MQTT In", metadata: [
-                        "mqtt_message": .stringConvertible(publishMessage),
-                        "mqtt_packet_id": .stringConvertible(publishMessage.packetId),
-                        "mqtt_topicName": .string(publishMessage.publish.topicName),
-                    ])
+                    self.client.logger.trace(
+                        "MQTT In",
+                        metadata: [
+                            "mqtt_message": .stringConvertible(publishMessage),
+                            "mqtt_packet_id": .stringConvertible(publishMessage.packetId),
+                            "mqtt_topicName": .string(publishMessage.publish.topicName),
+                        ]
+                    )
                     self.respondToPublish(publishMessage)
                     return
 
@@ -99,7 +102,10 @@ class MQTTMessageHandler: ChannelDuplexHandler {
                     self.client.logger.error("Unexpected MQTT Message", metadata: ["mqtt_message": .string("\(message)")])
                     return
                 }
-                self.client.logger.trace("MQTT In", metadata: ["mqtt_message": .stringConvertible(message), "mqtt_packet_id": .stringConvertible(message.packetId)])
+                self.client.logger.trace(
+                    "MQTT In",
+                    metadata: ["mqtt_message": .stringConvertible(message), "mqtt_packet_id": .stringConvertible(message.packetId)]
+                )
             }
         } catch {
             context.fireErrorCaught(error)
@@ -124,7 +130,7 @@ class MQTTMessageHandler: ChannelDuplexHandler {
 
         case .atLeastOnce:
             connection.sendMessageNoWait(MQTTPubAckPacket(type: .PUBACK, packetId: message.packetId))
-                .map { _ in return message.publish }
+                .map { _ in message.publish }
                 .whenComplete { self.client.publishListeners.notify($0) }
 
         case .exactlyOnce:
@@ -141,7 +147,7 @@ class MQTTMessageHandler: ChannelDuplexHandler {
                 // now we have received the PUBREL we can process the published message. PUBCOMP is sent by `respondToPubrel`
                 return true
             }
-            .map { _ in return publish }
+            .map { _ in publish }
             .whenComplete { result in
                 // do not report retrySend error
                 if case .failure(let error) = result, case MQTTError.retrySend = error {
