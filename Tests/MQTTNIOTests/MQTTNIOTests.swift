@@ -133,7 +133,7 @@ final class MQTTNIOTests: XCTestCase {
             host: Self.hostname,
             port: 8883,
             identifier: "testSSLConnectFromP12",
-            eventLoopGroupProvider: .shared(MultiThreadedEventLoopGroup.singleton),
+            eventLoopGroupProvider: .shared(Self.eventLoopGroupSingleton),
             logger: self.logger,
             configuration: .init(
                 useSSL: true,
