@@ -13,14 +13,7 @@
 ##
 ##===----------------------------------------------------------------------===##
 
-SWIFT_FORMAT_VERSION=0.52.10
-
 set -eu
-
-command -v swiftformat >/dev/null || {
-  echo "swiftformat not installed. You can install it using 'mint install nicklockwood/swiftformat'"
-  exit 1
-}
 
 printf "=> Checking format... "
 FIRST_OUT="$(git status --porcelain)"
