@@ -18,8 +18,8 @@ import NIO
 import NIOConcurrencyHelpers
 
 #if canImport(Network)
-import NIOTransportServices
 import Network
+import NIOTransportServices
 #endif
 #if os(macOS) || os(Linux)
 import NIOSSL

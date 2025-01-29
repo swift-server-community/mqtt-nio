@@ -21,8 +21,8 @@ import FoundationEssentials
 import Foundation
 #endif
 #if canImport(Network)
-import NIOTransportServices
 import Network
+import NIOTransportServices
 #endif
 #if os(macOS) || os(Linux)
 import NIOSSL

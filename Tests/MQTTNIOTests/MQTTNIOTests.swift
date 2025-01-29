@@ -756,12 +756,12 @@ final class MQTTNIOTests: XCTestCase {
         .joined(separator: "/")
 
     static var eventLoopGroupSingleton: EventLoopGroup {
-#if os(Linux)
+        #if os(Linux)
         MultiThreadedEventLoopGroup.singleton
-#else
-        // Return TS Eventloop for non-Linux builds, as we use TS TLS 
+        #else
+        // Return TS Eventloop for non-Linux builds, as we use TS TLS
         NIOTSEventLoopGroup.singleton
-#endif        
+        #endif
     }
 
     static var _tlsConfiguration: Result<MQTTClient.TLSConfigurationType, Error> = {
