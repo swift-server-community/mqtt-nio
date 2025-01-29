@@ -32,7 +32,7 @@ extension MQTTClient {
     /// - Parameters:
     ///   - queue: Dispatch Queue to run shutdown on
     public func shutdown(queue: DispatchQueue = .global()) async throws {
-        try await withUnsafeThrowingContinuation { cont in
+        try await withUnsafeThrowingContinuation { (cont: UnsafeContinuation<Void, Error>) in
             self.shutdown(queue: queue) { error in
                 if let error {
                     cont.resume(throwing: error)
