@@ -21,7 +21,7 @@ final class MQTTListeners<ReturnType> {
         let listeners = self.lock.withLock {
             return self.listeners
         }
-        listeners.values.forEach { listener in
+        for listener in listeners.values {
             listener(result)
         }
     }

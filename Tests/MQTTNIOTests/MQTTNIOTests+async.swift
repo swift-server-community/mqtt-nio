@@ -17,10 +17,12 @@ import NIO
 import NIOFoundationCompat
 import NIOHTTP1
 import XCTest
+
+@testable import MQTTNIO
+
 #if canImport(NIOSSL)
 import NIOSSL
 #endif
-@testable import MQTTNIO
 
 @available(macOS 12.0, iOS 15.0, watchOS 8.0, tvOS 15.0, *)
 final class AsyncMQTTNIOTests: XCTestCase {
@@ -36,7 +38,7 @@ final class AsyncMQTTNIOTests: XCTestCase {
             host: Self.hostname,
             port: 1883,
             identifier: identifier,
-            eventLoopGroupProvider: .createNew,
+            eventLoopGroupProvider: .shared(MultiThreadedEventLoopGroup.singleton),
             logger: Self.logger,
             configuration: .init(version: version, timeout: timeout)
         )
@@ -91,7 +93,7 @@ final class AsyncMQTTNIOTests: XCTestCase {
             host: Self.hostname,
             port: 1883,
             identifier: "TestPing",
-            eventLoopGroupProvider: .createNew,
+            eventLoopGroupProvider: .shared(MultiThreadedEventLoopGroup.singleton),
             logger: Self.logger,
             configuration: .init(disablePing: true)
         )
@@ -184,7 +186,8 @@ final class AsyncMQTTNIOTests: XCTestCase {
     }
 
     func testMQTTPublishRetain() async throws {
-        let payloadString = #"{"from":1000000,"to":1234567,"type":1,"content":"I am a beginner in swift and I am studying hard!!测试\n\n test, message","timestamp":1607243024,"nonce":"pAx2EsUuXrVuiIU3GGOGHNbUjzRRdT5b","sign":"ff902e31a6a5f5343d70a3a93ac9f946adf1caccab539c6f3a6"}"#
+        let payloadString =
+            #"{"from":1000000,"to":1234567,"type":1,"content":"I am a beginner in swift and I am studying hard!!测试\n\n test, message","timestamp":1607243024,"nonce":"pAx2EsUuXrVuiIU3GGOGHNbUjzRRdT5b","sign":"ff902e31a6a5f5343d70a3a93ac9f946adf1caccab539c6f3a6"}"#
         let payload = ByteBufferAllocator().buffer(string: payloadString)
 
         let client = self.createClient(identifier: "testMQTTPublishRetain_publisher")

@@ -11,6 +11,11 @@
 //
 //===----------------------------------------------------------------------===//
 
+import NIO
+import NIOHTTP1
+import NIOTransportServices
+import NIOWebSocket
+
 #if canImport(FoundationEssentials)
 import FoundationEssentials
 #else
@@ -19,13 +24,9 @@ import Foundation
 #if canImport(Network)
 import Network
 #endif
-import NIO
-import NIOHTTP1
 #if canImport(NIOSSL)
 import NIOSSL
 #endif
-import NIOTransportServices
-import NIOWebSocket
 
 final class MQTTConnection {
     let channel: Channel
@@ -72,7 +73,7 @@ final class MQTTConnection {
                             webSocketConfiguration: webSocketConfiguration,
                             upgradePromise: promise
                         ) {
-                            return channel.pipeline.addHandlers(handlers)
+                            try channel.pipeline.syncOperations.addHandlers(handlers)
                         }
                     } else {
                         return channel.pipeline.addHandlers(handlers)
@@ -159,7 +160,7 @@ final class MQTTConnection {
         channel: Channel,
         webSocketConfiguration: MQTTClient.WebSocketConfiguration,
         upgradePromise promise: EventLoopPromise<Void>,
-        afterHandlerAdded: @escaping () -> EventLoopFuture<Void>
+        afterHandlerAdded: @escaping () throws -> Void
     ) -> EventLoopFuture<Void> {
         // initial HTTP request handler, before upgrade
         let httpHandler = WebSocketInitialRequestHandler(
@@ -174,10 +175,10 @@ final class MQTTConnection {
             requestKey: Data(requestKey).base64EncodedString(),
             maxFrameSize: client.configuration.webSocketMaxFrameSize
         ) { channel, _ in
-            let future = channel.pipeline.addHandler(WebSocketHandler())
-                .flatMap { _ in
-                    afterHandlerAdded()
-                }
+            let future = channel.eventLoop.makeCompletedFuture {
+                try channel.pipeline.syncOperations.addHandler(WebSocketHandler())
+                try afterHandlerAdded()
+            }
             future.cascade(to: promise)
             return future
         }

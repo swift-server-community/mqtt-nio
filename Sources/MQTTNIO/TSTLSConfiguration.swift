@@ -234,8 +234,8 @@ extension TSTLSConfiguration {
             sec_protocol_options_set_local_identity(options.securityProtocolOptions, secClientIdentity)
         }
 
-        self.applicationProtocols.forEach {
-            sec_protocol_options_add_tls_application_protocol(options.securityProtocolOptions, $0)
+        for applicationProtocol in self.applicationProtocols {
+            sec_protocol_options_add_tls_application_protocol(options.securityProtocolOptions, applicationProtocol)
         }
 
         if self.certificateVerification != .fullVerification || self.trustRoots != nil {
