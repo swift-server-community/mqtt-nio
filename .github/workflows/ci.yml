@@ -50,11 +50,10 @@ jobs:
     strategy:
       matrix:
         tag:
-          - swift:5.7
-          - swift:5.8
           - swift:5.9
           - swift:5.10
           - swift:6.0
+          - swiftlang/swift:nightly-6.1-jammy
     container:
       image: ${{ matrix.tag }}
     services:

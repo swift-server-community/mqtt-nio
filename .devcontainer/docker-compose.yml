@@ -3,7 +3,7 @@ version: "3.3"
 
 services:
   app:
-    image: swift:5.9
+    image: swift:6.0
     volumes:
       - ..:/workspace
       - mosquitto-socket:/workspace/mosquitto/socket
