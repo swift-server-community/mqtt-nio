@@ -10,11 +10,13 @@ needs to be listed here.
 ### Contributors
 
 - Adam Fowler <adamfowler71@gmail.com>
+- Benedek Kozma <cyberbeni@gmail.com>
 - Michael Housh <m-housh@users.noreply.github.com>
 - Michal Šrůtek <35694712+michalsrutek@users.noreply.github.com>
 - Pete Grayson <pete@jpgrayson.net>
 - Sean Patrick O'Brien <sean.patrick.obrien@me.com>
 - Sven A. Schmidt <sas@finestructure.co>
+- x_0o0 <chic0815@konkuk.ac.kr>
 
 **Updating this list**
 
