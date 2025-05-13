@@ -166,6 +166,7 @@ public class MQTTPublishIdListener: AsyncSequence {
         let name = UUID().uuidString
         self.client = client.client
         self.name = name
+        let cleanSession = client.client.connection?.cleanSession ?? true
         self.stream = AsyncStream { cont in
             client.addPublishListener(named: name, subscriptionId: subscriptionId) { result in
                 cont.yield(result)
@@ -173,11 +174,17 @@ public class MQTTPublishIdListener: AsyncSequence {
             client.client.addShutdownListener(named: name) { _ in
                 cont.finish()
             }
+            client.client.addCloseListener(named: name) { connectResult in
+                if cleanSession {
+                    cont.finish()
+                }
+            }
         }
     }
 
     deinit {
         self.client.removePublishListener(named: self.name)
+        self.client.removeCloseListener(named: self.name)
         self.client.removeShutdownListener(named: self.name)
     }
 

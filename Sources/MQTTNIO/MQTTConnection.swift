@@ -30,19 +30,21 @@ import NIOSSL
 
 final class MQTTConnection {
     let channel: Channel
+    let cleanSession: Bool
     let timeout: TimeAmount?
     let taskHandler: MQTTTaskHandler
 
-    private init(channel: Channel, timeout: TimeAmount?, taskHandler: MQTTTaskHandler) {
+    private init(channel: Channel, cleanSession: Bool, timeout: TimeAmount?, taskHandler: MQTTTaskHandler) {
         self.channel = channel
+        self.cleanSession = cleanSession
         self.timeout = timeout
         self.taskHandler = taskHandler
     }
 
-    static func create(client: MQTTClient, pingInterval: TimeAmount) -> EventLoopFuture<MQTTConnection> {
+    static func create(client: MQTTClient, cleanSession: Bool, pingInterval: TimeAmount) -> EventLoopFuture<MQTTConnection> {
         let taskHandler = MQTTTaskHandler(client: client)
         return self.createBootstrap(client: client, pingInterval: pingInterval, taskHandler: taskHandler)
-            .map { MQTTConnection(channel: $0, timeout: client.configuration.timeout, taskHandler: taskHandler) }
+            .map { MQTTConnection(channel: $0, cleanSession: cleanSession, timeout: client.configuration.timeout, taskHandler: taskHandler) }
     }
 
     static func createBootstrap(client: MQTTClient, pingInterval: TimeAmount, taskHandler: MQTTTaskHandler) -> EventLoopFuture<Channel> {

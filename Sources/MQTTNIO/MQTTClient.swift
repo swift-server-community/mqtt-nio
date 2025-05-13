@@ -463,9 +463,9 @@ public final class MQTTClient {
     }
 
     var connectionParameters = ConnectionParameters()
-    let publishListeners = MQTTListeners<MQTTPublishInfo>()
-    let closeListeners = MQTTListeners<Void>()
-    let shutdownListeners = MQTTListeners<Void>()
+    let publishListeners = MQTTListeners<Result<MQTTPublishInfo, Error>>()
+    let closeListeners = MQTTListeners<Result<Void, Error>>()
+    let shutdownListeners = MQTTListeners<Result<Void, Error>>()
     private var _connection: MQTTConnection?
     private var lock = NIOLock()
 }
@@ -478,7 +478,7 @@ extension MQTTClient {
     ) -> EventLoopFuture<MQTTConnAckPacket> {
         let pingInterval = self.configuration.pingInterval ?? TimeAmount.seconds(max(Int64(packet.keepAliveSeconds - 5), 5))
 
-        let connectFuture = MQTTConnection.create(client: self, pingInterval: pingInterval)
+        let connectFuture = MQTTConnection.create(client: self, cleanSession: packet.cleanSession, pingInterval: pingInterval)
         let eventLoop = connectFuture.eventLoop
         return
             connectFuture
