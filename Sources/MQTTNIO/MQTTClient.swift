@@ -463,9 +463,9 @@ public final class MQTTClient {
     }
 
     var connectionParameters = ConnectionParameters()
-    let publishListeners = MQTTListeners<MQTTPublishInfo>()
-    let closeListeners = MQTTListeners<Void>()
-    let shutdownListeners = MQTTListeners<Void>()
+    let publishListeners = MQTTListeners<Result<MQTTPublishInfo, Error>>()
+    let closeListeners = MQTTListeners<Result<Void, Error>>()
+    let shutdownListeners = MQTTListeners<Result<Void, Error>>()
     private var _connection: MQTTConnection?
     private var lock = NIOLock()
 }
@@ -477,8 +477,17 @@ extension MQTTClient {
         authWorkflow: ((MQTTAuthV5, EventLoop) -> EventLoopFuture<MQTTAuthV5>)? = nil
     ) -> EventLoopFuture<MQTTConnAckPacket> {
         let pingInterval = self.configuration.pingInterval ?? TimeAmount.seconds(max(Int64(packet.keepAliveSeconds - 5), 5))
-
-        let connectFuture = MQTTConnection.create(client: self, pingInterval: pingInterval)
+        var cleanSession = packet.cleanSession
+        // if connection has non zero session expiry then assume it doesnt clean session on close
+        for p in packet.properties {
+            // check topic alias
+            if case .sessionExpiryInterval(let interval) = p {
+                if interval > 0 {
+                    cleanSession = false
+                }
+            }
+        }
+        let connectFuture = MQTTConnection.create(client: self, cleanSession: cleanSession, pingInterval: pingInterval)
         let eventLoop = connectFuture.eventLoop
         return
             connectFuture

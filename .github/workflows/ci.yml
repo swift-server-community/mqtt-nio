@@ -10,10 +10,14 @@ on:
    release:
      types: [published]
    workflow_dispatch:
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}-ci
+  cancel-in-progress: true
 
 jobs:
   macos:
     runs-on: macOS-latest
+    timeout-minutes: 15
     steps:
     - name: Checkout
       uses: actions/checkout@v4
@@ -37,6 +41,7 @@ jobs:
 
   ios:
     runs-on: macOS-latest
+    timeout-minutes: 15
     steps:
     - name: Checkout
       uses: actions/checkout@v4
@@ -46,13 +51,13 @@ jobs:
 
   linux:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     strategy:
       matrix:
         tag:
-          - swift:5.9
           - swift:5.10
           - swift:6.0
-          - swiftlang/swift:nightly-6.1-jammy
+          - swift:6.1
     container:
       image: ${{ matrix.tag }}
     services:

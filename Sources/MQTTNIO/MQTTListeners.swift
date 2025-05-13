@@ -15,9 +15,9 @@ import NIO
 import NIOConcurrencyHelpers
 
 final class MQTTListeners<ReturnType> {
-    typealias Listener = (Result<ReturnType, Error>) -> Void
+    typealias Listener = (ReturnType) -> Void
 
-    func notify(_ result: Result<ReturnType, Error>) {
+    func notify(_ result: ReturnType) {
         let listeners = self.lock.withLock {
             return self.listeners
         }
