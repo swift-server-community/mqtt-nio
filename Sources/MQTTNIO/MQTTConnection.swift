@@ -59,7 +59,18 @@ final class MQTTConnection {
                 .channelInitializer { channel in
                     // Work out what handlers to add
                     let handlers: [ChannelHandler] = [
-                        MQTTMessageHandler(client, pingInterval: pingInterval),
+                        MQTTMessageHandler(
+                            configuration: .init(
+                                disablePing: client.configuration.disablePing,
+                                pingInterval: pingInterval,
+                                timeout: client.configuration.timeout,
+                                version: client.configuration.version
+                            ),
+                            logger: client.logger,
+                            publishListeners: client.publishListeners,
+                            _client: client,
+                            _taskHandler: taskHandler
+                        ),
                         taskHandler,
                     ]
                     // are we using websockets

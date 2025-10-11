@@ -15,23 +15,42 @@ import Logging
 import NIO
 
 class MQTTMessageHandler: ChannelDuplexHandler {
+    struct Configuration {
+        let disablePing: Bool
+        let pingInterval: TimeAmount
+        let timeout: TimeAmount?
+        let version: MQTTClient.Version
+    }
+
     typealias InboundIn = ByteBuffer
     typealias InboundOut = MQTTPacket
     typealias OutboundIn = MQTTPacket
     typealias OutboundOut = ByteBuffer
 
-    let client: MQTTClient
     let pingreqHandler: PingreqHandler?
     var decoder: NIOSingleStepByteToMessageProcessor<ByteToMQTTMessageDecoder>
+    private let configuration: Configuration
+    private let logger: Logger
+    private let publishListeners: MQTTListeners<Result<MQTTPublishInfo, Error>>
+    private let _taskHandler: MQTTTaskHandler
 
-    init(_ client: MQTTClient, pingInterval: TimeAmount) {
-        self.client = client
-        if client.configuration.disablePing {
+    init(
+        configuration: Configuration,
+        logger: Logger,
+        publishListeners: MQTTListeners<Result<MQTTPublishInfo, Error>>,
+        _client: MQTTClient,
+        _taskHandler: MQTTTaskHandler
+    ) {
+        self.configuration = configuration
+        if configuration.disablePing {
             self.pingreqHandler = nil
         } else {
-            self.pingreqHandler = .init(client: client, timeout: pingInterval)
+            self.pingreqHandler = .init(client: _client, timeout: configuration.pingInterval)
         }
-        self.decoder = .init(.init(version: client.configuration.version))
+        self.publishListeners = publishListeners
+        self.decoder = .init(.init(version: configuration.version))
+        self.logger = logger
+        self._taskHandler = _taskHandler
     }
 
     func handlerAdded(context: ChannelHandlerContext) {
@@ -52,10 +71,10 @@ class MQTTMessageHandler: ChannelDuplexHandler {
 
     func write(context: ChannelHandlerContext, data: NIOAny, promise: EventLoopPromise<Void>?) {
         let message = unwrapOutboundIn(data)
-        self.client.logger.trace("MQTT Out", metadata: ["mqtt_message": .string("\(message)"), "mqtt_packet_id": .string("\(message.packetId)")])
+        self.logger.trace("MQTT Out", metadata: ["mqtt_message": .string("\(message)"), "mqtt_packet_id": .string("\(message.packetId)")])
         var bb = context.channel.allocator.buffer(capacity: 0)
         do {
-            try message.write(version: self.client.configuration.version, to: &bb)
+            try message.write(version: self.configuration.version, to: &bb)
             context.write(wrapOutboundOut(bb), promise: promise)
         } catch {
             promise?.fail(error)
@@ -72,7 +91,7 @@ class MQTTMessageHandler: ChannelDuplexHandler {
                 case .PUBLISH:
                     let publishMessage = message as! MQTTPublishPacket
                     // publish logging includes topic name
-                    self.client.logger.trace(
+                    self.logger.trace(
                         "MQTT In",
                         metadata: [
                             "mqtt_message": .stringConvertible(publishMessage),
@@ -80,14 +99,14 @@ class MQTTMessageHandler: ChannelDuplexHandler {
                             "mqtt_topicName": .string(publishMessage.publish.topicName),
                         ]
                     )
-                    self.respondToPublish(publishMessage)
+                    self.respondToPublish(context: context, publishMessage)
                     return
 
                 case .CONNACK, .PUBACK, .PUBREC, .PUBCOMP, .SUBACK, .UNSUBACK, .PINGRESP, .AUTH:
                     context.fireChannelRead(wrapInboundOut(message))
 
                 case .PUBREL:
-                    self.respondToPubrel(message)
+                    self.respondToPubrel(context: context, message)
                     context.fireChannelRead(wrapInboundOut(message))
 
                 case .DISCONNECT:
@@ -99,10 +118,10 @@ class MQTTMessageHandler: ChannelDuplexHandler {
                 case .CONNECT, .SUBSCRIBE, .UNSUBSCRIBE, .PINGREQ:
                     context.fireErrorCaught(MQTTError.unexpectedMessage)
                     context.close(promise: nil)
-                    self.client.logger.error("Unexpected MQTT Message", metadata: ["mqtt_message": .string("\(message)")])
+                    self.logger.error("Unexpected MQTT Message", metadata: ["mqtt_message": .string("\(message)")])
                     return
                 }
-                self.client.logger.trace(
+                self.logger.trace(
                     "MQTT In",
                     metadata: ["mqtt_message": .stringConvertible(message), "mqtt_packet_id": .stringConvertible(message.packetId)]
                 )
@@ -110,7 +129,7 @@ class MQTTMessageHandler: ChannelDuplexHandler {
         } catch {
             context.fireErrorCaught(error)
             context.close(promise: nil)
-            self.client.logger.error("Error processing MQTT message", metadata: ["mqtt_error": .string("\(error)")])
+            self.logger.error("Error processing MQTT message", metadata: ["mqtt_error": .string("\(error)")])
         }
     }
 
@@ -122,20 +141,19 @@ class MQTTMessageHandler: ChannelDuplexHandler {
     /// If QoS is `.atMostOnce` then no response is required
     /// If QoS is `.atLeastOnce` then send PUBACK
     /// If QoS is `.exactlyOnce` then send PUBREC, wait for PUBREL and then respond with PUBCOMP (in `respondToPubrel`)
-    private func respondToPublish(_ message: MQTTPublishPacket) {
-        guard let connection = client.connection else { return }
+    private func respondToPublish(context: ChannelHandlerContext, _ message: MQTTPublishPacket) {
         switch message.publish.qos {
         case .atMostOnce:
-            self.client.publishListeners.notify(.success(message.publish))
+            self.publishListeners.notify(.success(message.publish))
 
         case .atLeastOnce:
-            connection.sendMessageNoWait(MQTTPubAckPacket(type: .PUBACK, packetId: message.packetId))
+            context.channel.writeAndFlush(MQTTPubAckPacket(type: .PUBACK, packetId: message.packetId))
                 .map { _ in message.publish }
-                .whenComplete { self.client.publishListeners.notify($0) }
+                .whenComplete { self.publishListeners.notify($0) }
 
         case .exactlyOnce:
             var publish = message.publish
-            connection.sendMessage(MQTTPubAckPacket(type: .PUBREC, packetId: message.packetId)) { newMessage in
+            self.sendMessage(context: context, MQTTPubAckPacket(type: .PUBREC, packetId: message.packetId)) { newMessage in
                 guard newMessage.packetId == message.packetId else { return false }
                 // if we receive a publish message while waiting for a PUBREL from broker then replace data to be published and retry PUBREC
                 if newMessage.type == .PUBLISH, let publishMessage = newMessage as? MQTTPublishPacket {
@@ -153,15 +171,27 @@ class MQTTMessageHandler: ChannelDuplexHandler {
                 if case .failure(let error) = result, case MQTTError.retrySend = error {
                     return
                 }
-                self.client.publishListeners.notify(result)
+                self.publishListeners.notify(result)
             }
         }
     }
 
     /// Respond to PUBREL message by sending PUBCOMP. Do this separate from `responeToPublish` as the broker might send
     /// multiple PUBREL messages, if the client is slow to respond
-    private func respondToPubrel(_ message: MQTTPacket) {
-        guard let connection = client.connection else { return }
-        _ = connection.sendMessageNoWait(MQTTPubAckPacket(type: .PUBCOMP, packetId: message.packetId))
+    private func respondToPubrel(context: ChannelHandlerContext, _ message: MQTTPacket) {
+        _ = context.channel.writeAndFlush(MQTTPubAckPacket(type: .PUBCOMP, packetId: message.packetId))
+    }
+
+    func sendMessage(context: ChannelHandlerContext, _ message: MQTTPacket, checkInbound: @escaping (MQTTPacket) throws -> Bool) -> EventLoopFuture<MQTTPacket> {
+        let task = MQTTTask(on: context.channel.eventLoop, timeout: self.configuration.timeout, checkInbound: checkInbound)
+
+        self._taskHandler.addTask(task)
+            .flatMap {
+                context.channel.writeAndFlush(message)
+            }
+            .whenFailure { error in
+                task.fail(error)
+            }
+        return task.promise.futureResult
     }
 }
