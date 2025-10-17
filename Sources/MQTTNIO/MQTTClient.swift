@@ -12,7 +12,7 @@
 //===----------------------------------------------------------------------===//
 
 import Atomics
-import Dispatch
+@preconcurrency import Dispatch
 import Logging
 import NIO
 import NIOConcurrencyHelpers
@@ -188,20 +188,19 @@ public final class MQTTClient {
                 """
             )
         }
-        let errorStorageLock = NIOLock()
-        var errorStorage: Error?
+        let errorStorage: NIOLockedValueBox<Error?> = .init(nil)
         let continuation = DispatchWorkItem {}
         self.shutdown(queue: DispatchQueue(label: "mqtt-client.shutdown")) { error in
             if let error {
-                errorStorageLock.withLock {
-                    errorStorage = error
+                errorStorage.withLockedValue {
+                    $0 = error
                 }
             }
             continuation.perform()
         }
         continuation.wait()
-        try errorStorageLock.withLock {
-            if let error = errorStorage {
+        try errorStorage.withLockedValue {
+            if let error = $0 {
                 throw error
             }
         }
@@ -216,7 +215,7 @@ public final class MQTTClient {
     /// - Parameters:
     ///   - queue: Dispatch Queue to run shutdown on
     ///   - callback: Callback called when shutdown is complete. If there was an error it will return with Error in callback
-    public func shutdown(queue: DispatchQueue = .global(), _ callback: @escaping (Error?) -> Void) {
+    public func shutdown(queue: DispatchQueue = .global(), _ callback: @Sendable @escaping (Error?) -> Void) {
         guard self.isShutdown.compareExchange(expected: false, desired: true, ordering: .relaxed).exchanged else {
             callback(MQTTError.alreadyShutdown)
             return
@@ -255,7 +254,7 @@ public final class MQTTClient {
     }
 
     /// shutdown EventLoopGroup
-    private func shutdownEventLoopGroup(queue: DispatchQueue, _ callback: @escaping (Error?) -> Void) {
+    private func shutdownEventLoopGroup(queue: DispatchQueue, _ callback: @Sendable @escaping (Error?) -> Void) {
         switch self.eventLoopGroupProvider {
         case .shared:
             queue.async {

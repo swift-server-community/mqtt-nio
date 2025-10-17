@@ -20,7 +20,7 @@ import NIOSSL
 
 extension MQTTClient {
     /// Version of MQTT server to connect to
-    public enum Version {
+    public enum Version: Sendable {
         case v3_1_1
         case v5_0
     }
@@ -41,7 +41,7 @@ extension MQTTClient {
         #endif
     }
 
-    public struct WebSocketConfiguration {
+    public struct WebSocketConfiguration: Sendable {
         /// Initialize MQTTClient WebSocket configuration struct
         /// - Parameters:
         ///   - urlPath: WebSocket URL, defaults to "/mqtt"
@@ -58,11 +58,11 @@ extension MQTTClient {
         }
 
         /// WebSocket URL, defaults to "/mqtt"
-        public let urlPath: String
+        public var urlPath: String
         /// Max frame size WebSocket client will allow
-        public let maxFrameSize: Int
+        public var maxFrameSize: Int
         /// Additional headers to add to initial HTTP request
-        public let initialRequestHeaders: HTTPHeaders
+        public var initialRequestHeaders: HTTPHeaders
     }
 
     /// Configuration for MQTTClient
@@ -228,39 +228,39 @@ extension MQTTClient {
         }
 
         /// Version of MQTT server client is connecting to
-        public let version: Version
+        public var version: Version
         /// disable the automatic sending of pingreq messages
-        public let disablePing: Bool
+        public var disablePing: Bool
         /// MQTT keep alive period.
-        public let keepAliveInterval: TimeAmount
+        public var keepAliveInterval: TimeAmount
         /// override interval between each pingreq message
-        public let pingInterval: TimeAmount?
+        public var pingInterval: TimeAmount?
         /// timeout for connecting to server
-        public let connectTimeout: TimeAmount
+        public var connectTimeout: TimeAmount
         /// timeout for server response
-        public let timeout: TimeAmount?
+        public var timeout: TimeAmount?
         /// MQTT user name.
-        public let userName: String?
+        public var userName: String?
         /// MQTT password.
-        public let password: String?
+        public var password: String?
         /// use encrypted connection to server
-        public let useSSL: Bool
+        public var useSSL: Bool
         /// TLS configuration
-        public let tlsConfiguration: TLSConfigurationType?
+        public var tlsConfiguration: TLSConfigurationType?
         /// server name used by TLS
-        public let sniServerName: String?
+        public var sniServerName: String?
         /// WebSocket configuration
-        public let webSocketConfiguration: WebSocketConfiguration?
+        public var webSocketConfiguration: WebSocketConfiguration?
     }
 
     /// Configuration used at connection time to override values stored in the MQTTClient.Configuration
-    public struct ConnectConfiguration {
+    public struct ConnectConfiguration: Sendable {
         /// MQTT user name.
-        public let userName: String?
+        public var userName: String?
         /// MQTT password.
-        public let password: String?
+        public var password: String?
         /// MQTT keep alive period.
-        public let keepAliveInterval: TimeAmount?
+        public var keepAliveInterval: TimeAmount?
 
         /// Initialize MQTTClient connect configuration struct
         ///
