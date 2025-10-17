@@ -32,22 +32,32 @@ final class MQTTConnection {
     let channel: Channel
     let cleanSession: Bool
     let timeout: TimeAmount?
-    let taskHandler: MQTTTaskHandler
+    let channelHandler: MQTTChannelHandler
 
-    private init(channel: Channel, cleanSession: Bool, timeout: TimeAmount?, taskHandler: MQTTTaskHandler) {
+    private init(channel: Channel, cleanSession: Bool, timeout: TimeAmount?, channelHandler: MQTTChannelHandler) {
         self.channel = channel
         self.cleanSession = cleanSession
         self.timeout = timeout
-        self.taskHandler = taskHandler
+        self.channelHandler = channelHandler
     }
 
     static func create(client: MQTTClient, cleanSession: Bool, pingInterval: TimeAmount) -> EventLoopFuture<MQTTConnection> {
-        let taskHandler = MQTTTaskHandler(client: client)
-        return self.createBootstrap(client: client, pingInterval: pingInterval, taskHandler: taskHandler)
-            .map { MQTTConnection(channel: $0, cleanSession: cleanSession, timeout: client.configuration.timeout, taskHandler: taskHandler) }
+        self.createBootstrap(client: client, pingInterval: pingInterval)
+            .flatMap { channel in
+                channel.eventLoop.submit {
+                    try channel.pipeline.syncOperations.handler(type: MQTTChannelHandler.self)
+                }.map { channelHandler in
+                    MQTTConnection(
+                        channel: channel,
+                        cleanSession: cleanSession,
+                        timeout: client.configuration.timeout,
+                        channelHandler: channelHandler
+                    )
+                }
+            }
     }
 
-    static func createBootstrap(client: MQTTClient, pingInterval: TimeAmount, taskHandler: MQTTTaskHandler) -> EventLoopFuture<Channel> {
+    static func createBootstrap(client: MQTTClient, pingInterval: TimeAmount) -> EventLoopFuture<Channel> {
         let eventLoop = client.eventLoopGroup.next()
         let channelPromise = eventLoop.makePromise(of: Channel.self)
         do {
@@ -59,19 +69,18 @@ final class MQTTConnection {
                 .channelInitializer { channel in
                     // Work out what handlers to add
                     let handlers: [ChannelHandler] = [
-                        MQTTMessageHandler(
+                        MQTTChannelHandler(
                             configuration: .init(
                                 disablePing: client.configuration.disablePing,
                                 pingInterval: pingInterval,
                                 timeout: client.configuration.timeout,
                                 version: client.configuration.version
                             ),
+                            eventLoop: channel.eventLoop,
                             logger: client.logger,
                             publishListeners: client.publishListeners,
-                            _client: client,
-                            _taskHandler: taskHandler
-                        ),
-                        taskHandler,
+                            _client: client
+                        )
                     ]
                     // are we using websockets
                     if let webSocketConfiguration = client.configuration.webSocketConfiguration {
@@ -223,18 +232,21 @@ final class MQTTConnection {
     func sendMessage(_ message: MQTTPacket, checkInbound: @escaping (MQTTPacket) throws -> Bool) -> EventLoopFuture<MQTTPacket> {
         let task = MQTTTask(on: channel.eventLoop, timeout: self.timeout, checkInbound: checkInbound)
 
-        self.taskHandler.addTask(task)
+        self.channelHandler.addTask(task)
             .flatMap {
                 self.channel.writeAndFlush(message)
             }
             .whenFailure { error in
                 task.fail(error)
             }
-        return task.promise.futureResult
+        guard case .nio(let promise) = task.promise else {
+            fatalError("Only NIO promises are supported here")
+        }
+        return promise.futureResult
     }
 
     func updatePingreqTimeout(_ timeout: TimeAmount) {
-        self.channel.pipeline.handler(type: MQTTMessageHandler.self).whenSuccess { handler in
+        self.channel.pipeline.handler(type: MQTTChannelHandler.self).whenSuccess { handler in
             handler.updatePingreqTimeout(timeout)
         }
     }

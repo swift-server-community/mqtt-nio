@@ -13,15 +13,43 @@
 
 import NIO
 
+enum MQTTPromise<T: Sendable>: Sendable {
+    case nio(EventLoopPromise<T>)
+    case swift(CheckedContinuation<T, any Error>)
+    case forget
+
+    func succeed(_ t: T) {
+        switch self {
+        case .nio(let eventLoopPromise):
+            eventLoopPromise.succeed(t)
+        case .swift(let checkedContinuation):
+            checkedContinuation.resume(returning: t)
+        case .forget:
+            break
+        }
+    }
+
+    func fail(_ e: Error) {
+        switch self {
+        case .nio(let eventLoopPromise):
+            eventLoopPromise.fail(e)
+        case .swift(let checkedContinuation):
+            checkedContinuation.resume(throwing: e)
+        case .forget:
+            break
+        }
+    }
+}
+
 /// Class encapsulating a single task
 final class MQTTTask {
-    let promise: EventLoopPromise<MQTTPacket>
+    let promise: MQTTPromise<MQTTPacket>
     let checkInbound: (MQTTPacket) throws -> Bool
     let timeoutTask: Scheduled<Void>?
 
     init(on eventLoop: EventLoop, timeout: TimeAmount?, checkInbound: @escaping (MQTTPacket) throws -> Bool) {
         let promise = eventLoop.makePromise(of: MQTTPacket.self)
-        self.promise = promise
+        self.promise = .nio(promise)
         self.checkInbound = checkInbound
         if let timeout {
             self.timeoutTask = eventLoop.scheduleTask(in: timeout) {

@@ -14,7 +14,7 @@
 import Logging
 import NIO
 
-class MQTTMessageHandler: ChannelDuplexHandler {
+class MQTTChannelHandler: ChannelDuplexHandler {
     struct Configuration {
         let disablePing: Bool
         let pingInterval: TimeAmount
@@ -28,18 +28,22 @@ class MQTTMessageHandler: ChannelDuplexHandler {
     typealias OutboundOut = ByteBuffer
 
     let pingreqHandler: PingreqHandler?
-    var decoder: NIOSingleStepByteToMessageProcessor<ByteToMQTTMessageDecoder>
-    private let configuration: Configuration
-    private let logger: Logger
+
+    private let eventLoop: any EventLoop
     private let publishListeners: MQTTListeners<Result<MQTTPublishInfo, Error>>
-    private let _taskHandler: MQTTTaskHandler
+
+    var decoder: NIOSingleStepByteToMessageProcessor<ByteToMQTTMessageDecoder>
+    private let logger: Logger
+    private let configuration: Configuration
+
+    var tasks: [MQTTTask]
 
     init(
         configuration: Configuration,
+        eventLoop: any EventLoop,
         logger: Logger,
         publishListeners: MQTTListeners<Result<MQTTPublishInfo, Error>>,
-        _client: MQTTClient,
-        _taskHandler: MQTTTaskHandler
+        _client: MQTTClient
     ) {
         self.configuration = configuration
         if configuration.disablePing {
@@ -47,10 +51,11 @@ class MQTTMessageHandler: ChannelDuplexHandler {
         } else {
             self.pingreqHandler = .init(client: _client, timeout: configuration.pingInterval)
         }
+        self.eventLoop = eventLoop
         self.publishListeners = publishListeners
         self.decoder = .init(.init(version: configuration.version))
         self.logger = logger
-        self._taskHandler = _taskHandler
+        self.tasks = []
     }
 
     func handlerAdded(context: ChannelHandlerContext) {
@@ -66,7 +71,16 @@ class MQTTMessageHandler: ChannelDuplexHandler {
 
     func channelInactive(context: ChannelHandlerContext) {
         self.pingreqHandler?.stop()
+
+        // channel is inactive so we should fail or tasks in progress
+        self.failTasks(with: MQTTError.serverClosedConnection)
+
         context.fireChannelInactive()
+    }
+
+    func errorCaught(context: ChannelHandlerContext, error: Error) {
+        // we caught an error so we should fail all active tasks
+        self.failTasks(with: error)
     }
 
     func write(context: ChannelHandlerContext, data: NIOAny, promise: EventLoopPromise<Void>?) {
@@ -103,20 +117,26 @@ class MQTTMessageHandler: ChannelDuplexHandler {
                     return
 
                 case .CONNACK, .PUBACK, .PUBREC, .PUBCOMP, .SUBACK, .UNSUBACK, .PINGRESP, .AUTH:
+                    self.taskHandlingOnChannelRead(context: context, response: message)
                     context.fireChannelRead(wrapInboundOut(message))
 
                 case .PUBREL:
                     self.respondToPubrel(context: context, message)
+                    self.taskHandlingOnChannelRead(context: context, response: message)
                     context.fireChannelRead(wrapInboundOut(message))
 
                 case .DISCONNECT:
                     let disconnectMessage = message as! MQTTDisconnectPacket
                     let ack = MQTTAckV5(reason: disconnectMessage.reason, properties: disconnectMessage.properties)
-                    context.fireErrorCaught(MQTTError.serverDisconnection(ack))
+                    let error = MQTTError.serverDisconnection(ack)
+                    self.failTasks(with: error)
+                    context.fireErrorCaught(error)
                     context.close(promise: nil)
 
                 case .CONNECT, .SUBSCRIBE, .UNSUBSCRIBE, .PINGREQ:
-                    context.fireErrorCaught(MQTTError.unexpectedMessage)
+                    let error = MQTTError.unexpectedMessage
+                    self.failTasks(with: error)
+                    context.fireErrorCaught(error)
                     context.close(promise: nil)
                     self.logger.error("Unexpected MQTT Message", metadata: ["mqtt_message": .string("\(message)")])
                     return
@@ -127,6 +147,7 @@ class MQTTMessageHandler: ChannelDuplexHandler {
                 )
             }
         } catch {
+            self.failTasks(with: error)
             context.fireErrorCaught(error)
             context.close(promise: nil)
             self.logger.error("Error processing MQTT message", metadata: ["mqtt_error": .string("\(error)")])
@@ -185,13 +206,98 @@ class MQTTMessageHandler: ChannelDuplexHandler {
     func sendMessage(context: ChannelHandlerContext, _ message: MQTTPacket, checkInbound: @escaping (MQTTPacket) throws -> Bool) -> EventLoopFuture<MQTTPacket> {
         let task = MQTTTask(on: context.channel.eventLoop, timeout: self.configuration.timeout, checkInbound: checkInbound)
 
-        self._taskHandler.addTask(task)
+        self.addTask(task)
             .flatMap {
                 context.channel.writeAndFlush(message)
             }
             .whenFailure { error in
                 task.fail(error)
             }
-        return task.promise.futureResult
+        
+        guard case .nio(let promise) = task.promise else {
+            fatalError("Only NIO promises are supported here")
+        }
+        return promise.futureResult
+    }
+
+    // MARK: - Task Handling
+
+    func addTask(_ task: MQTTTask) -> EventLoopFuture<Void> {
+        if self.eventLoop.inEventLoop {
+            self._addTask(task)
+            return self.eventLoop.makeSucceededVoidFuture()
+        } else {
+            return self.eventLoop.submit {
+                self.tasks.append(task)
+            }
+        }
+    }
+
+    private func _addTask(_ task: MQTTTask) {
+        self.tasks.append(task)
+    }
+
+    private func _removeTask(_ task: MQTTTask) {
+        self.tasks.removeAll { $0 === task }
+    }
+
+    private func removeTask(_ task: MQTTTask) {
+        if self.eventLoop.inEventLoop {
+            self._removeTask(task)
+        } else {
+            self.eventLoop.execute {
+                self._removeTask(task)
+            }
+        }
+    }
+
+    func taskHandlingOnChannelRead(context: ChannelHandlerContext, response: MQTTPacket) {
+        for task in self.tasks {
+            do {
+                // should this task respond to inbound packet
+                if try task.checkInbound(response) {
+                    self.removeTask(task)
+                    task.succeed(response)
+                    return
+                }
+            } catch {
+                self.removeTask(task)
+                task.fail(error)
+                return
+            }
+        }
+
+        self.processUnhandledPacket(context: context, response)
+    }
+
+    /// process packets where no equivalent task was found
+    func processUnhandledPacket(context: ChannelHandlerContext, _ packet: MQTTPacket) {
+        // we only send response to v5 server
+
+        switch packet.type {
+        case .PUBREC:
+            _ = context.channel.writeAndFlush(
+                MQTTPubAckPacket(
+                    type: .PUBREL,
+                    packetId: packet.packetId,
+                    reason: .packetIdentifierNotFound
+                )
+            )
+        case .PUBREL:
+            _ = context.channel.writeAndFlush(
+                MQTTPubAckPacket(
+                    type: .PUBCOMP,
+                    packetId: packet.packetId,
+                    reason: .packetIdentifierNotFound
+                )
+            )
+        default:
+            break
+        }
+    }
+
+    func failTasks(with error: Error) {
+        self.tasks.forEach { $0.fail(error) }
+        self.tasks.removeAll()
     }
 }

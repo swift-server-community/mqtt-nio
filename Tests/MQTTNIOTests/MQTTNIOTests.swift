@@ -206,7 +206,7 @@ final class MQTTNIOTests: XCTestCase {
         let publishFutures = (0..<16).map { client.publish(to: "test/multiple", payload: ByteBuffer(integer: $0), qos: .exactlyOnce) }
         _ = client.ping()
         try EventLoopFuture.andAllComplete(publishFutures, on: client.eventLoopGroup.next()).wait()
-        XCTAssertEqual(client.connection?.taskHandler.tasks.count, 0)
+        XCTAssertEqual(client.connection?.channelHandler.tasks.count, 0)
         try client.disconnect().wait()
     }
 
