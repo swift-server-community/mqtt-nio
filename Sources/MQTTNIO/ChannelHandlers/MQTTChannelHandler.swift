@@ -113,7 +113,7 @@ class MQTTChannelHandler: ChannelDuplexHandler {
                             "mqtt_topicName": .string(publishMessage.publish.topicName),
                         ]
                     )
-                    self.respondToPublish(context: context, publishMessage)
+                    self.respondToPublish(publishMessage, context: context)
                     return
 
                 case .CONNACK, .PUBACK, .PUBREC, .PUBCOMP, .SUBACK, .UNSUBACK, .PINGRESP, .AUTH:
@@ -121,7 +121,7 @@ class MQTTChannelHandler: ChannelDuplexHandler {
                     context.fireChannelRead(wrapInboundOut(message))
 
                 case .PUBREL:
-                    self.respondToPubrel(context: context, message)
+                    self.respondToPubrel(message, context: context)
                     self.taskHandlingOnChannelRead(context: context, response: message)
                     context.fireChannelRead(wrapInboundOut(message))
 
@@ -154,15 +154,11 @@ class MQTTChannelHandler: ChannelDuplexHandler {
         }
     }
 
-    func updatePingreqTimeout(_ timeout: TimeAmount) {
-        self.pingreqHandler?.updateTimeout(timeout)
-    }
-
     /// Respond to PUBLISH message
     /// If QoS is `.atMostOnce` then no response is required
     /// If QoS is `.atLeastOnce` then send PUBACK
     /// If QoS is `.exactlyOnce` then send PUBREC, wait for PUBREL and then respond with PUBCOMP (in `respondToPubrel`)
-    private func respondToPublish(context: ChannelHandlerContext, _ message: MQTTPublishPacket) {
+    private func respondToPublish(_ message: MQTTPublishPacket, context: ChannelHandlerContext) {
         switch message.publish.qos {
         case .atMostOnce:
             self.publishListeners.notify(.success(message.publish))
@@ -174,7 +170,7 @@ class MQTTChannelHandler: ChannelDuplexHandler {
 
         case .exactlyOnce:
             var publish = message.publish
-            self.sendMessage(context: context, MQTTPubAckPacket(type: .PUBREC, packetId: message.packetId)) { newMessage in
+            self.sendMessage(channel: context.channel, MQTTPubAckPacket(type: .PUBREC, packetId: message.packetId)) { newMessage in
                 guard newMessage.packetId == message.packetId else { return false }
                 // if we receive a publish message while waiting for a PUBREL from broker then replace data to be published and retry PUBREC
                 if newMessage.type == .PUBLISH, let publishMessage = newMessage as? MQTTPublishPacket {
@@ -199,24 +195,51 @@ class MQTTChannelHandler: ChannelDuplexHandler {
 
     /// Respond to PUBREL message by sending PUBCOMP. Do this separate from `responeToPublish` as the broker might send
     /// multiple PUBREL messages, if the client is slow to respond
-    private func respondToPubrel(context: ChannelHandlerContext, _ message: MQTTPacket) {
+    private func respondToPubrel(_ message: MQTTPacket, context: ChannelHandlerContext) {
         _ = context.channel.writeAndFlush(MQTTPubAckPacket(type: .PUBCOMP, packetId: message.packetId))
     }
 
-    func sendMessage(context: ChannelHandlerContext, _ message: MQTTPacket, checkInbound: @escaping (MQTTPacket) throws -> Bool) -> EventLoopFuture<MQTTPacket> {
-        let task = MQTTTask(on: context.channel.eventLoop, timeout: self.configuration.timeout, checkInbound: checkInbound)
+    // MARK: - Sending Messages
+
+    private func sendMessage(
+        channel: any Channel,
+        _ message: MQTTPacket,
+        promise: MQTTPromise<MQTTPacket>,
+        checkInbound: @escaping (MQTTPacket) throws -> Bool
+    ) {
+        let task = MQTTTask(
+            promise: promise,
+            on: channel.eventLoop,
+            timeout: self.configuration.timeout,
+            checkInbound: checkInbound
+        )
 
         self.addTask(task)
             .flatMap {
-                context.channel.writeAndFlush(message)
+                channel.writeAndFlush(message)
             }
             .whenFailure { error in
                 task.fail(error)
             }
-        
-        guard case .nio(let promise) = task.promise else {
-            fatalError("Only NIO promises are supported here")
+    }
+
+    func sendMessage(
+        channel: any Channel,
+        _ message: MQTTPacket,
+        checkInbound: @escaping (MQTTPacket) throws -> Bool
+    ) async throws -> MQTTPacket {
+        try await withCheckedThrowingContinuation { continuation in
+            self.sendMessage(channel: channel, message, promise: .swift(continuation), checkInbound: checkInbound)
         }
+    }
+
+    func sendMessage(
+        channel: any Channel,
+        _ message: MQTTPacket,
+        checkInbound: @escaping (MQTTPacket) throws -> Bool
+    ) -> EventLoopFuture<MQTTPacket> {
+        let promise = self.eventLoop.makePromise(of: MQTTPacket.self)
+        self.sendMessage(channel: channel, message, promise: .nio(promise), checkInbound: checkInbound)
         return promise.futureResult
     }
 
@@ -224,7 +247,7 @@ class MQTTChannelHandler: ChannelDuplexHandler {
 
     func addTask(_ task: MQTTTask) -> EventLoopFuture<Void> {
         if self.eventLoop.inEventLoop {
-            self._addTask(task)
+            self.tasks.append(task)
             return self.eventLoop.makeSucceededVoidFuture()
         } else {
             return self.eventLoop.submit {
@@ -233,20 +256,12 @@ class MQTTChannelHandler: ChannelDuplexHandler {
         }
     }
 
-    private func _addTask(_ task: MQTTTask) {
-        self.tasks.append(task)
-    }
-
-    private func _removeTask(_ task: MQTTTask) {
-        self.tasks.removeAll { $0 === task }
-    }
-
     private func removeTask(_ task: MQTTTask) {
         if self.eventLoop.inEventLoop {
-            self._removeTask(task)
+            self.tasks.removeAll { $0 === task }
         } else {
             self.eventLoop.execute {
-                self._removeTask(task)
+                self.tasks.removeAll { $0 === task }
             }
         }
     }
@@ -267,13 +282,12 @@ class MQTTChannelHandler: ChannelDuplexHandler {
             }
         }
 
-        self.processUnhandledPacket(context: context, response)
+        self.processUnhandledPacket(response, context: context)
     }
 
     /// process packets where no equivalent task was found
-    func processUnhandledPacket(context: ChannelHandlerContext, _ packet: MQTTPacket) {
+    func processUnhandledPacket(_ packet: MQTTPacket, context: ChannelHandlerContext) {
         // we only send response to v5 server
-
         switch packet.type {
         case .PUBREC:
             _ = context.channel.writeAndFlush(
@@ -299,5 +313,11 @@ class MQTTChannelHandler: ChannelDuplexHandler {
     func failTasks(with error: Error) {
         self.tasks.forEach { $0.fail(error) }
         self.tasks.removeAll()
+    }
+
+    // MARK: - Pingreq Handling
+
+    func updatePingreqTimeout(_ timeout: TimeAmount) {
+        self.pingreqHandler?.updateTimeout(timeout)
     }
 }

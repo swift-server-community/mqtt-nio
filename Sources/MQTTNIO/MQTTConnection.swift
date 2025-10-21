@@ -230,19 +230,7 @@ final class MQTTConnection {
     }
 
     func sendMessage(_ message: MQTTPacket, checkInbound: @escaping (MQTTPacket) throws -> Bool) -> EventLoopFuture<MQTTPacket> {
-        let task = MQTTTask(on: channel.eventLoop, timeout: self.timeout, checkInbound: checkInbound)
-
-        self.channelHandler.addTask(task)
-            .flatMap {
-                self.channel.writeAndFlush(message)
-            }
-            .whenFailure { error in
-                task.fail(error)
-            }
-        guard case .nio(let promise) = task.promise else {
-            fatalError("Only NIO promises are supported here")
-        }
-        return promise.futureResult
+        self.channelHandler.sendMessage(channel: self.channel, message, checkInbound: checkInbound)
     }
 
     func updatePingreqTimeout(_ timeout: TimeAmount) {

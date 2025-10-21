@@ -47,9 +47,13 @@ final class MQTTTask {
     let checkInbound: (MQTTPacket) throws -> Bool
     let timeoutTask: Scheduled<Void>?
 
-    init(on eventLoop: EventLoop, timeout: TimeAmount?, checkInbound: @escaping (MQTTPacket) throws -> Bool) {
-        let promise = eventLoop.makePromise(of: MQTTPacket.self)
-        self.promise = .nio(promise)
+    init(
+        promise: MQTTPromise<MQTTPacket>,
+        on eventLoop: EventLoop,
+        timeout: TimeAmount?,
+        checkInbound: @escaping (MQTTPacket) throws -> Bool
+    ) {
+        self.promise = promise
         self.checkInbound = checkInbound
         if let timeout {
             self.timeoutTask = eventLoop.scheduleTask(in: timeout) {
