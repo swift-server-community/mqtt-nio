@@ -78,8 +78,7 @@ final class MQTTConnection {
                             ),
                             eventLoop: channel.eventLoop,
                             logger: client.logger,
-                            publishListeners: client.publishListeners,
-                            _client: client
+                            publishListeners: client.publishListeners
                         )
                     ]
                     // are we using websockets
