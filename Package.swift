@@ -1,4 +1,4 @@
-// swift-tools-version:5.7
+// swift-tools-version:6.1
 
 import PackageDescription
 
@@ -31,5 +31,6 @@ let package = Package(
             ]
         ),
         .testTarget(name: "MQTTNIOTests", dependencies: ["MQTTNIO"]),
-    ]
+    ],
+    swiftLanguageModes: [.v5]
 )
