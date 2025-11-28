@@ -20,7 +20,7 @@ jobs:
     timeout-minutes: 15
     steps:
     - name: Checkout
-      uses: actions/checkout@v5
+      uses: actions/checkout@v6
     - name: Install and run Mosquitto
       run: |
         brew install mosquitto
@@ -44,7 +44,7 @@ jobs:
     timeout-minutes: 15
     steps:
     - name: Checkout
-      uses: actions/checkout@v5
+      uses: actions/checkout@v6
     - name: Xcodebuild
       run: |
         xcodebuild build -scheme mqtt-nio -destination 'platform=iOS Simulator,name=iPhone 16'
@@ -77,7 +77,7 @@ jobs:
 
     steps:
     - name: Checkout
-      uses: actions/checkout@v5
+      uses: actions/checkout@v6
     - name: Restart Mosquitto
       # The mosquitto service container is started *before* mqtt-nio is checked
       # out. Restarting the container after the checkout step is needed for the
