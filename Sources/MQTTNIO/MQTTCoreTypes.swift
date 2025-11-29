@@ -14,7 +14,7 @@
 import NIOCore
 
 /// Indicates the level of assurance for delivery of a packet.
-public enum MQTTQoS: UInt8, Sendable {
+public enum MQTTQoS: UInt8, Sendable, CaseIterable {
     /// fire and forget
     case atMostOnce = 0
     /// wait for PUBACK, if you don't receive it after a period of time retry sending

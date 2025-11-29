@@ -142,6 +142,25 @@ extension MQTTChannelHandler {
         }
 
         @usableFromInline
+        enum WaitOnInitializedAction {
+            case reportedClosed((any Error)?)
+            case done
+        }
+
+        mutating func waitOnInitialized() -> WaitOnInitializedAction {
+            switch consume self.state {
+            case .uninitialized:
+                preconditionFailure("Cannot wait until connection has succeeded")
+            case .initialized(let state):
+                self = .initialized(state)
+                return .done
+            case .closed:
+                self = .closed
+                return .reportedClosed(nil)
+            }
+        }
+
+        @usableFromInline
         enum SchedulePingReqAction {
             case schedule(Context)
             case doNothing

@@ -13,6 +13,8 @@
 
 #if canImport(Network)
 
+@preconcurrency import Security
+
 import Foundation
 import Network
 #if os(macOS) || os(Linux) || os(Android)
@@ -20,34 +22,12 @@ import NIOSSL
 #endif
 
 /// TLS Version enumeration
-public enum TSTLSVersion {
-    case tlsV10
-    case tlsV11
+public enum TSTLSVersion: Sendable {
     case tlsV12
     case tlsV13
 
-    /// return `SSLProtocol` for iOS12 api
-    var sslProtocol: SSLProtocol {
-        switch self {
-        case .tlsV10:
-            return .tlsProtocol1
-        case .tlsV11:
-            return .tlsProtocol11
-        case .tlsV12:
-            return .tlsProtocol12
-        case .tlsV13:
-            return .tlsProtocol13
-        }
-    }
-
-    /// return `tls_protocol_version_t` for iOS13 and later apis
-    @available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
     var tlsProtocolVersion: tls_protocol_version_t {
         switch self {
-        case .tlsV10:
-            return .TLSv10
-        case .tlsV11:
-            return .TLSv11
         case .tlsV12:
             return .TLSv12
         case .tlsV13:
@@ -60,10 +40,6 @@ public enum TSTLSVersion {
 extension tls_protocol_version_t {
     var tsTLSVersion: TSTLSVersion {
         switch self {
-        case .TLSv10:
-            return .tlsV10
-        case .TLSv11:
-            return .tlsV11
         case .TLSv12:
             return .tlsV12
         case .TLSv13:
@@ -75,7 +51,7 @@ extension tls_protocol_version_t {
 }
 
 /// Certificate verification modes.
-public enum TSCertificateVerification {
+public enum TSCertificateVerification: Sendable {
     /// All certificate verification disabled.
     case none
 
@@ -85,7 +61,7 @@ public enum TSCertificateVerification {
 }
 
 /// TLS configuration for NIO Transport Services
-public struct TSTLSConfiguration {
+public struct TSTLSConfiguration: Sendable {
     /// Error loading TLS files
     public enum Error: Swift.Error {
         case invalidData
@@ -175,7 +151,7 @@ public struct TSTLSConfiguration {
     ///   - applicationProtocols: The application protocols to use in the connection
     ///   - certificateVerification: Should certificates be verified
     public init(
-        minimumTLSVersion: TSTLSVersion = .tlsV10,
+        minimumTLSVersion: TSTLSVersion = .tlsV12,
         maximumTLSVersion: TSTLSVersion? = nil,
         trustRoots: [SecCertificate]? = nil,
         clientIdentity: SecIdentity? = nil,
@@ -199,7 +175,7 @@ public struct TSTLSConfiguration {
     ///   - applicationProtocols: The application protocols to use in the connection
     ///   - certificateVerification: Should certificates be verified
     public init(
-        minimumTLSVersion: TSTLSVersion = .tlsV10,
+        minimumTLSVersion: TSTLSVersion = .tlsV12,
         maximumTLSVersion: TSTLSVersion? = nil,
         trustRoots: Certificates,
         clientIdentity: Identity,
@@ -220,19 +196,11 @@ extension TSTLSConfiguration {
         let options = NWProtocolTLS.Options()
 
         // minimum TLS protocol
-        if #available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *) {
-            sec_protocol_options_set_min_tls_protocol_version(options.securityProtocolOptions, self.minimumTLSVersion.tlsProtocolVersion)
-        } else {
-            sec_protocol_options_set_tls_min_version(options.securityProtocolOptions, self.minimumTLSVersion.sslProtocol)
-        }
+        sec_protocol_options_set_min_tls_protocol_version(options.securityProtocolOptions, self.minimumTLSVersion.tlsProtocolVersion)
 
         // maximum TLS protocol
         if let maximumTLSVersion = self.maximumTLSVersion {
-            if #available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *) {
-                sec_protocol_options_set_max_tls_protocol_version(options.securityProtocolOptions, maximumTLSVersion.tlsProtocolVersion)
-            } else {
-                sec_protocol_options_set_tls_max_version(options.securityProtocolOptions, maximumTLSVersion.sslProtocol)
-            }
+            sec_protocol_options_set_max_tls_protocol_version(options.securityProtocolOptions, maximumTLSVersion.tlsProtocolVersion)
         }
 
         if let clientIdentity = self.clientIdentity, let secClientIdentity = sec_identity_create(clientIdentity) {

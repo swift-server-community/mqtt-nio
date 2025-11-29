@@ -66,6 +66,15 @@ final class MQTTChannelHandler: ChannelDuplexHandler {
         }
     }
 
+    func waitOnInitialized() -> EventLoopFuture<Void> {
+        switch self.stateMachine.waitOnInitialized() {
+        case .reportedClosed(let error):
+            return self.eventLoop.makeFailedFuture(error ?? MQTTError.noConnection)
+        case .done:
+            return self.eventLoop.makeSucceededVoidFuture()
+        }
+    }
+
     func handlerAdded(context: ChannelHandlerContext) {
         if context.channel.isActive {
             self.setInitialized(context: context)
@@ -201,7 +210,7 @@ final class MQTTChannelHandler: ChannelDuplexHandler {
 
     // MARK: - Sending Messages
 
-    private func sendMessage(
+    func sendMessage(
         _ message: MQTTPacket,
         promise: MQTTPromise<MQTTPacket>,
         checkInbound: @escaping (MQTTPacket) throws -> Bool
@@ -220,15 +229,6 @@ final class MQTTChannelHandler: ChannelDuplexHandler {
             _ = context.channel.writeAndFlush(message)
         case .throwError(let error):
             task.fail(error)
-        }
-    }
-
-    func sendMessage(
-        _ message: MQTTPacket,
-        checkInbound: @escaping (MQTTPacket) throws -> Bool
-    ) async throws -> MQTTPacket {
-        try await withCheckedThrowingContinuation { continuation in
-            self.sendMessage(message, promise: .swift(continuation), checkInbound: checkInbound)
         }
     }
 
@@ -324,5 +324,14 @@ final class MQTTChannelHandler: ChannelDuplexHandler {
             at: self.lastPingreqEventTime + self.pingreqTimeout,
             handler: MQTTPingreqSchedule(channelHandler: .init(self, eventLoop: self.eventLoop))
         )
+    }
+}
+
+extension MQTTChannelHandler.Configuration {
+    init(_ other: MQTTClient.Configuration) {
+        self.disablePing = other.disablePing
+        self.pingInterval = other.pingInterval ?? .seconds(5)  // TODO: fix this
+        self.timeout = other.timeout
+        self.version = other.version
     }
 }
