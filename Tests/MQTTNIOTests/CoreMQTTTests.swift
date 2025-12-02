@@ -12,12 +12,14 @@
 //===----------------------------------------------------------------------===//
 
 import NIO
-import XCTest
+import Testing
 
 @testable import MQTTNIO
 
-final class CoreMQTTTests: XCTestCase {
-    func testConnect() throws {
+@Suite("Core MQTT Tests")
+struct CoreMQTTTests {
+    @Test("Connect")
+    func connect() throws {
         let publish = MQTTPublishInfo(
             qos: .atMostOnce,
             retain: false,
@@ -37,10 +39,11 @@ final class CoreMQTTTests: XCTestCase {
             will: publish
         )
         try connectPacket.write(version: .v3_1_1, to: &byteBuffer)
-        XCTAssertEqual(byteBuffer.readableBytes, 45)
+        #expect(byteBuffer.readableBytes == 45)
     }
 
-    func testPublish() throws {
+    @Test("Publish")
+    func publish() throws {
         let publish = MQTTPublishInfo(
             qos: .atMostOnce,
             retain: false,
@@ -54,11 +57,12 @@ final class CoreMQTTTests: XCTestCase {
         try publishPacket.write(version: .v3_1_1, to: &byteBuffer)
         let packet = try MQTTIncomingPacket.read(from: &byteBuffer)
         let publish2 = try MQTTPublishPacket.read(version: .v3_1_1, from: packet)
-        XCTAssertEqual(publish.topicName, publish2.publish.topicName)
-        XCTAssertEqual(publish.payload, publish2.publish.payload)
+        #expect(publish.topicName == publish2.publish.topicName)
+        #expect(publish.payload == publish2.publish.payload)
     }
 
-    func testSubscribe() throws {
+    @Test("Subscribe")
+    func subscribe() throws {
         let subscriptions: [MQTTSubscribeInfoV5] = [
             .init(topicFilter: "topic/cars", qos: .atLeastOnce),
             .init(topicFilter: "topic/buses", qos: .atLeastOnce),
@@ -67,6 +71,6 @@ final class CoreMQTTTests: XCTestCase {
         let subscribePacket = MQTTSubscribePacket(subscriptions: subscriptions, properties: nil, packetId: 456)
         try subscribePacket.write(version: .v3_1_1, to: &byteBuffer)
         let packet = try MQTTIncomingPacket.read(from: &byteBuffer)
-        XCTAssertEqual(packet.remainingData.readableBytes, 29)
+        #expect(packet.remainingData.readableBytes == 29)
     }
 }

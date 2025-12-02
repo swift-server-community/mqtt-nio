@@ -11,11 +11,11 @@
 //
 //===----------------------------------------------------------------------===//
 
-import Atomics
 import Dispatch
 import Logging
 import NIO
 import NIOConcurrencyHelpers
+import Synchronization
 
 #if canImport(Network)
 import Network
@@ -75,13 +75,13 @@ public final class MQTTClient {
         return self.host
     }
 
-    let globalPacketId = ManagedAtomic<UInt16>(1)
+    let globalPacketId = Atomic<UInt16>(1)
     /// default logger that logs nothing
     private static let loggingDisabled = Logger(label: "MQTT-do-not-log", factory: { _ in SwiftLogNoOpLogHandler() })
     /// inflight messages
     private var inflight: MQTTInflight
     /// flag to tell is client is shutdown
-    private let isShutdown = ManagedAtomic(false)
+    private let isShutdown = Atomic(false)
 
     typealias ShutdownCallback = @Sendable (Error?) -> Void
 
@@ -444,11 +444,11 @@ public final class MQTTClient {
     }
 
     func updatePacketId() -> UInt16 {
-        let id = self.globalPacketId.wrappingIncrementThenLoad(by: 1, ordering: .relaxed)
+        let id = self.globalPacketId.wrappingAdd(1, ordering: .relaxed).newValue
 
         // packet id must be non-zero
         if id == 0 {
-            return self.globalPacketId.wrappingIncrementThenLoad(by: 1, ordering: .relaxed)
+            return self.globalPacketId.wrappingAdd(1, ordering: .relaxed).newValue
         } else {
             return id
         }

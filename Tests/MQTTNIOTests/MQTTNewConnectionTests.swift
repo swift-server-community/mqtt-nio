@@ -27,12 +27,14 @@ import NIOTransportServices
 import NIOSSL
 #endif
 
-@Suite("MQTTNewConnection Tests")
+@Suite("MQTTNewConnection Tests", .serialized)
 struct MQTTNewConnectionTests {
+    static let hostname = ProcessInfo.processInfo.environment["MOSQUITTO_SERVER"] ?? "localhost"
+
     @Test("Connect with Will")
     func connectWithWill() async throws {
         try await MQTTNewConnection.withConnection(
-            address: .hostname(MQTTNIOTests.hostname),
+            address: .hostname(Self.hostname),
             identifier: "connectWithWill",
             will: (topicName: "MyWillTopic", payload: ByteBufferAllocator().buffer(string: "Test payload"), qos: .atLeastOnce, retain: false),
             logger: self.logger
@@ -44,7 +46,7 @@ struct MQTTNewConnectionTests {
     @Test("Ping")
     func ping() async throws {
         try await MQTTNewConnection.withConnection(
-            address: .hostname(MQTTNIOTests.hostname),
+            address: .hostname(Self.hostname),
             configuration: .init(pingInterval: .seconds(2)),
             identifier: "ping",
             logger: self.logger
@@ -56,7 +58,7 @@ struct MQTTNewConnectionTests {
     @Test("Connect with Username and Password")
     func connectWithUsernameAndPassword() async throws {
         try await MQTTNewConnection.withConnection(
-            address: .hostname(MQTTNIOTests.hostname, port: 1884),
+            address: .hostname(Self.hostname, port: 1884),
             configuration: .init(userName: "mqttnio", password: "mqttnio-password"),
             identifier: "connectWithUsernameAndPassword",
             logger: self.logger
@@ -69,7 +71,7 @@ struct MQTTNewConnectionTests {
     func connectWithWrongUsernameAndPassword() async throws {
         await #expect(throws: MQTTError.connectionError(.notAuthorized)) {
             try await MQTTNewConnection.withConnection(
-                address: .hostname(MQTTNIOTests.hostname, port: 1884),
+                address: .hostname(Self.hostname, port: 1884),
                 configuration: .init(userName: "wrong", password: "wrong"),
                 identifier: "connectWithWrongUsernameAndPassword",
                 logger: self.logger
@@ -82,7 +84,7 @@ struct MQTTNewConnectionTests {
     @Test("Connect with WebSocket")
     func webSocketConnect() async throws {
         try await MQTTNewConnection.withConnection(
-            address: .hostname(MQTTNIOTests.hostname, port: 8080),
+            address: .hostname(Self.hostname, port: 8080),
             configuration: .init(webSocketConfiguration: .init()),
             identifier: "webSocketConnect",
             logger: self.logger
@@ -94,14 +96,14 @@ struct MQTTNewConnectionTests {
     @Test("Connect with TLS")
     func tlsConnect() async throws {
         try await MQTTNewConnection.withConnection(
-            address: .hostname(MQTTNIOTests.hostname, port: 8883),
+            address: .hostname(Self.hostname, port: 8883),
             configuration: .init(
                 useSSL: true,
-                tlsConfiguration: MQTTNIOTests.getTLSConfiguration(),
+                tlsConfiguration: Self.getTLSConfiguration(),
                 sniServerName: "soto.codes"
             ),
             identifier: "tlsConnect",
-            eventLoop: MQTTNIOTests.eventLoopGroupSingleton.any(),
+            eventLoop: Self.eventLoopGroupSingleton.any(),
             logger: self.logger
         ) { connection in
             try await connection.ping()
@@ -111,16 +113,16 @@ struct MQTTNewConnectionTests {
     @Test("Connect with WebSocket and TLS")
     func webSocketAndTLSConnect() async throws {
         try await MQTTNewConnection.withConnection(
-            address: .hostname(MQTTNIOTests.hostname, port: 8081),
+            address: .hostname(Self.hostname, port: 8081),
             configuration: .init(
                 timeout: .seconds(5),
                 useSSL: true,
-                tlsConfiguration: MQTTNIOTests.getTLSConfiguration(),
+                tlsConfiguration: Self.getTLSConfiguration(),
                 sniServerName: "soto.codes",
                 webSocketConfiguration: .init()
             ),
             identifier: "webSocketAndTLSConnect",
-            eventLoop: MQTTNIOTests.eventLoopGroupSingleton.any(),
+            eventLoop: Self.eventLoopGroupSingleton.any(),
             logger: self.logger
         ) { connection in
             try await connection.ping()
@@ -131,19 +133,19 @@ struct MQTTNewConnectionTests {
     @Test("Connect with TLS from P12")
     func tlsConnectFromP12() async throws {
         try await MQTTNewConnection.withConnection(
-            address: .hostname(MQTTNIOTests.hostname, port: 8883),
+            address: .hostname(Self.hostname, port: 8883),
             configuration: .init(
                 useSSL: true,
                 tlsConfiguration: .ts(
                     .init(
-                        trustRoots: .der(MQTTNIOTests.rootPath + "/mosquitto/certs/ca.der"),
-                        clientIdentity: .p12(filename: MQTTNIOTests.rootPath + "/mosquitto/certs/client.p12", password: "MQTTNIOClientCertPassword")
+                        trustRoots: .der(Self.rootPath + "/mosquitto/certs/ca.der"),
+                        clientIdentity: .p12(filename: Self.rootPath + "/mosquitto/certs/client.p12", password: "MQTTNIOClientCertPassword")
                     )
                 ),
                 sniServerName: "soto.codes"
             ),
             identifier: "tlsConnectFromP12",
-            eventLoop: MQTTNIOTests.eventLoopGroupSingleton.any(),
+            eventLoop: Self.eventLoopGroupSingleton.any(),
             logger: self.logger
         ) { connection in
             try await connection.ping()
@@ -154,7 +156,7 @@ struct MQTTNewConnectionTests {
     @Test("Connect with Unix Domain Socket")
     func unixDomainSocketConnect() async throws {
         try await MQTTNewConnection.withConnection(
-            address: .unixDomainSocket(path: MQTTNIOTests.rootPath + "/mosquitto/socket/mosquitto.sock"),
+            address: .unixDomainSocket(path: Self.rootPath + "/mosquitto/socket/mosquitto.sock"),
             identifier: "unixDomainSocketConnect",
             logger: self.logger
         ) { connection in
@@ -165,7 +167,7 @@ struct MQTTNewConnectionTests {
     @Test("Publish", arguments: MQTTQoS.allCases)
     func publish(qos: MQTTQoS) async throws {
         try await MQTTNewConnection.withConnection(
-            address: .hostname(MQTTNIOTests.hostname),
+            address: .hostname(Self.hostname),
             identifier: "publishQoS\(qos.rawValue)",
             logger: self.logger
         ) { connection in
@@ -180,7 +182,7 @@ struct MQTTNewConnectionTests {
     @Test("PINGREQ")
     func pingreq() async throws {
         try await MQTTNewConnection.withConnection(
-            address: .hostname(MQTTNIOTests.hostname),
+            address: .hostname(Self.hostname),
             identifier: "pingreq",
             logger: self.logger
         ) { connection in
@@ -207,7 +209,7 @@ struct MQTTNewConnectionTests {
 
         await #expect(throws: MQTTError.serverClosedConnection) {
             try await MQTTNewConnection.withConnection(
-                address: .hostname(MQTTNIOTests.hostname),
+                address: .hostname(Self.hostname),
                 identifier: "serverDisconnect",
                 logger: self.logger
             ) { connection in
@@ -232,24 +234,24 @@ struct MQTTNewConnectionTests {
     @Test("Packet ID")
     func packetID() async throws {
         try await MQTTNewConnection.withConnection(
-            address: .hostname(MQTTNIOTests.hostname),
+            address: .hostname(Self.hostname),
             identifier: "packetID",
             logger: self.logger
         ) { connection in
-            let initial = await connection._testPacketId()
+            let initial = await connection.globalPacketId.load(ordering: .relaxed)
             try await connection.publish(
                 to: "testPersistentAtLeastOnce",
                 payload: ByteBufferAllocator().buffer(capacity: 0),
                 qos: .atLeastOnce
             )
-            let afterFirst = await connection._testPacketId()
+            let afterFirst = await connection.globalPacketId.load(ordering: .relaxed)
             #expect(afterFirst == initial + 1)
             try await connection.publish(
                 to: "testPersistentAtLeastOnce",
                 payload: ByteBufferAllocator().buffer(capacity: 0),
                 qos: .atLeastOnce
             )
-            let afterSecond = await connection._testPacketId()
+            let afterSecond = await connection.globalPacketId.load(ordering: .relaxed)
             #expect(afterSecond == initial + 2)
         }
     }
@@ -300,6 +302,74 @@ struct MQTTNewConnectionTests {
         logger.logLevel = .trace
         return logger
     }()
+
+    static let rootPath = #filePath
+        .split(separator: "/", omittingEmptySubsequences: false)
+        .dropLast(3)
+        .joined(separator: "/")
+
+    static var eventLoopGroupSingleton: EventLoopGroup {
+        #if os(Linux)
+        MultiThreadedEventLoopGroup.singleton
+        #else
+        // Return TS Eventloop for non-Linux builds, as we use TS TLS
+        NIOTSEventLoopGroup.singleton
+        #endif
+    }
+
+    static var _tlsConfiguration: MQTTClient.TLSConfigurationType {
+        get throws {
+            #if os(Linux)
+            let rootCertificate = try NIOSSLCertificate.fromPEMFile(Self.rootPath + "/mosquitto/certs/ca.pem")
+            let certificate = try NIOSSLCertificate.fromPEMFile(Self.rootPath + "/mosquitto/certs/client.pem")
+            let privateKey = try NIOSSLPrivateKey(file: Self.rootPath + "/mosquitto/certs/client.key", format: .pem)
+            var tlsConfiguration = TLSConfiguration.makeClientConfiguration()
+            tlsConfiguration.trustRoots = .certificates(rootCertificate)
+            tlsConfiguration.certificateChain = certificate.map { .certificate($0) }
+            tlsConfiguration.privateKey = .privateKey(privateKey)
+            return .niossl(tlsConfiguration)
+            #else
+            let caData = try Data(contentsOf: URL(fileURLWithPath: Self.rootPath + "/mosquitto/certs/ca.der"))
+            let trustRootCertificates = SecCertificateCreateWithData(nil, caData as CFData).map { [$0] }
+            let p12Data = try Data(contentsOf: URL(fileURLWithPath: Self.rootPath + "/mosquitto/certs/client.p12"))
+            let options: [String: String] = [kSecImportExportPassphrase as String: "MQTTNIOClientCertPassword"]
+            var rawItems: CFArray?
+            guard SecPKCS12Import(p12Data as CFData, options as CFDictionary, &rawItems) == errSecSuccess else {
+                throw MQTTError.wrongTLSConfig
+            }
+            let items = rawItems! as! [[String: Any]]
+            let firstItem = items[0]
+            let identity = firstItem[kSecImportItemIdentity as String] as! SecIdentity?
+            let tlsConfiguration = TSTLSConfiguration(
+                trustRoots: trustRootCertificates,
+                clientIdentity: identity
+            )
+            return .ts(tlsConfiguration)
+            #endif
+        }
+    }
+
+    static func getTLSConfiguration(withTrustRoots: Bool = true, withClientKey: Bool = true) throws -> MQTTClient.TLSConfigurationType {
+        switch try Self._tlsConfiguration {
+        #if os(macOS) || os(Linux)
+        case .niossl(let config):
+            var tlsConfig = TLSConfiguration.makeClientConfiguration()
+            tlsConfig.trustRoots = withTrustRoots ? (config.trustRoots ?? .default) : .default
+            tlsConfig.certificateChain = withClientKey ? config.certificateChain : []
+            tlsConfig.privateKey = withClientKey ? config.privateKey : nil
+            return .niossl(tlsConfig)
+        #endif
+        #if canImport(Network)
+        case .ts(let config):
+            return .ts(
+                TSTLSConfiguration(
+                    trustRoots: withTrustRoots ? config.trustRoots : nil,
+                    clientIdentity: withClientKey ? config.clientIdentity : nil
+                )
+            )
+        #endif
+        }
+    }
 }
 
 extension MQTTError: Equatable {
@@ -320,18 +390,13 @@ extension MQTTError: Equatable {
             (.unrecognisedPacketType, .unrecognisedPacketType),
             (.authWorkflowRequired, .authWorkflowRequired),
             (.serverDisconnection, .serverDisconnection):
-            return true
+            true
         case (.connectionError(let lhsValue), .connectionError(let rhsValue)):
-            return lhsValue == rhsValue
+            lhsValue == rhsValue
         case (.reasonError(let lhsValue), .reasonError(let rhsValue)):
-            return lhsValue == rhsValue
+            lhsValue == rhsValue
         default:
-            return false
+            false
         }
     }
-}
-
-// Test-only helper to access packet id inside actor context
-extension MQTTNewConnection {
-    func _testPacketId() -> UInt16 { self.globalPacketId.load(ordering: .relaxed) }
 }

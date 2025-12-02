@@ -79,10 +79,12 @@ final class MQTTChannelHandler: ChannelDuplexHandler {
         if context.channel.isActive {
             self.setInitialized(context: context)
         }
+        self.logger.trace("MQTTChannelHandler added to pipeline, channel.isActive: \(context.channel.isActive)")
     }
 
     func channelActive(context: ChannelHandlerContext) {
         self.setInitialized(context: context)
+        self.logger.trace("Channel became active.")
         context.fireChannelActive()
     }
 
@@ -92,6 +94,7 @@ final class MQTTChannelHandler: ChannelDuplexHandler {
 
         // channel is inactive so we should fail all tasks in progress
         self.failTasksAndClose(with: MQTTError.serverClosedConnection)
+        self.logger.trace("Channel became inactive.")
 
         context.fireChannelInactive()
     }
@@ -99,6 +102,7 @@ final class MQTTChannelHandler: ChannelDuplexHandler {
     func errorCaught(context: ChannelHandlerContext, error: Error) {
         // we caught an error so we should fail all active tasks
         self.failTasksAndClose(with: error)
+        self.logger.error("Error caught in channel handler: \(error)")
     }
 
     func write(context: ChannelHandlerContext, data: NIOAny, promise: EventLoopPromise<Void>?) {
