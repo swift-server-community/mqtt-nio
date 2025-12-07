@@ -35,8 +35,12 @@ struct MQTTNewConnectionTests {
     func connectWithWill() async throws {
         try await MQTTNewConnection.withConnection(
             address: .hostname(Self.hostname),
+            configuration: .init(
+                versionConfiguration: .v3_1_1(
+                    will: (topicName: "MyWillTopic", payload: ByteBufferAllocator().buffer(string: "Test payload"), qos: .atLeastOnce, retain: false)
+                )
+            ),
             identifier: "connectWithWill",
-            will: (topicName: "MyWillTopic", payload: ByteBufferAllocator().buffer(string: "Test payload"), qos: .atLeastOnce, retain: false),
             logger: self.logger
         ) { connection in
             try await connection.ping()
@@ -349,7 +353,10 @@ struct MQTTNewConnectionTests {
         }
     }
 
-    static func getTLSConfiguration(withTrustRoots: Bool = true, withClientKey: Bool = true) throws -> MQTTClient.TLSConfigurationType {
+    static func getTLSConfiguration(
+        withTrustRoots: Bool = true,
+        withClientKey: Bool = true
+    ) throws -> MQTTConnectionConfiguration.TLSConfigurationType {
         switch try Self._tlsConfiguration {
         #if os(macOS) || os(Linux)
         case .niossl(let config):

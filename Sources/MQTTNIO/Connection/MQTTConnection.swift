@@ -74,7 +74,7 @@ final class MQTTConnection {
                                 disablePing: client.configuration.disablePing,
                                 pingInterval: pingInterval,
                                 timeout: client.configuration.timeout,
-                                version: client.configuration.version
+                                version: .init(client.configuration.version)
                             ),
                             eventLoop: channel.eventLoop,
                             logger: client.logger,

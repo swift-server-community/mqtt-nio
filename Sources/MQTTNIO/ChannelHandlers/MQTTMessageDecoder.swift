@@ -28,6 +28,16 @@ struct ByteToMQTTMessageDecoder: NIOSingleStepByteToMessageDecoder {
         self.version = version
     }
 
+    // TODO: remove once MQTTClient.Version is substituted everywhere
+    init(version: MQTTConnectionConfiguration.Version) {
+        switch version {
+        case .v3_1_1:
+            self.version = .v3_1_1
+        case .v5_0:
+            self.version = .v5_0
+        }
+    }
+
     mutating func decode(buffer: inout ByteBuffer) throws -> MQTTPacket? {
         let origBuffer = buffer
         do {

@@ -30,6 +30,37 @@ protocol MQTTPacket: CustomStringConvertible, Sendable {
     static func read(version: MQTTClient.Version, from: MQTTIncomingPacket) throws -> Self
 }
 
+// TODO: remove once MQTTClient.Version is substituted everywhere
+extension MQTTPacket {
+    func write(version: MQTTConnectionConfiguration.Version, to byteBuffer: inout ByteBuffer) throws {
+        try self.write(
+            version: {
+                switch version {
+                case .v3_1_1:
+                    return .v3_1_1
+                case .v5_0:
+                    return .v5_0
+                }
+            }(),
+            to: &byteBuffer
+        )
+    }
+
+    static func read(version: MQTTConnectionConfiguration.Version, from packet: MQTTIncomingPacket) throws -> Self {
+        try Self.read(
+            version: {
+                switch version {
+                case .v3_1_1:
+                    return .v3_1_1
+                case .v5_0:
+                    return .v5_0
+                }
+            }(),
+            from: packet
+        )
+    }
+}
+
 extension MQTTPacket {
     /// default packet to zero
     var packetId: UInt16 { 0 }
