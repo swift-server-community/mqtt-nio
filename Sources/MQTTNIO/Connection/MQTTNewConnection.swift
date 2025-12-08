@@ -100,8 +100,14 @@ public final actor MQTTNewConnection: Sendable {
             eventLoop: eventLoop,
             logger: logger
         )
-        defer { connection.close() }
-        return try await operation(connection)
+        do {
+            let result = try await operation(connection)
+            try await connection.close()
+            return result
+        } catch {
+            try? await connection.close()
+            throw error
+        }
     }
 
     /// Publish message to topic.
@@ -232,19 +238,21 @@ public final actor MQTTNewConnection: Sendable {
     }
 
     /// Close connection
-    public nonisolated func close() {
+    public func close() throws {
         guard self.isClosed.compareExchange(expected: false, desired: true, successOrdering: .relaxed, failureOrdering: .relaxed).exchanged
         else {
             return
         }
-        let disconnectPacket: MQTTDisconnectPacket =
-            switch self.configuration.versionConfiguration {
-            case .v3_1_1:
-                MQTTDisconnectPacket()
-            case .v5_0(_, let disconnectProperties, _, _):
-                MQTTDisconnectPacket(properties: disconnectProperties)
-            }
-        _ = self.channel.writeAndFlush(disconnectPacket)
+        if self.channel.isActive {
+            let disconnectPacket: MQTTDisconnectPacket =
+                switch self.configuration.versionConfiguration {
+                case .v3_1_1:
+                    MQTTDisconnectPacket()
+                case .v5_0(_, let disconnectProperties, _, _):
+                    MQTTDisconnectPacket(properties: disconnectProperties)
+                }
+            try self.sendMessageNoWait(disconnectPacket)
+        }
         self.channel.close(mode: .all, promise: nil)
     }
 
@@ -497,6 +505,10 @@ public final actor MQTTNewConnection: Sendable {
         }
     }
 
+    func sendMessageNoWait(_ message: MQTTPacket) throws {
+        try self.channelHandler.sendMessageNoWait(message)
+    }
+
     func sendMessage(
         _ message: any MQTTPacket,
         checkInbound: @escaping (MQTTPacket) throws -> Bool
@@ -638,7 +650,7 @@ public final actor MQTTNewConnection: Sendable {
 
         if packet.publish.qos == .atMostOnce {
             // don't send a packet id if QOS is at most once. (MQTT-2.3.1-5)
-            try await self.channel.writeAndFlush(packet)
+            try self.sendMessageNoWait(packet)
             return nil
         }
 

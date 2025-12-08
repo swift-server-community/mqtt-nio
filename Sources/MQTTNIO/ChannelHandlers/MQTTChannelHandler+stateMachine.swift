@@ -69,12 +69,14 @@ extension MQTTChannelHandler {
 
         /// handler wants to send a packet
         @usableFromInline
-        mutating func sendPacket(_ task: MQTTTask) -> SendPacketAction {
+        mutating func sendPacket(_ task: MQTTTask?) -> SendPacketAction {
             switch consume self.state {
             case .uninitialized:
                 preconditionFailure("Cannot send packet when uninitialized")
             case .initialized(var state):
-                state.tasks.append(task)
+                if let task {
+                    state.tasks.append(task)
+                }
                 self = .initialized(state)
                 return .sendPacket(state.context)
             case .closed:

@@ -214,6 +214,16 @@ final class MQTTChannelHandler: ChannelDuplexHandler {
 
     // MARK: - Sending Messages
 
+    func sendMessageNoWait(_ message: MQTTPacket) throws {
+        self.eventLoop.assertInEventLoop()
+        switch self.stateMachine.sendPacket(nil) {
+        case .sendPacket(let context):
+            _ = context.channel.writeAndFlush(message)
+        case .throwError(let error):
+            throw error
+        }
+    }
+
     func sendMessage(
         _ message: MQTTPacket,
         promise: MQTTPromise<MQTTPacket>,
