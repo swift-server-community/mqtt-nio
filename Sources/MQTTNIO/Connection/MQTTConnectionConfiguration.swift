@@ -46,16 +46,6 @@ public struct MQTTConnectionConfiguration: Sendable {
     public enum Version: Sendable {
         case v3_1_1
         case v5_0
-
-        init(_ oldVersion: MQTTClient.Version) {
-            self =
-                switch oldVersion {
-                case .v3_1_1:
-                    .v3_1_1
-                case .v5_0:
-                    .v5_0
-                }
-        }
     }
 
     /// Connection configuration for specific MQTT version.

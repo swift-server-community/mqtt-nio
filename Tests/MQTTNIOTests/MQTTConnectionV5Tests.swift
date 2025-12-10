@@ -27,13 +27,13 @@ import NIOTransportServices
 import NIOSSL
 #endif
 
-@Suite("MQTTNewConnection v5 Tests")
-struct MQTTNewConnectionV5Tests {
+@Suite("MQTTConnection v5 Tests")
+struct MQTTConnectionV5Tests {
     static let hostname = ProcessInfo.processInfo.environment["MOSQUITTO_SERVER"] ?? "localhost"
 
     @Test("Connect")
     func connect() async throws {
-        try await MQTTNewConnection.withConnection(
+        try await MQTTConnection.withConnection(
             address: .hostname(Self.hostname),
             configuration: .init(versionConfiguration: .v5_0()),
             identifier: "connectV5",
@@ -45,7 +45,7 @@ struct MQTTNewConnectionV5Tests {
 
     @Test("Connect with Will")
     func connectWithWill() async throws {
-        try await MQTTNewConnection.withConnection(
+        try await MQTTConnection.withConnection(
             address: .hostname(Self.hostname),
             configuration: .init(
                 versionConfiguration: .v5_0(
@@ -75,7 +75,7 @@ struct MQTTNewConnectionV5Tests {
 
     @Test("Connect with Properties", arguments: Self.properties)
     func connectWith(property: MQTTProperties.Property) async throws {
-        try await MQTTNewConnection.withConnection(
+        try await MQTTConnection.withConnection(
             address: .hostname(Self.hostname),
             configuration: .init(versionConfiguration: .v5_0(connectProperties: .init([property]))),
             identifier: "connectWithPropertyV5_\(property)",
@@ -87,7 +87,7 @@ struct MQTTNewConnectionV5Tests {
 
     @Test("Connect with No Identifier")
     func connectWithNoIdentifier() async throws {
-        try await MQTTNewConnection.withConnection(
+        try await MQTTConnection.withConnection(
             address: .hostname(Self.hostname),
             configuration: .init(versionConfiguration: .v5_0()),
             identifier: "",
@@ -99,7 +99,7 @@ struct MQTTNewConnectionV5Tests {
 
     @Test("Publish", arguments: MQTTQoS.allCases, [MQTTProperties.Property.contentType("text/plain"), nil])
     func publish(qos: MQTTQoS, property: MQTTProperties.Property?) async throws {
-        try await MQTTNewConnection.withConnection(
+        try await MQTTConnection.withConnection(
             address: .hostname(Self.hostname),
             configuration: .init(versionConfiguration: .v5_0()),
             identifier: "publishV5QoS\(qos.rawValue)WithProperty\(String(describing: property))",
@@ -120,7 +120,7 @@ struct MQTTNewConnectionV5Tests {
     @Test("Bad Authentication Method")
     func badAuthenticationMethod() async throws {
         await #expect(throws: MQTTError.reasonError(.badAuthenticationMethod)) {
-            try await MQTTNewConnection.withConnection(
+            try await MQTTConnection.withConnection(
                 address: .hostname(Self.hostname),
                 configuration: .init(versionConfiguration: .v5_0(connectProperties: [.authenticationMethod("test")])),
                 identifier: "badAuthenticationMethodV5",
@@ -131,7 +131,7 @@ struct MQTTNewConnectionV5Tests {
 
     @Test("Auth")
     func auth() async throws {
-        try await MQTTNewConnection.withConnection(
+        try await MQTTConnection.withConnection(
             address: .hostname(Self.hostname),
             configuration: .init(versionConfiguration: .v5_0()),
             identifier: "reAuthV5",

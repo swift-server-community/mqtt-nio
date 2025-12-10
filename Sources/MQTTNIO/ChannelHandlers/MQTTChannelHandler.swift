@@ -30,7 +30,7 @@ final class MQTTChannelHandler: ChannelDuplexHandler {
     private let eventLoop: any EventLoop
     @usableFromInline
     /*private*/ var stateMachine: StateMachine<ChannelHandlerContext>
-    private let publishListeners: MQTTListeners<Result<MQTTPublishInfo, Error>>
+    //private let publishListeners: MQTTListeners<Result<MQTTPublishInfo, Error>>
 
     private var decoder: NIOSingleStepByteToMessageProcessor<ByteToMQTTMessageDecoder>
     private let logger: Logger
@@ -44,11 +44,11 @@ final class MQTTChannelHandler: ChannelDuplexHandler {
         configuration: Configuration,
         eventLoop: any EventLoop,
         logger: Logger,
-        publishListeners: MQTTListeners<Result<MQTTPublishInfo, Error>>
+        //publishListeners: MQTTListeners<Result<MQTTPublishInfo, Error>>
     ) {
         self.configuration = configuration
         self.eventLoop = eventLoop
-        self.publishListeners = publishListeners
+        //self.publishListeners = publishListeners
         self.decoder = .init(.init(version: configuration.version))
         self.stateMachine = .init()
         self.logger = logger
@@ -174,12 +174,12 @@ final class MQTTChannelHandler: ChannelDuplexHandler {
     private func respondToPublish(_ message: MQTTPublishPacket, context: ChannelHandlerContext) {
         switch message.publish.qos {
         case .atMostOnce:
-            self.publishListeners.notify(.success(message.publish))
+            break  //self.publishListeners.notify(.success(message.publish))
 
         case .atLeastOnce:
             context.channel.writeAndFlush(MQTTPubAckPacket(type: .PUBACK, packetId: message.packetId))
                 .map { _ in message.publish }
-                .whenComplete { self.publishListeners.notify($0) }
+        //.whenComplete { self.publishListeners.notify($0) }
 
         case .exactlyOnce:
             var publish = message.publish
@@ -201,7 +201,7 @@ final class MQTTChannelHandler: ChannelDuplexHandler {
                 if case .failure(let error) = result, case MQTTError.retrySend = error {
                     return
                 }
-                self.publishListeners.notify(result)
+                //self.publishListeners.notify(result)
             }
         }
     }
