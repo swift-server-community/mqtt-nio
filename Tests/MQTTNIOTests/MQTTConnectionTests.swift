@@ -47,12 +47,12 @@ struct MQTTConnectionTests {
         }
     }
 
-    @Test("Ping")
-    func ping() async throws {
+    @Test("Keep Alive Ping")
+    func keepAlivePing() async throws {
         try await MQTTConnection.withConnection(
             address: .hostname(Self.hostname),
             configuration: .init(pingInterval: .seconds(2)),
-            identifier: "ping",
+            identifier: "keepAlivePing",
             logger: self.logger
         ) { connection in
             try await Task.sleep(for: .seconds(5))
@@ -183,19 +183,19 @@ struct MQTTConnectionTests {
         }
     }
 
-    @Test("PINGREQ")
-    func pingreq() async throws {
+    @Test("Send PINGREQ")
+    func sendPingreq() async throws {
         try await MQTTConnection.withConnection(
             address: .hostname(Self.hostname),
-            identifier: "pingreq",
+            identifier: "sendPingreq",
             logger: self.logger
         ) { connection in
             try await connection.ping()
         }
     }
 
-    @Test("Server Close")
-    func serverClose() async throws {
+    @Test("Server-Initiated Disconnection")
+    func serverDisconnect() async throws {
         struct MQTTForceDisconnectMessage: MQTTPacket {
             var type: MQTTPacketType { .PUBLISH }
             var description: String { "FORCEDISCONNECT" }
@@ -222,6 +222,149 @@ struct MQTTConnectionTests {
         }
     }
 
+    @Test("Publish with Retain Flag")
+    func publishRetain() async throws {
+        let payloadString =
+            #"{"from":1000000,"to":1234567,"type":1,"content":"I am a beginner in swift and I am studying hard!!测试\n\n test, message","timestamp":1607243024,"nonce":"pAx2EsUuXrVuiIU3GGOGHNbUjzRRdT5b","sign":"ff902e31a6a5f5343d70a3a93ac9f946adf1caccab539c6f3a6"}"#
+        let payload = ByteBufferAllocator().buffer(string: payloadString)
+
+        try await MQTTConnection.withConnection(
+            address: .hostname(Self.hostname, port: 8080),
+            configuration: .init(webSocketConfiguration: .init()),
+            identifier: "publishRetain",
+            logger: self.logger
+        ) { connection in
+            try await withThrowingTaskGroup { group in
+                group.addTask {
+                    try await connection.subscribe(to: [.init(topicFilter: "testMQTTPublishRetain", qos: .atLeastOnce)]) { subscription in
+                        try await confirmation("publishRetain") { receivedMessage in
+                            for try await message in subscription {
+                                var buffer = message.payload
+                                let string = buffer.readString(length: buffer.readableBytes)
+                                #expect(string == payloadString)
+                                receivedMessage()
+                                return
+                            }
+                        }
+                    }
+                }
+
+                group.addTask {
+                    try await connection.publish(to: "testMQTTPublishRetain", payload: payload, qos: .atLeastOnce, retain: true)
+                }
+
+                try await group.waitForAll()
+            }
+        }
+    }
+
+    @Test("Publish to Client")
+    func publishToClient() async throws {
+        let payloadString =
+            #"{"from":1000000,"to":1234567,"type":1,"content":"I am a beginner in swift and I am studying hard!!测试\n\n test, message","timestamp":1607243024,"nonce":"pAx2EsUuXrVuiIU3GGOGHNbUjzRRdT5b","sign":"ff902e31a6a5f5343d70a3a93ac9f946adf1caccab539c6f3a6"}"#
+        let payload = ByteBufferAllocator().buffer(string: payloadString)
+
+        try await withThrowingTaskGroup { group in
+            group.addTask {
+                try await MQTTConnection.withConnection(
+                    address: .hostname(Self.hostname, port: 8080),
+                    configuration: .init(webSocketConfiguration: .init()),
+                    identifier: "publishToClient_subscriber",
+                    logger: self.logger
+                ) { connection in
+                    try await connection.subscribe(
+                        to: [
+                            .init(topicFilter: "testAtLeastOnce", qos: .atLeastOnce),
+                            .init(topicFilter: "testExactlyOnce", qos: .exactlyOnce),
+                        ]
+                    ) { subscription in
+                        try await confirmation("publishToClient", expectedCount: 2) { receivedMessage in
+                            var count = 0
+                            for try await message in subscription {
+                                var buffer = message.payload
+                                let string = buffer.readString(length: buffer.readableBytes)
+                                #expect(string == payloadString)
+                                receivedMessage()
+                                count += 1
+                                if count == 2 { return }
+                            }
+                        }
+                    }
+                }
+            }
+
+            group.addTask {
+                try await MQTTConnection.withConnection(
+                    address: .hostname(Self.hostname, port: 8080),
+                    configuration: .init(webSocketConfiguration: .init()),
+                    identifier: "publishToClient_publisher",
+                    logger: self.logger
+                ) { connection in
+                    try await Task.sleep(for: .seconds(1))
+                    try await connection.publish(to: "testAtLeastOnce", payload: payload, qos: .atLeastOnce)
+                    try await connection.publish(to: "testExactlyOnce", payload: payload, qos: .exactlyOnce)
+                }
+            }
+
+            try await group.waitForAll()
+        }
+    }
+
+    @Test("Publish Large Payload to Client")
+    func publishLargePayloadToClient() async throws {
+        let payloadSize = 65537
+        let payloadData = Data(count: payloadSize)
+        let payload = ByteBufferAllocator().buffer(data: payloadData)
+
+        try await withThrowingTaskGroup { group in
+            group.addTask {
+                try await MQTTConnection.withConnection(
+                    address: .hostname(Self.hostname),
+                    identifier: "publishLargePayloadToClient_subscriber",
+                    logger: self.logger
+                ) { connection in
+                    try await connection.subscribe(to: [.init(topicFilter: "testLargeAtLeastOnce", qos: .atLeastOnce)]) { subscription in
+                        try await confirmation("publishLargePayloadToClient") { receivedMessage in
+                            for try await message in subscription {
+                                var buffer = message.payload
+                                let data = buffer.readData(length: buffer.readableBytes)
+                                #expect(data == payloadData)
+                                receivedMessage()
+                                return
+                            }
+                        }
+                    }
+                }
+            }
+
+            group.addTask {
+                try await MQTTConnection.withConnection(
+                    address: .hostname(Self.hostname),
+                    identifier: "publishLargePayloadToClient_publisher",
+                    logger: self.logger
+                ) { connection in
+                    try await Task.sleep(for: .seconds(1))
+                    try await connection.publish(to: "testLargeAtLeastOnce", payload: payload, qos: .atLeastOnce)
+                }
+            }
+
+            try await group.waitForAll()
+        }
+    }
+
+    @Test("Subscribe to All Topics", .disabled(if: ProcessInfo.processInfo.environment["CI"] != nil))
+    func subscribeAll() async throws {
+        try await MQTTConnection.withConnection(
+            address: .hostname("test.mosquitto.org"),
+            identifier: "subscribeAll",
+            logger: self.logger
+        ) { connection in
+            try await connection.subscribe(to: [.init(topicFilter: "#", qos: .exactlyOnce)]) { subscription in
+                try await Task.sleep(for: .seconds(5))
+            }
+        }
+    }
+
     #if os(macOS)
     @Test("Connect with Raw IP Address")
     func rawIPConnect() async throws {
@@ -235,7 +378,7 @@ struct MQTTConnectionTests {
     }
     #endif
 
-    @Test("Packet ID")
+    @Test("Verify Packet ID Increments")
     func packetID() async throws {
         try await MQTTConnection.withConnection(
             address: .hostname(Self.hostname),
@@ -299,6 +442,78 @@ struct MQTTConnectionTests {
         }
         _ = try channel.finish()
         promise.succeed(())
+    }
+
+    @Test("Subscribe to Multi-level Wildcard")
+    func multiLevelWildcard() async throws {
+        try await MQTTConnection.withConnection(
+            address: .hostname(Self.hostname),
+            identifier: "multiLevelWildcard",
+            logger: self.logger
+        ) { connection in
+            try await withThrowingTaskGroup { group in
+                group.addTask {
+                    try await confirmation("multiLevelWildcard", expectedCount: 2) { receivedMessage in
+                        try await connection.subscribe(to: [.init(topicFilter: "home/kitchen/#", qos: .atLeastOnce)]) { subscription in
+                            var count = 0
+                            for try await message in subscription {
+                                var buffer = message.payload
+                                let string = buffer.readString(length: buffer.readableBytes)
+                                #expect(string == "test")
+                                receivedMessage()
+                                count += 1
+                                if count == 2 { return }
+                            }
+                        }
+                    }
+                }
+
+                group.addTask {
+                    try await Task.sleep(for: .seconds(1))
+                    try await connection.publish(to: "home/kitchen/temperature", payload: ByteBuffer(string: "test"), qos: .atLeastOnce)
+                    try await connection.publish(to: "home/livingroom/temperature", payload: ByteBuffer(string: "error"), qos: .atLeastOnce)
+                    try await connection.publish(to: "home/kitchen/humidity", payload: ByteBuffer(string: "test"), qos: .atLeastOnce)
+                }
+
+                try await group.waitForAll()
+            }
+        }
+    }
+
+    @Test("Subscribe to Single Level Wildcard")
+    func singleLevelWildcard() async throws {
+        try await MQTTConnection.withConnection(
+            address: .hostname(Self.hostname),
+            identifier: "singleLevelWildcard",
+            logger: self.logger
+        ) { connection in
+            try await withThrowingTaskGroup { group in
+                group.addTask {
+                    try await confirmation("singleLevelWildcard", expectedCount: 2) { receivedMessage in
+                        try await connection.subscribe(to: [.init(topicFilter: "home/+/temperature", qos: .atLeastOnce)]) { subscription in
+                            var count = 0
+                            for try await message in subscription {
+                                var buffer = message.payload
+                                let string = buffer.readString(length: buffer.readableBytes)
+                                #expect(string == "test")
+                                receivedMessage()
+                                count += 1
+                                if count == 2 { return }
+                            }
+                        }
+                    }
+                }
+
+                group.addTask {
+                    try await Task.sleep(for: .seconds(1))
+                    try await connection.publish(to: "home/livingroom/temperature", payload: ByteBuffer(string: "test"), qos: .atLeastOnce)
+                    try await connection.publish(to: "home/garden/humidity", payload: ByteBuffer(string: "error"), qos: .atLeastOnce)
+                    try await connection.publish(to: "home/kitchen/temperature", payload: ByteBuffer(string: "test"), qos: .atLeastOnce)
+                }
+
+                try await group.waitForAll()
+            }
+        }
     }
 
     let logger: Logger = {

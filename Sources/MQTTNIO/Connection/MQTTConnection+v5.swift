@@ -16,7 +16,7 @@ import NIOCore
 extension MQTTConnection {
     /// Provides implementations of functions that expose MQTT Version 5.0 features.
     public struct V5 {
-        fileprivate let connection: MQTTConnection
+        let connection: MQTTConnection
 
         /// Publish message to topic.
         ///

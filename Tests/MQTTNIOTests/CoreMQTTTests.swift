@@ -18,7 +18,7 @@ import Testing
 
 @Suite("Core MQTT Tests")
 struct CoreMQTTTests {
-    @Test("Connect")
+    @Test("Connect Packet")
     func connect() throws {
         let publish = MQTTPublishInfo(
             qos: .atMostOnce,
@@ -42,7 +42,7 @@ struct CoreMQTTTests {
         #expect(byteBuffer.readableBytes == 45)
     }
 
-    @Test("Publish")
+    @Test("Publish Packet")
     func publish() throws {
         let publish = MQTTPublishInfo(
             qos: .atMostOnce,
@@ -61,7 +61,7 @@ struct CoreMQTTTests {
         #expect(publish.payload == publish2.publish.payload)
     }
 
-    @Test("Subscribe")
+    @Test("Subscribe Packet")
     func subscribe() throws {
         let subscriptions: [MQTTSubscribeInfoV5] = [
             .init(topicFilter: "topic/cars", qos: .atLeastOnce),

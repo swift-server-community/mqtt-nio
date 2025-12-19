@@ -53,11 +53,12 @@ struct MQTTSubscriptionsTests {
         #expect(subscriptions.subscriptionIDMap[subscriptionID] == nil)
         for topicFilter in subscribeInfos.map({ $0.topicFilter }) {
             let tf = try TopicFilter(topicFilter)
+            // Unsubscribing does not remove the topic filter state machine
             #expect(subscriptions.subscriptionMap[tf] != nil)
         }
     }
 
-    @Test("Subscribe and Remove")
+    @Test("Subscribe and Remove Subscription")
     func subscribeAndRemove() throws {
         var subscriptions = MQTTSubscriptions(logger: self.logger)
         let subscribeInfos = [
