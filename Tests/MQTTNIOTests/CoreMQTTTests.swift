@@ -73,4 +73,55 @@ struct CoreMQTTTests {
         let packet = try MQTTIncomingPacket.read(from: &byteBuffer)
         #expect(packet.remainingData.readableBytes == 29)
     }
+
+    @Test(
+        "TopicFilter",
+        arguments: [
+            "home/+/temperature",
+            "home/garden/#",
+            "office/+/humidity",
+            "#",
+            "office/room1#",
+            "sport/+",
+            "sport+",
+            "+/+",
+            "+",
+            "/+",
+        ]
+    )
+    func topicFilter(topicFilter: String) {
+        #expect(throws: Never.self) { try TopicFilter(topicFilter) }
+    }
+
+    @Test("Invalid TopicFilter", arguments: ["home/#/temperature", "sport/tennis/#/ranking", "#/office"])
+    func invalidTopicFilter(topicFilter: String) {
+        #expect(throws: MQTTError.invalidTopicFilter(topicFilter)) { try TopicFilter(topicFilter) }
+    }
+
+    @Test("Dictionary+topicName")
+    func dictionaryTopicName() throws {
+        let subscriptionMap = [
+            try TopicFilter("home/+/temperature"): "Subscription1",
+            try TopicFilter("home/garden/#"): "Subscription2",
+            try TopicFilter("office/+/humidity"): "Subscription3",
+            try TopicFilter("#"): "Subscription4",
+            try TopicFilter("office/room1#"): "Subscription5",
+            try TopicFilter("sport/+"): "Subscription7",
+            try TopicFilter("sport+"): "Subscription8",
+            try TopicFilter("+/+"): "Subscription9",
+            try TopicFilter("+"): "Subscription10",
+            try TopicFilter("/+"): "Subscription11",
+        ]
+        #expect(subscriptionMap[topicName: "home/livingroom/temperature"].count == 2)
+        #expect(subscriptionMap[topicName: "home/garden/humidity"].count == 2)
+        #expect(subscriptionMap[topicName: "office/room1/humidity"].count == 2)
+        #expect(subscriptionMap[topicName: "home/garden"].count == 3)
+        #expect(subscriptionMap[topicName: "home/garden/temperature/soil"].count == 2)
+        #expect(subscriptionMap[topicName: "office/room1"].count == 2)
+        #expect(subscriptionMap[topicName: "sport/tennis/player1/ranking"].count == 1)
+        #expect(subscriptionMap[topicName: "sport/tennis"].count == 3)
+        #expect(subscriptionMap[topicName: "sport"].count == 2)
+        #expect(subscriptionMap[topicName: "sport/"].count == 3)
+        #expect(subscriptionMap[topicName: "/finance"].count == 3)
+    }
 }

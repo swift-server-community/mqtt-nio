@@ -396,11 +396,16 @@ extension MQTTError: Equatable {
             (.badResponse, .badResponse),
             (.unrecognisedPacketType, .unrecognisedPacketType),
             (.authWorkflowRequired, .authWorkflowRequired),
-            (.serverDisconnection, .serverDisconnection):
+            (.serverDisconnection, .serverDisconnection),
+            (.cancelledTask, .cancelledTask):
             true
         case (.connectionError(let lhsValue), .connectionError(let rhsValue)):
             lhsValue == rhsValue
         case (.reasonError(let lhsValue), .reasonError(let rhsValue)):
+            lhsValue == rhsValue
+        case (.versionMismatch(let expectedLHS, let actualLHS), .versionMismatch(let expectedRHS, let actualRHS)):
+            expectedLHS == expectedRHS && actualLHS == actualRHS
+        case (.invalidTopicFilter(let lhsValue), .invalidTopicFilter(let rhsValue)):
             lhsValue == rhsValue
         default:
             false
