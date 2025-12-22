@@ -236,13 +236,17 @@ final class MQTTChannelHandler: ChannelDuplexHandler {
     func subscribe(
         streamContinuation: MQTTSubscription.Continuation,
         packet: MQTTSubscribePacket,
-        promise: MQTTPromise<Int>
+        promise: MQTTPromise<UInt>
     ) {
         self.eventLoop.assertInEventLoop()
 
         let subscribeAction: MQTTSubscriptions.SubscribeAction
         do {
-            subscribeAction = try self.subscriptions.addSubscription(continuation: streamContinuation, subscriptions: packet.subscriptions)
+            subscribeAction = try self.subscriptions.addSubscription(
+                continuation: streamContinuation,
+                subscriptions: packet.subscriptions,
+                version: self.configuration.version
+            )
         } catch {
             promise.fail(error)
             return
@@ -253,6 +257,16 @@ final class MQTTChannelHandler: ChannelDuplexHandler {
             guard !packet.subscriptions.isEmpty else {
                 promise.fail(MQTTPacketError.atLeastOneTopicRequired)
                 return
+            }
+            var packet = packet
+            if self.configuration.version == .v5_0 {
+                var properties = packet.properties ?? []
+                properties.append(.subscriptionIdentifier(subscriptionID))
+                packet = MQTTSubscribePacket(
+                    subscriptions: packet.subscriptions,
+                    properties: properties,
+                    packetId: packet.packetId
+                )
             }
             self.sendMessage(packet) { message in
                 guard message.packetId == packet.packetId else { return false }
@@ -273,7 +287,7 @@ final class MQTTChannelHandler: ChannelDuplexHandler {
     }
 
     func unsubscribe(
-        id: Int,
+        id: UInt,
         packetID: UInt16,
         properties: MQTTProperties,
         promise: MQTTPromise<Void>

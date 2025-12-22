@@ -141,6 +141,7 @@ struct MQTTConnectionV5Tests {
                                 var buffer = message.payload
                                 let string = buffer.readString(length: buffer.readableBytes)
                                 #expect(string == payloadString)
+                                #expect(message.properties.contains { if case .subscriptionIdentifier = $0 { true } else { false } })
                                 receivedMessage()
                                 return
                             }
@@ -182,6 +183,7 @@ struct MQTTConnectionV5Tests {
                                 var buffer = message.payload
                                 let string = buffer.readString(length: buffer.readableBytes)
                                 #expect(string == payloadString)
+                                #expect(message.properties.contains { if case .subscriptionIdentifier = $0 { true } else { false } })
                                 #expect(message.properties.contains { $0 == .contentType("application/json") })
                                 receivedMessage()
                                 return
@@ -218,6 +220,7 @@ struct MQTTConnectionV5Tests {
                     try await connection.v5.subscribe(to: [.init(topicFilter: "testMQTTUserProperty", qos: .atLeastOnce)]) { subscription in
                         try await confirmation("userProperty") { receivedMessage in
                             for try await message in subscription {
+                                #expect(message.properties.contains { if case .subscriptionIdentifier = $0 { true } else { false } })
                                 #expect(message.properties.contains { $0 == .userProperty("key", "value") })
                                 receivedMessage()
                                 return
@@ -390,6 +393,7 @@ struct MQTTConnectionV5Tests {
                                 var buffer = message.payload
                                 let string = buffer.readString(length: buffer.readableBytes)
                                 #expect(string == "test")
+                                #expect(message.properties.contains { if case .subscriptionIdentifier = $0 { true } else { false } })
                                 receivedMessage()
                                 count += 1
                                 if count == 2 { return }
@@ -427,6 +431,7 @@ struct MQTTConnectionV5Tests {
                                 var buffer = message.payload
                                 let string = buffer.readString(length: buffer.readableBytes)
                                 #expect(string == "test")
+                                #expect(message.properties.contains { if case .subscriptionIdentifier = $0 { true } else { false } })
                                 receivedMessage()
                                 count += 1
                                 if count == 2 { return }
@@ -439,6 +444,47 @@ struct MQTTConnectionV5Tests {
                     try await Task.sleep(for: .seconds(1))
                     _ = try await connection.v5.publish(to: "home/livingroom/temperature", payload: ByteBuffer(string: "test"), qos: .atLeastOnce)
                     _ = try await connection.v5.publish(to: "home/garden/humidity", payload: ByteBuffer(string: "error"), qos: .atLeastOnce)
+                    _ = try await connection.v5.publish(to: "home/kitchen/temperature", payload: ByteBuffer(string: "test"), qos: .atLeastOnce)
+                }
+
+                try await group.waitForAll()
+            }
+        }
+    }
+
+    /// Test that if a message matches multiple topic filters of a single subscription,
+    /// the subscription receives as many copies of the message as there are matching topic filters.
+    @Test("Overlapping Subscriptions")
+    func overlappingSubscriptions() async throws {
+        try await MQTTConnection.withConnection(
+            address: .hostname(Self.hostname),
+            configuration: .init(versionConfiguration: .v5_0()),
+            identifier: "overlappingSubscriptions",
+            logger: self.logger
+        ) { connection in
+            try await withThrowingTaskGroup { group in
+                group.addTask {
+                    try await confirmation("overlappingSubscriptions", expectedCount: 2) { receivedMessage in
+                        try await connection.v5.subscribe(to: [
+                            .init(topicFilter: "home/+/temperature", qos: .atLeastOnce),
+                            .init(topicFilter: "home/kitchen/#", qos: .atLeastOnce),
+                        ]) { subscription in
+                            var count = 0
+                            for try await message in subscription {
+                                var buffer = message.payload
+                                let string = buffer.readString(length: buffer.readableBytes)
+                                #expect(string == "test")
+                                #expect(message.properties.contains { if case .subscriptionIdentifier = $0 { true } else { false } })
+                                receivedMessage()
+                                count += 1
+                                if count == 2 { return }
+                            }
+                        }
+                    }
+                }
+
+                group.addTask {
+                    try await Task.sleep(for: .seconds(1))
                     _ = try await connection.v5.publish(to: "home/kitchen/temperature", payload: ByteBuffer(string: "test"), qos: .atLeastOnce)
                 }
 

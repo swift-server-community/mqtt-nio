@@ -284,6 +284,10 @@ struct MQTTConnectionTests {
                                 var buffer = message.payload
                                 let string = buffer.readString(length: buffer.readableBytes)
                                 #expect(string == payloadString)
+                                #expect(
+                                    !message.properties.contains { if case .subscriptionIdentifier = $0 { true } else { false } },
+                                    "Subscription Identifier property should not be present in v3.1.1 messages"
+                                )
                                 receivedMessage()
                                 count += 1
                                 if count == 2 { return }
@@ -508,6 +512,45 @@ struct MQTTConnectionTests {
                     try await Task.sleep(for: .seconds(1))
                     try await connection.publish(to: "home/livingroom/temperature", payload: ByteBuffer(string: "test"), qos: .atLeastOnce)
                     try await connection.publish(to: "home/garden/humidity", payload: ByteBuffer(string: "error"), qos: .atLeastOnce)
+                    try await connection.publish(to: "home/kitchen/temperature", payload: ByteBuffer(string: "test"), qos: .atLeastOnce)
+                }
+
+                try await group.waitForAll()
+            }
+        }
+    }
+
+    /// Test that if a message matches multiple topic filters of a single subscription,
+    /// the subscription receives as many copies of the message as there are matching topic filters.
+    @Test("Overlapping Subscriptions")
+    func overlappingSubscriptions() async throws {
+        try await MQTTConnection.withConnection(
+            address: .hostname(Self.hostname),
+            identifier: "overlappingSubscriptions",
+            logger: self.logger
+        ) { connection in
+            try await withThrowingTaskGroup { group in
+                group.addTask {
+                    try await confirmation("overlappingSubscriptions", expectedCount: 2) { receivedMessage in
+                        try await connection.subscribe(to: [
+                            .init(topicFilter: "home/+/temperature", qos: .atLeastOnce),
+                            .init(topicFilter: "home/kitchen/#", qos: .atLeastOnce),
+                        ]) { subscription in
+                            var count = 0
+                            for try await message in subscription {
+                                var buffer = message.payload
+                                let string = buffer.readString(length: buffer.readableBytes)
+                                #expect(string == "test")
+                                receivedMessage()
+                                count += 1
+                                if count == 2 { return }
+                            }
+                        }
+                    }
+                }
+
+                group.addTask {
+                    try await Task.sleep(for: .seconds(1))
                     try await connection.publish(to: "home/kitchen/temperature", payload: ByteBuffer(string: "test"), qos: .atLeastOnce)
                 }
 
