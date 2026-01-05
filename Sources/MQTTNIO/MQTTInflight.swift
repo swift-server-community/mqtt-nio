@@ -11,38 +11,36 @@
 //
 //===----------------------------------------------------------------------===//
 
-import NIO
-import NIOConcurrencyHelpers
+import NIOCore
+import Synchronization
 
 /// Array of inflight packets. Used to resend packets when reconnecting to server
-struct MQTTInflight {
+struct MQTTInflight: Sendable, ~Copyable {
     init() {
-        self.lock = NIOLock()
-        self.packets = .init(initialCapacity: 4)
+        self.packets = .init(.init(initialCapacity: 4))
     }
 
     /// add packet
     mutating func add(packet: MQTTPacket) {
-        self.lock.withLock {
-            self.packets.append(packet)
+        self.packets.withLock {
+            $0.append(packet)
         }
     }
 
     /// remove packert
     mutating func remove(id: UInt16) {
-        self.lock.withLock {
-            guard let first = packets.firstIndex(where: { $0.packetId == id }) else { return }
-            self.packets.remove(at: first)
+        self.packets.withLock {
+            guard let first = $0.firstIndex(where: { $0.packetId == id }) else { return }
+            $0.remove(at: first)
         }
     }
 
     /// remove all packets
     mutating func clear() {
-        self.lock.withLock {
-            self.packets = []
+        self.packets.withLock {
+            $0 = []
         }
     }
 
-    private let lock: NIOLock
-    private(set) var packets: CircularBuffer<MQTTPacket>
+    let packets: Mutex<CircularBuffer<any MQTTPacket>>
 }

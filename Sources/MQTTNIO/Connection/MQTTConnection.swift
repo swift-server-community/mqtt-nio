@@ -355,8 +355,7 @@ public final actor MQTTConnection: Sendable {
         let mqttChannelHandler = MQTTChannelHandler(
             configuration: MQTTChannelHandler.Configuration(configuration),
             eventLoop: channel.eventLoop,
-            logger: logger,
-            //publishListeners: MQTTListeners<Result<MQTTPublishInfo, any Error>>()
+            logger: logger
         )
         try channel.pipeline.syncOperations.addHandler(mqttChannelHandler)
         return mqttChannelHandler
@@ -520,7 +519,7 @@ public final actor MQTTConnection: Sendable {
 
     /// Resend PUBLISH and PUBREL messages
     func resendOnRestart() async throws {
-        let inflight = self.inflight.packets
+        let inflight = self.inflight.packets.withLock { $0 }
         self.inflight.clear()
         for packet in inflight {
             switch packet {
