@@ -519,7 +519,7 @@ public final actor MQTTConnection: Sendable {
 
     /// Resend PUBLISH and PUBREL messages
     func resendOnRestart() async throws {
-        let inflight = self.inflight.packets.withLock { $0 }
+        let inflight = self.inflight.packets
         self.inflight.clear()
         for packet in inflight {
             switch packet {
