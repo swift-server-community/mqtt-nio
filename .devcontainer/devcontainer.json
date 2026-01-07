@@ -7,8 +7,6 @@
         "ghcr.io/devcontainers/features/common-utils:2": {
             "installZsh": "false",
             "username": "vscode",
-            "userUid": "1000",
-            "userGid": "1000",
             "upgradePackages": "false"
         },
         "ghcr.io/devcontainers/features/git:1": {
@@ -21,7 +19,7 @@
         // Configure properties specific to VS Code.
         "vscode": {
             "extensions": [
-              "sswg.swift-lang"
+              "swiftlang.swift-vscode"
             ],
             "settings": {
               "lldb.library": "/usr/lib/liblldb.so"

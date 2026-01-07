@@ -355,8 +355,7 @@ public final actor MQTTConnection: Sendable {
         let mqttChannelHandler = MQTTChannelHandler(
             configuration: MQTTChannelHandler.Configuration(configuration),
             eventLoop: channel.eventLoop,
-            logger: logger,
-            //publishListeners: MQTTListeners<Result<MQTTPublishInfo, any Error>>()
+            logger: logger
         )
         try channel.pipeline.syncOperations.addHandler(mqttChannelHandler)
         return mqttChannelHandler
