@@ -31,18 +31,14 @@ public enum MQTTError: Error, Sendable {
         case unrecognizedReturnValue = 0xFF
     }
 
-    /// You called connect on a client that is already connected to the broker
-    case alreadyConnected
-    /// Client has already been shutdown
-    case alreadyShutdown
     /// We received an unexpected message while connecting
     case failedToConnect
     /// We received an unsuccessful connection return value
     case connectionError(ConnectionReturnValue)
     /// We received an unsuccessful return value from either a connect or publish
     case reasonError(MQTTReasonCode)
-    /// client in not connected
-    case noConnection
+    /// client is closed
+    case connectionClosed
     /// the server disconnected
     case serverDisconnection(MQTTAckV5)
     /// the server closed the connection. If this happens during a publish you can resend

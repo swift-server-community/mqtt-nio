@@ -640,10 +640,8 @@ struct MQTTConnectionTests {
 extension MQTTError: Equatable {
     public static func == (lhs: MQTTError, rhs: MQTTError) -> Bool {
         switch (lhs, rhs) {
-        case (.alreadyConnected, .alreadyConnected),
-            (.alreadyShutdown, .alreadyShutdown),
-            (.failedToConnect, .failedToConnect),
-            (.noConnection, .noConnection),
+        case (.failedToConnect, .failedToConnect),
+            (.connectionClosed, .connectionClosed),
             (.serverClosedConnection, .serverClosedConnection),
             (.unexpectedMessage, .unexpectedMessage),
             (.decodeError, .decodeError),

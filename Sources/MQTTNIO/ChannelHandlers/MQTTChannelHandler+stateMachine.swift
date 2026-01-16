@@ -81,7 +81,7 @@ extension MQTTChannelHandler {
                 return .sendPacket(state.context)
             case .closed:
                 self = .closed
-                return .throwError(MQTTError.noConnection)
+                return .throwError(MQTTError.connectionClosed)
             }
         }
 
