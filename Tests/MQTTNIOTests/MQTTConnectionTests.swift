@@ -357,7 +357,7 @@ struct MQTTConnectionTests {
             #expect(event.payload == ByteBuffer(string: "TestPayload2"))
             #expect(event.topicName == "testTopic/that")
         } server: { channel, subscriptionID in
-            // send PUBLISH (This should be ignore as the topic name isn't covered by the subcribe topic filter)
+            // send PUBLISH (This should be ignore as subscription id is wrong)
             let publish = MQTTPublishPacket(
                 publish: .init(
                     qos: .atMostOnce,
