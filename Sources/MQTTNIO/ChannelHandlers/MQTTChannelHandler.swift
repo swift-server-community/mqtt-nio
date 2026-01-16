@@ -413,6 +413,7 @@ final class MQTTChannelHandler: ChannelDuplexHandler {
                 // otherwise reschedule task
                 if channelHandler.lastPingreqEventTime + channelHandler.pingreqTimeout <= .now() {
                     guard context.channel.isActive else { return }
+                    let loopBoundContext = NIOLoopBound(context, eventLoop: eventLoop)
                     channelHandler.sendMessage(MQTTPingreqPacket()) { message in
                         guard message.type == .PINGRESP else { return false }
                         return true
@@ -420,13 +421,13 @@ final class MQTTChannelHandler: ChannelDuplexHandler {
                     .whenComplete { result in
                         switch result {
                         case .failure(let error):
-                            channelHandler.failTasksAndCloseSubscriptions(with: error)
-                            context.fireErrorCaught(error)
+                            self.channelHandler.value.failTasksAndCloseSubscriptions(with: error)
+                            loopBoundContext.value.fireErrorCaught(error)
                         case .success:
                             break
                         }
-                        channelHandler.lastPingreqEventTime = .now()
-                        channelHandler.schedulePingreqCallback()
+                        self.channelHandler.value.lastPingreqEventTime = .now()
+                        self.channelHandler.value.schedulePingreqCallback()
                     }
                 } else {
                     channelHandler.schedulePingreqCallback()
