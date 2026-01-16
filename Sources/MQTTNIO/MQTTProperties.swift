@@ -311,6 +311,7 @@ extension MQTTProperties.Property {
             return .correlationData(buffer)
         case .subscriptionIdentifier:
             let value = try MQTTSerializer.readVariableLengthInteger(from: &byteBuffer)
+            guard (1..<0xfffffff).contains(value) else { throw MQTTError.badResponse }
             return .subscriptionIdentifier(UInt32(value))
         case .sessionExpiryInterval:
             guard let value: UInt32 = byteBuffer.readInteger() else { throw MQTTError.badResponse }
