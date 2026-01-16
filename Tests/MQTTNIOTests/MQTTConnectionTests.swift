@@ -97,65 +97,147 @@ struct MQTTConnectionTests {
         }
     }
 
-    @Test("Connect with TLS")
-    func tlsConnect() async throws {
-        try await MQTTConnection.withConnection(
-            address: .hostname(Self.hostname, port: 8883),
-            configuration: .init(
-                useSSL: true,
-                tlsConfiguration: self.getTLSConfiguration(),
-                sniServerName: "soto.codes"
-            ),
-            identifier: "tlsConnect",
-            eventLoop: Self.eventLoopGroupSingleton.any(),
-            logger: self.logger
-        ) { connection in
-            try await connection.ping()
-        }
-    }
+    @Suite(.serialized)
+    struct TLS {
+        static let hostname = ProcessInfo.processInfo.environment["MOSQUITTO_SERVER"] ?? "localhost"
 
-    @Test("Connect with WebSocket and TLS")
-    func webSocketAndTLSConnect() async throws {
-        try await MQTTConnection.withConnection(
-            address: .hostname(Self.hostname, port: 8081),
-            configuration: .init(
-                timeout: .seconds(5),
-                useSSL: true,
-                tlsConfiguration: self.getTLSConfiguration(),
-                sniServerName: "soto.codes",
-                webSocketConfiguration: .init()
-            ),
-            identifier: "webSocketAndTLSConnect",
-            eventLoop: Self.eventLoopGroupSingleton.any(),
-            logger: self.logger
-        ) { connection in
-            try await connection.ping()
-        }
-    }
+        static let rootPath = #filePath
+            .split(separator: "/", omittingEmptySubsequences: false)
+            .dropLast(3)
+            .joined(separator: "/")
 
-    #if canImport(Network)
-    @Test("Connect with TLS from P12")
-    func tlsConnectFromP12() async throws {
-        try await MQTTConnection.withConnection(
-            address: .hostname(Self.hostname, port: 8883),
-            configuration: .init(
-                useSSL: true,
-                tlsConfiguration: .ts(
-                    .init(
-                        trustRoots: .der(Self.rootPath + "/mosquitto/certs/ca.der"),
-                        clientIdentity: .p12(filename: Self.rootPath + "/mosquitto/certs/client.p12", password: "MQTTNIOClientCertPassword")
-                    )
+        static var eventLoopGroupSingleton: EventLoopGroup {
+            #if os(Linux)
+            MultiThreadedEventLoopGroup.singleton
+            #else
+            // Return TS Eventloop for non-Linux builds, as we use TS TLS
+            NIOTSEventLoopGroup.singleton
+            #endif
+        }
+
+        let logger: Logger = {
+            var logger = Logger(label: "MQTTNIOTests")
+            logger.logLevel = .trace
+            return logger
+        }()
+
+        @Test("Connect with TLS")
+        func tlsConnect() async throws {
+            try await MQTTConnection.withConnection(
+                address: .hostname(Self.hostname, port: 8883),
+                configuration: .init(
+                    useSSL: true,
+                    tlsConfiguration: self.getTLSConfiguration(),
+                    sniServerName: "soto.codes"
                 ),
-                sniServerName: "soto.codes"
-            ),
-            identifier: "tlsConnectFromP12",
-            eventLoop: Self.eventLoopGroupSingleton.any(),
-            logger: self.logger
-        ) { connection in
-            try await connection.ping()
+                identifier: "tlsConnect",
+                eventLoop: Self.eventLoopGroupSingleton.any(),
+                logger: self.logger
+            ) { connection in
+                try await connection.ping()
+            }
+        }
+
+        @Test("Connect with WebSocket and TLS")
+        func webSocketAndTLSConnect() async throws {
+            try await MQTTConnection.withConnection(
+                address: .hostname(Self.hostname, port: 8081),
+                configuration: .init(
+                    timeout: .seconds(5),
+                    useSSL: true,
+                    tlsConfiguration: self.getTLSConfiguration(),
+                    sniServerName: "soto.codes",
+                    webSocketConfiguration: .init()
+                ),
+                identifier: "webSocketAndTLSConnect",
+                eventLoop: Self.eventLoopGroupSingleton.any(),
+                logger: self.logger
+            ) { connection in
+                try await connection.ping()
+            }
+        }
+
+        #if canImport(Network)
+        @Test("Connect with TLS from P12")
+        func tlsConnectFromP12() async throws {
+            try await MQTTConnection.withConnection(
+                address: .hostname(Self.hostname, port: 8883),
+                configuration: .init(
+                    useSSL: true,
+                    tlsConfiguration: .ts(
+                        .init(
+                            trustRoots: .der(Self.rootPath + "/mosquitto/certs/ca.der"),
+                            clientIdentity: .p12(filename: Self.rootPath + "/mosquitto/certs/client.p12", password: "MQTTNIOClientCertPassword")
+                        )
+                    ),
+                    sniServerName: "soto.codes"
+                ),
+                identifier: "tlsConnectFromP12",
+                eventLoop: Self.eventLoopGroupSingleton.any(),
+                logger: self.logger
+            ) { connection in
+                try await connection.ping()
+            }
+        }
+        #endif
+
+        var _tlsConfiguration: MQTTConnectionConfiguration.TLSConfigurationType {
+            get throws {
+                #if os(Linux)
+                let rootCertificate = try NIOSSLCertificate.fromPEMFile(Self.rootPath + "/mosquitto/certs/ca.pem")
+                let certificate = try NIOSSLCertificate.fromPEMFile(Self.rootPath + "/mosquitto/certs/client.pem")
+                let privateKey = try NIOSSLPrivateKey(file: Self.rootPath + "/mosquitto/certs/client.key", format: .pem)
+                var tlsConfiguration = TLSConfiguration.makeClientConfiguration()
+                tlsConfiguration.trustRoots = .certificates(rootCertificate)
+                tlsConfiguration.certificateChain = certificate.map { .certificate($0) }
+                tlsConfiguration.privateKey = .privateKey(privateKey)
+                return .niossl(tlsConfiguration)
+                #else
+                let caData = try Data(contentsOf: URL(fileURLWithPath: Self.rootPath + "/mosquitto/certs/ca.der"))
+                let trustRootCertificates = SecCertificateCreateWithData(nil, caData as CFData).map { [$0] }
+                let p12Data = try Data(contentsOf: URL(fileURLWithPath: Self.rootPath + "/mosquitto/certs/client.p12"))
+                let options: [String: String] = [kSecImportExportPassphrase as String: "MQTTNIOClientCertPassword"]
+                var rawItems: CFArray?
+                guard SecPKCS12Import(p12Data as CFData, options as CFDictionary, &rawItems) == errSecSuccess else {
+                    throw MQTTError.wrongTLSConfig
+                }
+                let items = rawItems! as! [[String: Any]]
+                let firstItem = items[0]
+                let identity = firstItem[kSecImportItemIdentity as String] as! SecIdentity?
+                let tlsConfiguration = TSTLSConfiguration(
+                    trustRoots: trustRootCertificates,
+                    clientIdentity: identity
+                )
+                return .ts(tlsConfiguration)
+                #endif
+            }
+        }
+
+        func getTLSConfiguration(
+            withTrustRoots: Bool = true,
+            withClientKey: Bool = true
+        ) throws -> MQTTConnectionConfiguration.TLSConfigurationType {
+            switch try self._tlsConfiguration {
+            #if os(macOS) || os(Linux)
+            case .niossl(let config):
+                var tlsConfig = TLSConfiguration.makeClientConfiguration()
+                tlsConfig.trustRoots = withTrustRoots ? (config.trustRoots ?? .default) : .default
+                tlsConfig.certificateChain = withClientKey ? config.certificateChain : []
+                tlsConfig.privateKey = withClientKey ? config.privateKey : nil
+                return .niossl(tlsConfig)
+            #endif
+            #if canImport(Network)
+            case .ts(let config):
+                return .ts(
+                    TSTLSConfiguration(
+                        trustRoots: withTrustRoots ? config.trustRoots : nil,
+                        clientIdentity: withClientKey ? config.clientIdentity : nil
+                    )
+                )
+            #endif
+            }
         }
     }
-    #endif
 
     @Test("Connect with Unix Domain Socket")
     func unixDomainSocketConnect() async throws {
@@ -586,63 +668,6 @@ struct MQTTConnectionTests {
         // Return TS Eventloop for non-Linux builds, as we use TS TLS
         NIOTSEventLoopGroup.singleton
         #endif
-    }
-
-    var _tlsConfiguration: MQTTConnectionConfiguration.TLSConfigurationType {
-        get throws {
-            #if os(Linux)
-            let rootCertificate = try NIOSSLCertificate.fromPEMFile(Self.rootPath + "/mosquitto/certs/ca.pem")
-            let certificate = try NIOSSLCertificate.fromPEMFile(Self.rootPath + "/mosquitto/certs/client.pem")
-            let privateKey = try NIOSSLPrivateKey(file: Self.rootPath + "/mosquitto/certs/client.key", format: .pem)
-            var tlsConfiguration = TLSConfiguration.makeClientConfiguration()
-            tlsConfiguration.trustRoots = .certificates(rootCertificate)
-            tlsConfiguration.certificateChain = certificate.map { .certificate($0) }
-            tlsConfiguration.privateKey = .privateKey(privateKey)
-            return .niossl(tlsConfiguration)
-            #else
-            let caData = try Data(contentsOf: URL(fileURLWithPath: Self.rootPath + "/mosquitto/certs/ca.der"))
-            let trustRootCertificates = SecCertificateCreateWithData(nil, caData as CFData).map { [$0] }
-            let p12Data = try Data(contentsOf: URL(fileURLWithPath: Self.rootPath + "/mosquitto/certs/client.p12"))
-            let options: [String: String] = [kSecImportExportPassphrase as String: "MQTTNIOClientCertPassword"]
-            var rawItems: CFArray?
-            guard SecPKCS12Import(p12Data as CFData, options as CFDictionary, &rawItems) == errSecSuccess else {
-                throw MQTTError.wrongTLSConfig
-            }
-            let items = rawItems! as! [[String: Any]]
-            let firstItem = items[0]
-            let identity = firstItem[kSecImportItemIdentity as String] as! SecIdentity?
-            let tlsConfiguration = TSTLSConfiguration(
-                trustRoots: trustRootCertificates,
-                clientIdentity: identity
-            )
-            return .ts(tlsConfiguration)
-            #endif
-        }
-    }
-
-    func getTLSConfiguration(
-        withTrustRoots: Bool = true,
-        withClientKey: Bool = true
-    ) throws -> MQTTConnectionConfiguration.TLSConfigurationType {
-        switch try self._tlsConfiguration {
-        #if os(macOS) || os(Linux)
-        case .niossl(let config):
-            var tlsConfig = TLSConfiguration.makeClientConfiguration()
-            tlsConfig.trustRoots = withTrustRoots ? (config.trustRoots ?? .default) : .default
-            tlsConfig.certificateChain = withClientKey ? config.certificateChain : []
-            tlsConfig.privateKey = withClientKey ? config.privateKey : nil
-            return .niossl(tlsConfig)
-        #endif
-        #if canImport(Network)
-        case .ts(let config):
-            return .ts(
-                TSTLSConfiguration(
-                    trustRoots: withTrustRoots ? config.trustRoots : nil,
-                    clientIdentity: withClientKey ? config.clientIdentity : nil
-                )
-            )
-        #endif
-        }
     }
 }
 
