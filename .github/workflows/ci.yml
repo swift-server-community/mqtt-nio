@@ -47,6 +47,10 @@ jobs:
     runs-on: macos-latest
     timeout-minutes: 15
     steps:
+    - name: Select appropriate Xcode version
+      uses: maxim-lobanov/setup-xcode@v1
+      with:
+        xcode-version: latest-stable
     - name: Checkout
       uses: actions/checkout@v6
     - name: Xcodebuild
