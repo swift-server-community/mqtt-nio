@@ -31,12 +31,7 @@ struct MQTTConnectionTests {
             group.addTask {
                 defer { connection.close() }
                 try await connection.sendConnect()
-                do {
-                    try await clientOperation(connection)
-                    try await connection.sendDisconnect()
-                } catch {
-                    try? await connection.sendDisconnect()
-                }
+                try await clientOperation(connection)
             }
             group.addTask {
                 // wait for connect

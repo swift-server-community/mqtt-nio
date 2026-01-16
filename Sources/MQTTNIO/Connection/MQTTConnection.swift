@@ -259,7 +259,12 @@ public final actor MQTTConnection: Sendable {
         else {
             return
         }
-        self.channel.close(mode: .all, promise: nil)
+        self.channel.eventLoop.execute {
+            self.assumeIsolated {
+                try? $0.sendDisconnect()
+                $0.channel.close(mode: .all, promise: nil)
+            }
+        }
     }
 
     private static func _makeConnection(
