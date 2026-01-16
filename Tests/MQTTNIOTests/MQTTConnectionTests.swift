@@ -103,7 +103,7 @@ struct MQTTConnectionTests {
             address: .hostname(Self.hostname, port: 8883),
             configuration: .init(
                 useSSL: true,
-                tlsConfiguration: Self.getTLSConfiguration(),
+                tlsConfiguration: self.getTLSConfiguration(),
                 sniServerName: "soto.codes"
             ),
             identifier: "tlsConnect",
@@ -121,7 +121,7 @@ struct MQTTConnectionTests {
             configuration: .init(
                 timeout: .seconds(5),
                 useSSL: true,
-                tlsConfiguration: Self.getTLSConfiguration(),
+                tlsConfiguration: self.getTLSConfiguration(),
                 sniServerName: "soto.codes",
                 webSocketConfiguration: .init()
             ),
@@ -588,7 +588,7 @@ struct MQTTConnectionTests {
         #endif
     }
 
-    static var _tlsConfiguration: MQTTConnectionConfiguration.TLSConfigurationType {
+    var _tlsConfiguration: MQTTConnectionConfiguration.TLSConfigurationType {
         get throws {
             #if os(Linux)
             let rootCertificate = try NIOSSLCertificate.fromPEMFile(Self.rootPath + "/mosquitto/certs/ca.pem")
@@ -620,11 +620,11 @@ struct MQTTConnectionTests {
         }
     }
 
-    static func getTLSConfiguration(
+    func getTLSConfiguration(
         withTrustRoots: Bool = true,
         withClientKey: Bool = true
     ) throws -> MQTTConnectionConfiguration.TLSConfigurationType {
-        switch try Self._tlsConfiguration {
+        switch try self._tlsConfiguration {
         #if os(macOS) || os(Linux)
         case .niossl(let config):
             var tlsConfig = TLSConfiguration.makeClientConfiguration()
