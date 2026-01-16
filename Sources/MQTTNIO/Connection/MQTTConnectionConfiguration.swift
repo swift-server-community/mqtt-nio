@@ -57,7 +57,7 @@ public struct MQTTConnectionConfiguration: Sendable {
             connectProperties: MQTTProperties = .init(),
             disconnectProperties: MQTTProperties = .init(),
             will: (topicName: String, payload: ByteBuffer, qos: MQTTQoS, retain: Bool, properties: MQTTProperties)? = nil,
-            authWorkflow: (@Sendable (MQTTAuthV5) async throws -> MQTTAuthV5)? = nil
+            authWorkflow: MQTTAuthenticator? = nil
         )
 
         var version: Version {
