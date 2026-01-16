@@ -211,8 +211,8 @@ struct MQTTPublishPacket: MQTTPacket {
         var packetId: UInt16 = 0
         // read topic name
         let topicName = try MQTTSerializer.readString(from: &remainingData)
-        guard let qos = MQTTQoS(rawValue: (packet.flags & PublishFlags.qosMask) >> PublishFlags.qosShift) else { throw MQTTError.badResponse }
         // read packet id if QoS is not atMostOnce
+        guard let qos = MQTTQoS(rawValue: (packet.flags & PublishFlags.qosMask) >> PublishFlags.qosShift) else { throw MQTTError.badResponse }
         if qos != .atMostOnce {
             guard let readPacketId: UInt16 = remainingData.readInteger() else { throw MQTTError.badResponse }
             packetId = readPacketId
@@ -242,12 +242,11 @@ struct MQTTPublishPacket: MQTTPacket {
     /// calculate size of publish packet
     func packetSize(version: MQTTConnectionConfiguration.Version) -> Int {
         // topic name
-        var size = self.publish.topicName.utf8.count
+        var size = self.publish.topicName.utf8.count + 2
+        // packet identifier
         if self.publish.qos != .atMostOnce {
             size += 2
         }
-        // packet identifier
-        size += 2
         // properties
         if version == .v5_0 {
             let propertiesPacketSize = self.publish.properties.packetSize
@@ -301,7 +300,35 @@ struct MQTTSubscribePacket: MQTTPacket {
     }
 
     static func read(version: MQTTConnectionConfiguration.Version, from packet: MQTTIncomingPacket) throws -> Self {
-        throw InternalError.notImplemented
+        var remainingData = packet.remainingData
+        /// packet id
+        guard let packetId: UInt16 = remainingData.readInteger() else { throw MQTTError.badResponse }
+        // read properties
+        let properties: MQTTProperties? =
+            if version == .v5_0 {
+                try MQTTProperties.read(from: &remainingData)
+            } else {
+                nil
+            }
+        var subscribeInfos: [MQTTSubscribeInfoV5] = []
+        while remainingData.readableBytes > 0 {
+            let topicFilter = try MQTTSerializer.readString(from: &remainingData)
+            guard let flags: UInt8 = remainingData.readInteger() else { throw MQTTError.badResponse }
+            guard let qos = MQTTQoS(rawValue: flags & SubscribeFlags.qosMask) else { throw MQTTError.badResponse }
+            let noLocal = (flags & SubscribeFlags.noLocal) != 0
+            let retainAsPublished = (flags & SubscribeFlags.retainAsPublished) != 0
+            guard
+                let retainHandling = MQTTSubscribeInfoV5.RetainHandling(
+                    rawValue: (flags & SubscribeFlags.retainHandlingMask) >> SubscribeFlags.retainHandlingShift
+                )
+            else {
+                throw MQTTError.badResponse
+            }
+            subscribeInfos.append(
+                .init(topicFilter: topicFilter, qos: qos, noLocal: noLocal, retainAsPublished: retainAsPublished, retainHandling: retainHandling)
+            )
+        }
+        return MQTTSubscribePacket(subscriptions: subscribeInfos, properties: properties, packetId: packetId)
     }
 
     /// calculate size of subscribe packet
@@ -344,7 +371,22 @@ struct MQTTUnsubscribePacket: MQTTPacket {
     }
 
     static func read(version: MQTTConnectionConfiguration.Version, from packet: MQTTIncomingPacket) throws -> Self {
-        throw InternalError.notImplemented
+        var remainingData = packet.remainingData
+        /// packet id
+        guard let packetId: UInt16 = remainingData.readInteger() else { throw MQTTError.badResponse }
+        // read properties
+        let properties: MQTTProperties? =
+            if version == .v5_0 {
+                try MQTTProperties.read(from: &remainingData)
+            } else {
+                nil
+            }
+        var subscribeInfos: [String] = []
+        while remainingData.readableBytes > 0 {
+            let topicFilter = try MQTTSerializer.readString(from: &remainingData)
+            subscribeInfos.append(topicFilter)
+        }
+        return MQTTUnsubscribePacket(subscriptions: subscribeInfos, properties: properties, packetId: packetId)
     }
 
     /// calculate size of subscribe packet
@@ -439,7 +481,14 @@ struct MQTTSubAckPacket: MQTTPacket {
     }
 
     func write(version: MQTTConnectionConfiguration.Version, to byteBuffer: inout ByteBuffer) throws {
-        throw InternalError.notImplemented
+        writeFixedHeader(packetType: self.type, size: self.packetSize(version: version), to: &byteBuffer)
+        byteBuffer.writeInteger(self.packetId)
+        if version == .v5_0 {
+            try self.properties.write(to: &byteBuffer)
+        }
+        for reason in reasons {
+            byteBuffer.writeInteger(reason.rawValue)
+        }
     }
 
     static func read(version: MQTTConnectionConfiguration.Version, from packet: MQTTIncomingPacket) throws -> Self {
@@ -466,9 +515,9 @@ struct MQTTSubAckPacket: MQTTPacket {
     func packetSize(version: MQTTConnectionConfiguration.Version) -> Int {
         if version == .v5_0 {
             let propertiesPacketSize = self.properties.packetSize
-            return 2 + MQTTSerializer.variableLengthIntegerPacketSize(propertiesPacketSize) + propertiesPacketSize
+            return 2 + reasons.count + MQTTSerializer.variableLengthIntegerPacketSize(propertiesPacketSize) + propertiesPacketSize
         }
-        return 2
+        return 2 + reasons.count
     }
 }
 
