@@ -39,5 +39,12 @@ let package = Package(
             ],
             swiftSettings: defaultSwiftSettings
         ),
+        .testTarget(
+            name: "IntegrationTests",
+            dependencies: [
+                .target(name: "MQTTNIO")
+            ],
+            swiftSettings: defaultSwiftSettings
+        ),
     ]
 )

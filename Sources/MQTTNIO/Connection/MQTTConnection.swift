@@ -98,12 +98,13 @@ public final actor MQTTConnection: Sendable {
             eventLoop: eventLoop,
             logger: logger
         )
+        defer { connection.close() }
         do {
             let result = try await operation(connection)
-            try await connection.close()
+            try await connection.sendDisconnect()
             return result
         } catch {
-            try? await connection.close()
+            try? await connection.sendDisconnect()
             throw error
         }
     }
@@ -239,13 +240,53 @@ public final actor MQTTConnection: Sendable {
         try await self.channelHandler.waitOnInitialized().get()
     }
 
-    /// Close connection
-    public func close() throws {
-        guard self.isClosed.compareExchange(expected: false, desired: true, successOrdering: .relaxed, failureOrdering: .relaxed).exchanged
-        else {
-            return
-        }
-        if self.channel.isActive {
+    package func sendConnect() async throws {
+        let publish =
+            switch configuration.versionConfiguration {
+            case .v3_1_1(let will):
+                will.map {
+                    MQTTPublishInfo(
+                        qos: .atMostOnce,
+                        retain: $0.retain,
+                        dup: false,
+                        topicName: $0.topicName,
+                        payload: $0.payload,
+                        properties: .init()
+                    )
+                }
+            case .v5_0(_, _, let will, _):
+                will.map {
+                    MQTTPublishInfo(
+                        qos: .atMostOnce,
+                        retain: $0.retain,
+                        dup: false,
+                        topicName: $0.topicName,
+                        payload: $0.payload,
+                        properties: $0.properties
+                    )
+                }
+            }
+        let properties: MQTTProperties =
+            switch configuration.versionConfiguration {
+            case .v3_1_1:
+                .init()
+            case .v5_0(let connectProperties, _, _, _):
+                connectProperties  // TODO: Do we need to set `.sessionExpiryInterval(0xFFFF_FFFF)` by default?
+            }
+        let packet = MQTTConnectPacket(
+            cleanSession: cleanSession,
+            keepAliveSeconds: UInt16(configuration.keepAliveInterval.nanoseconds / 1_000_000_000),
+            clientIdentifier: identifier,
+            userName: configuration.userName,
+            password: configuration.password,
+            properties: properties,
+            will: publish
+        )
+        _ = try await self._connect(packet: packet)
+    }
+
+    func sendDisconnect() throws {
+        if channel.isActive {
             let disconnectPacket: MQTTDisconnectPacket =
                 switch self.configuration.versionConfiguration {
                 case .v3_1_1:
@@ -254,6 +295,14 @@ public final actor MQTTConnection: Sendable {
                     MQTTDisconnectPacket(properties: disconnectProperties)
                 }
             try self.sendMessageNoWait(disconnectPacket)
+        }
+    }
+
+    /// Close connection
+    public nonisolated func close() {
+        guard self.isClosed.compareExchange(expected: false, desired: true, successOrdering: .relaxed, failureOrdering: .relaxed).exchanged
+        else {
+            return
         }
         self.channel.close(mode: .all, promise: nil)
     }
@@ -344,6 +393,64 @@ public final actor MQTTConnection: Sendable {
                 address: address,
                 logger: logger
             )
+        }
+    }
+
+    package static func setupChannelAndConnect(
+        _ channel: any Channel,
+        configuration: MQTTConnectionConfiguration = .init(),
+        cleanSession: Bool = false,
+        identifier: String = "TestClient",
+        logger: Logger
+    ) async throws -> MQTTConnection {
+        if !channel.eventLoop.inEventLoop {
+            return try await channel.eventLoop.flatSubmit {
+                self._setupChannelAndConnect(
+                    channel,
+                    configuration: configuration,
+                    cleanSession: cleanSession,
+                    identifier: identifier,
+                    logger: logger
+                )
+            }.get()
+        }
+        return try await self._setupChannelAndConnect(
+            channel,
+            configuration: configuration,
+            cleanSession: cleanSession,
+            identifier: identifier,
+            logger: logger
+        ).get()
+    }
+
+    private static func _setupChannelAndConnect(
+        _ channel: Channel,
+        configuration: MQTTConnectionConfiguration,
+        cleanSession: Bool,
+        identifier: String,
+        logger: Logger
+    ) -> EventLoopFuture<MQTTConnection> {
+        do {
+            return channel.connect(to: try SocketAddress(ipAddress: "127.0.0.1", port: 6379)).flatMap {
+                channel.eventLoop.makeCompletedFuture {
+                    let handler = try self._setupChannel(
+                        channel,
+                        configuration: configuration,
+                        logger: logger
+                    )
+                    return MQTTConnection(
+                        channel: channel,
+                        channelHandler: handler,
+                        configuration: configuration,
+                        cleanSession: cleanSession,
+                        identifier: identifier,
+                        address: .hostname("127.0.0.1", port: 6379),
+                        logger: logger
+                    )
+                }
+            }
+        } catch {
+            return channel.eventLoop.makeFailedFuture(error)
         }
     }
 
