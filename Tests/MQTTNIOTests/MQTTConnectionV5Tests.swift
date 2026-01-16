@@ -347,8 +347,13 @@ struct MQTTConnectionV5Tests {
             identifier: "reAuthV5",
             logger: self.logger
         ) { connection in
+            struct EmptyAuthenticator: MQTTAuthenticator {
+                func authenticate(_ authPackage: MQTTAuthV5) async throws -> MQTTAuthV5 {
+                    .init(reason: .continueAuthentication, properties: [])
+                }
+            }
             let error = await #expect(throws: MQTTError.self) {
-                try await connection.v5.auth(properties: []) { _ in .init(reason: .continueAuthentication, properties: []) }
+                try await connection.v5.auth(properties: [], authWorkflow: EmptyAuthenticator())
             }
             switch error {
             // different version of mosquitto error in different ways

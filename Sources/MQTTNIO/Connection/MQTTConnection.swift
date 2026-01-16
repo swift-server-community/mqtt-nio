@@ -2,7 +2,7 @@
 //
 // This source file is part of the MQTTNIO project
 //
-// Copyright (c) 2020-2025 Adam Fowler
+// Copyright (c) 2020-2026 Adam Fowler
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -174,12 +174,14 @@ public final actor MQTTConnection: Sendable {
                     )
                 }
             }
-        let properties: MQTTProperties =
+        let authenticator: MQTTAuthenticator?
+        let properties: MQTTProperties
+        (authenticator, properties) =
             switch configuration.versionConfiguration {
             case .v3_1_1:
-                .init()
-            case .v5_0(let connectProperties, _, _, _):
-                connectProperties  // TODO: Do we need to set `.sessionExpiryInterval(0xFFFF_FFFF)` by default?
+                (nil, .init())
+            case .v5_0(let connectProperties, _, _, let authenticator):
+                (authenticator, connectProperties)  // TODO: Do we need to set `.sessionExpiryInterval(0xFFFF_FFFF)` by default?
             }
         let packet = MQTTConnectPacket(
             cleanSession: cleanSession,
@@ -231,7 +233,7 @@ public final actor MQTTConnection: Sendable {
             }
         let connection = try await future.get()
         try await connection.channelHandler.waitOnInitialized().get()
-        _ = try await connection._connect(packet: packet)
+        _ = try await connection._connect(packet: packet, authWorkflow: authenticator)
         return connection
     }
 
@@ -473,7 +475,7 @@ public final actor MQTTConnection: Sendable {
     /// connect to broker
     func _connect(
         packet: MQTTConnectPacket,
-        authWorkflow: (@Sendable (MQTTAuthV5) async throws -> MQTTAuthV5)? = nil
+        authWorkflow: MQTTAuthenticator?
     ) async throws -> MQTTConnAckPacket {
         let message = try await self.sendMessage(packet) { message -> Bool in
             guard message.type == .CONNACK || message.type == .AUTH else { throw MQTTError.failedToConnect }
@@ -590,10 +592,10 @@ public final actor MQTTConnection: Sendable {
 
     func processAuth(
         _ packet: MQTTAuthPacket,
-        authWorkflow: @Sendable @escaping (MQTTAuthV5) async throws -> MQTTAuthV5
+        authWorkflow: MQTTAuthenticator
     ) async throws -> any MQTTPacket {
         let auth = MQTTAuthV5(reason: packet.reason, properties: packet.properties)
-        _ = try await authWorkflow(auth)
+        _ = try await authWorkflow.authenticate(auth)
         let responsePacket = MQTTAuthPacket(reason: packet.reason, properties: packet.properties)
         let result = try await self.sendMessage(responsePacket) { message -> Bool in
             guard message.type == .CONNACK || message.type == .AUTH else { throw MQTTError.failedToConnect }

@@ -50,7 +50,7 @@ extension MQTTConnection {
         /// - Returns: Final auth packet returned from server.
         public func auth(
             properties: MQTTProperties,
-            authWorkflow: (@Sendable (MQTTAuthV5) async throws -> MQTTAuthV5)? = nil
+            authWorkflow: MQTTAuthenticator? = nil
         ) async throws -> MQTTAuthV5 {
             let authPacket = MQTTAuthPacket(reason: .reAuthenticate, properties: properties)
             let reAuthResponse = try await self.connection.sendMessage(authPacket) { message in
