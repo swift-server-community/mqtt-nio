@@ -133,7 +133,7 @@ final class MQTTChannelHandler: ChannelDuplexHandler {
                             "mqtt_topicName": .string(publishMessage.publish.topicName),
                         ]
                     )
-                    self.respondToPublish(publishMessage, context: context)
+                    self.respondToPublish(publishMessage, channelHandler: self, context: context)
                     return
                 case .succeedTask(let task):
                     if message.type == .PUBREL {
@@ -170,27 +170,31 @@ final class MQTTChannelHandler: ChannelDuplexHandler {
     /// If QoS is `.atMostOnce` then no response is required
     /// If QoS is `.atLeastOnce` then send PUBACK
     /// If QoS is `.exactlyOnce` then send PUBREC, wait for PUBREL and then respond with PUBCOMP (in `respondToPubrel`)
-    private func respondToPublish(_ message: MQTTPublishPacket, context: ChannelHandlerContext) {
+    private func respondToPublish(_ message: MQTTPublishPacket, channelHandler: MQTTChannelHandler, context: ChannelHandlerContext) {
         switch message.publish.qos {
         case .atMostOnce:
             self.subscriptions.notify(message.publish)
 
         case .atLeastOnce:
+            let loopBoundChannelHandler = NIOLoopBound(channelHandler, eventLoop: self.eventLoop)
+            let loopBoundContext = NIOLoopBound(context, eventLoop: self.eventLoop)
             context.channel.writeAndFlush(MQTTPubAckPacket(type: .PUBACK, packetId: message.packetId))
                 .map { _ in message.publish }
                 .whenComplete { result in
                     switch result {
                     case .success(let publish):
-                        self.subscriptions.notify(publish)
+                        loopBoundChannelHandler.value.subscriptions.notify(publish)
                     case .failure(let error):
-                        self.failTasksAndCloseSubscriptions(with: error)
-                        context.fireErrorCaught(error)
-                        context.close(promise: nil)
-                        self.logger.error("Error sending PUBACK", metadata: ["mqtt_error": .string("\(error)")])
+                        loopBoundChannelHandler.value.failTasksAndCloseSubscriptions(with: error)
+                        loopBoundContext.value.fireErrorCaught(error)
+                        loopBoundContext.value.close(promise: nil)
+                        loopBoundChannelHandler.value.logger.error("Error sending PUBACK", metadata: ["mqtt_error": .string("\(error)")])
                     }
                 }
 
         case .exactlyOnce:
+            let loopBoundChannelHandler = NIOLoopBound(channelHandler, eventLoop: self.eventLoop)
+            let loopBoundContext = NIOLoopBound(context, eventLoop: self.eventLoop)
             var publish = message.publish
             self.sendMessage(MQTTPubAckPacket(type: .PUBREC, packetId: message.packetId)) { newMessage in
                 guard newMessage.packetId == message.packetId else { return false }
@@ -213,13 +217,13 @@ final class MQTTChannelHandler: ChannelDuplexHandler {
                         // do not report retrySend error
                         return
                     default:
-                        self.failTasksAndCloseSubscriptions(with: error)
-                        context.fireErrorCaught(error)
-                        context.close(promise: nil)
-                        self.logger.error("Error during QoS 2 publish flow", metadata: ["mqtt_error": .string("\(error)")])
+                        loopBoundChannelHandler.value.failTasksAndCloseSubscriptions(with: error)
+                        loopBoundContext.value.fireErrorCaught(error)
+                        loopBoundContext.value.close(promise: nil)
+                        loopBoundChannelHandler.value.logger.error("Error during QoS 2 publish flow", metadata: ["mqtt_error": .string("\(error)")])
                     }
                 case .success(let publish):
-                    self.subscriptions.notify(publish)
+                    loopBoundChannelHandler.value.subscriptions.notify(publish)
                 }
             }
         }
