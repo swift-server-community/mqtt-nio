@@ -176,25 +176,22 @@ final class MQTTChannelHandler: ChannelDuplexHandler {
             self.subscriptions.notify(message.publish)
 
         case .atLeastOnce:
-            let loopBoundChannelHandler = NIOLoopBound(channelHandler, eventLoop: self.eventLoop)
-            let loopBoundContext = NIOLoopBound(context, eventLoop: self.eventLoop)
             context.channel.writeAndFlush(MQTTPubAckPacket(type: .PUBACK, packetId: message.packetId))
+                .assumeIsolated()
                 .map { _ in message.publish }
                 .whenComplete { result in
                     switch result {
                     case .success(let publish):
-                        loopBoundChannelHandler.value.subscriptions.notify(publish)
+                        self.subscriptions.notify(publish)
                     case .failure(let error):
-                        loopBoundChannelHandler.value.failTasksAndCloseSubscriptions(with: error)
-                        loopBoundContext.value.fireErrorCaught(error)
-                        loopBoundContext.value.close(promise: nil)
-                        loopBoundChannelHandler.value.logger.error("Error sending PUBACK", metadata: ["mqtt_error": .string("\(error)")])
+                        self.failTasksAndCloseSubscriptions(with: error)
+                        context.fireErrorCaught(error)
+                        context.close(promise: nil)
+                        self.logger.error("Error sending PUBACK", metadata: ["mqtt_error": .string("\(error)")])
                     }
                 }
 
         case .exactlyOnce:
-            let loopBoundChannelHandler = NIOLoopBound(channelHandler, eventLoop: self.eventLoop)
-            let loopBoundContext = NIOLoopBound(context, eventLoop: self.eventLoop)
             // TODO: Investigate what to do if we receive a publish message while waiting for a PUBREL
             //var publish = message.publish
             self.sendMessage(MQTTPubAckPacket(type: .PUBREC, packetId: message.packetId)) { newMessage in
@@ -209,6 +206,7 @@ final class MQTTChannelHandler: ChannelDuplexHandler {
                 // now we have received the PUBREL we can process the published message. PUBCOMP is sent by `respondToPubrel`
                 return true
             }
+            .assumeIsolated()
             //.map { _ in publish }
             .whenComplete { result in
                 switch result {
@@ -218,13 +216,13 @@ final class MQTTChannelHandler: ChannelDuplexHandler {
                         // do not report retrySend error
                         return
                     default:
-                        loopBoundChannelHandler.value.failTasksAndCloseSubscriptions(with: error)
-                        loopBoundContext.value.fireErrorCaught(error)
-                        loopBoundContext.value.close(promise: nil)
-                        loopBoundChannelHandler.value.logger.error("Error during QoS 2 publish flow", metadata: ["mqtt_error": .string("\(error)")])
+                        self.failTasksAndCloseSubscriptions(with: error)
+                        context.fireErrorCaught(error)
+                        context.close(promise: nil)
+                        self.logger.error("Error during QoS 2 publish flow", metadata: ["mqtt_error": .string("\(error)")])
                     }
                 case .success:
-                    loopBoundChannelHandler.value.subscriptions.notify(message.publish)
+                    self.subscriptions.notify(message.publish)
                 }
             }
         }
@@ -418,21 +416,21 @@ final class MQTTChannelHandler: ChannelDuplexHandler {
                 // otherwise reschedule task
                 if channelHandler.lastPingreqEventTime + channelHandler.pingreqTimeout <= .now() {
                     guard context.channel.isActive else { return }
-                    let loopBoundContext = NIOLoopBound(context, eventLoop: eventLoop)
                     channelHandler.sendMessage(MQTTPingreqPacket()) { message in
                         guard message.type == .PINGRESP else { return false }
                         return true
                     }
+                    .assumeIsolated()
                     .whenComplete { result in
                         switch result {
                         case .failure(let error):
-                            self.channelHandler.value.failTasksAndCloseSubscriptions(with: error)
-                            loopBoundContext.value.fireErrorCaught(error)
+                            channelHandler.failTasksAndCloseSubscriptions(with: error)
+                            context.fireErrorCaught(error)
                         case .success:
                             break
                         }
-                        self.channelHandler.value.lastPingreqEventTime = .now()
-                        self.channelHandler.value.schedulePingreqCallback()
+                        channelHandler.lastPingreqEventTime = .now()
+                        channelHandler.schedulePingreqCallback()
                     }
                 } else {
                     channelHandler.schedulePingreqCallback()
