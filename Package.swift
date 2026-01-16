@@ -4,8 +4,7 @@ import PackageDescription
 
 var defaultSwiftSettings: [SwiftSetting] =
     [
-        .swiftLanguageMode(.v6),
-        .enableUpcomingFeature("NonisolatedNonsendingByDefault"),
+        .enableUpcomingFeature("NonisolatedNonsendingByDefault")
     ]
 
 let package = Package(
