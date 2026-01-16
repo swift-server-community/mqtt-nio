@@ -228,7 +228,7 @@ extension MQTTProperties.Property {
         case .contentType(let value): return .string(value)
         case .responseTopic(let value): return .string(value)
         case .correlationData(let value): return .binaryData(value)
-        case .subscriptionIdentifier(let value): return .variableLengthInteger(value)
+        case .subscriptionIdentifier(let value): return .variableLengthInteger(numericCast(value))
         case .sessionExpiryInterval(let value): return .fourByteInteger(value)
         case .assignedClientIdentifier(let value): return .string(value)
         case .serverKeepAlive(let value): return .twoByteInteger(value)
@@ -311,7 +311,7 @@ extension MQTTProperties.Property {
             return .correlationData(buffer)
         case .subscriptionIdentifier:
             let value = try MQTTSerializer.readVariableLengthInteger(from: &byteBuffer)
-            return .subscriptionIdentifier(UInt(value))
+            return .subscriptionIdentifier(UInt32(value))
         case .sessionExpiryInterval:
             guard let value: UInt32 = byteBuffer.readInteger() else { throw MQTTError.badResponse }
             return .sessionExpiryInterval(value)
