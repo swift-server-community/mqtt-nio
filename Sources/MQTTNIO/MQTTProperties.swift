@@ -27,9 +27,10 @@ public struct MQTTProperties: Sendable {
         case responseTopic(String)
         /// Correlation data used to id a request/response in request/response interactions (available for PUBLISH)
         case correlationData(ByteBuffer)
-        /// Subscription identifier set in SUBSCRIBE packet and included in related PUBLISH packet
+        /// Subscription identifier set in SUBSCRIBE packet and included in related PUBLISH packet. Subscription
+        /// identifiers can have a value from 1 to 268435455(0xfffffff)
         /// (available for PUBLISH, SUBSCRIBE)
-        case subscriptionIdentifier(UInt)
+        case subscriptionIdentifier(UInt32)
         /// Interval before session expires (available for CONNECT, CONNACK, DISCONNECT)
         case sessionExpiryInterval(UInt32)
         /// Client identifier assigned to client if they didn't provide one (available for CONNACK)
@@ -227,7 +228,7 @@ extension MQTTProperties.Property {
         case .contentType(let value): return .string(value)
         case .responseTopic(let value): return .string(value)
         case .correlationData(let value): return .binaryData(value)
-        case .subscriptionIdentifier(let value): return .variableLengthInteger(value)
+        case .subscriptionIdentifier(let value): return .variableLengthInteger(numericCast(value))
         case .sessionExpiryInterval(let value): return .fourByteInteger(value)
         case .assignedClientIdentifier(let value): return .string(value)
         case .serverKeepAlive(let value): return .twoByteInteger(value)
@@ -310,7 +311,8 @@ extension MQTTProperties.Property {
             return .correlationData(buffer)
         case .subscriptionIdentifier:
             let value = try MQTTSerializer.readVariableLengthInteger(from: &byteBuffer)
-            return .subscriptionIdentifier(UInt(value))
+            guard (1..<0xfffffff).contains(value) else { throw MQTTError.badResponse }
+            return .subscriptionIdentifier(UInt32(value))
         case .sessionExpiryInterval:
             guard let value: UInt32 = byteBuffer.readInteger() else { throw MQTTError.badResponse }
             return .sessionExpiryInterval(value)
