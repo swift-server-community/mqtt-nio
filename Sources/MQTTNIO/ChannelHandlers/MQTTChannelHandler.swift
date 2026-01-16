@@ -195,12 +195,13 @@ final class MQTTChannelHandler: ChannelDuplexHandler {
         case .exactlyOnce:
             let loopBoundChannelHandler = NIOLoopBound(channelHandler, eventLoop: self.eventLoop)
             let loopBoundContext = NIOLoopBound(context, eventLoop: self.eventLoop)
-            var publish = message.publish
+            // TODO: Investigate what to do if we receive a publish message while waiting for a PUBREL
+            //var publish = message.publish
             self.sendMessage(MQTTPubAckPacket(type: .PUBREC, packetId: message.packetId)) { newMessage in
                 guard newMessage.packetId == message.packetId else { return false }
                 // if we receive a publish message while waiting for a PUBREL from broker then replace data to be published and retry PUBREC
-                if newMessage.type == .PUBLISH, let publishMessage = newMessage as? MQTTPublishPacket {
-                    publish = publishMessage.publish
+                if newMessage.type == .PUBLISH {
+                    //publish = publishMessage.publish
                     throw MQTTError.retrySend
                 }
                 // if we receive anything but a PUBREL then throw unexpected message
@@ -208,7 +209,7 @@ final class MQTTChannelHandler: ChannelDuplexHandler {
                 // now we have received the PUBREL we can process the published message. PUBCOMP is sent by `respondToPubrel`
                 return true
             }
-            .map { _ in publish }
+            //.map { _ in publish }
             .whenComplete { result in
                 switch result {
                 case .failure(let error):
@@ -222,8 +223,8 @@ final class MQTTChannelHandler: ChannelDuplexHandler {
                         loopBoundContext.value.close(promise: nil)
                         loopBoundChannelHandler.value.logger.error("Error during QoS 2 publish flow", metadata: ["mqtt_error": .string("\(error)")])
                     }
-                case .success(let publish):
-                    loopBoundChannelHandler.value.subscriptions.notify(publish)
+                case .success:
+                    loopBoundChannelHandler.value.subscriptions.notify(message.publish)
                 }
             }
         }
