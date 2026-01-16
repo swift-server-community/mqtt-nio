@@ -27,9 +27,10 @@ public struct MQTTProperties: Sendable {
         case responseTopic(String)
         /// Correlation data used to id a request/response in request/response interactions (available for PUBLISH)
         case correlationData(ByteBuffer)
-        /// Subscription identifier set in SUBSCRIBE packet and included in related PUBLISH packet
+        /// Subscription identifier set in SUBSCRIBE packet and included in related PUBLISH packet. Subscription
+        /// identifiers can have a value from 1 to 268435455(0xfffffff)
         /// (available for PUBLISH, SUBSCRIBE)
-        case subscriptionIdentifier(UInt)
+        case subscriptionIdentifier(UInt32)
         /// Interval before session expires (available for CONNECT, CONNACK, DISCONNECT)
         case sessionExpiryInterval(UInt32)
         /// Client identifier assigned to client if they didn't provide one (available for CONNACK)
