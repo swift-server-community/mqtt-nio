@@ -68,7 +68,7 @@ final class MQTTChannelHandler: ChannelDuplexHandler {
     func waitOnInitialized() -> EventLoopFuture<Void> {
         switch self.stateMachine.waitOnInitialized() {
         case .reportedClosed(let error):
-            return self.eventLoop.makeFailedFuture(error ?? MQTTError.noConnection)
+            return self.eventLoop.makeFailedFuture(error ?? MQTTError.connectionClosed)
         case .done:
             return self.eventLoop.makeSucceededVoidFuture()
         }
