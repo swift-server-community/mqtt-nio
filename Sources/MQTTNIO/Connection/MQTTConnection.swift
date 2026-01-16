@@ -117,15 +117,13 @@ public final actor MQTTConnection: Sendable {
     ///     - payload: Message payload.
     ///     - qos: Quality of Service for message.
     ///     - retain: Whether this is a retained message.
-    ///     - properties: MQTT v5 properties for the `PUBLISH` message.
     public func publish(
         to topicName: String,
         payload: ByteBuffer,
         qos: MQTTQoS,
         retain: Bool = false,
-        properties: MQTTProperties = .init()
     ) async throws {
-        let info = MQTTPublishInfo(qos: qos, retain: retain, dup: false, topicName: topicName, payload: payload, properties: properties)
+        let info = MQTTPublishInfo(qos: qos, retain: retain, dup: false, topicName: topicName, payload: payload, properties: .init())
         let packetId = self.updatePacketId()
         let packet = MQTTPublishPacket(publish: info, packetId: packetId)
         _ = try await self.publish(packet: packet)
