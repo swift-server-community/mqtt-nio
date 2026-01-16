@@ -15,11 +15,11 @@ import Logging
 import Synchronization
 
 struct MQTTSubscriptions {
-    var subscriptionIDMap: [UInt: SubscriptionRef]
+    var subscriptionIDMap: [UInt32: SubscriptionRef]
     var subscriptionMap: [TopicFilter: MQTTTopicStateMachine<SubscriptionRef>]
     let logger: Logger
 
-    static let globalSubscriptionID = Atomic<UInt>(0)
+    static let globalSubscriptionID = Atomic<UInt32>(0)
 
     init(logger: Logger) {
         self.subscriptionIDMap = [:]
@@ -74,7 +74,7 @@ struct MQTTSubscriptions {
         self.subscriptionMap = [:]
     }
 
-    static func getSubscriptionID() -> UInt {
+    static func getSubscriptionID() -> UInt32 {
         // The Subscription Identifier can have the value of 1 to 268,435,455.
         let id = Self.globalSubscriptionID.wrappingAdd(1, ordering: .relaxed).newValue & 0xfffffff
         // It is a Protocol Error if the Subscription Identifier has a value of 0.
@@ -82,7 +82,7 @@ struct MQTTSubscriptions {
     }
 
     enum SubscribeAction {
-        case doNothing(UInt)
+        case doNothing(UInt32)
         case subscribe(SubscriptionRef)
     }
 
@@ -131,7 +131,7 @@ struct MQTTSubscriptions {
     ///
     /// Remove subscription from all the message topics.
     /// If a message topic ends up with no subscriptions, then add it to the list of topics to unsubscribe from.
-    mutating func unsubscribe(id: UInt) -> UnsubscribeAction {
+    mutating func unsubscribe(id: UInt32) -> UnsubscribeAction {
         guard let subscription = subscriptionIDMap[id] else { return .doNothing }
         defer { self.subscriptionIDMap[id] = nil }
         switch subscription.version {
@@ -158,7 +158,7 @@ struct MQTTSubscriptions {
     }
 
     /// Remove subscription
-    mutating func removeSubscription(id: UInt) {
+    mutating func removeSubscription(id: UInt32) {
         guard let subscription = subscriptionIDMap[id] else { return }
         switch subscription.version {
         case .v3_1_1:
@@ -179,13 +179,13 @@ struct MQTTSubscriptions {
 
 /// Individual subscription associated with one subscribe
 final class SubscriptionRef: Identifiable {
-    let id: UInt
+    let id: UInt32
     let version: MQTTConnectionConfiguration.Version
     let topicFilters: [TopicFilter]
     let continuation: MQTTSubscription.Continuation
 
     init(
-        id: UInt,
+        id: UInt32,
         version: MQTTConnectionConfiguration.Version,
         continuation: MQTTSubscription.Continuation,
         topicFilters: [TopicFilter]

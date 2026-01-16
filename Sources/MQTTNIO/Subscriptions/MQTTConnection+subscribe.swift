@@ -48,13 +48,13 @@ extension MQTTConnection {
     func subscribe(
         to subscriptions: [MQTTSubscribeInfoV5],
         properties: MQTTProperties = .init()
-    ) async throws -> (UInt, MQTTSubscription) {
+    ) async throws -> (UInt32, MQTTSubscription) {
         let (stream, streamContinuation) = MQTTSubscription.makeStream()
         if Task.isCancelled {
             throw MQTTError.cancelledTask
         }
         let packet = MQTTSubscribePacket(subscriptions: subscriptions, properties: properties, packetId: self.updatePacketId())
-        let subscriptionID: UInt = try await withCheckedThrowingContinuation(isolation: self) { continuation in
+        let subscriptionID: UInt32 = try await withCheckedThrowingContinuation(isolation: self) { continuation in
             self.channelHandler.subscribe(
                 streamContinuation: streamContinuation,
                 packet: packet,
@@ -65,7 +65,7 @@ extension MQTTConnection {
     }
 
     @usableFromInline
-    func unsubscribe(id: UInt, properties: MQTTProperties = .init()) async throws {
+    func unsubscribe(id: UInt32, properties: MQTTProperties = .init()) async throws {
         try await withCheckedThrowingContinuation { continuation in
             self.channelHandler.unsubscribe(id: id, packetID: self.updatePacketId(), properties: properties, promise: .swift(continuation))
         }

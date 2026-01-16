@@ -68,7 +68,7 @@ final class MQTTChannelHandler: ChannelDuplexHandler {
     func waitOnInitialized() -> EventLoopFuture<Void> {
         switch self.stateMachine.waitOnInitialized() {
         case .reportedClosed(let error):
-            return self.eventLoop.makeFailedFuture(error ?? MQTTError.noConnection)
+            return self.eventLoop.makeFailedFuture(error ?? MQTTError.connectionClosed)
         case .done:
             return self.eventLoop.makeSucceededVoidFuture()
         }
@@ -241,7 +241,7 @@ final class MQTTChannelHandler: ChannelDuplexHandler {
     func subscribe(
         streamContinuation: MQTTSubscription.Continuation,
         packet: MQTTSubscribePacket,
-        promise: MQTTPromise<UInt>
+        promise: MQTTPromise<UInt32>
     ) {
         self.eventLoop.assertInEventLoop()
 
@@ -292,7 +292,7 @@ final class MQTTChannelHandler: ChannelDuplexHandler {
     }
 
     func unsubscribe(
-        id: UInt,
+        id: UInt32,
         packetID: UInt16,
         properties: MQTTProperties,
         promise: MQTTPromise<Void>
