@@ -148,6 +148,40 @@ public final actor MQTTConnection: Sendable {
         eventLoop: any EventLoop = MultiThreadedEventLoopGroup.singleton.any(),
         logger: Logger
     ) async throws -> MQTTConnection {
+        var configuration = configuration
+        if configuration.pingInterval == nil {
+            configuration.pingInterval = TimeAmount.seconds(max(Int64(configuration.keepAliveInterval.nanoseconds / 1_000_000_000) - 5, 5))
+        }
+
+        let future =
+            if eventLoop.inEventLoop {
+                self._makeConnection(
+                    address: address,
+                    configuration: configuration,
+                    cleanSession: cleanSession,
+                    identifier: identifier,
+                    eventLoop: eventLoop,
+                    logger: logger
+                )
+            } else {
+                eventLoop.flatSubmit {
+                    self._makeConnection(
+                        address: address,
+                        configuration: configuration,
+                        cleanSession: cleanSession,
+                        identifier: identifier,
+                        eventLoop: eventLoop,
+                        logger: logger
+                    )
+                }
+            }
+        let connection = try await future.get()
+        try await connection.channelHandler.waitOnInitialized().get()
+        try await connection.sendConnect()
+        return connection
+    }
+
+    package func sendConnect() async throws {
         let publish =
             switch configuration.versionConfiguration {
             case .v3_1_1(let will):
@@ -182,24 +216,10 @@ public final actor MQTTConnection: Sendable {
             case .v5_0(let connectProperties, _, _, let authenticator):
                 (authenticator, connectProperties)  // TODO: Do we need to set `.sessionExpiryInterval(0xFFFF_FFFF)` by default?
             }
-        let packet = MQTTConnectPacket(
-            cleanSession: cleanSession,
-            keepAliveSeconds: UInt16(configuration.keepAliveInterval.nanoseconds / 1_000_000_000),
-            clientIdentifier: identifier,
-            userName: configuration.userName,
-            password: configuration.password,
-            properties: properties,
-            will: publish
-        )
 
-        var configuration = configuration
-        if configuration.pingInterval == nil {
-            configuration.pingInterval = TimeAmount.seconds(max(Int64(packet.keepAliveSeconds - 5), 5))
-        }
-
-        var cleanSession = packet.cleanSession
+        var cleanSession = self.cleanSession
         // if connection has non zero session expiry then assume it doesnt clean session on close
-        for p in packet.properties {
+        for p in properties {
             // check topic alias
             if case .sessionExpiryInterval(let interval) = p {
                 if interval > 0 {
@@ -208,71 +228,6 @@ public final actor MQTTConnection: Sendable {
             }
         }
 
-        let future =
-            if eventLoop.inEventLoop {
-                self._makeConnection(
-                    address: address,
-                    configuration: configuration,
-                    cleanSession: cleanSession,
-                    identifier: identifier,
-                    eventLoop: eventLoop,
-                    logger: logger
-                )
-            } else {
-                eventLoop.flatSubmit {
-                    self._makeConnection(
-                        address: address,
-                        configuration: configuration,
-                        cleanSession: cleanSession,
-                        identifier: identifier,
-                        eventLoop: eventLoop,
-                        logger: logger
-                    )
-                }
-            }
-        let connection = try await future.get()
-        try await connection.waitOnInitialized()
-        _ = try await connection._connect(packet: packet, authWorkflow: authenticator)
-        return connection
-    }
-
-    func waitOnInitialized() async throws {
-        try await self.channelHandler.waitOnInitialized().get()
-    }
-
-    package func sendConnect() async throws {
-        let publish =
-            switch configuration.versionConfiguration {
-            case .v3_1_1(let will):
-                will.map {
-                    MQTTPublishInfo(
-                        qos: .atMostOnce,
-                        retain: $0.retain,
-                        dup: false,
-                        topicName: $0.topicName,
-                        payload: $0.payload,
-                        properties: .init()
-                    )
-                }
-            case .v5_0(_, _, let will, _):
-                will.map {
-                    MQTTPublishInfo(
-                        qos: .atMostOnce,
-                        retain: $0.retain,
-                        dup: false,
-                        topicName: $0.topicName,
-                        payload: $0.payload,
-                        properties: $0.properties
-                    )
-                }
-            }
-        let properties: MQTTProperties =
-            switch configuration.versionConfiguration {
-            case .v3_1_1:
-                .init()
-            case .v5_0(let connectProperties, _, _, _):
-                connectProperties  // TODO: Do we need to set `.sessionExpiryInterval(0xFFFF_FFFF)` by default?
-            }
         let packet = MQTTConnectPacket(
             cleanSession: cleanSession,
             keepAliveSeconds: UInt16(configuration.keepAliveInterval.nanoseconds / 1_000_000_000),
@@ -282,7 +237,7 @@ public final actor MQTTConnection: Sendable {
             properties: properties,
             will: publish
         )
-        _ = try await self._connect(packet: packet)
+        _ = try await self._connect(packet: packet, authWorkflow: authenticator)
     }
 
     func sendDisconnect() throws {
