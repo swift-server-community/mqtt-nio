@@ -1,7 +1,7 @@
 # MQTT NIO
 
 [![sswg:sandbox|94x20](https://img.shields.io/badge/sswg-sandbox-lightgrey.svg)](https://github.com/swift-server/sswg/blob/master/process/incubation.md#sandbox-level)
-[<img src="https://img.shields.io/badge/swift-6.1-brightgreen.svg" alt="Swift 6.1" />](https://swift.org)
+[<img src="https://img.shields.io/badge/swift-6.2-brightgreen.svg" alt="Swift 6.2" />](https://swift.org)
 [<img src="https://github.com/swift-server-community/mqtt-nio/workflows/CI/badge.svg" />](https://github.com/swift-server-community/mqtt-nio/workflows/CI/badge.svg)
 ![Codecov](https://img.shields.io/codecov/c/github/swift-server-community/mqtt-nio)
 
