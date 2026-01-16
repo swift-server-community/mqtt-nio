@@ -27,7 +27,7 @@ import NIOTransportServices
 import NIOSSL
 #endif
 
-@Suite("MQTTConnection Tests", .serialized)
+@Suite("MQTTConnection Tests")
 struct MQTTConnectionTests {
     static let hostname = ProcessInfo.processInfo.environment["MOSQUITTO_SERVER"] ?? "localhost"
 
@@ -458,7 +458,7 @@ struct MQTTConnectionTests {
             try await withThrowingTaskGroup { group in
                 group.addTask {
                     try await confirmation("multiLevelWildcard", expectedCount: 2) { receivedMessage in
-                        try await connection.subscribe(to: [.init(topicFilter: "home/kitchen/#", qos: .atLeastOnce)]) { subscription in
+                        try await connection.subscribe(to: [.init(topicFilter: "multiLevel/home/kitchen/#", qos: .atLeastOnce)]) { subscription in
                             var count = 0
                             for try await message in subscription {
                                 var buffer = message.payload
@@ -474,9 +474,13 @@ struct MQTTConnectionTests {
 
                 group.addTask {
                     try await Task.sleep(for: .seconds(1))
-                    try await connection.publish(to: "home/kitchen/temperature", payload: ByteBuffer(string: "test"), qos: .atLeastOnce)
-                    try await connection.publish(to: "home/livingroom/temperature", payload: ByteBuffer(string: "error"), qos: .atLeastOnce)
-                    try await connection.publish(to: "home/kitchen/humidity", payload: ByteBuffer(string: "test"), qos: .atLeastOnce)
+                    try await connection.publish(to: "multiLevel/home/kitchen/temperature", payload: ByteBuffer(string: "test"), qos: .atLeastOnce)
+                    try await connection.publish(
+                        to: "multiLevel/home/livingroom/temperature",
+                        payload: ByteBuffer(string: "error"),
+                        qos: .atLeastOnce
+                    )
+                    try await connection.publish(to: "multiLevel/home/kitchen/humidity", payload: ByteBuffer(string: "test"), qos: .atLeastOnce)
                 }
 
                 try await group.waitForAll()
@@ -494,7 +498,8 @@ struct MQTTConnectionTests {
             try await withThrowingTaskGroup { group in
                 group.addTask {
                     try await confirmation("singleLevelWildcard", expectedCount: 2) { receivedMessage in
-                        try await connection.subscribe(to: [.init(topicFilter: "home/+/temperature", qos: .atLeastOnce)]) { subscription in
+                        try await connection.subscribe(to: [.init(topicFilter: "singleLevel/home/+/temperature", qos: .atLeastOnce)]) {
+                            subscription in
                             var count = 0
                             for try await message in subscription {
                                 var buffer = message.payload
@@ -510,9 +515,13 @@ struct MQTTConnectionTests {
 
                 group.addTask {
                     try await Task.sleep(for: .seconds(1))
-                    try await connection.publish(to: "home/livingroom/temperature", payload: ByteBuffer(string: "test"), qos: .atLeastOnce)
-                    try await connection.publish(to: "home/garden/humidity", payload: ByteBuffer(string: "error"), qos: .atLeastOnce)
-                    try await connection.publish(to: "home/kitchen/temperature", payload: ByteBuffer(string: "test"), qos: .atLeastOnce)
+                    try await connection.publish(
+                        to: "singleLevel/home/livingroom/temperature",
+                        payload: ByteBuffer(string: "test"),
+                        qos: .atLeastOnce
+                    )
+                    try await connection.publish(to: "singleLevel/home/garden/humidity", payload: ByteBuffer(string: "error"), qos: .atLeastOnce)
+                    try await connection.publish(to: "singleLevel/home/kitchen/temperature", payload: ByteBuffer(string: "test"), qos: .atLeastOnce)
                 }
 
                 try await group.waitForAll()
@@ -533,8 +542,8 @@ struct MQTTConnectionTests {
                 group.addTask {
                     try await confirmation("overlappingSubscriptions", expectedCount: 2) { receivedMessage in
                         try await connection.subscribe(to: [
-                            .init(topicFilter: "home/+/temperature", qos: .atLeastOnce),
-                            .init(topicFilter: "home/kitchen/#", qos: .atLeastOnce),
+                            .init(topicFilter: "overlapping/home/+/temperature", qos: .atLeastOnce),
+                            .init(topicFilter: "overlapping/home/kitchen/#", qos: .atLeastOnce),
                         ]) { subscription in
                             var count = 0
                             for try await message in subscription {
@@ -551,7 +560,7 @@ struct MQTTConnectionTests {
 
                 group.addTask {
                     try await Task.sleep(for: .seconds(1))
-                    try await connection.publish(to: "home/kitchen/temperature", payload: ByteBuffer(string: "test"), qos: .atLeastOnce)
+                    try await connection.publish(to: "overlapping/home/kitchen/temperature", payload: ByteBuffer(string: "test"), qos: .atLeastOnce)
                 }
 
                 try await group.waitForAll()
