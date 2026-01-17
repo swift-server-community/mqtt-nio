@@ -48,7 +48,6 @@ struct MQTTConnectionTests {
                 // wait for connect
                 let packet = try await channel.waitForOutboundPacket()
                 #expect(packet.type == .CONNECT)
-                #expect(packet.packetId == 0)
 
                 let connack = MQTTConnAckPacket(returnCode: 0, acknowledgeFlags: 1, properties: .init())
                 try await channel.writeInboundPacket(connack, version: version)
@@ -187,6 +186,7 @@ struct MQTTConnectionTests {
         } server: { channel in
             let packet = try await channel.waitForOutboundPacket()
             let publishPacket = try MQTTPublishPacket.read(version: .v3_1_1, from: packet)
+            #expect(publishPacket.packetId == 0)
             #expect(publishPacket.publish.topicName == "testTopic")
             #expect(publishPacket.publish.retain == false)
             #expect(publishPacket.publish.payload == ByteBuffer(string: "TestPayload"))
@@ -202,6 +202,7 @@ struct MQTTConnectionTests {
         } server: { channel in
             let packet = try await channel.waitForOutboundPacket()
             let publishPacket = try MQTTPublishPacket.read(version: .v3_1_1, from: packet)
+            #expect(publishPacket.packetId != 0)
             #expect(publishPacket.publish.topicName == "testTopic")
             #expect(publishPacket.publish.retain == false)
             #expect(publishPacket.publish.payload == ByteBuffer(string: "TestPayload"))
@@ -220,6 +221,7 @@ struct MQTTConnectionTests {
             // receive PUBLISH
             var packet = try await channel.waitForOutboundPacket()
             let publishPacket = try MQTTPublishPacket.read(version: .v3_1_1, from: packet)
+            #expect(publishPacket.packetId != 0)
             #expect(publishPacket.publish.topicName == "testTopic")
             #expect(publishPacket.publish.retain == false)
             #expect(publishPacket.publish.payload == ByteBuffer(string: "TestPayload"))
@@ -258,7 +260,7 @@ struct MQTTConnectionTests {
                     payload: ByteBuffer(string: "TestPayload"),
                     properties: .init()
                 ),
-                packetId: 32768
+                packetId: 0
             )
             try await channel.writeInboundPacket(publish, version: .v3_1_1)
         }
@@ -435,7 +437,6 @@ struct MQTTConnectionTests {
                 // wait for connect
                 var packet = try await channel.waitForOutboundPacket()
                 #expect(packet.type == .CONNECT)
-                #expect(packet.packetId == 0)
                 // send auth
                 let auth = MQTTAuthPacket(reason: .continueAuthentication, properties: [.authenticationData(.init(string: "User"))])
                 try await channel.writeInboundPacket(auth, version: .v5_0)
