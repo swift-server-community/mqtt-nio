@@ -54,7 +54,7 @@ extension MQTTConnection {
             throw MQTTError.cancelledTask
         }
         let packet = MQTTSubscribePacket(subscriptions: subscriptions, properties: properties, packetId: self.updatePacketId())
-        let subscriptionID: UInt32 = try await withCheckedThrowingContinuation(isolation: self) { continuation in
+        let subscriptionID: UInt32 = try await withCheckedThrowingContinuation { continuation in
             self.channelHandler.subscribe(
                 streamContinuation: streamContinuation,
                 packet: packet,

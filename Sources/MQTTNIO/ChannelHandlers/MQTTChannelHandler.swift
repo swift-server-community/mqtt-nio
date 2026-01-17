@@ -133,7 +133,7 @@ final class MQTTChannelHandler: ChannelDuplexHandler {
                             "mqtt_topicName": .string(publishMessage.publish.topicName),
                         ]
                     )
-                    self.respondToPublish(publishMessage, channelHandler: self, context: context)
+                    self.respondToPublish(publishMessage, context: context)
                     return
                 case .succeedTask(let task):
                     if message.type == .PUBREL {
@@ -170,7 +170,7 @@ final class MQTTChannelHandler: ChannelDuplexHandler {
     /// If QoS is `.atMostOnce` then no response is required
     /// If QoS is `.atLeastOnce` then send PUBACK
     /// If QoS is `.exactlyOnce` then send PUBREC, wait for PUBREL and then respond with PUBCOMP (in `respondToPubrel`)
-    private func respondToPublish(_ message: MQTTPublishPacket, channelHandler: MQTTChannelHandler, context: ChannelHandlerContext) {
+    private func respondToPublish(_ message: MQTTPublishPacket, context: ChannelHandlerContext) {
         switch message.publish.qos {
         case .atMostOnce:
             self.subscriptions.notify(message.publish)
