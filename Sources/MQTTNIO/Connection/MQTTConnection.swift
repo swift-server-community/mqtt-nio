@@ -79,7 +79,6 @@ public final actor MQTTConnection: Sendable {
     ///   - cleanSession: Whether to start a clean session.
     ///   - eventLoop: EventLoop to run the connection on.
     ///   - logger: Logger to use for the connection.
-    ///   - isolation: Actor isolation.
     ///   - operation: Closure handling the MQTT connection.
     /// - Returns: Value returned from the operation closure.
     public static func withConnection<Value>(
@@ -89,7 +88,6 @@ public final actor MQTTConnection: Sendable {
         cleanSession: Bool = true,
         eventLoop: any EventLoop = MultiThreadedEventLoopGroup.singleton.any(),
         logger: Logger,
-        isolation: isolated (any Actor)? = #isolation,
         operation: (MQTTConnection) async throws -> sending Value
     ) async throws -> sending Value {
         let connection = try await self.connect(
@@ -232,9 +230,13 @@ public final actor MQTTConnection: Sendable {
                 }
             }
         let connection = try await future.get()
-        try await connection.channelHandler.waitOnInitialized().get()
+        try await connection.waitOnInitialized()
         _ = try await connection._connect(packet: packet, authWorkflow: authenticator)
         return connection
+    }
+
+    func waitOnInitialized() async throws {
+        try await self.channelHandler.waitOnInitialized().get()
     }
 
     /// Close connection
@@ -423,7 +425,7 @@ public final actor MQTTConnection: Sendable {
         configuration: MQTTConnectionConfiguration,
         webSocketConfiguration: MQTTConnectionConfiguration.WebSocketConfiguration,
         upgradePromise promise: EventLoopPromise<Void>,
-        afterHandlerAdded: @escaping () throws -> Void
+        afterHandlerAdded: @Sendable @escaping () throws -> Void
     ) -> EventLoopFuture<Void> {
         var hostHeader: String {
             switch (configuration.useSSL, address.value) {
@@ -459,7 +461,7 @@ public final actor MQTTConnection: Sendable {
             future.cascade(to: promise)
             return future
         }
-        let upgradeConfig: NIOHTTPClientUpgradeConfiguration = (
+        let upgradeConfig: NIOHTTPClientUpgradeSendableConfiguration = (
             upgraders: [websocketUpgrader],
             completionHandler: { _ in
                 channel.pipeline.removeHandler(httpHandler, promise: nil)

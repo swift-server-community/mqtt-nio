@@ -18,14 +18,13 @@ extension MQTTConnection {
     ///
     /// - Parameters:
     ///   - subscriptions: Array of ``MQTTSubscribeInfo`` defining the subscriptions.
-    ///   - isolation: Actor isolation
     ///   - process: Closure where messages received from the subscription are processed.
     ///     The closure receives a ``MQTTSubscription`` `AsyncSequence` to listen for messages.
-    public func subscribe<Value>(
+    @inlinable
+    public nonisolated func subscribe<Value>(
         to subscriptions: [MQTTSubscribeInfo],
-        isolation: isolated (any Actor)? = #isolation,
-        process: (MQTTSubscription) async throws -> sending Value
-    ) async throws -> sending Value {
+        process: (MQTTSubscription) async throws -> Value
+    ) async throws -> Value {
         let (id, stream) = try await self.subscribe(to: subscriptions.map { .init(topicFilter: $0.topicFilter, qos: $0.qos) })
         let value: Value
         do {
@@ -45,6 +44,7 @@ extension MQTTConnection {
         return value
     }
 
+    @usableFromInline
     func subscribe(
         to subscriptions: [MQTTSubscribeInfoV5],
         properties: MQTTProperties = .init()
@@ -64,6 +64,7 @@ extension MQTTConnection {
         return (subscriptionID, stream)
     }
 
+    @usableFromInline
     func unsubscribe(id: UInt32, properties: MQTTProperties = .init()) async throws {
         try await withCheckedThrowingContinuation { continuation in
             self.channelHandler.unsubscribe(id: id, packetID: self.updatePacketId(), properties: properties, promise: .swift(continuation))
@@ -80,16 +81,15 @@ extension MQTTConnection.V5 {
     ///   - subscriptions: Array of ``MQTTSubscribeInfo`` defining the subscriptions.
     ///   - subscribeProperties: Properties to attach to the subscribe packet.
     ///   - unsubscribeProperties: Properties to attach to the unsubscribe packet.
-    ///   - isolation: Actor isolation
     ///   - process: Closure where messages received from the subscription are processed.
     ///     The closure receives a ``MQTTSubscription`` `AsyncSequence` to listen for messages.
-    public func subscribe<Value>(
+    @inlinable
+    public nonisolated func subscribe<Value>(
         to subscriptions: [MQTTSubscribeInfoV5],
         subscribeProperties: MQTTProperties = .init(),
         unsubscribeProperties: MQTTProperties = .init(),
-        isolation: isolated (any Actor)? = #isolation,
-        process: (MQTTSubscription) async throws -> sending Value
-    ) async throws -> sending Value {
+        process: (MQTTSubscription) async throws -> Value
+    ) async throws -> Value {
         let (id, stream) = try await self.connection.subscribe(to: subscriptions, properties: subscribeProperties)
         let value: Value
         do {

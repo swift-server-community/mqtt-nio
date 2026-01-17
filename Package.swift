@@ -1,6 +1,11 @@
-// swift-tools-version:6.1
+// swift-tools-version:6.2
 
 import PackageDescription
+
+var defaultSwiftSettings: [SwiftSetting] =
+    [
+        .enableUpcomingFeature("NonisolatedNonsendingByDefault")
+    ]
 
 let package = Package(
     name: "mqtt-nio",
@@ -24,9 +29,15 @@ let package = Package(
                 .product(name: "NIOWebSocket", package: "swift-nio"),
                 .product(name: "NIOSSL", package: "swift-nio-ssl", condition: .when(platforms: [.linux, .macOS, .android])),
                 .product(name: "NIOTransportServices", package: "swift-nio-transport-services"),
-            ]
+            ],
+            swiftSettings: defaultSwiftSettings
         ),
-        .testTarget(name: "MQTTNIOTests", dependencies: ["MQTTNIO"]),
-    ],
-    swiftLanguageModes: [.v5]
+        .testTarget(
+            name: "MQTTNIOTests",
+            dependencies: [
+                .target(name: "MQTTNIO")
+            ],
+            swiftSettings: defaultSwiftSettings
+        ),
+    ]
 )

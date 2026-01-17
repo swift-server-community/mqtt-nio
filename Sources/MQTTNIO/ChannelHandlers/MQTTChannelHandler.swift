@@ -177,6 +177,7 @@ final class MQTTChannelHandler: ChannelDuplexHandler {
 
         case .atLeastOnce:
             context.channel.writeAndFlush(MQTTPubAckPacket(type: .PUBACK, packetId: message.packetId))
+                .assumeIsolated()
                 .map { _ in message.publish }
                 .whenComplete { result in
                     switch result {
@@ -191,12 +192,13 @@ final class MQTTChannelHandler: ChannelDuplexHandler {
                 }
 
         case .exactlyOnce:
-            var publish = message.publish
+            // TODO: Investigate what to do if we receive a publish message while waiting for a PUBREL
+            //var publish = message.publish
             self.sendMessage(MQTTPubAckPacket(type: .PUBREC, packetId: message.packetId)) { newMessage in
                 guard newMessage.packetId == message.packetId else { return false }
                 // if we receive a publish message while waiting for a PUBREL from broker then replace data to be published and retry PUBREC
-                if newMessage.type == .PUBLISH, let publishMessage = newMessage as? MQTTPublishPacket {
-                    publish = publishMessage.publish
+                if newMessage.type == .PUBLISH {
+                    //publish = publishMessage.publish
                     throw MQTTError.retrySend
                 }
                 // if we receive anything but a PUBREL then throw unexpected message
@@ -204,7 +206,8 @@ final class MQTTChannelHandler: ChannelDuplexHandler {
                 // now we have received the PUBREL we can process the published message. PUBCOMP is sent by `respondToPubrel`
                 return true
             }
-            .map { _ in publish }
+            .assumeIsolated()
+            //.map { _ in publish }
             .whenComplete { result in
                 switch result {
                 case .failure(let error):
@@ -218,8 +221,8 @@ final class MQTTChannelHandler: ChannelDuplexHandler {
                         context.close(promise: nil)
                         self.logger.error("Error during QoS 2 publish flow", metadata: ["mqtt_error": .string("\(error)")])
                     }
-                case .success(let publish):
-                    self.subscriptions.notify(publish)
+                case .success:
+                    self.subscriptions.notify(message.publish)
                 }
             }
         }
@@ -417,6 +420,7 @@ final class MQTTChannelHandler: ChannelDuplexHandler {
                         guard message.type == .PINGRESP else { return false }
                         return true
                     }
+                    .assumeIsolated()
                     .whenComplete { result in
                         switch result {
                         case .failure(let error):

@@ -18,20 +18,13 @@ import NIOWebSocket
 /// Code inspired from vapor/websocket-kit https://github.com/vapor/websocket-kit
 /// and the WebSocket sample from swift-nio
 /// https://github.com/apple/swift-nio/tree/main/Sources/NIOWebSocketClient
-///
-/// The WebSocket ping/pong is implemented but not used as the MQTT client already implements
-/// PINGREQ messages
 final class WebSocketHandler: ChannelDuplexHandler {
     typealias OutboundIn = ByteBuffer
     typealias OutboundOut = WebSocketFrame
     typealias InboundIn = WebSocketFrame
     typealias InboundOut = ByteBuffer
 
-    static let pingData: String = "MQTTClient"
-
     var webSocketFrameSequence: WebSocketFrameSequence?
-    var waitingOnPong: Bool = false
-    var pingInterval: TimeAmount?
 
     /// Write bytebuffer as WebSocket frame
     func write(context: ChannelHandlerContext, data: NIOAny, promise: EventLoopPromise<Void>?) {
@@ -46,10 +39,6 @@ final class WebSocketHandler: ChannelDuplexHandler {
         let frame = self.unwrapInboundIn(data)
 
         switch frame.opcode {
-        case .pong:
-            self.pong(context: context, frame: frame)
-        case .ping:
-            self.ping(context: context, frame: frame)
         case .text:
             if var frameSeq = self.webSocketFrameSequence {
                 frameSeq.append(frame)
@@ -102,53 +91,6 @@ final class WebSocketHandler: ChannelDuplexHandler {
         let maskKey = self.makeMaskKey()
         let frame = WebSocketFrame(fin: fin, opcode: opcode, maskKey: maskKey, data: buffer)
         context.writeAndFlush(wrapOutboundOut(frame), promise: promise)
-    }
-
-    /// Send ping and setup task to check for pong and send new ping
-    private func sendPingAndWait(context: ChannelHandlerContext) {
-        guard context.channel.isActive, let pingInterval else {
-            return
-        }
-        if self.waitingOnPong {
-            // We never received a pong from our last ping, so the connection has timed out
-            let promise = context.eventLoop.makePromise(of: Void.self)
-            self.close(context: context, code: .unknown(1006), promise: promise)
-            promise.futureResult.whenComplete { _ in
-                // Usually, closing a WebSocket is done by sending the close frame and waiting
-                // for the peer to respond with their close frame. We are in a timeout situation,
-                // so the other side likely will never send the close frame. We just close the
-                // channel ourselves.
-                context.channel.close(mode: .all, promise: nil)
-            }
-
-        } else {
-            let buffer = context.channel.allocator.buffer(string: Self.pingData)
-            self.send(context: context, buffer: buffer, opcode: .ping)
-            _ = context.eventLoop.scheduleTask(in: pingInterval) {
-                self.sendPingAndWait(context: context)
-            }
-        }
-    }
-
-    /// Respond to pong from server. Verify contents of pong and clear waitingOnPong flag
-    private func pong(context: ChannelHandlerContext, frame: WebSocketFrame) {
-        var frameData = frame.unmaskedData
-        guard let frameDataString = frameData.readString(length: Self.pingData.count),
-            frameDataString == Self.pingData
-        else {
-            self.close(context: context, code: .goingAway, promise: nil)
-            return
-        }
-        self.waitingOnPong = false
-    }
-
-    /// Respond to ping from server
-    private func ping(context: ChannelHandlerContext, frame: WebSocketFrame) {
-        if frame.fin {
-            self.send(context: context, buffer: frame.unmaskedData, opcode: .pong, fin: true, promise: nil)
-        } else {
-            self.close(context: context, code: .protocolError, promise: nil)
-        }
     }
 
     private func receivedClose(context: ChannelHandlerContext, frame: WebSocketFrame) {
