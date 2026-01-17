@@ -35,18 +35,67 @@ extension MQTTChannelHandler {
         var state: State
 
         @usableFromInline
-        struct InitializedState {
-            let context: Context
+        struct MQTTTasks {
             var tasks: [MQTTTask]
 
-            mutating func cancel(requestID: Int) -> MQTTTask? {
-                self.tasks.first { task in
-                    if task.requestID == requestID {
-                        // TODO: Use `remove(at:)` from #202 when merged
-                        self.tasks.removeAll { $0 === task }
-                        return true
+            init() {
+                self.tasks = []
+            }
+
+            mutating func append(_ task: MQTTTask) {
+                self.tasks.append(task)
+            }
+
+            mutating func remove(at index: [MQTTTask].Index) {
+                if index == tasks.endIndex - 1 {
+                    self.tasks.removeLast()
+                } else {
+                    let lastTask = self.tasks.removeLast()
+                    self.tasks[index] = lastTask
+                }
+            }
+
+            mutating func removeFirst(where condition: (MQTTTask) -> Bool) -> MQTTTask? {
+                for index in self.tasks.indices {
+                    if condition(self.tasks[index]) {
+                        let task = self.tasks[index]
+                        remove(at: index)
+                        return task
                     }
-                    return false
+                }
+                return nil
+            }
+
+            enum ProcessPacketAction {
+                case succeedTask(MQTTTask)
+                case failTask(MQTTTask, any Error)
+                case unhandledTask
+            }
+            mutating func processPacket(_ packet: MQTTPacket) -> ProcessPacketAction {
+                for (index, task) in self.tasks.enumerated() {
+                    do {
+                        // should this task respond to inbound packet
+                        if try task.checkInbound(packet) {
+                            self.remove(at: index)
+                            return .succeedTask(task)
+                        }
+                    } catch {
+                        self.remove(at: index)
+                        return .failTask(task, error)
+                    }
+                }
+                return .unhandledTask
+            }
+        }
+
+        @usableFromInline
+        struct InitializedState {
+            let context: Context
+            var tasks: MQTTTasks
+
+            mutating func cancel(requestID: Int) -> MQTTTask? {
+                self.tasks.removeFirst {
+                    $0.requestID == requestID
                 }
             }
         }
@@ -64,7 +113,7 @@ extension MQTTChannelHandler {
         mutating func setInitialized(context: Context) {
             switch consume self.state {
             case .uninitialized:
-                self = .initialized(.init(context: context, tasks: []))
+                self = .initialized(.init(context: context, tasks: .init()))
             case .initialized:
                 preconditionFailure("Cannot set initialized state when state is initialized")
             case .closed:
@@ -114,32 +163,42 @@ extension MQTTChannelHandler {
 
         /// handler has received a packet
         @usableFromInline
-        mutating func receivedPacket(_ packet: MQTTPacket) -> ReceivedPacketAction {
+        mutating func receivedPacket(_ packet: any MQTTPacket) -> ReceivedPacketAction {
             switch consume self.state {
             case .uninitialized:
                 preconditionFailure("Cannot receive packet when uninitialized")
             case .initialized(var state):
                 switch packet.type {
                 case .PUBLISH:
-                    self = .initialized(state)
-                    return .respondAndReturn
-                case .CONNACK, .PUBACK, .PUBREC, .PUBCOMP, .SUBACK, .UNSUBACK, .PINGRESP, .AUTH, .PUBREL:
-                    for task in state.tasks {
-                        do {
-                            // should this task respond to inbound packet
-                            if try task.checkInbound(packet) {
-                                state.tasks.removeAll { $0 === task }
-                                self = .initialized(state)
-                                return .succeedTask(task)
-                            }
-                        } catch {
-                            state.tasks.removeAll { $0 === task }
-                            self = .initialized(state)
+                    let publishPacket = packet as! MQTTPublishPacket
+                    // if publish is a duplicate of a previously sent publish, verify we don't already
+                    // have a task processing this publish packet id.
+                    if publishPacket.publish.dup {
+                        let action = state.tasks.processPacket(packet)
+                        self = .initialized(state)
+                        switch action {
+                        case .succeedTask(let task):
+                            return .succeedTask(task)
+                        case .failTask(let task, let error):
                             return .failTask(task, error)
+                        case .unhandledTask:
+                            // we didn't find a task lets respond to this
+                            return .respondAndReturn
                         }
                     }
                     self = .initialized(state)
-                    return .unhandledTask
+                    return .respondAndReturn
+                case .CONNACK, .PUBACK, .PUBREC, .PUBCOMP, .SUBACK, .UNSUBACK, .PINGRESP, .AUTH, .PUBREL:
+                    let action = state.tasks.processPacket(packet)
+                    self = .initialized(state)
+                    switch action {
+                    case .succeedTask(let task):
+                        return .succeedTask(task)
+                    case .failTask(let task, let error):
+                        return .failTask(task, error)
+                    case .unhandledTask:
+                        return .unhandledTask
+                    }
                 case .DISCONNECT:
                     let disconnectMessage = packet as! MQTTDisconnectPacket
                     let ack = MQTTAckV5(reason: disconnectMessage.reason, properties: disconnectMessage.properties)
@@ -233,7 +292,7 @@ extension MQTTChannelHandler {
                 return .doNothing
             case .initialized(let state):
                 self = .closed
-                return .failTasksAndClose(state.tasks)
+                return .failTasksAndClose(state.tasks.tasks)
             case .closed:
                 self = .closed
                 return .doNothing
