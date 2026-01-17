@@ -131,10 +131,71 @@ struct MQTTConnectPacket: MQTTPacket {
         }
     }
 
-    /// read connect packet from incoming packet (not implemented)
-    static func read(version: MQTTConnectionConfiguration.Version, from packet: MQTTIncomingPacket) throws -> Self {
+    /// read connect packet from incoming packet
+    static func read(version: MQTTConnectionConfiguration.Version, from packet: MQTTIncomingPacket) throws -> MQTTConnectPacket {
         assert(packet.type == .CONNECT)
-        throw InternalError.notImplemented
+        var remainingData = packet.remainingData
+        let protocolName = try MQTTSerializer.readString(from: &remainingData)
+        guard protocolName == "MQTT" else { throw MQTTError.badResponse }
+        guard let header: (UInt8, UInt8, UInt16) = remainingData.readMultipleIntegers() else { throw MQTTError.badResponse }
+        // version
+        guard header.0 == 4 || header.0 == 5 else { throw MQTTError.badResponse }
+        // flags
+        let flags = header.1
+        let cleanSession = (flags & ConnectFlags.cleanSession) != 0
+        let keepAliveInterval = header.2
+        // read properties
+        let properties: MQTTProperties
+        if version == .v5_0 {
+            properties = try MQTTProperties.read(from: &remainingData)
+        } else {
+            properties = .init()
+        }
+        // payload
+        // identifier
+        let identifier = try MQTTSerializer.readString(from: &remainingData)
+
+        // will
+        var will: MQTTPublishInfo? = nil
+        if (flags & ConnectFlags.willFlag) != 0 {
+            // read will properties
+            let willProperties: MQTTProperties
+            if version == .v5_0 {
+                willProperties = try MQTTProperties.read(from: &remainingData)
+            } else {
+                willProperties = .init()
+            }
+            let willTopicName = try MQTTSerializer.readString(from: &remainingData)
+            let willPayload = try MQTTSerializer.readBuffer(from: &remainingData)
+            guard let willQoS = MQTTQoS(rawValue: UInt8(flags & ConnectFlags.willQoSMask) >> ConnectFlags.willQoSShift) else {
+                throw MQTTError.badResponse
+            }
+            will = MQTTPublishInfo(
+                qos: willQoS,
+                retain: (flags & ConnectFlags.willRetain) != 0,
+                dup: false,
+                topicName: willTopicName,
+                payload: willPayload,
+                properties: willProperties
+            )
+        }
+        var userName: String? = nil
+        if (flags & ConnectFlags.userName) != 0 {
+            userName = try MQTTSerializer.readString(from: &remainingData)
+        }
+        var password: String? = nil
+        if (flags & ConnectFlags.password) != 0 {
+            password = try MQTTSerializer.readString(from: &remainingData)
+        }
+        return MQTTConnectPacket(
+            cleanSession: cleanSession,
+            keepAliveSeconds: keepAliveInterval,
+            clientIdentifier: identifier,
+            userName: userName,
+            password: password,
+            properties: properties,
+            will: will
+        )
     }
 
     /// calculate size of connect packet

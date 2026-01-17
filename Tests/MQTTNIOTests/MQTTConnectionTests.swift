@@ -47,7 +47,12 @@ struct MQTTConnectionTests {
             group.addTask {
                 // wait for connect
                 let packet = try await channel.waitForOutboundPacket()
-                #expect(packet.type == .CONNECT)
+                let connect = try MQTTConnectPacket.read(version: configuration.version, from: packet)
+                #expect(connect.cleanSession == cleanSession)
+                #expect(connect.clientIdentifier == identifier)
+                if case .v5_0(let connectProperties, _, _, _) = configuration.versionConfiguration {
+                    #expect(connectProperties == connect.properties)
+                }
 
                 let connack = MQTTConnAckPacket(returnCode: 0, acknowledgeFlags: 1, properties: .init())
                 try await channel.writeInboundPacket(connack, version: version)
