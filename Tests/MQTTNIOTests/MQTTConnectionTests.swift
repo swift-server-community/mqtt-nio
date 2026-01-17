@@ -420,25 +420,6 @@ struct MQTTConnectionTests {
     func testAuthWorkflow() async throws {
         var logger = Logger(label: "testAuthWorkflow")
         logger.logLevel = .trace
-        struct SimpleAuthWorkflow: MQTTAuthenticator {
-            func authenticate(_ auth: MQTTAuthV5) async throws -> MQTTAuthV5 {
-                switch auth.reason {
-                case .continueAuthentication, .reAuthenticate:
-                    let authenticationData: ByteBuffer? = {
-                        for property in auth.properties {
-                            if case .authenticationData(let data) = property {
-                                return data
-                            }
-                        }
-                        return nil
-                    }()
-                    #expect(authenticationData == ByteBuffer(string: "User"))
-                    return MQTTAuthV5(reason: .continueAuthentication, properties: [.authenticationData(ByteBuffer(string: "Password"))])
-                default:
-                    preconditionFailure("Shouldn't get here as a successful auth will have already been processed")
-                }
-            }
-        }
         let channel = NIOAsyncTestingChannel()
         let connection = try await MQTTConnection.setupChannelAndConnect(
             channel,
@@ -455,16 +436,15 @@ struct MQTTConnectionTests {
                 var packet = try await channel.waitForOutboundPacket()
                 #expect(packet.type == .CONNECT)
                 #expect(packet.packetId == 0)
-
+                // send auth
                 let auth = MQTTAuthPacket(reason: .continueAuthentication, properties: [.authenticationData(.init(string: "User"))])
                 try await channel.writeInboundPacket(auth, version: .v5_0)
-
-                // wait for disconnect
+                // wait for auth
                 packet = try await channel.waitForOutboundPacket()
                 let authResponsePacket = try MQTTAuthPacket.read(version: .v5_0, from: packet)
                 #expect(authResponsePacket.reason == .continueAuthentication)
                 #expect(authResponsePacket.properties.contains(.authenticationData(ByteBuffer(string: "Password"))))
-
+                // send connack
                 let connack = MQTTConnAckPacket(returnCode: 0, acknowledgeFlags: 1, properties: .init())
                 try await channel.writeInboundPacket(connack, version: .v5_0)
 
@@ -474,6 +454,54 @@ struct MQTTConnectionTests {
                 #expect(disconnectPacket.packetId == 0)
             }
             try await group.waitForAll()
+        }
+    }
+
+    @Test
+    func testReAuthenticate() async throws {
+        var logger = Logger(label: "testConnectDisconnect")
+        logger.logLevel = .trace
+        try await withTestMQTTServer(configuration: .init(versionConfiguration: .v5_0(authWorkflow: SimpleAuthWorkflow())), logger: logger) {
+            connection in
+            _ = try await connection.v5.auth(properties: [])
+
+        } server: { channel in
+            // wait for auth
+            var packet = try await channel.waitForOutboundPacket()
+            let initialAuth = try MQTTAuthPacket.read(version: .v5_0, from: packet)
+            #expect(initialAuth.reason == .reAuthenticate)
+            // send auth
+            let auth = MQTTAuthPacket(reason: .continueAuthentication, properties: [.authenticationData(.init(string: "User"))])
+            try await channel.writeInboundPacket(auth, version: .v5_0)
+            // wait for auth
+            packet = try await channel.waitForOutboundPacket()
+            let authResponsePacket = try MQTTAuthPacket.read(version: .v5_0, from: packet)
+            #expect(packet.type == .AUTH)
+            #expect(authResponsePacket.reason == .continueAuthentication)
+            #expect(authResponsePacket.properties.contains(.authenticationData(ByteBuffer(string: "Password"))))
+            // send final auth
+            let finalAuth = MQTTAuthPacket(reason: .success, properties: [])
+            try await channel.writeInboundPacket(finalAuth, version: .v5_0)
+        }
+    }
+}
+
+struct SimpleAuthWorkflow: MQTTAuthenticator {
+    func authenticate(_ auth: MQTTAuthV5) async throws -> MQTTAuthV5 {
+        switch auth.reason {
+        case .continueAuthentication, .reAuthenticate:
+            let authenticationData: ByteBuffer? = {
+                for property in auth.properties {
+                    if case .authenticationData(let data) = property {
+                        return data
+                    }
+                }
+                return nil
+            }()
+            #expect(authenticationData == ByteBuffer(string: "User"))
+            return MQTTAuthV5(reason: .continueAuthentication, properties: [.authenticationData(ByteBuffer(string: "Password"))])
+        default:
+            preconditionFailure("Shouldn't get here as a successful auth will have already been processed")
         }
     }
 }
