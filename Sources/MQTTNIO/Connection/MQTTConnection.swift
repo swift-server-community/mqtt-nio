@@ -401,7 +401,7 @@ public final actor MQTTConnection: Sendable {
                         configuration: configuration,
                         cleanSession: cleanSession,
                         identifier: identifier,
-                        address: .hostname("127.0.0.1", port: 6379),
+                        address: .hostname("127.0.0.1", port: 1883),
                         logger: logger
                     )
                 }
