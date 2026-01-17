@@ -561,8 +561,11 @@ struct MQTTConnAckPacket: MQTTPacket {
 
     var sessionPresent: Bool { self.acknowledgeFlags & 0x1 == 0x1 }
 
-    func write(version: MQTTConnectionConfiguration.Version, to: inout ByteBuffer) throws {
-        throw InternalError.notImplemented
+    func write(version: MQTTConnectionConfiguration.Version, to byteBuffer: inout ByteBuffer) throws {
+        writeFixedHeader(packetType: self.type, size: self.packetSize, to: &byteBuffer)
+        byteBuffer.writeInteger(acknowledgeFlags)
+        byteBuffer.writeInteger(returnCode)
+        try self.properties.write(to: &byteBuffer)
     }
 
     static func read(version: MQTTConnectionConfiguration.Version, from packet: MQTTIncomingPacket) throws -> Self {
@@ -579,6 +582,11 @@ struct MQTTConnAckPacket: MQTTPacket {
             acknowledgeFlags: bytes[0],
             properties: properties
         )
+    }
+
+    var packetSize: Int {
+        let propertiesPacketSize = self.properties.packetSize
+        return 2 + MQTTSerializer.variableLengthIntegerPacketSize(propertiesPacketSize) + propertiesPacketSize
     }
 }
 

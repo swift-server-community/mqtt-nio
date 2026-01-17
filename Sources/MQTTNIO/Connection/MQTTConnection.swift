@@ -98,14 +98,8 @@ public final actor MQTTConnection: Sendable {
             eventLoop: eventLoop,
             logger: logger
         )
-        do {
-            let result = try await operation(connection)
-            try await connection.close()
-            return result
-        } catch {
-            try? await connection.close()
-            throw error
-        }
+        defer { connection.close() }
+        return try await operation(connection)
     }
 
     /// Publish message to topic.
@@ -147,6 +141,44 @@ public final actor MQTTConnection: Sendable {
         eventLoop: any EventLoop = MultiThreadedEventLoopGroup.singleton.any(),
         logger: Logger
     ) async throws -> MQTTConnection {
+        var configuration = configuration
+        if configuration.pingInterval == nil {
+            configuration.pingInterval = TimeAmount.seconds(max(Int64(configuration.keepAliveInterval.nanoseconds / 1_000_000_000) - 5, 5))
+        }
+        let readOnlyConfiguration = configuration
+        let future =
+            if eventLoop.inEventLoop {
+                self._makeConnection(
+                    address: address,
+                    configuration: configuration,
+                    cleanSession: cleanSession,
+                    identifier: identifier,
+                    eventLoop: eventLoop,
+                    logger: logger
+                )
+            } else {
+                eventLoop.flatSubmit {
+                    self._makeConnection(
+                        address: address,
+                        configuration: readOnlyConfiguration,
+                        cleanSession: cleanSession,
+                        identifier: identifier,
+                        eventLoop: eventLoop,
+                        logger: logger
+                    )
+                }
+            }
+        let connection = try await future.get()
+        try await connection.waitOnInitialized()
+        try await connection.sendConnect()
+        return connection
+    }
+
+    func waitOnInitialized() async throws {
+        try await self.channelHandler.waitOnInitialized().get()
+    }
+
+    package func sendConnect() async throws {
         let publish =
             switch configuration.versionConfiguration {
             case .v3_1_1(let will):
@@ -181,6 +213,18 @@ public final actor MQTTConnection: Sendable {
             case .v5_0(let connectProperties, _, _, let authenticator):
                 (authenticator, connectProperties)  // TODO: Do we need to set `.sessionExpiryInterval(0xFFFF_FFFF)` by default?
             }
+
+        var cleanSession = self.cleanSession
+        // if connection has non zero session expiry then assume it doesnt clean session on close
+        for p in properties {
+            // check topic alias
+            if case .sessionExpiryInterval(let interval) = p {
+                if interval > 0 {
+                    cleanSession = false
+                }
+            }
+        }
+
         let packet = MQTTConnectPacket(
             cleanSession: cleanSession,
             keepAliveSeconds: UInt16(configuration.keepAliveInterval.nanoseconds / 1_000_000_000),
@@ -190,62 +234,11 @@ public final actor MQTTConnection: Sendable {
             properties: properties,
             will: publish
         )
-
-        var configuration = configuration
-        if configuration.pingInterval == nil {
-            configuration.pingInterval = TimeAmount.seconds(max(Int64(packet.keepAliveSeconds - 5), 5))
-        }
-
-        var cleanSession = packet.cleanSession
-        // if connection has non zero session expiry then assume it doesnt clean session on close
-        for p in packet.properties {
-            // check topic alias
-            if case .sessionExpiryInterval(let interval) = p {
-                if interval > 0 {
-                    cleanSession = false
-                }
-            }
-        }
-
-        let future =
-            if eventLoop.inEventLoop {
-                self._makeConnection(
-                    address: address,
-                    configuration: configuration,
-                    cleanSession: cleanSession,
-                    identifier: identifier,
-                    eventLoop: eventLoop,
-                    logger: logger
-                )
-            } else {
-                eventLoop.flatSubmit {
-                    self._makeConnection(
-                        address: address,
-                        configuration: configuration,
-                        cleanSession: cleanSession,
-                        identifier: identifier,
-                        eventLoop: eventLoop,
-                        logger: logger
-                    )
-                }
-            }
-        let connection = try await future.get()
-        try await connection.waitOnInitialized()
-        _ = try await connection._connect(packet: packet, authWorkflow: authenticator)
-        return connection
+        _ = try await self._connect(packet: packet, authWorkflow: authenticator)
     }
 
-    func waitOnInitialized() async throws {
-        try await self.channelHandler.waitOnInitialized().get()
-    }
-
-    /// Close connection
-    public func close() throws {
-        guard self.isClosed.compareExchange(expected: false, desired: true, successOrdering: .relaxed, failureOrdering: .relaxed).exchanged
-        else {
-            return
-        }
-        if self.channel.isActive {
+    func sendDisconnect() throws {
+        if channel.isActive {
             let disconnectPacket: MQTTDisconnectPacket =
                 switch self.configuration.versionConfiguration {
                 case .v3_1_1:
@@ -255,7 +248,20 @@ public final actor MQTTConnection: Sendable {
                 }
             try self.sendMessageNoWait(disconnectPacket)
         }
-        self.channel.close(mode: .all, promise: nil)
+    }
+
+    /// Close connection
+    public nonisolated func close() {
+        guard self.isClosed.compareExchange(expected: false, desired: true, successOrdering: .relaxed, failureOrdering: .relaxed).exchanged
+        else {
+            return
+        }
+        self.channel.eventLoop.execute {
+            self.assumeIsolated {
+                try? $0.sendDisconnect()
+                $0.channel.close(mode: .all, promise: nil)
+            }
+        }
     }
 
     private static func _makeConnection(
@@ -344,6 +350,64 @@ public final actor MQTTConnection: Sendable {
                 address: address,
                 logger: logger
             )
+        }
+    }
+
+    package static func setupChannelAndConnect(
+        _ channel: any Channel,
+        configuration: MQTTConnectionConfiguration = .init(),
+        cleanSession: Bool = false,
+        identifier: String = "TestClient",
+        logger: Logger
+    ) async throws -> MQTTConnection {
+        if !channel.eventLoop.inEventLoop {
+            return try await channel.eventLoop.flatSubmit {
+                self._setupChannelAndConnect(
+                    channel,
+                    configuration: configuration,
+                    cleanSession: cleanSession,
+                    identifier: identifier,
+                    logger: logger
+                )
+            }.get()
+        }
+        return try await self._setupChannelAndConnect(
+            channel,
+            configuration: configuration,
+            cleanSession: cleanSession,
+            identifier: identifier,
+            logger: logger
+        ).get()
+    }
+
+    private static func _setupChannelAndConnect(
+        _ channel: Channel,
+        configuration: MQTTConnectionConfiguration,
+        cleanSession: Bool,
+        identifier: String,
+        logger: Logger
+    ) -> EventLoopFuture<MQTTConnection> {
+        do {
+            return channel.connect(to: try SocketAddress(ipAddress: "127.0.0.1", port: 1883)).flatMap {
+                channel.eventLoop.makeCompletedFuture {
+                    let handler = try self._setupChannel(
+                        channel,
+                        configuration: configuration,
+                        logger: logger
+                    )
+                    return MQTTConnection(
+                        channel: channel,
+                        channelHandler: handler,
+                        configuration: configuration,
+                        cleanSession: cleanSession,
+                        identifier: identifier,
+                        address: .hostname("127.0.0.1", port: 1883),
+                        logger: logger
+                    )
+                }
+            }
+        } catch {
+            return channel.eventLoop.makeFailedFuture(error)
         }
     }
 

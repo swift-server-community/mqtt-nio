@@ -125,3 +125,35 @@ struct CoreMQTTTests {
         #expect(subscriptionMap[topicName: "/finance"].count == 3)
     }
 }
+
+extension MQTTError: Equatable {
+    public static func == (lhs: MQTTError, rhs: MQTTError) -> Bool {
+        switch (lhs, rhs) {
+        case (.failedToConnect, .failedToConnect),
+            (.connectionClosed, .connectionClosed),
+            (.serverClosedConnection, .serverClosedConnection),
+            (.unexpectedMessage, .unexpectedMessage),
+            (.decodeError, .decodeError),
+            (.websocketUpgradeFailed, .websocketUpgradeFailed),
+            (.timeout, .timeout),
+            (.retrySend, .retrySend),
+            (.wrongTLSConfig, .wrongTLSConfig),
+            (.badResponse, .badResponse),
+            (.unrecognisedPacketType, .unrecognisedPacketType),
+            (.authWorkflowRequired, .authWorkflowRequired),
+            (.serverDisconnection, .serverDisconnection),
+            (.cancelledTask, .cancelledTask):
+            true
+        case (.connectionError(let lhsValue), .connectionError(let rhsValue)):
+            lhsValue == rhsValue
+        case (.reasonError(let lhsValue), .reasonError(let rhsValue)):
+            lhsValue == rhsValue
+        case (.versionMismatch(let expectedLHS, let actualLHS), .versionMismatch(let expectedRHS, let actualRHS)):
+            expectedLHS == expectedRHS && actualLHS == actualRHS
+        case (.invalidTopicFilter(let lhsValue), .invalidTopicFilter(let rhsValue)):
+            lhsValue == rhsValue
+        default:
+            false
+        }
+    }
+}
