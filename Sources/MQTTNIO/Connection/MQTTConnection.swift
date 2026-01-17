@@ -388,7 +388,7 @@ public final actor MQTTConnection: Sendable {
         logger: Logger
     ) -> EventLoopFuture<MQTTConnection> {
         do {
-            return channel.connect(to: try SocketAddress(ipAddress: "127.0.0.1", port: 6379)).flatMap {
+            return channel.connect(to: try SocketAddress(ipAddress: "127.0.0.1", port: 1883)).flatMap {
                 channel.eventLoop.makeCompletedFuture {
                     let handler = try self._setupChannel(
                         channel,
