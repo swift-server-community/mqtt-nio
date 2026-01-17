@@ -661,8 +661,8 @@ public final actor MQTTConnection: Sendable {
         authWorkflow: MQTTAuthenticator
     ) async throws -> any MQTTPacket {
         let auth = MQTTAuthV5(reason: packet.reason, properties: packet.properties)
-        _ = try await authWorkflow.authenticate(auth)
-        let responsePacket = MQTTAuthPacket(reason: packet.reason, properties: packet.properties)
+        let authResponse = try await authWorkflow.authenticate(auth)
+        let responsePacket = MQTTAuthPacket(reason: authResponse.reason, properties: authResponse.properties)
         let result = try await self.sendMessage(responsePacket) { message -> Bool in
             guard message.type == .CONNACK || message.type == .AUTH else { throw MQTTError.failedToConnect }
             return true

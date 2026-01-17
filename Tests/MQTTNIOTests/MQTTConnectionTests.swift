@@ -72,7 +72,7 @@ struct MQTTConnectionTests {
         client clientOperation: @Sendable @escaping (MQTTSubscription) async throws -> Void,
         server serverOperation: @Sendable @escaping (NIOAsyncTestingChannel) async throws -> Void,
     ) async throws {
-        try await withTestMQTTServer { connection in
+        try await withTestMQTTServer(logger: logger) { connection in
             try await connection.subscribe(to: subscribeInfos) { sub in
                 try await clientOperation(sub)
             }
@@ -119,7 +119,7 @@ struct MQTTConnectionTests {
         client clientOperation: @Sendable @escaping (MQTTSubscription) async throws -> Void,
         server serverOperation: @Sendable @escaping (NIOAsyncTestingChannel, UInt32) async throws -> Void,
     ) async throws {
-        try await withTestMQTTServer(configuration: .init(versionConfiguration: .v5_0())) { connection in
+        try await withTestMQTTServer(configuration: .init(versionConfiguration: .v5_0()), logger: logger) { connection in
             try await connection.v5.subscribe(to: subscribeInfos) { sub in
                 try await clientOperation(sub)
             }
@@ -171,14 +171,18 @@ struct MQTTConnectionTests {
 
     @Test
     func testConnectDisconnect() async throws {
-        try await withTestMQTTServer { _ in
+        var logger = Logger(label: "testConnectDisconnect")
+        logger.logLevel = .trace
+        try await withTestMQTTServer(logger: logger) { _ in
         } server: { _ in
         }
     }
 
     @Test
     func testPublishQoS0ClientToServer() async throws {
-        try await withTestMQTTServer { connection in
+        var logger = Logger(label: "testPublishQoS0ClientToServer")
+        logger.logLevel = .trace
+        try await withTestMQTTServer(logger: logger) { connection in
             try await connection.publish(to: "testTopic", payload: ByteBuffer(string: "TestPayload"), qos: .atMostOnce, retain: false)
         } server: { channel in
             let packet = try await channel.waitForOutboundPacket()
@@ -191,7 +195,9 @@ struct MQTTConnectionTests {
 
     @Test
     func testPublishQoS1ClientToServer() async throws {
-        try await withTestMQTTServer { connection in
+        var logger = Logger(label: "testPublishQoS1ClientToServer")
+        logger.logLevel = .trace
+        try await withTestMQTTServer(logger: logger) { connection in
             try await connection.publish(to: "testTopic", payload: ByteBuffer(string: "TestPayload"), qos: .atLeastOnce, retain: false)
         } server: { channel in
             let packet = try await channel.waitForOutboundPacket()
@@ -206,7 +212,9 @@ struct MQTTConnectionTests {
 
     @Test
     func testPublishQoS2ClientToServer() async throws {
-        try await withTestMQTTServer { connection in
+        var logger = Logger(label: "testPublishQoS2ClientToServer")
+        logger.logLevel = .trace
+        try await withTestMQTTServer(logger: logger) { connection in
             try await connection.publish(to: "testTopic", payload: ByteBuffer(string: "TestPayload"), qos: .exactlyOnce, retain: false)
         } server: { channel in
             // receive PUBLISH
@@ -231,7 +239,12 @@ struct MQTTConnectionTests {
 
     @Test
     func testSubscribeAndPublishQoS0() async throws {
-        try await testSubscribe(subscribeInfos: [.init(topicFilter: "testTopic", qos: .atMostOnce)]) { sub in
+        var logger = Logger(label: "testSubscribeAndPublishQoS0")
+        logger.logLevel = .trace
+        try await testSubscribe(
+            subscribeInfos: [.init(topicFilter: "testTopic", qos: .atMostOnce)],
+            logger: logger
+        ) { sub in
             var iterator = sub.makeAsyncIterator()
             let event = try #require(try await iterator.next())
             #expect(event.payload == ByteBuffer(string: "TestPayload"))
@@ -253,7 +266,12 @@ struct MQTTConnectionTests {
 
     @Test
     func testSubscribeAndPublishQoS1() async throws {
-        try await testSubscribe(subscribeInfos: [.init(topicFilter: "testTopic", qos: .atLeastOnce)]) { sub in
+        var logger = Logger(label: "testSubscribeAndPublishQoS1")
+        logger.logLevel = .trace
+        try await testSubscribe(
+            subscribeInfos: [.init(topicFilter: "testTopic", qos: .atLeastOnce)],
+            logger: logger
+        ) { sub in
             var iterator = sub.makeAsyncIterator()
             let event = try #require(try await iterator.next())
             #expect(event.payload == ByteBuffer(string: "TestPayload"))
@@ -280,7 +298,12 @@ struct MQTTConnectionTests {
 
     @Test
     func testSubscribeAndPublishQoS2() async throws {
-        try await testSubscribe(subscribeInfos: [.init(topicFilter: "testTopic", qos: .exactlyOnce)]) { sub in
+        var logger = Logger(label: "testSubscribeAndPublishQoS2")
+        logger.logLevel = .trace
+        try await testSubscribe(
+            subscribeInfos: [.init(topicFilter: "testTopic", qos: .exactlyOnce)],
+            logger: logger
+        ) { sub in
             var iterator = sub.makeAsyncIterator()
             let event = try #require(try await iterator.next())
             #expect(event.payload == ByteBuffer(string: "TestPayload"))
@@ -315,7 +338,12 @@ struct MQTTConnectionTests {
 
     @Test
     func testTopicFilter() async throws {
-        try await testSubscribe(subscribeInfos: [.init(topicFilter: "testTopic/+", qos: .atMostOnce)]) { sub in
+        var logger = Logger(label: "testTopicFilter")
+        logger.logLevel = .trace
+        try await testSubscribe(
+            subscribeInfos: [.init(topicFilter: "testTopic/+", qos: .atMostOnce)],
+            logger: logger
+        ) { sub in
             var iterator = sub.makeAsyncIterator()
             let event = try #require(try await iterator.next())
             #expect(event.payload == ByteBuffer(string: "TestPayload2"))
@@ -350,8 +378,11 @@ struct MQTTConnectionTests {
 
     @Test
     func testSubscriptionIdFilter() async throws {
+        var logger = Logger(label: "testSubscriptionIdFilter")
+        logger.logLevel = .trace
         try await testSubscribeV5(
-            subscribeInfos: [.init(topicFilter: "testTopic/+", qos: .atMostOnce)]
+            subscribeInfos: [.init(topicFilter: "testTopic/+", qos: .atMostOnce)],
+            logger: logger
         ) { sub in
             var iterator = sub.makeAsyncIterator()
             let event = try #require(try await iterator.next())
@@ -382,6 +413,67 @@ struct MQTTConnectionTests {
                 packetId: 32769
             )
             try await channel.writeInboundPacket(publish2, version: .v5_0)
+        }
+    }
+
+    @Test
+    func testAuthWorkflow() async throws {
+        var logger = Logger(label: "testAuthWorkflow")
+        logger.logLevel = .trace
+        struct SimpleAuthWorkflow: MQTTAuthenticator {
+            func authenticate(_ auth: MQTTAuthV5) async throws -> MQTTAuthV5 {
+                switch auth.reason {
+                case .continueAuthentication, .reAuthenticate:
+                    let authenticationData: ByteBuffer? = {
+                        for property in auth.properties {
+                            if case .authenticationData(let data) = property {
+                                return data
+                            }
+                        }
+                        return nil
+                    }()
+                    #expect(authenticationData == ByteBuffer(string: "User"))
+                    return MQTTAuthV5(reason: .continueAuthentication, properties: [.authenticationData(ByteBuffer(string: "Password"))])
+                default:
+                    preconditionFailure("Shouldn't get here as a successful auth will have already been processed")
+                }
+            }
+        }
+        let channel = NIOAsyncTestingChannel()
+        let connection = try await MQTTConnection.setupChannelAndConnect(
+            channel,
+            configuration: .init(versionConfiguration: .v5_0(authWorkflow: SimpleAuthWorkflow())),
+            logger: logger
+        )
+        return try await withThrowingTaskGroup { group in
+            group.addTask {
+                defer { connection.close() }
+                try await connection.sendConnect()
+            }
+            group.addTask {
+                // wait for connect
+                var packet = try await channel.waitForOutboundPacket()
+                #expect(packet.type == .CONNECT)
+                #expect(packet.packetId == 0)
+
+                let auth = MQTTAuthPacket(reason: .continueAuthentication, properties: [.authenticationData(.init(string: "User"))])
+                try await channel.writeInboundPacket(auth, version: .v5_0)
+
+                // wait for disconnect
+                packet = try await channel.waitForOutboundPacket()
+                let authResponsePacket = try MQTTAuthPacket.read(version: .v5_0, from: packet)
+                #expect(authResponsePacket.reason == .continueAuthentication)
+                #expect(authResponsePacket.properties.contains(.authenticationData(ByteBuffer(string: "Password"))))
+
+                let connack = MQTTConnAckPacket(returnCode: 0, acknowledgeFlags: 1, properties: .init())
+                try await channel.writeInboundPacket(connack, version: .v5_0)
+
+                // wait for disconnect
+                let disconnectPacket = try await channel.waitForOutboundPacket()
+                #expect(disconnectPacket.type == .DISCONNECT)
+                #expect(disconnectPacket.packetId == 0)
+            }
+            try await group.waitForAll()
         }
     }
 }
