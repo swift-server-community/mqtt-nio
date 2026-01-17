@@ -99,14 +99,7 @@ public final actor MQTTConnection: Sendable {
             logger: logger
         )
         defer { connection.close() }
-        do {
-            let result = try await operation(connection)
-            try await connection.sendDisconnect()
-            return result
-        } catch {
-            try? await connection.sendDisconnect()
-            throw error
-        }
+        return try await operation(connection)
     }
 
     /// Publish message to topic.
