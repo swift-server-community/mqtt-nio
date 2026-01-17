@@ -27,7 +27,7 @@ import NIOTransportServices
 import NIOSSL
 #endif
 
-@Suite("MQTTConnection v5 Tests", .serialized)
+@Suite("MQTTConnection v5 Tests")
 struct MQTTConnectionV5Tests {
     static let hostname = ProcessInfo.processInfo.environment["MOSQUITTO_SERVER"] ?? "localhost"
 
@@ -123,7 +123,7 @@ struct MQTTConnectionV5Tests {
         try await MQTTConnection.withConnection(
             address: .hostname(Self.hostname),
             configuration: .init(versionConfiguration: .v5_0()),
-            identifier: "subscribeFlags",
+            identifier: "subscribeFlagsV5",
             logger: self.logger
         ) { connection in
             try await withThrowingTaskGroup { group in
@@ -172,7 +172,7 @@ struct MQTTConnectionV5Tests {
         try await MQTTConnection.withConnection(
             address: .hostname(Self.hostname),
             configuration: .init(versionConfiguration: .v5_0()),
-            identifier: "contentType",
+            identifier: "contentTypeV5",
             logger: self.logger
         ) { connection in
             try await withThrowingTaskGroup { group in
@@ -212,7 +212,7 @@ struct MQTTConnectionV5Tests {
         try await MQTTConnection.withConnection(
             address: .hostname(Self.hostname),
             configuration: .init(versionConfiguration: .v5_0()),
-            identifier: "userProperty",
+            identifier: "userPropertyV5",
             logger: self.logger
         ) { connection in
             try await withThrowingTaskGroup { group in
@@ -261,7 +261,7 @@ struct MQTTConnectionV5Tests {
         try await MQTTConnection.withConnection(
             address: .hostname(Self.hostname),
             configuration: .init(versionConfiguration: .v5_0()),
-            identifier: "invalidTopicName",
+            identifier: "invalidTopicNameV5",
             logger: self.logger
         ) { connection in
             _ = await #expect(throws: MQTTPacketError.invalidTopicName) {
@@ -280,7 +280,7 @@ struct MQTTConnectionV5Tests {
         try await MQTTConnection.withConnection(
             address: .hostname(Self.hostname),
             configuration: .init(versionConfiguration: .v5_0()),
-            identifier: "badPublish",
+            identifier: "badPublishV5",
             logger: self.logger
         ) { connection in
             let error = await #expect(throws: MQTTError.self) {
@@ -306,7 +306,7 @@ struct MQTTConnectionV5Tests {
         try await MQTTConnection.withConnection(
             address: .hostname(Self.hostname),
             configuration: .init(versionConfiguration: .v5_0()),
-            identifier: "outOfRangeTopicAlias",
+            identifier: "outOfRangeTopicAliasV5",
             logger: self.logger
         ) { connection in
             _ = await #expect(throws: MQTTPacketError.topicAliasOutOfRange) {
@@ -325,7 +325,7 @@ struct MQTTConnectionV5Tests {
         try await MQTTConnection.withConnection(
             address: .hostname(Self.hostname),
             configuration: .init(versionConfiguration: .v5_0()),
-            identifier: "publishWithSubscriptionID",
+            identifier: "publishWithSubscriptionIDV5",
             logger: self.logger
         ) { connection in
             _ = await #expect(throws: MQTTPacketError.publishIncludesSubscription) {
@@ -386,13 +386,14 @@ struct MQTTConnectionV5Tests {
         try await MQTTConnection.withConnection(
             address: .hostname(Self.hostname),
             configuration: .init(versionConfiguration: .v5_0()),
-            identifier: "multiLevelWildcard",
+            identifier: "multiLevelWildcardV5",
             logger: self.logger
         ) { connection in
             try await withThrowingTaskGroup { group in
                 group.addTask {
                     try await confirmation("multiLevelWildcard", expectedCount: 2) { receivedMessage in
-                        try await connection.v5.subscribe(to: [.init(topicFilter: "home/kitchen/#", qos: .atLeastOnce)]) { subscription in
+                        try await connection.v5.subscribe(to: [.init(topicFilter: "multiLevelV5/home/kitchen/#", qos: .atLeastOnce)]) {
+                            subscription in
                             var count = 0
                             for try await message in subscription {
                                 var buffer = message.payload
@@ -409,9 +410,21 @@ struct MQTTConnectionV5Tests {
 
                 group.addTask {
                     try await Task.sleep(for: .seconds(1))
-                    _ = try await connection.v5.publish(to: "home/kitchen/temperature", payload: ByteBuffer(string: "test"), qos: .atLeastOnce)
-                    _ = try await connection.v5.publish(to: "home/livingroom/temperature", payload: ByteBuffer(string: "error"), qos: .atLeastOnce)
-                    _ = try await connection.v5.publish(to: "home/kitchen/humidity", payload: ByteBuffer(string: "test"), qos: .atLeastOnce)
+                    _ = try await connection.v5.publish(
+                        to: "multiLevelV5/home/kitchen/temperature",
+                        payload: ByteBuffer(string: "test"),
+                        qos: .atLeastOnce
+                    )
+                    _ = try await connection.v5.publish(
+                        to: "multiLevelV5/home/livingroom/temperature",
+                        payload: ByteBuffer(string: "error"),
+                        qos: .atLeastOnce
+                    )
+                    _ = try await connection.v5.publish(
+                        to: "multiLevelV5/home/kitchen/humidity",
+                        payload: ByteBuffer(string: "test"),
+                        qos: .atLeastOnce
+                    )
                 }
 
                 try await group.waitForAll()
@@ -424,13 +437,14 @@ struct MQTTConnectionV5Tests {
         try await MQTTConnection.withConnection(
             address: .hostname(Self.hostname),
             configuration: .init(versionConfiguration: .v5_0()),
-            identifier: "singleLevelWildcard",
+            identifier: "singleLevelWildcardV5",
             logger: self.logger
         ) { connection in
             try await withThrowingTaskGroup { group in
                 group.addTask {
                     try await confirmation("singleLevelWildcard", expectedCount: 2) { receivedMessage in
-                        try await connection.v5.subscribe(to: [.init(topicFilter: "home/+/temperature", qos: .atLeastOnce)]) { subscription in
+                        try await connection.v5.subscribe(to: [.init(topicFilter: "singleLevelV5/home/+/temperature", qos: .atLeastOnce)]) {
+                            subscription in
                             var count = 0
                             for try await message in subscription {
                                 var buffer = message.payload
@@ -447,9 +461,21 @@ struct MQTTConnectionV5Tests {
 
                 group.addTask {
                     try await Task.sleep(for: .seconds(1))
-                    _ = try await connection.v5.publish(to: "home/livingroom/temperature", payload: ByteBuffer(string: "test"), qos: .atLeastOnce)
-                    _ = try await connection.v5.publish(to: "home/garden/humidity", payload: ByteBuffer(string: "error"), qos: .atLeastOnce)
-                    _ = try await connection.v5.publish(to: "home/kitchen/temperature", payload: ByteBuffer(string: "test"), qos: .atLeastOnce)
+                    _ = try await connection.v5.publish(
+                        to: "singleLevelV5/home/livingroom/temperature",
+                        payload: ByteBuffer(string: "test"),
+                        qos: .atLeastOnce
+                    )
+                    _ = try await connection.v5.publish(
+                        to: "singleLevelV5/home/garden/humidity",
+                        payload: ByteBuffer(string: "error"),
+                        qos: .atLeastOnce
+                    )
+                    _ = try await connection.v5.publish(
+                        to: "singleLevelV5/home/kitchen/temperature",
+                        payload: ByteBuffer(string: "test"),
+                        qos: .atLeastOnce
+                    )
                 }
 
                 try await group.waitForAll()
@@ -464,15 +490,15 @@ struct MQTTConnectionV5Tests {
         try await MQTTConnection.withConnection(
             address: .hostname(Self.hostname),
             configuration: .init(versionConfiguration: .v5_0()),
-            identifier: "overlappingSubscriptions",
+            identifier: "overlappingSubscriptionsV5",
             logger: self.logger
         ) { connection in
             try await withThrowingTaskGroup { group in
                 group.addTask {
                     try await confirmation("overlappingSubscriptions", expectedCount: 2) { receivedMessage in
                         try await connection.v5.subscribe(to: [
-                            .init(topicFilter: "home/+/temperature", qos: .atLeastOnce),
-                            .init(topicFilter: "home/kitchen/#", qos: .atLeastOnce),
+                            .init(topicFilter: "overlappingV5/home/+/temperature", qos: .atLeastOnce),
+                            .init(topicFilter: "overlappingV5/home/kitchen/#", qos: .atLeastOnce),
                         ]) { subscription in
                             var count = 0
                             for try await message in subscription {
@@ -490,7 +516,11 @@ struct MQTTConnectionV5Tests {
 
                 group.addTask {
                     try await Task.sleep(for: .seconds(1))
-                    _ = try await connection.v5.publish(to: "home/kitchen/temperature", payload: ByteBuffer(string: "test"), qos: .atLeastOnce)
+                    _ = try await connection.v5.publish(
+                        to: "overlappingV5/home/kitchen/temperature",
+                        payload: ByteBuffer(string: "test"),
+                        qos: .atLeastOnce
+                    )
                 }
 
                 try await group.waitForAll()
