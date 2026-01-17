@@ -38,6 +38,19 @@ extension MQTTChannelHandler {
         struct InitializedState {
             let context: Context
             var tasks: [MQTTTask]
+
+            func cancel(requestID: Int) -> (cancel: [MQTTTask], connectionClosedDueToCancellation: [MQTTTask]) {
+                var withRequestID = [MQTTTask]()
+                var withoutRequestID = [MQTTTask]()
+                for task in tasks {
+                    if task.requestID == requestID {
+                        withRequestID.append(task)
+                    } else {
+                        withoutRequestID.append(task)
+                    }
+                }
+                return (withRequestID, withoutRequestID)
+            }
         }
 
         init() {
@@ -176,6 +189,37 @@ extension MQTTChannelHandler {
             case .initialized(let state):
                 self = .initialized(state)
                 return .schedule(state.context)
+            case .closed:
+                self = .closed
+                return .doNothing
+            }
+        }
+
+        @usableFromInline
+        enum CancelAction {
+            case failTasksAndClose(Context, cancel: [MQTTTask], closeConnectionDueToCancel: [MQTTTask])
+            case doNothing
+        }
+
+        /// handler wants to cancel a task
+        @usableFromInline
+        mutating func cancel(requestID: Int) -> CancelAction {
+            switch consume self.state {
+            case .uninitialized:
+                preconditionFailure("Cannot cancel when uninitialized")
+            case .initialized(let state):
+                let (cancel, closeConnectionDueToCancel) = state.cancel(requestID: requestID)
+                if cancel.count > 0 {
+                    self = .closed
+                    return .failTasksAndClose(
+                        state.context,
+                        cancel: cancel,
+                        closeConnectionDueToCancel: closeConnectionDueToCancel
+                    )
+                } else {
+                    self = .initialized(state)
+                    return .doNothing
+                }
             case .closed:
                 self = .closed
                 return .doNothing

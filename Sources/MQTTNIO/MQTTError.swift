@@ -66,6 +66,8 @@ public enum MQTTError: Error, Sendable {
     case versionMismatch(expected: MQTTConnectionConfiguration.Version, actual: MQTTConnectionConfiguration.Version)
     /// The Task was cancelled
     case cancelledTask
+    /// Connection closed because another task was cancelled.
+    case connectionClosedDueToCancellation
     /// The provided topic filter is invalid
     case invalidTopicFilter(String)
 }

@@ -166,6 +166,25 @@ final class MQTTChannelHandler: ChannelDuplexHandler {
         }
     }
 
+    @usableFromInline
+    func cancel(requestID: Int) {
+        self.eventLoop.assertInEventLoop()
+        switch self.stateMachine.cancel(requestID: requestID) {
+        case .failTasksAndClose(let context, let cancelled, let closeConnectionDueToCancel):
+            for command in cancelled {
+                command.promise.fail(MQTTError.cancelledTask)
+            }
+            for command in closeConnectionDueToCancel {
+                command.promise.fail(MQTTError.connectionClosedDueToCancellation)
+            }
+            self.failTasksAndCloseSubscriptions(with: MQTTError.cancelledTask)
+            context.fireErrorCaught(MQTTError.cancelledTask)
+            context.close(promise: nil)
+        case .doNothing:
+            break
+        }
+    }
+
     /// Respond to PUBLISH message
     /// If QoS is `.atMostOnce` then no response is required
     /// If QoS is `.atLeastOnce` then send PUBACK
@@ -194,7 +213,10 @@ final class MQTTChannelHandler: ChannelDuplexHandler {
         case .exactlyOnce:
             // TODO: Investigate what to do if we receive a publish message while waiting for a PUBREL
             //var publish = message.publish
-            self.sendMessage(MQTTPubAckPacket(type: .PUBREC, packetId: message.packetId)) { newMessage in
+            self.sendMessage(
+                MQTTPubAckPacket(type: .PUBREC, packetId: message.packetId),
+                requestID: MQTTConnection.requestIDGenerator.next()
+            ) { newMessage in
                 guard newMessage.packetId == message.packetId else { return false }
                 // if we receive a publish message while waiting for a PUBREL from broker then replace data to be published and retry PUBREC
                 if newMessage.type == .PUBLISH {
@@ -239,7 +261,8 @@ final class MQTTChannelHandler: ChannelDuplexHandler {
     func subscribe(
         streamContinuation: MQTTSubscription.Continuation,
         packet: MQTTSubscribePacket,
-        promise: MQTTPromise<UInt32>
+        promise: MQTTPromise<UInt32>,
+        requestID: Int
     ) {
         self.eventLoop.assertInEventLoop()
 
@@ -271,7 +294,7 @@ final class MQTTChannelHandler: ChannelDuplexHandler {
                     packetId: packet.packetId
                 )
             }
-            self.sendMessage(packet) { message in
+            self.sendMessage(packet, requestID: requestID) { message in
                 guard message.packetId == packet.packetId else { return false }
                 guard message.type == .SUBACK else { throw MQTTError.unexpectedMessage }
                 return true
@@ -293,7 +316,8 @@ final class MQTTChannelHandler: ChannelDuplexHandler {
         id: UInt32,
         packetID: UInt16,
         properties: MQTTProperties,
-        promise: MQTTPromise<Void>
+        promise: MQTTPromise<Void>,
+        requestID: Int
     ) {
         self.eventLoop.assertInEventLoop()
         switch self.subscriptions.unsubscribe(id: id) {
@@ -303,7 +327,7 @@ final class MQTTChannelHandler: ChannelDuplexHandler {
                 promise.fail(MQTTPacketError.atLeastOneTopicRequired)
                 return
             }
-            self.sendMessage(packet) { message in
+            self.sendMessage(packet, requestID: requestID) { message in
                 guard message.packetId == packet.packetId else { return false }
                 guard message.type == .UNSUBACK else { throw MQTTError.unexpectedMessage }
                 return true
@@ -335,12 +359,14 @@ final class MQTTChannelHandler: ChannelDuplexHandler {
     func sendMessage(
         _ message: MQTTPacket,
         promise: MQTTPromise<MQTTPacket>,
+        requestID: Int,
         checkInbound: @escaping (MQTTPacket) throws -> Bool
     ) {
         self.eventLoop.assertInEventLoop()
 
         let task = MQTTTask(
             promise: promise,
+            requestID: requestID,
             on: self.eventLoop,
             timeout: self.configuration.timeout,
             checkInbound: checkInbound
@@ -356,10 +382,11 @@ final class MQTTChannelHandler: ChannelDuplexHandler {
 
     func sendMessage(
         _ message: MQTTPacket,
+        requestID: Int,
         checkInbound: @escaping (MQTTPacket) throws -> Bool
     ) -> EventLoopFuture<MQTTPacket> {
         let promise = self.eventLoop.makePromise(of: MQTTPacket.self)
-        self.sendMessage(message, promise: .nio(promise), checkInbound: checkInbound)
+        self.sendMessage(message, promise: .nio(promise), requestID: requestID, checkInbound: checkInbound)
         return promise.futureResult
     }
 
@@ -416,7 +443,10 @@ final class MQTTChannelHandler: ChannelDuplexHandler {
                 // otherwise reschedule task
                 if channelHandler.lastPingreqEventTime + channelHandler.pingreqTimeout <= .now() {
                     guard context.channel.isActive else { return }
-                    channelHandler.sendMessage(MQTTPingreqPacket()) { message in
+                    channelHandler.sendMessage(
+                        MQTTPingreqPacket(),
+                        requestID: MQTTConnection.requestIDGenerator.next()
+                    ) { message in
                         guard message.type == .PINGRESP else { return false }
                         return true
                     }

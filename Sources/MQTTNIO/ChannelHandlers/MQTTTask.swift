@@ -45,16 +45,19 @@ enum MQTTPromise<T: Sendable>: Sendable {
 final class MQTTTask {
     let promise: MQTTPromise<MQTTPacket>
     let checkInbound: (MQTTPacket) throws -> Bool
+    let requestID: Int
     let timeoutTask: Scheduled<Void>?
 
     init(
         promise: MQTTPromise<MQTTPacket>,
+        requestID: Int,
         on eventLoop: EventLoop,
         timeout: TimeAmount?,
         checkInbound: @escaping (MQTTPacket) throws -> Bool
     ) {
         self.promise = promise
         self.checkInbound = checkInbound
+        self.requestID = requestID
         if let timeout {
             self.timeoutTask = eventLoop.scheduleTask(in: timeout) {
                 promise.fail(MQTTError.timeout)
