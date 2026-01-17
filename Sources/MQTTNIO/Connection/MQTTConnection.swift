@@ -169,9 +169,13 @@ public final actor MQTTConnection: Sendable {
                 }
             }
         let connection = try await future.get()
-        try await connection.channelHandler.waitOnInitialized().get()
+        try await connection.waitOnInitialized()
         try await connection.sendConnect()
         return connection
+    }
+
+    func waitOnInitialized() async throws {
+        try await self.channelHandler.waitOnInitialized().get()
     }
 
     package func sendConnect() async throws {
