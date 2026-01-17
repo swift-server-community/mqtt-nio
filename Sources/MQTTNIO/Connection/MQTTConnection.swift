@@ -145,7 +145,7 @@ public final actor MQTTConnection: Sendable {
         if configuration.pingInterval == nil {
             configuration.pingInterval = TimeAmount.seconds(max(Int64(configuration.keepAliveInterval.nanoseconds / 1_000_000_000) - 5, 5))
         }
-
+        let readOnlyConfiguration = configuration
         let future =
             if eventLoop.inEventLoop {
                 self._makeConnection(
@@ -160,7 +160,7 @@ public final actor MQTTConnection: Sendable {
                 eventLoop.flatSubmit {
                     self._makeConnection(
                         address: address,
-                        configuration: configuration,
+                        configuration: readOnlyConfiguration,
                         cleanSession: cleanSession,
                         identifier: identifier,
                         eventLoop: eventLoop,
