@@ -651,7 +651,7 @@ struct IntegrationTests {
     }
 
     let logger: Logger = {
-        var logger = Logger(label: "MQTTNIOTests")
+        var logger = Logger(label: "IntegrationTests")
         logger.logLevel = .trace
         return logger
     }()
