@@ -465,7 +465,7 @@ struct MQTTConnectionTests {
 
     @Test
     func testReAuthenticate() async throws {
-        var logger = Logger(label: "testConnectDisconnect")
+        var logger = Logger(label: "testReAuthenticate")
         logger.logLevel = .trace
         try await withTestMQTTServer(
             configuration: .init(versionConfiguration: .v5_0(authWorkflow: SimpleAuthWorkflow())),
