@@ -57,9 +57,9 @@ extension MQTTConnection {
                 let authWorkflow: MQTTAuthenticator =
                     switch self.connection.configuration.versionConfiguration {
                     case .v3_1_1:
-                        authWorkflow
+                        nil
                     case .v5_0(_, _, _, let configuredAuthWorkflow):
-                        configuredAuthWorkflow
+                        authWorkflow ?? configuredAuthWorkflow
                     }
             else {
                 throw MQTTError.authWorkflowRequired
