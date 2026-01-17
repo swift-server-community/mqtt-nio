@@ -14,7 +14,7 @@
 import NIOCore
 
 /// MQTT v5.0 properties. A property consists of a identifier and a value
-public struct MQTTProperties: Sendable {
+public struct MQTTProperties: Sendable, Equatable {
     /// MQTT Property
     public enum Property: Equatable, Sendable {
         /// Payload format: 0 = bytes, 1 = UTF8 string (available for PUBLISH)
