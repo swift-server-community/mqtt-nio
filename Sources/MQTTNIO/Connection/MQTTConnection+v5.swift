@@ -53,17 +53,27 @@ extension MQTTConnection {
             properties: MQTTProperties,
             authWorkflow: MQTTAuthenticator? = nil
         ) async throws -> MQTTAuthV5 {
+            guard
+                let authWorkflow: MQTTAuthenticator =
+                    switch self.connection.configuration.versionConfiguration {
+                    case .v3_1_1:
+                        nil
+                    case .v5_0(_, _, _, let configuredAuthWorkflow):
+                        authWorkflow ?? configuredAuthWorkflow
+                    }
+            else {
+                throw MQTTError.authWorkflowRequired
+            }
             let authPacket = MQTTAuthPacket(reason: .reAuthenticate, properties: properties)
             let reAuthResponse = try await self.connection.sendMessage(authPacket) { message in
                 guard message.type == .AUTH else { return false }
                 return true
             }
-            guard let auth = reAuthResponse as? MQTTAuthPacket else { throw MQTTError.unexpectedMessage }
-            if auth.reason == .success {
-                return MQTTAuthV5(reason: auth.reason, properties: auth.properties)
+            guard let authResponse = reAuthResponse as? MQTTAuthPacket else { throw MQTTError.unexpectedMessage }
+            if authResponse.reason == .success {
+                return MQTTAuthV5(reason: authResponse.reason, properties: authResponse.properties)
             }
-            guard let authWorkflow else { throw MQTTError.authWorkflowRequired }
-            guard let auth = try await self.connection.processAuth(authPacket, authWorkflow: authWorkflow) as? MQTTAuthPacket else {
+            guard let auth = try await self.connection.processAuth(authResponse, authWorkflow: authWorkflow) as? MQTTAuthPacket else {
                 throw MQTTError.unexpectedMessage
             }
             return MQTTAuthV5(reason: auth.reason, properties: auth.properties)
