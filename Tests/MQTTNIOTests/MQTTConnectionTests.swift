@@ -491,6 +491,47 @@ struct MQTTConnectionTests {
             try await channel.writeInboundPacket(finalAuth, version: .v5_0)
         }
     }
+
+    @Test("Connection Close due to Cancellation")
+    func connectionCloseDueToCancellation() async throws {
+        var logger = Logger(label: "connectionCloseDueToCancellation")
+        logger.logLevel = .trace
+
+        let channel = NIOAsyncTestingChannel()
+        let connection = try await MQTTConnection.setupChannelAndConnect(channel, logger: logger)
+        try await withThrowingTaskGroup { group in
+            group.addTask {
+                try await connection.sendConnect()
+            }
+            group.addTask {
+                // wait for connect
+                let packet = try await channel.waitForOutboundPacket()
+                #expect(packet.type == .CONNECT)
+                let connack = MQTTConnAckPacket(returnCode: 0, acknowledgeFlags: 1, properties: .init())
+                try await channel.writeInboundPacket(connack, version: .v3_1_1)
+            }
+            try await group.waitForAll()
+        }
+
+        try await withThrowingTaskGroup { group in
+            group.addTask {
+                await #expect(throws: MQTTError.connectionClosedDueToCancellation) {
+                    try await connection.publish(to: "foo", payload: ByteBuffer(), qos: .exactlyOnce)
+                }
+            }
+            try await withThrowingTaskGroup { group in
+                group.addTask {
+                    await #expect(throws: MQTTError.cancelledTask) {
+                        try await connection.publish(to: "foo", payload: ByteBuffer(), qos: .exactlyOnce)
+                    }
+                }
+                // wait for outbound write from both tasks
+                _ = try await channel.waitForOutboundWrite(as: ByteBuffer.self)
+                _ = try await channel.waitForOutboundWrite(as: ByteBuffer.self)
+                group.cancelAll()
+            }
+        }
+    }
 }
 
 struct SimpleAuthWorkflow: MQTTAuthenticator {

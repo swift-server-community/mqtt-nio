@@ -650,6 +650,50 @@ struct IntegrationTests {
         }
     }
 
+    @Test("Cancellation")
+    func cancellation() async throws {
+        try await MQTTConnection.withConnection(
+            address: .hostname(Self.hostname),
+            identifier: "cancellation",
+            logger: self.logger
+        ) { connection in
+            await withThrowingTaskGroup { group in
+                group.addTask {
+                    await #expect(throws: MQTTError.cancelledTask) {
+                        try await connection.subscribe(to: [.init(topicFilter: "cancellation", qos: .exactlyOnce)]) { subscription in
+                            for try await _ in subscription {
+                                Issue.record("Should not receive messages")
+                            }
+                        }
+                    }
+                }
+                group.cancelAll()
+            }
+        }
+    }
+
+    @Test("Already Cancelled")
+    func alreadyCancelled() async throws {
+        try await MQTTConnection.withConnection(
+            address: .hostname(Self.hostname),
+            identifier: "alreadyCancelled",
+            logger: self.logger
+        ) { connection in
+            await withThrowingTaskGroup(of: Void.self) { group in
+                group.cancelAll()
+                group.addTask {
+                    await #expect(throws: MQTTError.cancelledTask) {
+                        try await connection.subscribe(to: [.init(topicFilter: "alreadyCancelled", qos: .exactlyOnce)]) { subscription in
+                            for try await _ in subscription {
+                                Issue.record("Should not receive messages")
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     let logger: Logger = {
         var logger = Logger(label: "IntegrationTests")
         logger.logLevel = .trace

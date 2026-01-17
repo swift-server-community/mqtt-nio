@@ -142,7 +142,8 @@ extension MQTTError: Equatable {
             (.unrecognisedPacketType, .unrecognisedPacketType),
             (.authWorkflowRequired, .authWorkflowRequired),
             (.serverDisconnection, .serverDisconnection),
-            (.cancelledTask, .cancelledTask):
+            (.cancelledTask, .cancelledTask),
+            (.connectionClosedDueToCancellation, .connectionClosedDueToCancellation):
             true
         case (.connectionError(let lhsValue), .connectionError(let rhsValue)):
             lhsValue == rhsValue
