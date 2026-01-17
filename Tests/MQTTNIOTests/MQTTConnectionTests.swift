@@ -467,10 +467,11 @@ struct MQTTConnectionTests {
     func testReAuthenticate() async throws {
         var logger = Logger(label: "testConnectDisconnect")
         logger.logLevel = .trace
-        try await withTestMQTTServer(configuration: .init(versionConfiguration: .v5_0(authWorkflow: SimpleAuthWorkflow())), logger: logger) {
-            connection in
+        try await withTestMQTTServer(
+            configuration: .init(versionConfiguration: .v5_0(authWorkflow: SimpleAuthWorkflow())),
+            logger: logger
+        ) { connection in
             _ = try await connection.v5.auth(properties: [])
-
         } server: { channel in
             // wait for auth
             var packet = try await channel.waitForOutboundPacket()
