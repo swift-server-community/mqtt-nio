@@ -39,17 +39,16 @@ extension MQTTChannelHandler {
             let context: Context
             var tasks: [MQTTTask]
 
-            func cancel(requestID: Int) -> (cancel: [MQTTTask], connectionClosedDueToCancellation: [MQTTTask]) {
-                var withRequestID = [MQTTTask]()
-                var withoutRequestID = [MQTTTask]()
-                for task in tasks {
+            mutating func cancel(requestID: Int) -> [MQTTTask] {
+                var cancelledTasks: [MQTTTask] = []
+                for task in self.tasks {
                     if task.requestID == requestID {
-                        withRequestID.append(task)
-                    } else {
-                        withoutRequestID.append(task)
+                        cancelledTasks.append(task)
+                        self.tasks.removeAll { $0 === task }
+                        // TODO: bad performance, will update after #202 is merged
                     }
                 }
-                return (withRequestID, withoutRequestID)
+                return cancelledTasks
             }
         }
 
@@ -197,7 +196,7 @@ extension MQTTChannelHandler {
 
         @usableFromInline
         enum CancelAction {
-            case failTasksAndClose(Context, cancel: [MQTTTask], closeConnectionDueToCancel: [MQTTTask])
+            case failTasks([MQTTTask])
             case doNothing
         }
 
@@ -207,19 +206,10 @@ extension MQTTChannelHandler {
             switch consume self.state {
             case .uninitialized:
                 preconditionFailure("Cannot cancel when uninitialized")
-            case .initialized(let state):
-                let (cancel, closeConnectionDueToCancel) = state.cancel(requestID: requestID)
-                if cancel.count > 0 {
-                    self = .closed
-                    return .failTasksAndClose(
-                        state.context,
-                        cancel: cancel,
-                        closeConnectionDueToCancel: closeConnectionDueToCancel
-                    )
-                } else {
-                    self = .initialized(state)
-                    return .doNothing
-                }
+            case .initialized(var state):
+                let cancelledTasks = state.cancel(requestID: requestID)
+                self = .initialized(state)
+                return cancelledTasks.count > 0 ? .failTasks(cancelledTasks) : .doNothing
             case .closed:
                 self = .closed
                 return .doNothing
