@@ -66,8 +66,9 @@ extension MQTTConnection {
                 throw MQTTError.authWorkflowRequired
             }
             var properties = properties
-            properties.append(.authenticationMethod(authWorkflow.methodName))
+            properties.addOrReplace(.authenticationMethod(authWorkflow.methodName))
             let authPacket = MQTTAuthPacket(reason: .reAuthenticate, properties: properties)
+            // Send AUTH
             let reAuthResponse = try await self.connection.sendMessage(authPacket) { message in
                 guard message.type == .AUTH else { return false }
                 return true
@@ -76,6 +77,7 @@ extension MQTTConnection {
             if authResponse.reason == .success {
                 return MQTTAuthV5(reason: authResponse.reason, properties: authResponse.properties)
             }
+            // Process AUTH response
             guard let auth = try await self.connection.processAuth(authResponse, authWorkflow: authWorkflow) as? MQTTAuthPacket else {
                 throw MQTTError.unexpectedMessage
             }
