@@ -221,7 +221,6 @@ final class MQTTChannelHandler: ChannelDuplexHandler {
                 return true
             }
             .assumeIsolated()
-            //.map { _ in publish }
             .whenComplete { result in
                 switch result {
                 case .failure(let error):

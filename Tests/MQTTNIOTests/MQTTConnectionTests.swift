@@ -344,8 +344,8 @@ struct MQTTConnectionTests {
     }
 
     @Test
-    func testSubscribeAndPublishQoS2MissedPUBREC() async throws {
-        var logger = Logger(label: "testSubscribeAndPublishQoS2MissedPUBREC")
+    func testSubscribeAndDuplicatePublishQoS2() async throws {
+        var logger = Logger(label: "testSubscribeAndDuplicatePublishQoS2")
         logger.logLevel = .trace
         try await testSubscribe(
             subscribeInfos: [.init(topicFilter: "testTopic", qos: .exactlyOnce)],
