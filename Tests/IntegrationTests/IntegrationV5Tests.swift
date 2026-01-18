@@ -348,6 +348,7 @@ struct IntegrationV5Tests {
             logger: self.logger
         ) { connection in
             struct EmptyAuthenticator: MQTTAuthenticator {
+                var methodName: String { "Empty" }
                 func authenticate(_ authPackage: MQTTAuthV5) async throws -> MQTTAuthV5 {
                     .init(reason: .continueAuthentication, properties: [])
                 }

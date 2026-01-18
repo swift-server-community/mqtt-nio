@@ -494,6 +494,7 @@ struct MQTTConnectionTests {
 }
 
 struct SimpleAuthWorkflow: MQTTAuthenticator {
+    var methodName: String { "Simple" }
     func authenticate(_ auth: MQTTAuthV5) async throws -> MQTTAuthV5 {
         switch auth.reason {
         case .continueAuthentication, .reAuthenticate:
