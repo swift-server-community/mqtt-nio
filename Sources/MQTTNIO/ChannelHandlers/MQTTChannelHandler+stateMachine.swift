@@ -41,11 +41,12 @@ extension MQTTChannelHandler {
 
             mutating func cancel(requestID: Int) -> [MQTTTask] {
                 var cancelledTasks: [MQTTTask] = []
-                for task in self.tasks {
+                self.tasks.removeAll { task in
                     if task.requestID == requestID {
                         cancelledTasks.append(task)
-                        self.tasks.removeAll { $0 === task }
-                        // TODO: bad performance, will update after #202 is merged
+                        return true
+                    } else {
+                        return false
                     }
                 }
                 return cancelledTasks
