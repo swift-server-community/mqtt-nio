@@ -170,10 +170,8 @@ final class MQTTChannelHandler: ChannelDuplexHandler {
     func cancel(requestID: Int) {
         self.eventLoop.assertInEventLoop()
         switch self.stateMachine.cancel(requestID: requestID) {
-        case .failTasks(let cancelledTasks):
-            for task in cancelledTasks {
-                task.promise.fail(MQTTError.cancelledTask)
-            }
+        case .failTask(let cancelledTask):
+            cancelledTask.promise.fail(MQTTError.cancelledTask)
         case .doNothing:
             break
         }

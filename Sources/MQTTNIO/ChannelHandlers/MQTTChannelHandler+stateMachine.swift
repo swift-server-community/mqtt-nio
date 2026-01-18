@@ -39,17 +39,15 @@ extension MQTTChannelHandler {
             let context: Context
             var tasks: [MQTTTask]
 
-            mutating func cancel(requestID: Int) -> [MQTTTask] {
-                var cancelledTasks: [MQTTTask] = []
-                self.tasks.removeAll { task in
+            mutating func cancel(requestID: Int) -> MQTTTask? {
+                self.tasks.first { task in
                     if task.requestID == requestID {
-                        cancelledTasks.append(task)
+                        // TODO: Use `remove(at:)` from #202 when merged
+                        self.tasks.removeAll { $0 === task }
                         return true
-                    } else {
-                        return false
                     }
+                    return false
                 }
-                return cancelledTasks
             }
         }
 
@@ -197,7 +195,7 @@ extension MQTTChannelHandler {
 
         @usableFromInline
         enum CancelAction {
-            case failTasks([MQTTTask])
+            case failTask(MQTTTask)
             case doNothing
         }
 
@@ -208,9 +206,13 @@ extension MQTTChannelHandler {
             case .uninitialized:
                 preconditionFailure("Cannot cancel when uninitialized")
             case .initialized(var state):
-                let cancelledTasks = state.cancel(requestID: requestID)
+                let cancelledTask = state.cancel(requestID: requestID)
                 self = .initialized(state)
-                return cancelledTasks.count > 0 ? .failTasks(cancelledTasks) : .doNothing
+                if let cancelledTask {
+                    return .failTask(cancelledTask)
+                } else {
+                    return .doNothing
+                }
             case .closed:
                 self = .closed
                 return .doNothing
