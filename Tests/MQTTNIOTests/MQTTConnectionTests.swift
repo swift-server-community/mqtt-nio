@@ -491,6 +491,28 @@ struct MQTTConnectionTests {
             try await channel.writeInboundPacket(finalAuth, version: .v5_0)
         }
     }
+
+    @Test("Cancellation")
+    func cancellation() async throws {
+        var logger = Logger(label: "cancellation")
+        logger.logLevel = .trace
+
+        let (stream, cont) = AsyncStream.makeStream(of: Void.self)
+        try await withTestMQTTServer(logger: logger) { connection in
+            await withThrowingTaskGroup { group in
+                group.addTask {
+                    await #expect(throws: MQTTError.cancelledTask) {
+                        try await connection.publish(to: "foo", payload: ByteBuffer(), qos: .exactlyOnce)
+                    }
+                }
+                await stream.first { _ in true }
+                group.cancelAll()
+            }
+        } server: { channel in
+            _ = try await channel.waitForOutboundWrite(as: ByteBuffer.self)
+            cont.yield()
+        }
+    }
 }
 
 struct SimpleAuthWorkflow: MQTTAuthenticator {

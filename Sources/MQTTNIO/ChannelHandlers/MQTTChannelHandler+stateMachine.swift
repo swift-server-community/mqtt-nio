@@ -38,6 +38,17 @@ extension MQTTChannelHandler {
         struct InitializedState {
             let context: Context
             var tasks: [MQTTTask]
+
+            mutating func cancel(requestID: Int) -> MQTTTask? {
+                self.tasks.first { task in
+                    if task.requestID == requestID {
+                        // TODO: Use `remove(at:)` from #202 when merged
+                        self.tasks.removeAll { $0 === task }
+                        return true
+                    }
+                    return false
+                }
+            }
         }
 
         init() {
@@ -176,6 +187,32 @@ extension MQTTChannelHandler {
             case .initialized(let state):
                 self = .initialized(state)
                 return .schedule(state.context)
+            case .closed:
+                self = .closed
+                return .doNothing
+            }
+        }
+
+        @usableFromInline
+        enum CancelAction {
+            case failTask(MQTTTask)
+            case doNothing
+        }
+
+        /// handler wants to cancel a task
+        @usableFromInline
+        mutating func cancel(requestID: Int) -> CancelAction {
+            switch consume self.state {
+            case .uninitialized:
+                preconditionFailure("Cannot cancel when uninitialized")
+            case .initialized(var state):
+                let cancelledTask = state.cancel(requestID: requestID)
+                self = .initialized(state)
+                if let cancelledTask {
+                    return .failTask(cancelledTask)
+                } else {
+                    return .doNothing
+                }
             case .closed:
                 self = .closed
                 return .doNothing

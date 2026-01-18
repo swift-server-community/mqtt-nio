@@ -36,6 +36,9 @@ public final actor MQTTConnection: Sendable {
 
     /// Client identifier for the MQTT server.
     public private(set) var identifier: String
+    /// Request ID generator
+    @usableFromInline
+    static let requestIDGenerator: IDGenerator = .init()
     /// Logger used by connection
     let logger: Logger
     let channel: any Channel
@@ -578,8 +581,25 @@ public final actor MQTTConnection: Sendable {
         _ message: any MQTTPacket,
         checkInbound: @escaping (MQTTPacket) throws -> Bool
     ) async throws -> MQTTPacket {
-        try await withCheckedThrowingContinuation { continuation in
-            self.channelHandler.sendMessage(message, promise: .swift(continuation), checkInbound: checkInbound)
+        let requestID = Self.requestIDGenerator.next()
+        return try await withTaskCancellationHandler {
+            if Task.isCancelled {
+                throw MQTTError.cancelledTask
+            }
+            return try await withCheckedThrowingContinuation { continuation in
+                self.channelHandler.sendMessage(message, promise: .swift(continuation), requestID: requestID, checkInbound: checkInbound)
+            }
+        } onCancel: {
+            self.cancel(requestID: requestID)
+        }
+    }
+
+    @usableFromInline
+    nonisolated func cancel(requestID: Int) {
+        self.channel.eventLoop.execute {
+            self.assumeIsolated { this in
+                this.channelHandler.cancel(requestID: requestID)
+            }
         }
     }
 
