@@ -202,8 +202,6 @@ final class MQTTChannelHandler: ChannelDuplexHandler {
                 }
 
         case .exactlyOnce:
-            // TODO: Investigate what to do if we receive a publish message while waiting for a PUBREL
-            //var publish = message.publish
             self.sendMessage(
                 MQTTPubAckPacket(type: .PUBREC, packetId: message.packetId),
                 requestID: MQTTConnection.requestIDGenerator.next()
