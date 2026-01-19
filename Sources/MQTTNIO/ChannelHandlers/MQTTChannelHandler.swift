@@ -121,16 +121,18 @@ final class MQTTChannelHandler: ChannelDuplexHandler {
         let buffer = self.unwrapInboundIn(data)
         do {
             try self.decoder.process(buffer: buffer) { message in
+                self.logger.trace(
+                    "MQTT In",
+                    metadata: ["mqtt_message": .stringConvertible(message), "mqtt_packet_id": .stringConvertible(message.packetId)]
+                )
                 switch self.stateMachine.receivedPacket(message) {
                 case .respondAndReturn:
                     let publishMessage = message as! MQTTPublishPacket
                     // publish logging includes topic name
                     self.logger.trace(
-                        "MQTT In",
+                        "MQTT Publish In",
                         metadata: [
-                            "mqtt_message": .stringConvertible(publishMessage),
-                            "mqtt_packet_id": .stringConvertible(publishMessage.packetId),
-                            "mqtt_topicName": .string(publishMessage.publish.topicName),
+                            "mqtt_topicName": .string(publishMessage.publish.topicName)
                         ]
                     )
                     self.respondToPublish(publishMessage, context: context)
@@ -153,10 +155,6 @@ final class MQTTChannelHandler: ChannelDuplexHandler {
                         return
                     }
                 }
-                self.logger.trace(
-                    "MQTT In",
-                    metadata: ["mqtt_message": .stringConvertible(message), "mqtt_packet_id": .stringConvertible(message.packetId)]
-                )
             }
         } catch {
             self.failTasksAndCloseSubscriptions(with: error)
@@ -182,6 +180,7 @@ final class MQTTChannelHandler: ChannelDuplexHandler {
     /// If QoS is `.atLeastOnce` then send PUBACK
     /// If QoS is `.exactlyOnce` then send PUBREC, wait for PUBREL and then respond with PUBCOMP (in `respondToPubrel`)
     private func respondToPublish(_ message: MQTTPublishPacket, context: ChannelHandlerContext) {
+        struct DuplicatePublishError: Error {}
         switch message.publish.qos {
         case .atMostOnce:
             self.subscriptions.notify(message.publish)
@@ -203,17 +202,16 @@ final class MQTTChannelHandler: ChannelDuplexHandler {
                 }
 
         case .exactlyOnce:
-            // TODO: Investigate what to do if we receive a publish message while waiting for a PUBREL
-            //var publish = message.publish
             self.sendMessage(
                 MQTTPubAckPacket(type: .PUBREC, packetId: message.packetId),
                 requestID: MQTTConnection.requestIDGenerator.next()
             ) { newMessage in
                 guard newMessage.packetId == message.packetId else { return false }
-                // if we receive a publish message while waiting for a PUBREL from broker then replace data to be published and retry PUBREC
+                // if we receive a publish message while waiting for a PUBREL from server this is a
+                // duplicate. We need to reset the response and send a PUBREC again. Here we throw an error
+                // which is caught further down and at that trigger a new PUBREC
                 if newMessage.type == .PUBLISH {
-                    //publish = publishMessage.publish
-                    throw MQTTError.retrySend
+                    throw DuplicatePublishError()
                 }
                 // if we receive anything but a PUBREL then throw unexpected message
                 guard newMessage.type == .PUBREL else { throw MQTTError.unexpectedMessage }
@@ -221,13 +219,13 @@ final class MQTTChannelHandler: ChannelDuplexHandler {
                 return true
             }
             .assumeIsolated()
-            //.map { _ in publish }
             .whenComplete { result in
                 switch result {
                 case .failure(let error):
                     switch error {
-                    case MQTTError.retrySend:
-                        // do not report retrySend error
+                    case is DuplicatePublishError:
+                        // ignore duplicate publish error and initiate the PUBLISH handshake again
+                        self.respondToPublish(message, context: context)
                         return
                     default:
                         self.failTasksAndCloseSubscriptions(with: error)
