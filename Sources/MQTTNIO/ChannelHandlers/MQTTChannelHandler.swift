@@ -121,16 +121,18 @@ final class MQTTChannelHandler: ChannelDuplexHandler {
         let buffer = self.unwrapInboundIn(data)
         do {
             try self.decoder.process(buffer: buffer) { message in
+                self.logger.trace(
+                    "MQTT In",
+                    metadata: ["mqtt_message": .stringConvertible(message), "mqtt_packet_id": .stringConvertible(message.packetId)]
+                )
                 switch self.stateMachine.receivedPacket(message) {
                 case .respondAndReturn:
                     let publishMessage = message as! MQTTPublishPacket
                     // publish logging includes topic name
                     self.logger.trace(
-                        "MQTT In",
+                        "MQTT Publish In",
                         metadata: [
-                            "mqtt_message": .stringConvertible(publishMessage),
-                            "mqtt_packet_id": .stringConvertible(publishMessage.packetId),
-                            "mqtt_topicName": .string(publishMessage.publish.topicName),
+                            "mqtt_topicName": .string(publishMessage.publish.topicName)
                         ]
                     )
                     self.respondToPublish(publishMessage, context: context)
@@ -153,10 +155,6 @@ final class MQTTChannelHandler: ChannelDuplexHandler {
                         return
                     }
                 }
-                self.logger.trace(
-                    "MQTT In",
-                    metadata: ["mqtt_message": .stringConvertible(message), "mqtt_packet_id": .stringConvertible(message.packetId)]
-                )
             }
         } catch {
             self.failTasksAndCloseSubscriptions(with: error)
@@ -166,11 +164,23 @@ final class MQTTChannelHandler: ChannelDuplexHandler {
         }
     }
 
+    @usableFromInline
+    func cancel(requestID: Int) {
+        self.eventLoop.assertInEventLoop()
+        switch self.stateMachine.cancel(requestID: requestID) {
+        case .failTask(let cancelledTask):
+            cancelledTask.promise.fail(MQTTError.cancelledTask)
+        case .doNothing:
+            break
+        }
+    }
+
     /// Respond to PUBLISH message
     /// If QoS is `.atMostOnce` then no response is required
     /// If QoS is `.atLeastOnce` then send PUBACK
     /// If QoS is `.exactlyOnce` then send PUBREC, wait for PUBREL and then respond with PUBCOMP (in `respondToPubrel`)
     private func respondToPublish(_ message: MQTTPublishPacket, context: ChannelHandlerContext) {
+        struct DuplicatePublishError: Error {}
         switch message.publish.qos {
         case .atMostOnce:
             self.subscriptions.notify(message.publish)
@@ -192,14 +202,16 @@ final class MQTTChannelHandler: ChannelDuplexHandler {
                 }
 
         case .exactlyOnce:
-            // TODO: Investigate what to do if we receive a publish message while waiting for a PUBREL
-            //var publish = message.publish
-            self.sendMessage(MQTTPubAckPacket(type: .PUBREC, packetId: message.packetId)) { newMessage in
+            self.sendMessage(
+                MQTTPubAckPacket(type: .PUBREC, packetId: message.packetId),
+                requestID: MQTTConnection.requestIDGenerator.next()
+            ) { newMessage in
                 guard newMessage.packetId == message.packetId else { return false }
-                // if we receive a publish message while waiting for a PUBREL from broker then replace data to be published and retry PUBREC
+                // if we receive a publish message while waiting for a PUBREL from server this is a
+                // duplicate. We need to reset the response and send a PUBREC again. Here we throw an error
+                // which is caught further down and at that trigger a new PUBREC
                 if newMessage.type == .PUBLISH {
-                    //publish = publishMessage.publish
-                    throw MQTTError.retrySend
+                    throw DuplicatePublishError()
                 }
                 // if we receive anything but a PUBREL then throw unexpected message
                 guard newMessage.type == .PUBREL else { throw MQTTError.unexpectedMessage }
@@ -207,13 +219,13 @@ final class MQTTChannelHandler: ChannelDuplexHandler {
                 return true
             }
             .assumeIsolated()
-            //.map { _ in publish }
             .whenComplete { result in
                 switch result {
                 case .failure(let error):
                     switch error {
-                    case MQTTError.retrySend:
-                        // do not report retrySend error
+                    case is DuplicatePublishError:
+                        // ignore duplicate publish error and initiate the PUBLISH handshake again
+                        self.respondToPublish(message, context: context)
                         return
                     default:
                         self.failTasksAndCloseSubscriptions(with: error)
@@ -239,7 +251,8 @@ final class MQTTChannelHandler: ChannelDuplexHandler {
     func subscribe(
         streamContinuation: MQTTSubscription.Continuation,
         packet: MQTTSubscribePacket,
-        promise: MQTTPromise<UInt32>
+        promise: MQTTPromise<UInt32>,
+        requestID: Int
     ) {
         self.eventLoop.assertInEventLoop()
 
@@ -271,7 +284,7 @@ final class MQTTChannelHandler: ChannelDuplexHandler {
                     packetId: packet.packetId
                 )
             }
-            self.sendMessage(packet) { message in
+            self.sendMessage(packet, requestID: requestID) { message in
                 guard message.packetId == packet.packetId else { return false }
                 guard message.type == .SUBACK else { throw MQTTError.unexpectedMessage }
                 return true
@@ -293,7 +306,8 @@ final class MQTTChannelHandler: ChannelDuplexHandler {
         id: UInt32,
         packetID: UInt16,
         properties: MQTTProperties,
-        promise: MQTTPromise<Void>
+        promise: MQTTPromise<Void>,
+        requestID: Int
     ) {
         self.eventLoop.assertInEventLoop()
         switch self.subscriptions.unsubscribe(id: id) {
@@ -303,7 +317,7 @@ final class MQTTChannelHandler: ChannelDuplexHandler {
                 promise.fail(MQTTPacketError.atLeastOneTopicRequired)
                 return
             }
-            self.sendMessage(packet) { message in
+            self.sendMessage(packet, requestID: requestID) { message in
                 guard message.packetId == packet.packetId else { return false }
                 guard message.type == .UNSUBACK else { throw MQTTError.unexpectedMessage }
                 return true
@@ -335,12 +349,14 @@ final class MQTTChannelHandler: ChannelDuplexHandler {
     func sendMessage(
         _ message: MQTTPacket,
         promise: MQTTPromise<MQTTPacket>,
+        requestID: Int,
         checkInbound: @escaping (MQTTPacket) throws -> Bool
     ) {
         self.eventLoop.assertInEventLoop()
 
         let task = MQTTTask(
             promise: promise,
+            requestID: requestID,
             on: self.eventLoop,
             timeout: self.configuration.timeout,
             checkInbound: checkInbound
@@ -356,10 +372,11 @@ final class MQTTChannelHandler: ChannelDuplexHandler {
 
     func sendMessage(
         _ message: MQTTPacket,
+        requestID: Int,
         checkInbound: @escaping (MQTTPacket) throws -> Bool
     ) -> EventLoopFuture<MQTTPacket> {
         let promise = self.eventLoop.makePromise(of: MQTTPacket.self)
-        self.sendMessage(message, promise: .nio(promise), checkInbound: checkInbound)
+        self.sendMessage(message, promise: .nio(promise), requestID: requestID, checkInbound: checkInbound)
         return promise.futureResult
     }
 
@@ -416,7 +433,10 @@ final class MQTTChannelHandler: ChannelDuplexHandler {
                 // otherwise reschedule task
                 if channelHandler.lastPingreqEventTime + channelHandler.pingreqTimeout <= .now() {
                     guard context.channel.isActive else { return }
-                    channelHandler.sendMessage(MQTTPingreqPacket()) { message in
+                    channelHandler.sendMessage(
+                        MQTTPingreqPacket(),
+                        requestID: MQTTConnection.requestIDGenerator.next()
+                    ) { message in
                         guard message.type == .PINGRESP else { return false }
                         return true
                     }

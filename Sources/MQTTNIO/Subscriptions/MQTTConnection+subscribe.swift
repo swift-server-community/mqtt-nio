@@ -58,7 +58,8 @@ extension MQTTConnection {
             self.channelHandler.subscribe(
                 streamContinuation: streamContinuation,
                 packet: packet,
-                promise: .swift(continuation)
+                promise: .swift(continuation),
+                requestID: Self.requestIDGenerator.next()
             )
         }
         return (subscriptionID, stream)
@@ -67,7 +68,13 @@ extension MQTTConnection {
     @usableFromInline
     func unsubscribe(id: UInt32, properties: MQTTProperties = .init()) async throws {
         try await withCheckedThrowingContinuation { continuation in
-            self.channelHandler.unsubscribe(id: id, packetID: self.updatePacketId(), properties: properties, promise: .swift(continuation))
+            self.channelHandler.unsubscribe(
+                id: id,
+                packetID: self.updatePacketId(),
+                properties: properties,
+                promise: .swift(continuation),
+                requestID: Self.requestIDGenerator.next()
+            )
         }
     }
 }
