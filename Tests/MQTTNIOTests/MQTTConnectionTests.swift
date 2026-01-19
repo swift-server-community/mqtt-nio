@@ -50,7 +50,10 @@ struct MQTTConnectionTests {
                 let connect = try MQTTConnectPacket.read(version: configuration.version, from: packet)
                 #expect(connect.cleanSession == cleanSession)
                 #expect(connect.clientIdentifier == identifier)
-                if case .v5_0(let connectProperties, _, _, _) = configuration.versionConfiguration {
+                if case .v5_0(var connectProperties, _, _, let authWorkflow) = configuration.versionConfiguration {
+                    if let authWorkflow {
+                        connectProperties.append(.authenticationMethod(authWorkflow.methodName))
+                    }
                     #expect(connectProperties == connect.properties)
                 }
 
@@ -499,7 +502,8 @@ struct MQTTConnectionTests {
             group.addTask {
                 // wait for connect
                 var packet = try await channel.waitForOutboundPacket()
-                #expect(packet.type == .CONNECT)
+                let connect = try MQTTConnectPacket.read(version: .v5_0, from: packet)
+                #expect(connect.properties.contains(.authenticationMethod("Simple")))
                 // send auth
                 let auth = MQTTAuthPacket(reason: .continueAuthentication, properties: [.authenticationData(.init(string: "User"))])
                 try await channel.writeInboundPacket(auth, version: .v5_0)
@@ -507,6 +511,7 @@ struct MQTTConnectionTests {
                 packet = try await channel.waitForOutboundPacket()
                 let authResponsePacket = try MQTTAuthPacket.read(version: .v5_0, from: packet)
                 #expect(authResponsePacket.reason == .continueAuthentication)
+                #expect(authResponsePacket.properties.contains(.authenticationMethod("Simple")))
                 #expect(authResponsePacket.properties.contains(.authenticationData(ByteBuffer(string: "Password"))))
                 // send connack
                 let connack = MQTTConnAckPacket(returnCode: 0, acknowledgeFlags: 1, properties: .init())
@@ -535,6 +540,7 @@ struct MQTTConnectionTests {
             var packet = try await channel.waitForOutboundPacket()
             let initialAuth = try MQTTAuthPacket.read(version: .v5_0, from: packet)
             #expect(initialAuth.reason == .reAuthenticate)
+            #expect(initialAuth.properties.contains(.authenticationMethod("Simple")))
             // send auth
             let auth = MQTTAuthPacket(reason: .continueAuthentication, properties: [.authenticationData(.init(string: "User"))])
             try await channel.writeInboundPacket(auth, version: .v5_0)
@@ -543,6 +549,7 @@ struct MQTTConnectionTests {
             let authResponsePacket = try MQTTAuthPacket.read(version: .v5_0, from: packet)
             #expect(packet.type == .AUTH)
             #expect(authResponsePacket.reason == .continueAuthentication)
+            #expect(authResponsePacket.properties.contains(.authenticationMethod("Simple")))
             #expect(authResponsePacket.properties.contains(.authenticationData(ByteBuffer(string: "Password"))))
             // send final auth
             let finalAuth = MQTTAuthPacket(reason: .success, properties: [])
@@ -574,6 +581,7 @@ struct MQTTConnectionTests {
 }
 
 struct SimpleAuthWorkflow: MQTTAuthenticator {
+    var methodName: String { "Simple" }
     func authenticate(_ auth: MQTTAuthV5) async throws -> MQTTAuthV5 {
         switch auth.reason {
         case .continueAuthentication, .reAuthenticate:

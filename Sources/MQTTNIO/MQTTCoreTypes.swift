@@ -45,22 +45,22 @@ public enum MQTTPacketType: UInt8, Sendable {
 /// MQTT PUBLISH packet parameters.
 public struct MQTTPublishInfo: Sendable {
     /// Quality of Service for message.
-    public let qos: MQTTQoS
+    public var qos: MQTTQoS
 
     /// Whether this is a retained message.
-    public let retain: Bool
+    public var retain: Bool
 
     /// Whether this is a duplicate publish message.
-    public let dup: Bool
+    public var dup: Bool
 
     /// Topic name on which the message is published.
-    public let topicName: String
+    public var topicName: String
 
     /// MQTT v5 properties
-    public let properties: MQTTProperties
+    public var properties: MQTTProperties
 
     /// Message payload.
-    public let payload: ByteBuffer
+    public var payload: ByteBuffer
 
     public init(
         qos: MQTTQoS,
@@ -84,10 +84,10 @@ public struct MQTTPublishInfo: Sendable {
 /// MQTT SUBSCRIBE packet parameters.
 public struct MQTTSubscribeInfo: Sendable {
     /// Topic filter to subscribe to.
-    public let topicFilter: String
+    public var topicFilter: String
 
     /// Quality of Service for subscription.
-    public let qos: MQTTQoS
+    public var qos: MQTTQoS
 
     public init(topicFilter: String, qos: MQTTQoS) {
         self.qos = qos

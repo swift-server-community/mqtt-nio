@@ -208,7 +208,7 @@ public final actor MQTTConnection: Sendable {
                 }
             }
         let authenticator: MQTTAuthenticator?
-        let properties: MQTTProperties
+        var properties: MQTTProperties
         (authenticator, properties) =
             switch configuration.versionConfiguration {
             case .v3_1_1:
@@ -227,7 +227,9 @@ public final actor MQTTConnection: Sendable {
                 }
             }
         }
-
+        if let authenticator {
+            properties.addOrReplace(.authenticationMethod(authenticator.methodName))
+        }
         let packet = MQTTConnectPacket(
             cleanSession: cleanSession,
             keepAliveSeconds: UInt16(configuration.keepAliveInterval.nanoseconds / 1_000_000_000),
@@ -681,8 +683,12 @@ public final actor MQTTConnection: Sendable {
         authWorkflow: MQTTAuthenticator
     ) async throws -> any MQTTPacket {
         let auth = MQTTAuthV5(reason: packet.reason, properties: packet.properties)
-        let authResponse = try await authWorkflow.authenticate(auth)
+        // Authenticate
+        var authResponse = try await authWorkflow.authenticate(auth)
+        // Add authentication name to response
+        authResponse.properties.append(.authenticationMethod(authWorkflow.methodName))
         let responsePacket = MQTTAuthPacket(reason: authResponse.reason, properties: authResponse.properties)
+        // Send response
         let result = try await self.sendMessage(responsePacket) { message -> Bool in
             guard message.type == .CONNACK || message.type == .AUTH else { throw MQTTError.failedToConnect }
             return true

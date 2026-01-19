@@ -12,5 +12,8 @@
 //===----------------------------------------------------------------------===//
 
 public protocol MQTTAuthenticator: Sendable {
+    /// Authentication method name passed from client to server and back in the authentication method property
+    var methodName: String { get }
+    /// Respond to AUTH packet sent from server.
     func authenticate(_ authPackage: MQTTAuthV5) async throws -> MQTTAuthV5
 }

@@ -45,7 +45,8 @@ extension MQTTConnection {
         /// Re-authenticate with server.
         ///
         /// - Parameters:
-        ///   - properties: Properties to attach to auth packet. Must include `authenticationMethod`.
+        ///   - properties: Properties to attach to auth packet. The `authenticationMethod` will be added by this function
+        ///     so there is no need to include it here.
         ///   - authWorkflow: Respond to auth packets from server.
         ///
         /// - Returns: Final auth packet returned from server.
@@ -64,7 +65,10 @@ extension MQTTConnection {
             else {
                 throw MQTTError.authWorkflowRequired
             }
+            var properties = properties
+            properties.addOrReplace(.authenticationMethod(authWorkflow.methodName))
             let authPacket = MQTTAuthPacket(reason: .reAuthenticate, properties: properties)
+            // Send AUTH
             let reAuthResponse = try await self.connection.sendMessage(authPacket) { message in
                 guard message.type == .AUTH else { return false }
                 return true
@@ -73,6 +77,7 @@ extension MQTTConnection {
             if authResponse.reason == .success {
                 return MQTTAuthV5(reason: authResponse.reason, properties: authResponse.properties)
             }
+            // Process AUTH response
             guard let auth = try await self.connection.processAuth(authResponse, authWorkflow: authWorkflow) as? MQTTAuthPacket else {
                 throw MQTTError.unexpectedMessage
             }

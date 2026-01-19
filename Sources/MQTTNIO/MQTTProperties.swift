@@ -90,6 +90,16 @@ public struct MQTTProperties: Sendable, Equatable {
         self.properties.append(property)
     }
 
+    public mutating func addOrReplace(_ property: Property) {
+        for index in self.properties.indices {
+            if self.properties[index].id == property.id {
+                self.properties[index] = property
+                return
+            }
+        }
+        self.properties.append(property)
+    }
+
     var properties: [Property]
 }
 
