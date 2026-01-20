@@ -118,14 +118,14 @@ public struct MQTTConnectionConfiguration: Sendable {
         /// The user identifier used to authenticate against a secured MQTT server.
         public var userName: String
         /// The password used to authenticate against a secured MQTT server.
-        public var password: String
+        public var password: String?
 
         /// Creates a new authentication configuration.
         ///
         /// - Parameters:
         ///   - userName: The user identifier used to authenticate against a secured MQTT server.
         ///   - password: The password used to authenticate against a secured MQTT server.
-        public init(userName: String, password: String) {
+        public init(userName: String, password: String?) {
             self.userName = userName
             self.password = password
         }
