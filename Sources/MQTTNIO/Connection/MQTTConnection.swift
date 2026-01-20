@@ -234,8 +234,8 @@ public final actor MQTTConnection: Sendable {
             cleanSession: cleanSession,
             keepAliveSeconds: UInt16(configuration.keepAliveInterval.nanoseconds / 1_000_000_000),
             clientIdentifier: identifier,
-            userName: configuration.userName,
-            password: configuration.password,
+            userName: configuration.authentication?.userName,
+            password: configuration.authentication?.password,
             properties: properties,
             will: publish
         )
