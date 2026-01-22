@@ -63,7 +63,7 @@ struct IntegrationTests {
     func connectWithUsernameAndPassword() async throws {
         try await MQTTConnection.withConnection(
             address: .hostname(Self.hostname, port: 1884),
-            configuration: .init(userName: "mqttnio", password: "mqttnio-password"),
+            configuration: .init(authentication: .init(userName: "mqttnio", password: "mqttnio-password")),
             identifier: "connectWithUsernameAndPassword",
             logger: self.logger
         ) { connection in
@@ -76,7 +76,7 @@ struct IntegrationTests {
         await #expect(throws: MQTTError.connectionError(.notAuthorized)) {
             try await MQTTConnection.withConnection(
                 address: .hostname(Self.hostname, port: 1884),
-                configuration: .init(userName: "wrong", password: "wrong"),
+                configuration: .init(authentication: .init(userName: "wrong", password: "wrong")),
                 identifier: "connectWithWrongUsernameAndPassword",
                 logger: self.logger
             ) { connection in

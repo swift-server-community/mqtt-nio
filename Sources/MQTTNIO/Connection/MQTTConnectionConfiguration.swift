@@ -110,6 +110,27 @@ public struct MQTTConnectionConfiguration: Sendable {
         }
     }
 
+    /// Authentication credentials for accessing an MQTT server.
+    ///
+    /// Use this structure to provide user ID and password credentials
+    /// when the server requires authentication for access.
+    public struct Authentication: Sendable {
+        /// The user identifier used to authenticate against a secured MQTT server.
+        public var userName: String
+        /// The password used to authenticate against a secured MQTT server.
+        public var password: String?
+
+        /// Creates a new authentication configuration.
+        ///
+        /// - Parameters:
+        ///   - userName: The user identifier used to authenticate against a secured MQTT server.
+        ///   - password: The password used to authenticate against a secured MQTT server.
+        public init(userName: String, password: String?) {
+            self.userName = userName
+            self.password = password
+        }
+    }
+
     /// Configuration for WebSocket connection.
     public struct WebSocketConfiguration: Sendable {
         /// Creates a WebSocket configuration.
@@ -148,10 +169,10 @@ public struct MQTTConnectionConfiguration: Sendable {
     public var connectTimeout: TimeAmount
     /// Timeout for server response.
     public var timeout: TimeAmount?
-    /// MQTT user name.
-    public var userName: String?
-    /// MQTT password.
-    public var password: String?
+    /// Optional authentication credentials for accessing the MQTT server.
+    ///
+    /// Set this property when connecting to a server that requires authentication.
+    public var authentication: Authentication?
     /// TLS configuration for the connection.
     ///
     /// Use `.disable` for unencrypted connections or `.enable(...)` for secure connections.
@@ -168,8 +189,7 @@ public struct MQTTConnectionConfiguration: Sendable {
     ///   - pingInterval: Override calculated interval between each `PINGREQ` message.
     ///   - connectTimeout: Timeout for connecting to server.
     ///   - timeout: Timeout for server ACK responses.
-    ///   - userName: MQTT user name.
-    ///   - password: MQTT password.
+    ///   - authentication: Optional credentials for accessing the MQTT server. Set to `nil` for unauthenticated access.
     ///   - tls: TLS configuration for secure connections. Defaults to `.disable` for unencrypted connections.
     ///   - webSocketConfiguration: Configuration to set if using a WebSocket connection.
     public init(
@@ -179,8 +199,7 @@ public struct MQTTConnectionConfiguration: Sendable {
         pingInterval: TimeAmount? = nil,
         connectTimeout: TimeAmount = .seconds(10),
         timeout: TimeAmount? = nil,
-        userName: String? = nil,
-        password: String? = nil,
+        authentication: Authentication? = nil,
         tls: TLS = .disable,
         webSocketConfiguration: WebSocketConfiguration? = nil
     ) {
@@ -190,8 +209,7 @@ public struct MQTTConnectionConfiguration: Sendable {
         self.pingInterval = pingInterval
         self.connectTimeout = connectTimeout
         self.timeout = timeout
-        self.userName = userName
-        self.password = password
+        self.authentication = authentication
         self.tls = tls
         self.webSocketConfiguration = webSocketConfiguration
     }
