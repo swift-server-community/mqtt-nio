@@ -438,27 +438,36 @@ public final actor MQTTConnection: Sendable {
         host: String,
         logger: Logger
     ) throws -> NIOClientTCPBootstrap {
-        var bootstrap: NIOClientTCPBootstrap
-        let serverName = configuration.sniServerName ?? host
+        var serverName: String {
+            if case .enable(_, let sniServerName) = configuration.tls.base, let sniServerName {
+                sniServerName
+            } else {
+                host
+            }
+        }
+
+        let bootstrap: NIOClientTCPBootstrap
         #if canImport(Network)
         // if eventLoop is compatible with NIOTransportServices create a NIOTSConnectionBootstrap
         if let tsBootstrap = NIOTSConnectionBootstrap(validatingGroup: eventLoopGroup) {
             // create NIOClientTCPBootstrap with NIOTS TLS provider
             let options: NWProtocolTLS.Options
-            switch configuration.tlsConfiguration {
-            case .ts(let config):
-                options = try config.getNWProtocolTLSOptions(logger: logger)
-            #if os(macOS) || os(Linux)
-            case .niossl:
-                throw MQTTError.wrongTLSConfig
-            #endif
-            default:
+            if case .enable(let tlsConfigType, _) = configuration.tls.base {
+                switch tlsConfigType {
+                case .ts(let tsConfig):
+                    options = try tsConfig.getNWProtocolTLSOptions(logger: logger)
+                #if os(macOS) || os(Linux) || os(Android)
+                case .niossl:
+                    throw MQTTError.wrongTLSConfig
+                #endif
+                }
+            } else {
                 options = NWProtocolTLS.Options()
             }
             sec_protocol_options_set_tls_server_name(options.securityProtocolOptions, serverName)
             let tlsProvider = NIOTSClientTLSProvider(tlsOptions: options)
             bootstrap = NIOClientTCPBootstrap(tsBootstrap, tls: tlsProvider)
-            if configuration.useSSL {
+            if case .enable = configuration.tls.base {
                 return bootstrap.enableTLS()
             }
             return bootstrap
@@ -467,14 +476,16 @@ public final actor MQTTConnection: Sendable {
 
         #if os(macOS) || os(Linux)
         if let clientBootstrap = ClientBootstrap(validatingGroup: eventLoopGroup) {
-            let tlsConfiguration: TLSConfiguration
-            switch configuration.tlsConfiguration {
-            case .niossl(let config):
-                tlsConfiguration = config
-            default:
-                tlsConfiguration = TLSConfiguration.makeClientConfiguration()
-            }
-            if configuration.useSSL {
+            if case .enable(let tlsConfig, _) = configuration.tls.base {
+                let tlsConfiguration: TLSConfiguration
+                switch tlsConfig {
+                case .niossl(let config):
+                    tlsConfiguration = config
+                #if os(macOS)
+                case .ts:
+                    throw MQTTError.wrongTLSConfig
+                #endif
+                }
                 let sslContext = try NIOSSLContext(configuration: tlsConfiguration)
                 let tlsProvider = try NIOSSLClientTLSProvider<ClientBootstrap>(context: sslContext, serverHostname: serverName)
                 bootstrap = NIOClientTCPBootstrap(clientBootstrap, tls: tlsProvider)
@@ -497,21 +508,24 @@ public final actor MQTTConnection: Sendable {
         afterHandlerAdded: @Sendable @escaping () throws -> Void
     ) -> EventLoopFuture<Void> {
         var hostHeader: String {
-            switch (configuration.useSSL, address.value) {
-            case (true, .hostname(let host, let port)) where port != 443:
+            if case .enable(_, let sniServerName) = configuration.tls.base, let sniServerName {
+                return sniServerName
+            }
+            switch (configuration.tls.base, address.value) {
+            case (.enable, .hostname(let host, let port)) where port != 443:
                 return "\(host):\(port)"
-            case (false, .hostname(let host, let port)) where port != 80:
+            case (.disable, .hostname(let host, let port)) where port != 80:
                 return "\(host):\(port)"
-            case (true, .hostname(let host, _)), (false, .hostname(let host, _)):
+            case (.enable, .hostname(let host, _)), (.disable, .hostname(let host, _)):
                 return host
-            case (true, .unixDomainSocket(let path)), (false, .unixDomainSocket(let path)):
+            case (.enable, .unixDomainSocket(let path)), (.disable, .unixDomainSocket(let path)):
                 return path
             }
         }
 
         // initial HTTP request handler, before upgrade
         let httpHandler = WebSocketInitialRequestHandler(
-            host: configuration.sniServerName ?? hostHeader,
+            host: hostHeader,
             urlPath: webSocketConfiguration.urlPath,
             additionalHeaders: webSocketConfiguration.initialRequestHeaders,
             upgradePromise: promise

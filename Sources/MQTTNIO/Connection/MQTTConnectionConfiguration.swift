@@ -35,10 +35,9 @@ import NIOSSL
 /// )
 ///
 /// // Configuration with TLS
+/// let tlsConfig = TLSConfiguration.makeClientConfiguration()
 /// let tlsConfig = MQTTConnectionConfiguration(
-///     useSSL: true,
-///     tlsConfiguration: .niossl(.makeClientConfiguration()),
-///     sniServerName: "mqtt.example.com"
+///     tls: .enable(.niossl(tlsConfig), tlsServerName: "mqtt.example.com")
 /// )
 /// ```
 public struct MQTTConnectionConfiguration: Sendable {
@@ -68,20 +67,47 @@ public struct MQTTConnectionConfiguration: Sendable {
         }
     }
 
-    /// Enum for different TLS Configuration types.
+    /// Configuration for TLS (Transport Layer Security) encryption.
     ///
-    /// The TLS Configuration type to use is defined by the `EventLoopGroup` the client is using.
-    /// If you don't provide an `EventLoopGroup` then the `EventLoopGroup` created will be defined by this variable.
-    /// It is recommended on iOS that you use NIO Transport Services.
-    public enum TLSConfigurationType: Sendable {
-        /// NIOSSL TLS configuration.
-        #if os(macOS) || os(Linux)
-        case niossl(TLSConfiguration)
-        #endif
-        #if canImport(Network)
-        /// NIO Transport Services TLS configuration.
-        case ts(TSTLSConfiguration)
-        #endif
+    /// This structure allows you to enable or disable encrypted connections to the MQTT server.
+    /// When enabled, it requires a ``MQTTConnectionConfiguration/TLS/Configuration``
+    /// and optionally a server name for SNI (Server Name Indication).
+    public struct TLS: Sendable {
+        /// Enum for different TLS Configuration types.
+        ///
+        /// The TLS Configuration type to use is defined by the `EventLoopGroup` the client is using.
+        /// If you don't provide an `EventLoopGroup` then the `EventLoopGroup` created will be defined by this variable.
+        /// It is recommended on iOS that you use NIO Transport Services.
+        public enum Configuration: Sendable {
+            /// NIOSSL TLS configuration.
+            #if os(macOS) || os(Linux)
+            case niossl(TLSConfiguration)
+            #endif
+            #if canImport(Network)
+            /// NIO Transport Services TLS configuration.
+            case ts(TSTLSConfiguration)
+            #endif
+        }
+        enum Base {
+            case disable
+            case enable(Configuration, tlsServerName: String?)
+        }
+        let base: Base
+
+        /// Disables TLS for the connection.
+        ///
+        /// Use this option when connecting to an MQTT server that doesn't require encryption.
+        public static var disable: Self { .init(base: .disable) }
+
+        /// Enables TLS for the connection.
+        ///
+        /// - Parameters:
+        ///   - configuration: The TLS configuration used to establish the secure connection
+        ///   - tlsServerName: Optional server name for SNI (Server Name Indication)
+        /// - Returns: A configured TLS instance
+        public static func enable(_ configuration: Configuration, tlsServerName: String?) -> Self {
+            .init(base: .enable(configuration, tlsServerName: tlsServerName))
+        }
     }
 
     /// Configuration for WebSocket connection.
@@ -126,12 +152,10 @@ public struct MQTTConnectionConfiguration: Sendable {
     public var userName: String?
     /// MQTT password.
     public var password: String?
-    /// Whether to use encrypted connection to server.
-    public var useSSL: Bool
-    /// TLS configuration.
-    public var tlsConfiguration: TLSConfigurationType?
-    /// Server name used by TLS.
-    public var sniServerName: String?
+    /// TLS configuration for the connection.
+    ///
+    /// Use `.disable` for unencrypted connections or `.enable(...)` for secure connections.
+    public var tls: TLS
     /// WebSocket configuration.
     public var webSocketConfiguration: WebSocketConfiguration?
 
@@ -146,9 +170,7 @@ public struct MQTTConnectionConfiguration: Sendable {
     ///   - timeout: Timeout for server ACK responses.
     ///   - userName: MQTT user name.
     ///   - password: MQTT password.
-    ///   - useSSL: Whether to use encrypted connection to server.
-    ///   - tlsConfiguration: TLS configuration, for SSL connection.
-    ///   - sniServerName: Server name used by TLS. This will default to host name if not set.
+    ///   - tls: TLS configuration for secure connections. Defaults to `.disable` for unencrypted connections.
     ///   - webSocketConfiguration: Configuration to set if using a WebSocket connection.
     public init(
         versionConfiguration: VersionConfiguration = .v3_1_1(),
@@ -159,10 +181,8 @@ public struct MQTTConnectionConfiguration: Sendable {
         timeout: TimeAmount? = nil,
         userName: String? = nil,
         password: String? = nil,
-        useSSL: Bool = false,
-        tlsConfiguration: TLSConfigurationType? = nil,
-        sniServerName: String? = nil,
-        webSocketConfiguration: WebSocketConfiguration
+        tls: TLS = .disable,
+        webSocketConfiguration: WebSocketConfiguration? = nil
     ) {
         self.versionConfiguration = versionConfiguration
         self.disablePing = disablePing
@@ -172,61 +192,8 @@ public struct MQTTConnectionConfiguration: Sendable {
         self.timeout = timeout
         self.userName = userName
         self.password = password
-        self.useSSL = useSSL
-        self.tlsConfiguration = tlsConfiguration
-        self.sniServerName = sniServerName
+        self.tls = tls
         self.webSocketConfiguration = webSocketConfiguration
-    }
-
-    /// Creates a new MQTT connection configuration.
-    ///
-    /// - Parameters:
-    ///   - versionConfiguration: Connection configuration for the version of MQTT server to connect to.
-    ///   - disablePing: Disable the automatic sending of `PINGREQ` messages.
-    ///   - keepAliveInterval: MQTT keep alive period.
-    ///   - pingInterval: Override calculated interval between each `PINGREQ` message.
-    ///   - connectTimeout: Timeout for connecting to server.
-    ///   - timeout: Timeout for server ACK responses.
-    ///   - userName: MQTT user name.
-    ///   - password: MQTT password.
-    ///   - useSSL: Whether to use encrypted connection to server.
-    ///   - useWebSockets: Whether to use a WebSocket connection to server.
-    ///   - tlsConfiguration: TLS configuration, for SSL connection.
-    ///   - sniServerName: Server name used by TLS. This will default to host name if not set.
-    ///   - webSocketURLPath: URL Path for WebSocket. Defaults to "/mqtt".
-    ///   - webSocketMaxFrameSize: Maximum frame size for a WebSocket connection.
-    public init(
-        versionConfiguration: VersionConfiguration = .v3_1_1(),
-        disablePing: Bool = false,
-        keepAliveInterval: TimeAmount = .seconds(90),
-        pingInterval: TimeAmount? = nil,
-        connectTimeout: TimeAmount = .seconds(10),
-        timeout: TimeAmount? = nil,
-        userName: String? = nil,
-        password: String? = nil,
-        useSSL: Bool = false,
-        useWebSockets: Bool = false,
-        tlsConfiguration: TLSConfigurationType? = nil,
-        sniServerName: String? = nil,
-        webSocketURLPath: String? = nil,
-        webSocketMaxFrameSize: Int = 1 << 14
-    ) {
-        self.versionConfiguration = versionConfiguration
-        self.disablePing = disablePing
-        self.keepAliveInterval = keepAliveInterval
-        self.pingInterval = pingInterval
-        self.connectTimeout = connectTimeout
-        self.timeout = timeout
-        self.userName = userName
-        self.password = password
-        self.useSSL = useSSL
-        self.tlsConfiguration = tlsConfiguration
-        self.sniServerName = sniServerName
-        if useWebSockets {
-            self.webSocketConfiguration = .init(urlPath: webSocketURLPath ?? "/mqtt", maxFrameSize: webSocketMaxFrameSize)
-        } else {
-            self.webSocketConfiguration = nil
-        }
     }
 
     /// Whether is using WebSockets for connection.
