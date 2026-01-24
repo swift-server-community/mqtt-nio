@@ -228,7 +228,7 @@ public final actor MQTTConnection: Sendable {
             case .v3_1_1:
                 (nil, .init())
             case .v5_0(let connectProperties, _, _, let authenticator):
-                (authenticator, connectProperties)  // TODO: Do we need to set `.sessionExpiryInterval(0xFFFF_FFFF)` by default?
+                (authenticator, connectProperties)
             }
 
         var cleanSession = self.cleanSession

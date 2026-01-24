@@ -54,7 +54,7 @@ struct IntegrationV5Tests {
                         payload: ByteBufferAllocator().buffer(string: "Test payload"),
                         qos: .atLeastOnce,
                         retain: false,
-                        properties: .init()  // TODO: Do we need to set `.sessionExpiryInterval(0xFFFF_FFFF)` by default?
+                        properties: .init()
                     )
                 )
             ),
