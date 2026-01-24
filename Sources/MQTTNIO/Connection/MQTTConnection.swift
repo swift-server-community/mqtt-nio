@@ -83,6 +83,7 @@ public final actor MQTTConnection: Sendable {
     ///   - eventLoop: EventLoop to run the connection on.
     ///   - logger: Logger to use for the connection.
     ///   - operation: Closure handling the MQTT connection.
+    ///     The closure receives the ``MQTTConnection`` and a `Bool` indicating if there was a previous session present.
     /// - Returns: Value returned from the operation closure.
     public static func withConnection<Value>(
         address: MQTTServerAddress,
@@ -91,9 +92,9 @@ public final actor MQTTConnection: Sendable {
         cleanSession: Bool = true,
         eventLoop: any EventLoop = MultiThreadedEventLoopGroup.singleton.any(),
         logger: Logger,
-        operation: (MQTTConnection) async throws -> sending Value
+        operation: (MQTTConnection, Bool) async throws -> sending Value
     ) async throws -> sending Value {
-        let connection = try await self.connect(
+        let (connection, sessionPresent) = try await self.connect(
             address: address,
             identifier: identifier,
             cleanSession: cleanSession,
@@ -102,7 +103,7 @@ public final actor MQTTConnection: Sendable {
             logger: logger
         )
         defer { connection.close() }
-        return try await operation(connection)
+        return try await operation(connection, sessionPresent)
     }
 
     /// Publish message to topic.
@@ -136,6 +137,17 @@ public final actor MQTTConnection: Sendable {
         }
     }
 
+    /// Connect to MQTT server and return the connection and whether there was a previous session present.
+    ///
+    /// - Parameters:
+    ///   - address: Internet address of the MQTT server.
+    ///   - identifier: Client identifier for the server.
+    ///   - cleanSession: Whether to start a clean session.
+    ///   - configuration: Configuration of the MQTT connection.
+    ///   - eventLoop: `EventLoop` to run the connection on.
+    ///   - logger: `Logger` to use for the connection.
+    ///
+    /// - Returns: Tuple of the ``MQTTConnection`` and a `Bool` indicating if there was a previous session present.
     private static func connect(
         address: MQTTServerAddress,
         identifier: String,
@@ -143,7 +155,7 @@ public final actor MQTTConnection: Sendable {
         configuration: MQTTConnectionConfiguration,
         eventLoop: any EventLoop = MultiThreadedEventLoopGroup.singleton.any(),
         logger: Logger
-    ) async throws -> MQTTConnection {
+    ) async throws -> (MQTTConnection, Bool) {
         var configuration = configuration
         if configuration.pingInterval == nil {
             configuration.pingInterval = TimeAmount.seconds(max(Int64(configuration.keepAliveInterval.nanoseconds / 1_000_000_000) - 5, 5))
@@ -173,15 +185,17 @@ public final actor MQTTConnection: Sendable {
             }
         let connection = try await future.get()
         try await connection.waitOnInitialized()
-        try await connection.sendConnect()
-        return connection
+        let sessionPresent = try await connection.sendConnect()
+        return (connection, sessionPresent)
     }
 
     func waitOnInitialized() async throws {
         try await self.channelHandler.waitOnInitialized().get()
     }
 
-    package func sendConnect() async throws {
+    /// Send CONNECT packet
+    /// - Returns: Whether there was a previous session present.
+    package func sendConnect() async throws -> Bool {
         let publish =
             switch configuration.versionConfiguration {
             case .v3_1_1(let will):
@@ -239,7 +253,7 @@ public final actor MQTTConnection: Sendable {
             properties: properties,
             will: publish
         )
-        _ = try await self._connect(packet: packet, authWorkflow: authenticator)
+        return try await self._connect(packet: packet, authWorkflow: authenticator).sessionPresent
     }
 
     func sendDisconnect() throws {

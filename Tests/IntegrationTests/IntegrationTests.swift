@@ -42,7 +42,7 @@ struct IntegrationTests {
             ),
             identifier: "connectWithWill",
             logger: self.logger
-        ) { connection in
+        ) { connection, _ in
             try await connection.ping()
         }
     }
@@ -54,7 +54,7 @@ struct IntegrationTests {
             configuration: .init(pingInterval: .seconds(2)),
             identifier: "keepAlivePing",
             logger: self.logger
-        ) { connection in
+        ) { connection, _ in
             try await Task.sleep(for: .seconds(5))
         }
     }
@@ -66,7 +66,7 @@ struct IntegrationTests {
             configuration: .init(authentication: .init(userName: "mqttnio", password: "mqttnio-password")),
             identifier: "connectWithUsernameAndPassword",
             logger: self.logger
-        ) { connection in
+        ) { connection, _ in
             try await connection.ping()
         }
     }
@@ -79,7 +79,7 @@ struct IntegrationTests {
                 configuration: .init(authentication: .init(userName: "wrong", password: "wrong")),
                 identifier: "connectWithWrongUsernameAndPassword",
                 logger: self.logger
-            ) { connection in
+            ) { connection, _ in
                 try await connection.ping()
             }
         }
@@ -92,7 +92,7 @@ struct IntegrationTests {
             configuration: .init(webSocketConfiguration: .init()),
             identifier: "webSocketConnect",
             logger: self.logger
-        ) { connection in
+        ) { connection, _ in
             try await connection.ping()
         }
     }
@@ -129,7 +129,7 @@ struct IntegrationTests {
                 identifier: "tlsConnect",
                 eventLoop: Self.eventLoopGroupSingleton.any(),
                 logger: self.logger
-            ) { connection in
+            ) { connection, _ in
                 try await connection.ping()
             }
         }
@@ -146,7 +146,7 @@ struct IntegrationTests {
                 identifier: "webSocketAndTLSConnect",
                 eventLoop: Self.eventLoopGroupSingleton.any(),
                 logger: self.logger
-            ) { connection in
+            ) { connection, _ in
                 try await connection.ping()
             }
         }
@@ -173,7 +173,7 @@ struct IntegrationTests {
                 identifier: "tlsConnectFromP12",
                 eventLoop: Self.eventLoopGroupSingleton.any(),
                 logger: self.logger
-            ) { connection in
+            ) { connection, _ in
                 try await connection.ping()
             }
         }
@@ -219,7 +219,7 @@ struct IntegrationTests {
             address: .unixDomainSocket(path: Self.rootPath + "/mosquitto/socket/mosquitto.sock"),
             identifier: "unixDomainSocketConnect",
             logger: self.logger
-        ) { connection in
+        ) { connection, _ in
             try await connection.ping()
         }
     }
@@ -230,7 +230,7 @@ struct IntegrationTests {
             address: .hostname(Self.hostname),
             identifier: "publishQoS\(qos.rawValue)",
             logger: self.logger
-        ) { connection in
+        ) { connection, _ in
             try await connection.publish(
                 to: "testMQTTPublishQoS",
                 payload: ByteBufferAllocator().buffer(string: "Test Payload"),
@@ -245,7 +245,7 @@ struct IntegrationTests {
             address: .hostname(Self.hostname),
             identifier: "sendPingreq",
             logger: self.logger
-        ) { connection in
+        ) { connection, _ in
             try await connection.ping()
         }
     }
@@ -272,7 +272,7 @@ struct IntegrationTests {
                 address: .hostname(Self.hostname),
                 identifier: "serverDisconnect",
                 logger: self.logger
-            ) { connection in
+            ) { connection, _ in
                 try await connection.sendMessage(MQTTForceDisconnectMessage()) { _ in true }
             }
         }
@@ -289,7 +289,7 @@ struct IntegrationTests {
             configuration: .init(webSocketConfiguration: .init()),
             identifier: "publishRetain",
             logger: self.logger
-        ) { connection in
+        ) { connection, _ in
             try await withThrowingTaskGroup { group in
                 group.addTask {
                     try await connection.subscribe(to: [.init(topicFilter: "testMQTTPublishRetain", qos: .atLeastOnce)]) { subscription in
@@ -327,7 +327,7 @@ struct IntegrationTests {
                     configuration: .init(webSocketConfiguration: .init()),
                     identifier: "publishToClient_subscriber",
                     logger: self.logger
-                ) { connection in
+                ) { connection, _ in
                     try await connection.subscribe(
                         to: [
                             .init(topicFilter: "testAtLeastOnce", qos: .atLeastOnce),
@@ -359,7 +359,7 @@ struct IntegrationTests {
                     configuration: .init(webSocketConfiguration: .init()),
                     identifier: "publishToClient_publisher",
                     logger: self.logger
-                ) { connection in
+                ) { connection, _ in
                     try await Task.sleep(for: .seconds(1))
                     try await connection.publish(to: "testAtLeastOnce", payload: payload, qos: .atLeastOnce)
                     try await connection.publish(to: "testExactlyOnce", payload: payload, qos: .exactlyOnce)
@@ -382,7 +382,7 @@ struct IntegrationTests {
                     address: .hostname(Self.hostname),
                     identifier: "publishLargePayloadToClient_subscriber",
                     logger: self.logger
-                ) { connection in
+                ) { connection, _ in
                     try await connection.subscribe(to: [.init(topicFilter: "testLargeAtLeastOnce", qos: .atLeastOnce)]) { subscription in
                         try await confirmation("publishLargePayloadToClient") { receivedMessage in
                             for try await message in subscription {
@@ -402,7 +402,7 @@ struct IntegrationTests {
                     address: .hostname(Self.hostname),
                     identifier: "publishLargePayloadToClient_publisher",
                     logger: self.logger
-                ) { connection in
+                ) { connection, _ in
                     try await Task.sleep(for: .seconds(1))
                     try await connection.publish(to: "testLargeAtLeastOnce", payload: payload, qos: .atLeastOnce)
                 }
@@ -412,13 +412,52 @@ struct IntegrationTests {
         }
     }
 
+    @Test("Session Present")
+    func sessionPresent() async throws {
+        // First connection with `cleanSession` set to true
+        // `sessionPresent` should be false as this is the first connection with this client identifier
+        try await MQTTConnection.withConnection(
+            address: .hostname(Self.hostname),
+            identifier: "sessionPresent",
+            cleanSession: true,
+            logger: self.logger
+        ) { connection, sessionPresent in
+            #expect(sessionPresent == false)
+            try await connection.ping()
+        }
+
+        // Second connection with same client identifier and `cleanSession` set to false
+        // `sessionPresent` should be false as previous session was with `cleanSession` true
+        try await MQTTConnection.withConnection(
+            address: .hostname(Self.hostname),
+            identifier: "sessionPresent",
+            cleanSession: false,
+            logger: self.logger
+        ) { connection, sessionPresent in
+            #expect(sessionPresent == false)
+            try await connection.ping()
+        }
+
+        // Third connection with same client identifier and `cleanSession` set to false
+        // `sessionPresent` should be true as previous session was with `cleanSession` false
+        try await MQTTConnection.withConnection(
+            address: .hostname(Self.hostname),
+            identifier: "sessionPresent",
+            cleanSession: false,
+            logger: self.logger
+        ) { connection, sessionPresent in
+            #expect(sessionPresent == true)
+            try await connection.ping()
+        }
+    }
+
     @Test("Subscribe to All Topics", .disabled(if: ProcessInfo.processInfo.environment["CI"] != nil))
     func subscribeAll() async throws {
         try await MQTTConnection.withConnection(
             address: .hostname("test.mosquitto.org"),
             identifier: "subscribeAll",
             logger: self.logger
-        ) { connection in
+        ) { connection, _ in
             try await connection.subscribe(to: [.init(topicFilter: "#", qos: .exactlyOnce)]) { subscription in
                 try await Task.sleep(for: .seconds(5))
             }
@@ -432,7 +471,7 @@ struct IntegrationTests {
             address: .hostname("127.0.0.1"),
             identifier: "rawIPConnect",
             logger: self.logger
-        ) { connection in
+        ) { connection, _ in
             try await connection.ping()
         }
     }
@@ -444,7 +483,7 @@ struct IntegrationTests {
             address: .hostname(Self.hostname),
             identifier: "packetID",
             logger: self.logger
-        ) { connection in
+        ) { connection, _ in
             let initial = await connection.globalPacketId.load(ordering: .relaxed)
             try await connection.publish(
                 to: "testPersistentAtLeastOnce",
@@ -510,7 +549,7 @@ struct IntegrationTests {
             address: .hostname(Self.hostname),
             identifier: "multiLevelWildcard",
             logger: self.logger
-        ) { connection in
+        ) { connection, _ in
             try await withThrowingTaskGroup { group in
                 group.addTask {
                     try await confirmation("multiLevelWildcard", expectedCount: 2) { receivedMessage in
@@ -550,7 +589,7 @@ struct IntegrationTests {
             address: .hostname(Self.hostname),
             identifier: "singleLevelWildcard",
             logger: self.logger
-        ) { connection in
+        ) { connection, _ in
             try await withThrowingTaskGroup { group in
                 group.addTask {
                     try await confirmation("singleLevelWildcard", expectedCount: 2) { receivedMessage in
@@ -593,7 +632,7 @@ struct IntegrationTests {
             address: .hostname(Self.hostname),
             identifier: "overlappingSubscriptions",
             logger: self.logger
-        ) { connection in
+        ) { connection, _ in
             try await withThrowingTaskGroup { group in
                 group.addTask {
                     try await confirmation("overlappingSubscriptions", expectedCount: 2) { receivedMessage in
@@ -630,7 +669,7 @@ struct IntegrationTests {
             address: .hostname(Self.hostname),
             identifier: "cancellation",
             logger: self.logger
-        ) { connection in
+        ) { connection, _ in
             await withThrowingTaskGroup { group in
                 group.addTask {
                     await #expect(throws: MQTTError.cancelledTask) {
@@ -652,7 +691,7 @@ struct IntegrationTests {
             address: .hostname(Self.hostname),
             identifier: "alreadyCancelled",
             logger: self.logger
-        ) { connection in
+        ) { connection, _ in
             await withThrowingTaskGroup(of: Void.self) { group in
                 group.cancelAll()
                 group.addTask {
