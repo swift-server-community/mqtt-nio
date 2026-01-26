@@ -106,6 +106,38 @@ public final actor MQTTConnection: Sendable {
         return try await operation(connection, sessionPresent)
     }
 
+    /// Connect to MQTT server and run operations using the connection and then close it.
+    ///
+    /// - Parameters:
+    ///   - address: Internet address of the MQTT server.
+    ///   - configuration: Configuration of the MQTT connection.
+    ///   - identifier: Client identifier for the server. This must be unique.
+    ///   - cleanSession: Whether to start a clean session.
+    ///   - eventLoop: EventLoop to run the connection on.
+    ///   - logger: Logger to use for the connection.
+    ///   - operation: Closure handling the MQTT connection.
+    /// - Returns: Value returned from the operation closure.
+    public static func withConnection<Value>(
+        address: MQTTServerAddress,
+        configuration: MQTTConnectionConfiguration = .init(),
+        identifier: String,
+        cleanSession: Bool = true,
+        eventLoop: any EventLoop = MultiThreadedEventLoopGroup.singleton.any(),
+        logger: Logger,
+        operation: (MQTTConnection) async throws -> sending Value
+    ) async throws -> sending Value {
+        try await Self.withConnection(
+            address: address,
+            configuration: configuration,
+            identifier: identifier,
+            cleanSession: cleanSession,
+            eventLoop: eventLoop,
+            logger: logger
+        ) { connection, _ in
+            try await operation(connection)
+        }
+    }
+
     /// Publish message to topic.
     ///
     /// - Parameters:

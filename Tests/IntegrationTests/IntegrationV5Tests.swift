@@ -38,7 +38,7 @@ struct IntegrationV5Tests {
             configuration: .init(versionConfiguration: .v5_0()),
             identifier: "connectV5",
             logger: self.logger
-        ) { connection, _ in
+        ) { connection in
             try await connection.ping()
         }
     }
@@ -60,7 +60,7 @@ struct IntegrationV5Tests {
             ),
             identifier: "connectWithWillV5",
             logger: self.logger
-        ) { connection, _ in
+        ) { connection in
             try await connection.ping()
         }
     }
@@ -80,7 +80,7 @@ struct IntegrationV5Tests {
             configuration: .init(versionConfiguration: .v5_0(connectProperties: .init([property]))),
             identifier: "connectWithPropertyV5_\(property)",
             logger: self.logger
-        ) { connection, _ in
+        ) { connection in
             try await connection.ping()
         }
     }
@@ -92,7 +92,7 @@ struct IntegrationV5Tests {
             configuration: .init(versionConfiguration: .v5_0()),
             identifier: "",
             logger: self.logger
-        ) { connection, _ in
+        ) { connection in
             #expect(await !connection.identifier.isEmpty)
         }
     }
@@ -104,7 +104,7 @@ struct IntegrationV5Tests {
             configuration: .init(versionConfiguration: .v5_0()),
             identifier: "publishV5QoS\(qos.rawValue)WithProperty\(String(describing: property))",
             logger: self.logger
-        ) { connection, _ in
+        ) { connection in
             let properties: MQTTProperties = if let property { .init([property]) } else { .init() }
             _ = try await connection.v5.publish(
                 to: "publishV5",
@@ -125,7 +125,7 @@ struct IntegrationV5Tests {
             configuration: .init(versionConfiguration: .v5_0()),
             identifier: "subscribeFlagsV5",
             logger: self.logger
-        ) { connection, _ in
+        ) { connection in
             try await withThrowingTaskGroup { group in
                 group.addTask {
                     try await Task.sleep(for: .seconds(1))
@@ -174,7 +174,7 @@ struct IntegrationV5Tests {
             configuration: .init(versionConfiguration: .v5_0()),
             identifier: "contentTypeV5",
             logger: self.logger
-        ) { connection, _ in
+        ) { connection in
             try await withThrowingTaskGroup { group in
                 group.addTask {
                     try await connection.v5.subscribe(to: [.init(topicFilter: "testMQTTContentType", qos: .atLeastOnce)]) { subscription in
@@ -214,7 +214,7 @@ struct IntegrationV5Tests {
             configuration: .init(versionConfiguration: .v5_0()),
             identifier: "userPropertyV5",
             logger: self.logger
-        ) { connection, _ in
+        ) { connection in
             try await withThrowingTaskGroup { group in
                 group.addTask {
                     try await connection.v5.subscribe(to: [.init(topicFilter: "testMQTTUserProperty", qos: .atLeastOnce)]) { subscription in
@@ -298,7 +298,7 @@ struct IntegrationV5Tests {
             configuration: .init(versionConfiguration: .v5_0()),
             identifier: "invalidTopicNameV5",
             logger: self.logger
-        ) { connection, _ in
+        ) { connection in
             _ = await #expect(throws: MQTTPacketError.invalidTopicName) {
                 try await connection.v5.publish(
                     to: "testInvalidTopicName#",
@@ -317,7 +317,7 @@ struct IntegrationV5Tests {
             configuration: .init(versionConfiguration: .v5_0()),
             identifier: "badPublishV5",
             logger: self.logger
-        ) { connection, _ in
+        ) { connection in
             let error = await #expect(throws: MQTTError.self) {
                 try await connection.v5.publish(
                     to: "testBadPublish",
@@ -343,7 +343,7 @@ struct IntegrationV5Tests {
             configuration: .init(versionConfiguration: .v5_0()),
             identifier: "outOfRangeTopicAliasV5",
             logger: self.logger
-        ) { connection, _ in
+        ) { connection in
             _ = await #expect(throws: MQTTPacketError.topicAliasOutOfRange) {
                 try await connection.v5.publish(
                     to: "testOutOfRangeTopicAlias",
@@ -362,7 +362,7 @@ struct IntegrationV5Tests {
             configuration: .init(versionConfiguration: .v5_0()),
             identifier: "publishWithSubscriptionIDV5",
             logger: self.logger
-        ) { connection, _ in
+        ) { connection in
             _ = await #expect(throws: MQTTPacketError.publishIncludesSubscription) {
                 try await connection.v5.publish(
                     to: "testOutOfRangeTopicAlias",
@@ -381,7 +381,7 @@ struct IntegrationV5Tests {
             configuration: .init(versionConfiguration: .v5_0()),
             identifier: "reAuthV5",
             logger: self.logger
-        ) { connection, _ in
+        ) { connection in
             struct EmptyAuthenticator: MQTTAuthenticator {
                 var methodName: String { "Empty" }
                 func authenticate(_ authPackage: MQTTAuthV5) async throws -> MQTTAuthV5 {
@@ -410,7 +410,7 @@ struct IntegrationV5Tests {
             configuration: .init(versionConfiguration: .v5_0()),
             identifier: "subscribeAllV5",
             logger: self.logger
-        ) { connection, _ in
+        ) { connection in
             try await connection.v5.subscribe(to: [.init(topicFilter: "#", qos: .exactlyOnce)]) { _ in
                 try await Task.sleep(for: .seconds(5))
             }
@@ -424,7 +424,7 @@ struct IntegrationV5Tests {
             configuration: .init(versionConfiguration: .v5_0()),
             identifier: "multiLevelWildcardV5",
             logger: self.logger
-        ) { connection, _ in
+        ) { connection in
             try await withThrowingTaskGroup { group in
                 group.addTask {
                     try await confirmation("multiLevelWildcard", expectedCount: 2) { receivedMessage in
@@ -475,7 +475,7 @@ struct IntegrationV5Tests {
             configuration: .init(versionConfiguration: .v5_0()),
             identifier: "singleLevelWildcardV5",
             logger: self.logger
-        ) { connection, _ in
+        ) { connection in
             try await withThrowingTaskGroup { group in
                 group.addTask {
                     try await confirmation("singleLevelWildcard", expectedCount: 2) { receivedMessage in
@@ -528,7 +528,7 @@ struct IntegrationV5Tests {
             configuration: .init(versionConfiguration: .v5_0()),
             identifier: "overlappingSubscriptionsV5",
             logger: self.logger
-        ) { connection, _ in
+        ) { connection in
             try await withThrowingTaskGroup { group in
                 group.addTask {
                     try await confirmation("overlappingSubscriptions", expectedCount: 2) { receivedMessage in
