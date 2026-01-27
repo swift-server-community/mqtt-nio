@@ -529,6 +529,25 @@ struct IntegrationV5Tests {
         }
     }
 
+    @Test("Maximum Packet Size", arguments: MQTTQoS.allCases)
+    func maximumPacketSize(qos: MQTTQoS) async throws {
+        try await MQTTConnection.withConnection(
+            address: .hostname(Self.hostname),
+            configuration: .init(versionConfiguration: .v5_0()),
+            identifier: "maximumPacketSizeV5QoS\(qos.rawValue)",
+            logger: self.logger
+        ) { connection in
+            let largePayload = ByteBufferAllocator().buffer(repeating: 0xFF, count: 150_000)
+            await #expect(throws: MQTTError.packetTooLarge) {
+                try await connection.v5.publish(
+                    to: "maximumPacketSizeV5/qos\(qos.rawValue)",
+                    payload: largePayload,
+                    qos: .atMostOnce
+                )
+            }
+        }
+    }
+
     let logger: Logger = {
         var logger = Logger(label: "MQTTNIOTests")
         logger.logLevel = .trace

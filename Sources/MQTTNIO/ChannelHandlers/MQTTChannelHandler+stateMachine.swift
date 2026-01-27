@@ -299,6 +299,18 @@ extension MQTTChannelHandler {
             }
         }
 
+        mutating func removeTask(_ task: MQTTTask) {
+            switch consume self.state {
+            case .uninitialized:
+                preconditionFailure("Cannot remove task when uninitialized")
+            case .initialized(var state):
+                state.tasks.tasks.removeAll { $0 === task }
+                self = .initialized(state)
+            case .closed:
+                preconditionFailure("Cannot remove task when closed")
+            }
+        }
+
         private static var uninitialized: Self {
             StateMachine(.uninitialized)
         }
