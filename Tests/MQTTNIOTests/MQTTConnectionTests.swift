@@ -42,7 +42,7 @@ struct MQTTConnectionTests {
         return try await withThrowingTaskGroup { group in
             group.addTask {
                 defer { connection.close() }
-                try await connection.sendConnect()
+                _ = try await connection.sendConnect()
                 try await clientOperation(connection)
             }
             group.addTask {
@@ -498,7 +498,7 @@ struct MQTTConnectionTests {
         return try await withThrowingTaskGroup { group in
             group.addTask {
                 defer { connection.close() }
-                try await connection.sendConnect()
+                _ = try await connection.sendConnect()
             }
             group.addTask {
                 // wait for connect

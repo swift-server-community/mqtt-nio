@@ -54,7 +54,7 @@ struct IntegrationV5Tests {
                         payload: ByteBufferAllocator().buffer(string: "Test payload"),
                         qos: .atLeastOnce,
                         retain: false,
-                        properties: .init()  // TODO: Do we need to set `.sessionExpiryInterval(0xFFFF_FFFF)` by default?
+                        properties: .init()
                     )
                 )
             ),
@@ -244,6 +244,41 @@ struct IntegrationV5Tests {
         }
     }
 
+    @Test("Session Present")
+    func sessionPresent() async throws {
+        // First connection with `cleanSession` set to true
+        // `sessionPresent` should be false as this is the first connection with this client identifier
+        try await MQTTConnection.withConnection(
+            address: .hostname(Self.hostname),
+            configuration: .init(
+                versionConfiguration:
+                    .v5_0(
+                        connectProperties: [.sessionExpiryInterval(3600)],
+                        disconnectProperties: [.sessionExpiryInterval(3600)]
+                    )
+            ),
+            identifier: "sessionPresentV5",
+            cleanSession: true,
+            logger: self.logger
+        ) { connection, sessionPresent in
+            #expect(sessionPresent == false)
+            try await connection.ping()
+        }
+
+        // Second connection with same client identifier and `cleanSession` set to false
+        // `sessionPresent` should be true as the previous connection set a session expiry interval
+        try await MQTTConnection.withConnection(
+            address: .hostname(Self.hostname),
+            configuration: .init(versionConfiguration: .v5_0()),
+            identifier: "sessionPresentV5",
+            cleanSession: false,
+            logger: self.logger
+        ) { connection, sessionPresent in
+            #expect(sessionPresent == true)
+            try await connection.ping()
+        }
+    }
+
     @Test("Bad Authentication Method")
     func badAuthenticationMethod() async throws {
         await #expect(throws: MQTTError.reasonError(.badAuthenticationMethod)) {
@@ -252,7 +287,7 @@ struct IntegrationV5Tests {
                 configuration: .init(versionConfiguration: .v5_0(connectProperties: [.authenticationMethod("test")])),
                 identifier: "badAuthenticationMethodV5",
                 logger: self.logger
-            ) { _ in }
+            ) { _, _ in }
         }
     }
 

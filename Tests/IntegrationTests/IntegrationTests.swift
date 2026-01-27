@@ -412,6 +412,45 @@ struct IntegrationTests {
         }
     }
 
+    @Test("Session Present")
+    func sessionPresent() async throws {
+        // First connection with `cleanSession` set to true
+        // `sessionPresent` should be false as this is the first connection with this client identifier
+        try await MQTTConnection.withConnection(
+            address: .hostname(Self.hostname),
+            identifier: "sessionPresent",
+            cleanSession: true,
+            logger: self.logger
+        ) { connection, sessionPresent in
+            #expect(sessionPresent == false)
+            try await connection.ping()
+        }
+
+        // Second connection with same client identifier and `cleanSession` set to false
+        // `sessionPresent` should be false as previous session was with `cleanSession` true
+        try await MQTTConnection.withConnection(
+            address: .hostname(Self.hostname),
+            identifier: "sessionPresent",
+            cleanSession: false,
+            logger: self.logger
+        ) { connection, sessionPresent in
+            #expect(sessionPresent == false)
+            try await connection.ping()
+        }
+
+        // Third connection with same client identifier and `cleanSession` set to false
+        // `sessionPresent` should be true as previous session was with `cleanSession` false
+        try await MQTTConnection.withConnection(
+            address: .hostname(Self.hostname),
+            identifier: "sessionPresent",
+            cleanSession: false,
+            logger: self.logger
+        ) { connection, sessionPresent in
+            #expect(sessionPresent == true)
+            try await connection.ping()
+        }
+    }
+
     @Test("Subscribe to All Topics", .disabled(if: ProcessInfo.processInfo.environment["CI"] != nil))
     func subscribeAll() async throws {
         try await MQTTConnection.withConnection(
