@@ -41,7 +41,7 @@ final class MQTTChannelHandler: ChannelDuplexHandler {
     private var pingreqCallback: NIOScheduledCallback?
 
     /// The Maximum Packet Size for this Server.
-    var maxPacketSize: UInt32?
+    var maxPacketSize: UInt32 = .max
 
     init(
         configuration: Configuration,
@@ -112,7 +112,7 @@ final class MQTTChannelHandler: ChannelDuplexHandler {
         var bb = context.channel.allocator.buffer(capacity: 0)
         do {
             try message.write(version: self.configuration.version, to: &bb)
-            guard bb.readableBytes <= (self.maxPacketSize ?? UInt32.max) else {
+            guard bb.readableBytes <= self.maxPacketSize else {
                 throw MQTTError.packetTooLarge
             }
             context.write(wrapOutboundOut(bb), promise: promise)
