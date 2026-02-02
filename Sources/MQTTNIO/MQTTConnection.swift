@@ -24,7 +24,7 @@ import Foundation
 import Network
 import NIOTransportServices
 #endif
-#if os(macOS) || os(Linux)
+#if !os(iOS)
 import NIOSSL
 #endif
 
@@ -116,7 +116,7 @@ final class MQTTConnection {
             switch client.configuration.tlsConfiguration {
             case .ts(let config):
                 options = try config.getNWProtocolTLSOptions()
-            #if os(macOS) || os(Linux)
+            #if !os(iOS)
             case .niossl:
                 throw MQTTError.wrongTLSConfig
             #endif
@@ -133,7 +133,7 @@ final class MQTTConnection {
         }
         #endif
 
-        #if os(macOS) || os(Linux)  // canImport(Network)
+        #if !os(iOS)  // canImport(Network)
         if let clientBootstrap = ClientBootstrap(validatingGroup: client.eventLoopGroup) {
             let tlsConfiguration: TLSConfiguration
             switch client.configuration.tlsConfiguration {

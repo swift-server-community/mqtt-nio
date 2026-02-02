@@ -21,7 +21,7 @@ import NIOConcurrencyHelpers
 import Network
 import NIOTransportServices
 #endif
-#if os(macOS) || os(Linux)
+#if !os(iOS)
 import NIOSSL
 #endif
 
@@ -125,7 +125,7 @@ public final class MQTTClient {
         case .createNew:
             #if canImport(Network)
             switch configuration.tlsConfiguration {
-            #if os(macOS) || os(Linux)
+            #if !os(iOS)
             case .niossl:
                 self.eventLoopGroup = MultiThreadedEventLoopGroup(numberOfThreads: 1)
             #endif

@@ -23,7 +23,7 @@ import XCTest
 #if canImport(Network)
 import NIOTransportServices
 #endif
-#if os(macOS) || os(Linux)
+#if !os(iOS)
 import NIOSSL
 #endif
 
@@ -756,7 +756,7 @@ final class MQTTNIOTests: XCTestCase {
         .joined(separator: "/")
 
     static var eventLoopGroupSingleton: EventLoopGroup {
-        #if os(Linux)
+        #if os(Linux) || os(Android)
         MultiThreadedEventLoopGroup.singleton
         #else
         // Return TS Eventloop for non-Linux builds, as we use TS TLS
@@ -766,7 +766,7 @@ final class MQTTNIOTests: XCTestCase {
 
     static var _tlsConfiguration: Result<MQTTClient.TLSConfigurationType, Error> = {
         do {
-            #if os(Linux)
+            #if os(Linux) || os(Android)
 
             let rootCertificate = try NIOSSLCertificate.fromPEMFile(MQTTNIOTests.rootPath + "/mosquitto/certs/ca.pem")
             let certificate = try NIOSSLCertificate.fromPEMFile(MQTTNIOTests.rootPath + "/mosquitto/certs/client.pem")
@@ -805,7 +805,7 @@ final class MQTTNIOTests: XCTestCase {
         switch self._tlsConfiguration {
         case .success(let config):
             switch config {
-            #if os(macOS) || os(Linux)
+            #if !os(iOS)
             case .niossl(let config):
                 var tlsConfig = TLSConfiguration.makeClientConfiguration()
                 tlsConfig.trustRoots = withTrustRoots == true ? (config.trustRoots ?? .default) : .default
