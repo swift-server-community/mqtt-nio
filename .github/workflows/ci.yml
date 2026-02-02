@@ -55,9 +55,9 @@ jobs:
     strategy:
       matrix:
         tag:
-          - swift:5.10
           - swift:6.0
           - swift:6.1
+          - swift:6.2
     container:
       image: ${{ matrix.tag }}
     services:
