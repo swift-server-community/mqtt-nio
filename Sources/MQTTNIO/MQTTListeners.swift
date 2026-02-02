@@ -19,7 +19,7 @@ final class MQTTListeners<ReturnType> {
 
     func notify(_ result: ReturnType) {
         let listeners = self.lock.withLock {
-            return self.listeners
+            self.listeners
         }
         for listener in listeners.values {
             listener(result)
