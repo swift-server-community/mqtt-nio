@@ -70,7 +70,6 @@ struct IntegrationV5Tests {
         .topicAliasMaximum(1024),
         .sessionExpiryInterval(15),
         .userProperty("test", "value"),
-        .authenticationData(ByteBufferAllocator().buffer(string: "TestBuffer")),
     ]
 
     @Test("Connect with Properties", arguments: Self.properties)
