@@ -68,7 +68,7 @@ jobs:
       image: ${{ matrix.tag }}
     services:
       mosquitto:
-        image: eclipse-mosquitto
+        image: eclipse-mosquitto:2.0.22
         options: --name mosquitto
         ports:
           - 1883:1883
