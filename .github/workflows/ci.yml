@@ -70,7 +70,8 @@ jobs:
       image: ${{ matrix.tag }}
     services:
       mosquitto:
-        image: eclipse-mosquitto
+        # Use mosquitto 2.0.22 because we can't get 2.1.0 to work inside a GH action
+        image: eclipse-mosquitto:2.0.22
         options: --name mosquitto
         ports:
           - 1883:1883
