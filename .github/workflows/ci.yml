@@ -103,3 +103,17 @@ jobs:
       uses: vapor/swift-codecov-action@v0.3
       with:
         codecov_token: ${{ secrets.CODECOV_TOKEN }}
+  android:
+    name: Android
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+    steps:
+      - name: "Checkout"
+        uses: actions/checkout@v6
+      - name: "Build for Android"
+        uses: skiptools/swift-android-action@v2
+        with:
+          build-tests: true
+          run-tests: false
