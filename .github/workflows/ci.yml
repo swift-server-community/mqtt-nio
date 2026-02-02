@@ -4,9 +4,11 @@ on:
    push:
      branches:
      - main
+     - v3
    pull_request:
      branches:
      - main
+     - v3
    release:
      types: [published]
    workflow_dispatch:
@@ -15,10 +17,19 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  macos:
-    runs-on: macOS-latest
+  macos-unit:
+    strategy:
+      matrix:
+        macos-version:
+          - macos-15
+          - macos-26
+    runs-on: ${{ matrix.macos-version }}
     timeout-minutes: 15
     steps:
+    - name: Select appropriate Xcode version
+      uses: maxim-lobanov/setup-xcode@v1
+      with:
+        xcode-version: latest-stable
     - name: Checkout
       uses: actions/checkout@v6
     - name: Install and run Mosquitto
@@ -27,29 +38,26 @@ jobs:
         mosquitto -d -c mosquitto/config/mosquitto.conf
     - name: SPM tests
       run: swift test --enable-code-coverage
-    - name: Convert coverage files
-      run: |
-        xcrun llvm-cov export -format "lcov" \
-          .build/debug/mqtt-nioPackageTests.xctest/Contents/MacOs/mqtt-nioPackageTests \
-          -ignore-filename-regex="\/Tests\/" \
-          -instr-profile=.build/debug/codecov/default.profdata > info.lcov
-    - name: Upload to codecov.io
-      uses: codecov/codecov-action@v4
+    - name: Upload coverage data
+      uses: vapor/swift-codecov-action@v0.3
       with:
-        files: info.lcov
-        token: ${{ secrets.CODECOV_TOKEN }}
+        codecov_token: ${{ secrets.CODECOV_TOKEN }}
 
-  ios:
-    runs-on: macOS-latest
+  ios-build:
+    runs-on: macos-latest
     timeout-minutes: 15
     steps:
+    - name: Select appropriate Xcode version
+      uses: maxim-lobanov/setup-xcode@v1
+      with:
+        xcode-version: latest-stable
     - name: Checkout
       uses: actions/checkout@v6
     - name: Xcodebuild
       run: |
-        xcodebuild build -scheme mqtt-nio -destination 'platform=iOS Simulator,name=iPhone 16'
+        xcodebuild build -scheme mqtt-nio -destination 'platform=iOS Simulator,name=iPhone 17'
 
-  linux:
+  linux-unit:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     strategy:
@@ -74,8 +82,9 @@ jobs:
           - ${{ github.workspace }}/mosquitto/config:/mosquitto/config
           - ${{ github.workspace }}/mosquitto/certs:/mosquitto/certs
           - ${{ github.workspace }}/mosquitto/socket:/mosquitto/socket
-
     steps:
+    - name: Install curl
+      run: apt-get update -yq && apt-get install -y curl
     - name: Checkout
       uses: actions/checkout@v6
     - name: Restart Mosquitto
@@ -89,15 +98,8 @@ jobs:
       env:
         MOSQUITTO_SERVER: mosquitto
       run: |
-        swift test --enable-test-discovery --enable-code-coverage
-    - name: Convert coverage files
-      run: |
-        llvm-cov export -format="lcov" \
-          .build/debug/mqtt-nioPackageTests.xctest \
-          -ignore-filename-regex="\/Tests\/" \
-          -instr-profile .build/debug/codecov/default.profdata > info.lcov
-    - name: Upload to codecov.io
-      uses: codecov/codecov-action@v4
+        swift test --enable-code-coverage
+    - name: Upload coverage data
+      uses: vapor/swift-codecov-action@v0.3
       with:
-        files: info.lcov
-        token: ${{ secrets.CODECOV_TOKEN }}
+        codecov_token: ${{ secrets.CODECOV_TOKEN }}
