@@ -17,8 +17,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  macos-build:
-    name: macOS Build
+  macos-unit:
+    name: macOS Unit Tests
     strategy:
       matrix:
         macos-version:
@@ -59,8 +59,8 @@ jobs:
       run: |
         xcodebuild build -scheme mqtt-nio -destination 'platform=iOS Simulator,name=iPhone 17'
 
-  linux-build:
-    name: Linux Build
+  linux-unit:
+    name: Linux Unit Tests
     runs-on: ubuntu-latest
     timeout-minutes: 15
     strategy:
