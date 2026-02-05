@@ -26,6 +26,8 @@ public final class MQTTSession: Sendable {
         self.inflightPackets.withLock { $0.count }
     }
 
+    // TODO: sessionExpiryInterval
+
     /// Initialize a new ``MQTTSession`` with a unique client identifier
     ///
     /// - Parameter clientID: Client identifier to use for this session. This must be unique.

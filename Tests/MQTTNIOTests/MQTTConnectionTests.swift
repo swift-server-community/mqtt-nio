@@ -23,8 +23,7 @@ import Testing
 struct MQTTConnectionTests {
     func withTestMQTTServer(
         configuration: MQTTConnectionConfiguration = .init(),
-        cleanSession: Bool = true,
-        identifier: String = UUID().uuidString,
+        session: MQTTSession? = nil,
         logger: Logger = Logger(label: "test"),
         client clientOperation: @Sendable @escaping (MQTTConnection) async throws -> Void,
         server serverOperation: @Sendable @escaping (NIOAsyncTestingChannel) async throws -> Void,
@@ -33,23 +32,24 @@ struct MQTTConnectionTests {
         let connection = try await MQTTConnection.setupChannelAndConnect(
             channel,
             configuration: configuration,
-            cleanSession: cleanSession,
-            identifier: identifier,
+            session: session,
             logger: logger
         )
         let version = configuration.version
         return try await withThrowingTaskGroup { group in
             group.addTask {
                 defer { connection.close() }
-                _ = try await connection.sendConnect()
+                _ = try await connection.sendConnect(clientID: session?.clientID ?? "", cleanSession: session == nil)
                 try await clientOperation(connection)
             }
             group.addTask {
                 // wait for connect
                 let packet = try await channel.waitForOutboundPacket()
                 let connect = try MQTTConnectPacket.read(version: configuration.version, from: packet)
-                #expect(connect.cleanSession == cleanSession)
-                #expect(connect.clientIdentifier == identifier)
+                #expect(connect.cleanSession == (session == nil))
+                if let session {
+                    #expect(connect.clientIdentifier == session.clientID)
+                }
                 if case .v5_0(var connectProperties, _, _, let authWorkflow) = configuration.versionConfiguration {
                     if let authWorkflow {
                         connectProperties.append(.authenticationMethod(authWorkflow.methodName))
@@ -497,7 +497,7 @@ struct MQTTConnectionTests {
         return try await withThrowingTaskGroup { group in
             group.addTask {
                 defer { connection.close() }
-                _ = try await connection.sendConnect()
+                _ = try await connection.sendConnect(clientID: "", cleanSession: true)
             }
             group.addTask {
                 // wait for connect
