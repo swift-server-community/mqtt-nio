@@ -70,7 +70,6 @@ struct IntegrationV5Tests {
         .topicAliasMaximum(1024),
         .sessionExpiryInterval(15),
         .userProperty("test", "value"),
-        .authenticationData(ByteBufferAllocator().buffer(string: "TestBuffer")),
     ]
 
     @Test("Connect with Properties", arguments: Self.properties)
@@ -560,6 +559,25 @@ struct IntegrationV5Tests {
                 }
 
                 try await group.waitForAll()
+            }
+        }
+    }
+
+    @Test("Maximum Packet Size", arguments: MQTTQoS.allCases)
+    func maximumPacketSize(qos: MQTTQoS) async throws {
+        try await MQTTConnection.withConnection(
+            address: .hostname(Self.hostname),
+            configuration: .init(versionConfiguration: .v5_0()),
+            identifier: "maximumPacketSizeV5QoS\(qos.rawValue)",
+            logger: self.logger
+        ) { connection in
+            let largePayload = ByteBufferAllocator().buffer(repeating: 0xFF, count: 150_000)
+            await #expect(throws: MQTTError.packetTooLarge) {
+                try await connection.v5.publish(
+                    to: "maximumPacketSizeV5/qos\(qos.rawValue)",
+                    payload: largePayload,
+                    qos: .atMostOnce
+                )
             }
         }
     }

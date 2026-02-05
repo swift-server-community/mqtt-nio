@@ -724,7 +724,7 @@ public final actor MQTTConnection: Sendable {
             }
             // max packet size
             if case .maximumPacketSize(let maxPacketSize) = property {
-                self.connectionParameters.maxPacketSize = Int(maxPacketSize)
+                self.channelHandler.maxPacketSize = maxPacketSize
             }
             // supports retain
             if case .retainAvailable(let retainValue) = property, let retainAvailable = (retainValue != 0 ? true : false) {
@@ -874,7 +874,6 @@ extension MQTTConnection {
     /// Connection parameters. Limits set by either client or server.
     struct ConnectionParameters {
         var maxQoS: MQTTQoS = .exactlyOnce
-        var maxPacketSize: Int?
         var retainAvailable: Bool = true
         var maxTopicAlias: UInt16 = 65535
     }

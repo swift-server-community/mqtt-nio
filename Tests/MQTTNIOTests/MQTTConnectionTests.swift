@@ -26,6 +26,7 @@ struct MQTTConnectionTests {
         cleanSession: Bool = true,
         identifier: String = UUID().uuidString,
         logger: Logger = Logger(label: "test"),
+        connackProperties: MQTTProperties = .init(),
         client clientOperation: @Sendable @escaping (MQTTConnection) async throws -> Void,
         server serverOperation: @Sendable @escaping (NIOAsyncTestingChannel) async throws -> Void,
     ) async throws {
@@ -57,7 +58,7 @@ struct MQTTConnectionTests {
                     #expect(connectProperties == connect.properties)
                 }
 
-                let connack = MQTTConnAckPacket(returnCode: 0, acknowledgeFlags: 1, properties: .init())
+                let connack = MQTTConnAckPacket(returnCode: 0, acknowledgeFlags: 1, properties: connackProperties)
                 try await channel.writeInboundPacket(connack, version: version)
 
                 try await serverOperation(channel)
@@ -648,6 +649,23 @@ struct MQTTConnectionTests {
         } server: { channel in
             _ = try await channel.waitForOutboundWrite(as: ByteBuffer.self)
             cont.yield()
+        }
+    }
+
+    @Test("Maximum Packet Size", arguments: MQTTQoS.allCases)
+    func maximumPacketSize(qos: MQTTQoS) async throws {
+        var logger = Logger(label: "maximumPacketSize")
+        logger.logLevel = .trace
+
+        try await withTestMQTTServer(
+            configuration: .init(versionConfiguration: .v5_0()),
+            logger: logger,
+            connackProperties: [.maximumPacketSize(50)]
+        ) { connection in
+            await #expect(throws: MQTTError.packetTooLarge) {
+                try await connection.publish(to: "foo", payload: ByteBuffer(repeating: 0xFF, count: 100), qos: qos)
+            }
+        } server: { _ in
         }
     }
 }
