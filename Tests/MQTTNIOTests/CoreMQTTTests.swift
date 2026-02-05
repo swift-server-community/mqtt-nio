@@ -141,13 +141,15 @@ extension MQTTError: Equatable {
             (.badResponse, .badResponse),
             (.unrecognisedPacketType, .unrecognisedPacketType),
             (.authWorkflowRequired, .authWorkflowRequired),
-            (.serverDisconnection, .serverDisconnection),
-            (.cancelledTask, .cancelledTask):
+            (.cancelledTask, .cancelledTask),
+            (.packetTooLarge, .packetTooLarge):
             true
         case (.connectionError(let lhsValue), .connectionError(let rhsValue)):
             lhsValue == rhsValue
         case (.reasonError(let lhsValue), .reasonError(let rhsValue)):
             lhsValue == rhsValue
+        case (.serverDisconnection(let lhsValue), .serverDisconnection(let rhsValue)):
+            lhsValue.reason == rhsValue.reason && lhsValue.properties == rhsValue.properties
         case (.versionMismatch(let expectedLHS, let actualLHS), .versionMismatch(let expectedRHS, let actualRHS)):
             expectedLHS == expectedRHS && actualLHS == actualRHS
         case (.invalidTopicFilter(let lhsValue), .invalidTopicFilter(let rhsValue)):
