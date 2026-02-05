@@ -17,7 +17,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  macos-unit:
+  macos-build:
+    name: macOS Build
     strategy:
       matrix:
         macos-version:
@@ -44,6 +45,7 @@ jobs:
         codecov_token: ${{ secrets.CODECOV_TOKEN }}
 
   ios-build:
+    name: iOS Build
     runs-on: macos-latest
     timeout-minutes: 15
     steps:
@@ -57,7 +59,8 @@ jobs:
       run: |
         xcodebuild build -scheme mqtt-nio -destination 'platform=iOS Simulator,name=iPhone 17'
 
-  linux-unit:
+  linux-build:
+    name: Linux Build
     runs-on: ubuntu-latest
     timeout-minutes: 15
     strategy:
@@ -101,3 +104,18 @@ jobs:
       uses: vapor/swift-codecov-action@v0.3
       with:
         codecov_token: ${{ secrets.CODECOV_TOKEN }}
+  
+  android-build:
+    name: Android Build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+    steps:
+      - name: "Checkout"
+        uses: actions/checkout@v6
+      - name: "Build for Android"
+        uses: skiptools/swift-android-action@v2
+        with:
+          build-tests: true
+          run-tests: false

@@ -23,7 +23,7 @@ import Testing
 #if canImport(Network)
 import NIOTransportServices
 #endif
-#if os(macOS) || os(Linux)
+#if os(macOS) || os(Linux) || os(Android)
 import NIOSSL
 #endif
 
