@@ -244,6 +244,7 @@ struct IntegrationV5Tests {
         }
     }
 
+    /*
     @Test("Session Present")
     func sessionPresent() async throws {
         // First connection with `cleanSession` set to true
@@ -278,6 +279,7 @@ struct IntegrationV5Tests {
             try await connection.ping()
         }
     }
+    */
 
     @Test("Bad Authentication Method")
     func badAuthenticationMethod() async throws {

@@ -45,12 +45,11 @@ public final actor MQTTConnection: Sendable {
     let channelHandler: MQTTChannelHandler
     let configuration: MQTTConnectionConfiguration
     let globalPacketId = Atomic<UInt16>(1)
-    /// Inflight messages
-    private var inflight: MQTTInflight
     let isClosed: Atomic<Bool>
 
     var connectionParameters = ConnectionParameters()
     let cleanSession: Bool
+    var session: MQTTSession? = nil
 
     /// Initialize connection
     private init(
@@ -69,17 +68,15 @@ public final actor MQTTConnection: Sendable {
         self.cleanSession = cleanSession
         self.identifier = identifier
         self.logger = logger
-        self.inflight = .init()
         self.isClosed = .init(false)
     }
 
-    /// Connect to MQTT server and run operations using the connection and then close it.
+    /// Connect to MQTT server with a clean session and run operations using the connection and then close it.
     ///
     /// - Parameters:
     ///   - address: Internet address of the MQTT server.
     ///   - configuration: Configuration of the MQTT connection.
     ///   - identifier: Client identifier for the server. This must be unique.
-    ///   - cleanSession: Whether to start a clean session.
     ///   - eventLoop: EventLoop to run the connection on.
     ///   - logger: Logger to use for the connection.
     ///   - operation: Closure handling the MQTT connection.
@@ -88,16 +85,81 @@ public final actor MQTTConnection: Sendable {
     public static func withConnection<Value>(
         address: MQTTServerAddress,
         configuration: MQTTConnectionConfiguration = .init(),
-        identifier: String,
-        cleanSession: Bool = true,
+        identifier: String = "",
         eventLoop: any EventLoop = MultiThreadedEventLoopGroup.singleton.any(),
         logger: Logger,
         operation: (MQTTConnection, Bool) async throws -> sending Value
     ) async throws -> sending Value {
         let (connection, sessionPresent) = try await self.connect(
             address: address,
+            session: nil,
             identifier: identifier,
-            cleanSession: cleanSession,
+            cleanSession: true,
+            configuration: configuration,
+            eventLoop: eventLoop,
+            logger: logger
+        )
+        defer { connection.close() }
+        return try await operation(connection, sessionPresent)
+    }
+
+    /// Connect to MQTT server with a clean session and run operations using the connection and then close it.
+    ///
+    /// - Parameters:
+    ///   - address: Internet address of the MQTT server.
+    ///   - configuration: Configuration of the MQTT connection.
+    ///   - identifier: Client identifier for the server. This must be unique.
+    ///   - eventLoop: EventLoop to run the connection on.
+    ///   - logger: Logger to use for the connection.
+    ///   - operation: Closure handling the MQTT connection.
+    /// - Returns: Value returned from the operation closure.
+    public static func withConnection<Value>(
+        address: MQTTServerAddress,
+        configuration: MQTTConnectionConfiguration = .init(),
+        identifier: String = "",
+        eventLoop: any EventLoop = MultiThreadedEventLoopGroup.singleton.any(),
+        logger: Logger,
+        operation: (MQTTConnection) async throws -> sending Value
+    ) async throws -> sending Value {
+        try await Self.withConnection(
+            address: address,
+            configuration: configuration,
+            identifier: identifier,
+            eventLoop: eventLoop,
+            logger: logger
+        ) { connection, _ in
+            try await operation(connection)
+        }
+    }
+
+    private func updateSession(_ session: MQTTSession) {
+        self.session = session
+    }
+
+    /// Connect to MQTT server and run operations using the connection and then close it.
+    ///
+    /// - Parameters:
+    ///   - address: Internet address of the MQTT server.
+    ///   - configuration: Configuration of the MQTT connection.
+    ///   - session: The ``MQTTSession`` to use for the connection.
+    ///   - eventLoop: EventLoop to run the connection on.
+    ///   - logger: Logger to use for the connection.
+    ///   - operation: Closure handling the MQTT connection.
+    ///     The closure receives the ``MQTTConnection`` and a `Bool` indicating if there was a previous session present.
+    /// - Returns: Value returned from the operation closure.
+    public static func withConnection<Value>(
+        address: MQTTServerAddress,
+        configuration: MQTTConnectionConfiguration = .init(),
+        session: MQTTSession,
+        eventLoop: any EventLoop = MultiThreadedEventLoopGroup.singleton.any(),
+        logger: Logger,
+        operation: (MQTTConnection, Bool) async throws -> sending Value
+    ) async throws -> sending Value {
+        let (connection, sessionPresent) = try await self.connect(
+            address: address,
+            session: session,
+            identifier: session.clientID,
+            cleanSession: false,
             configuration: configuration,
             eventLoop: eventLoop,
             logger: logger
@@ -111,8 +173,7 @@ public final actor MQTTConnection: Sendable {
     /// - Parameters:
     ///   - address: Internet address of the MQTT server.
     ///   - configuration: Configuration of the MQTT connection.
-    ///   - identifier: Client identifier for the server. This must be unique.
-    ///   - cleanSession: Whether to start a clean session.
+    ///   - session: The ``MQTTSession`` to use for the connection.
     ///   - eventLoop: EventLoop to run the connection on.
     ///   - logger: Logger to use for the connection.
     ///   - operation: Closure handling the MQTT connection.
@@ -120,8 +181,7 @@ public final actor MQTTConnection: Sendable {
     public static func withConnection<Value>(
         address: MQTTServerAddress,
         configuration: MQTTConnectionConfiguration = .init(),
-        identifier: String,
-        cleanSession: Bool = true,
+        session: MQTTSession,
         eventLoop: any EventLoop = MultiThreadedEventLoopGroup.singleton.any(),
         logger: Logger,
         operation: (MQTTConnection) async throws -> sending Value
@@ -129,8 +189,7 @@ public final actor MQTTConnection: Sendable {
         try await Self.withConnection(
             address: address,
             configuration: configuration,
-            identifier: identifier,
-            cleanSession: cleanSession,
+            session: session,
             eventLoop: eventLoop,
             logger: logger
         ) { connection, _ in
@@ -173,6 +232,7 @@ public final actor MQTTConnection: Sendable {
     ///
     /// - Parameters:
     ///   - address: Internet address of the MQTT server.
+    ///   - session: Optional ``MQTTSession`` to use for the connection.
     ///   - identifier: Client identifier for the server.
     ///   - cleanSession: Whether to start a clean session.
     ///   - configuration: Configuration of the MQTT connection.
@@ -182,6 +242,7 @@ public final actor MQTTConnection: Sendable {
     /// - Returns: Tuple of the ``MQTTConnection`` and a `Bool` indicating if there was a previous session present.
     private static func connect(
         address: MQTTServerAddress,
+        session: MQTTSession?,
         identifier: String,
         cleanSession: Bool,
         configuration: MQTTConnectionConfiguration,
@@ -217,6 +278,9 @@ public final actor MQTTConnection: Sendable {
             }
         let connection = try await future.get()
         try await connection.waitOnInitialized()
+        if let session {
+            await connection.updateSession(session)
+        }
         let sessionPresent = try await connection.sendConnect()
         return (connection, sessionPresent)
     }
@@ -619,7 +683,7 @@ public final actor MQTTConnection: Sendable {
             if connack.sessionPresent {
                 try await self.resendOnRestart()
             } else {
-                self.inflight.clear()
+                self.session?.clearInflight()
             }
             let ack = try self.processConnack(connack)
             return ack
@@ -667,8 +731,8 @@ public final actor MQTTConnection: Sendable {
 
     /// Resend PUBLISH and PUBREL messages
     func resendOnRestart() async throws {
-        let inflight = self.inflight.packets
-        self.inflight.clear()
+        let inflight = self.session?.inflightPackets.withLock { $0 } ?? []
+        self.session?.clearInflight()
         for packet in inflight {
             switch packet {
             case let publish as MQTTPublishPacket:
@@ -805,12 +869,12 @@ public final actor MQTTConnection: Sendable {
             return nil
         }
 
-        self.inflight.add(packet: packet)
+        self.session?.addInflight(packet: packet)
         let ackPacket: any MQTTPacket
         do {
             ackPacket = try await self.sendMessage(packet) { message in
                 guard message.packetId == packet.packetId else { return false }
-                self.inflight.remove(id: packet.packetId)
+                self.session?.removeInflight(id: packet.packetId)
                 if packet.publish.qos == .atLeastOnce {
                     guard message.type == .PUBACK else {
                         throw MQTTError.unexpectedMessage
@@ -832,7 +896,7 @@ public final actor MQTTConnection: Sendable {
             if case MQTTError.serverDisconnection(let ack) = error,
                 ack.reason == .malformedPacket
             {
-                self.inflight.remove(id: packet.packetId)
+                self.session?.removeInflight(id: packet.packetId)
             }
             throw error
         }
@@ -846,11 +910,11 @@ public final actor MQTTConnection: Sendable {
     }
 
     func pubRel(packet: MQTTPubAckPacket) async throws -> any MQTTPacket {
-        self.inflight.add(packet: packet)
+        self.session?.addInflight(packet: packet)
         return try await self.sendMessage(packet) { message in
             guard message.packetId == packet.packetId else { return false }
             guard message.type != .PUBREC else { return false }
-            self.inflight.remove(id: packet.packetId)
+            self.session?.removeInflight(id: packet.packetId)
             guard message.type == .PUBCOMP else {
                 throw MQTTError.unexpectedMessage
             }
