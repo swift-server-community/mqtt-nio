@@ -14,7 +14,7 @@
 import NIO
 import NIOHTTP1
 
-#if !os(iOS)
+#if os(macOS) || os(Linux) || os(Android)
 import NIOSSL
 #endif
 
@@ -32,7 +32,7 @@ extension MQTTClient {
     /// by this variable. It is recommended on iOS you use NIO Transport Services.
     public enum TLSConfigurationType {
         /// NIOSSL TLS configuration
-        #if !os(iOS)
+        #if os(macOS) || os(Linux) || os(Android)
         case niossl(TLSConfiguration)
         #endif
         #if canImport(Network)

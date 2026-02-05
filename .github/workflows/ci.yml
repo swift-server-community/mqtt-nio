@@ -104,8 +104,9 @@ jobs:
       uses: vapor/swift-codecov-action@v0.3
       with:
         codecov_token: ${{ secrets.CODECOV_TOKEN }}
-  android:
-    name: Android
+
+  android-build:
+    name: Android Build
     runs-on: ubuntu-latest
     timeout-minutes: 15
     strategy:

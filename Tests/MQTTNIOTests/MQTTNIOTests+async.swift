@@ -20,7 +20,7 @@ import XCTest
 
 @testable import MQTTNIO
 
-#if !os(iOS)
+#if os(macOS) || os(Linux) || os(Android)
 import NIOSSL
 #endif
 

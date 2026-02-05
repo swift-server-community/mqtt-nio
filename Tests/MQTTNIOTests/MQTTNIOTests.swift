@@ -23,7 +23,7 @@ import XCTest
 #if canImport(Network)
 import NIOTransportServices
 #endif
-#if !os(iOS)
+#if os(macOS) || os(Linux) || os(Android)
 import NIOSSL
 #endif
 
@@ -791,7 +791,7 @@ final class MQTTNIOTests: XCTestCase {
         switch self._tlsConfiguration {
         case .success(let config):
             switch config {
-            #if !os(iOS)
+            #if os(macOS) || os(Linux) || os(Android)
             case .niossl(let config):
                 var tlsConfig = TLSConfiguration.makeClientConfiguration()
                 tlsConfig.trustRoots = withTrustRoots == true ? (config.trustRoots ?? .default) : .default
