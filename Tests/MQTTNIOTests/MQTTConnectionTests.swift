@@ -25,6 +25,7 @@ struct MQTTConnectionTests {
         configuration: MQTTConnectionConfiguration = .init(),
         session: MQTTSession? = nil,
         logger: Logger = Logger(label: "test"),
+        connackProperties: MQTTProperties = .init(),
         client clientOperation: @Sendable @escaping (MQTTConnection) async throws -> Void,
         server serverOperation: @Sendable @escaping (NIOAsyncTestingChannel) async throws -> Void,
     ) async throws {
@@ -57,7 +58,7 @@ struct MQTTConnectionTests {
                     #expect(connectProperties == connect.properties)
                 }
 
-                let connack = MQTTConnAckPacket(returnCode: 0, acknowledgeFlags: 1, properties: .init())
+                let connack = MQTTConnAckPacket(returnCode: 0, acknowledgeFlags: 1, properties: connackProperties)
                 try await channel.writeInboundPacket(connack, version: version)
 
                 try await serverOperation(channel)
@@ -484,6 +485,78 @@ struct MQTTConnectionTests {
         }
     }
 
+    @Test("Multiple Subscription Identifiers")
+    func multipleSubscriptionIDs() async throws {
+        var logger = Logger(label: "multipleSubscriptionIDs")
+        logger.logLevel = .trace
+        let subscribeInfos: [MQTTSubscribeInfo] = [
+            .init(topicFilter: "test/topic/#", qos: .atMostOnce),
+            .init(topicFilter: "test/#", qos: .atMostOnce),
+            .init(topicFilter: "test/topic", qos: .atMostOnce),
+        ]
+
+        try await withTestMQTTServer(configuration: .init(versionConfiguration: .v5_0()), logger: logger) { connection in
+            try await withThrowingTaskGroup { group in
+                for subscribeInfo in subscribeInfos {
+                    group.addTask {
+                        try await connection.subscribe(to: [subscribeInfo]) { subscription in
+                            var iterator = subscription.makeAsyncIterator()
+                            _ = try #require(try await iterator.next())
+                        }
+                    }
+                }
+                try await group.waitForAll()
+            }
+        } server: { channel in
+            var subscriptionIds: [UInt32] = []
+            for _ in subscribeInfos {
+                // receive SUBSCRIBE
+                let packet = try await channel.waitForOutboundPacket()
+                let subscribePacket = try MQTTSubscribePacket.read(version: .v5_0, from: packet)
+                // collect Subscription Identifier
+                let properties = try #require(subscribePacket.properties)
+                let subscriptionId: UInt32 = try #require(
+                    {
+                        for property in properties {
+                            if case .subscriptionIdentifier(let id) = property {
+                                return id
+                            }
+                        }
+                        return nil
+                    }()
+                )
+                subscriptionIds.append(subscriptionId)
+                // send SUBACK
+                let suback = MQTTSubAckPacket(type: .SUBACK, packetId: subscribePacket.packetId, reasons: [.success])
+                try await channel.writeInboundPacket(suback, version: .v5_0)
+            }
+            try #require(subscriptionIds.count == subscribeInfos.count)
+
+            // send PUBLISH
+            let publish = MQTTPublishPacket(
+                publish: .init(
+                    qos: .atMostOnce,
+                    retain: false,
+                    topicName: "wrongTopic/usesSubIDs",
+                    payload: ByteBuffer(string: "TestPayload2"),
+                    // Multiple Subscription Identifiers will be included if the publication is the result of a match to more than one subscription
+                    properties: .init(subscriptionIds.map { .subscriptionIdentifier($0) })
+                ),
+                packetId: 32769
+            )
+            try await channel.writeInboundPacket(publish, version: .v5_0)
+
+            for _ in subscribeInfos {
+                // receive UNSUBSCRIBE
+                let packet = try await channel.waitForOutboundPacket()
+                let unsubscribePacket = try MQTTUnsubscribePacket.read(version: .v5_0, from: packet)
+                // send SUBACK
+                let unsuback = MQTTSubAckPacket(type: .UNSUBACK, packetId: unsubscribePacket.packetId, reasons: [.success])
+                try await channel.writeInboundPacket(unsuback, version: .v5_0)
+            }
+        }
+    }
+
     @Test
     func testAuthWorkflow() async throws {
         var logger = Logger(label: "testAuthWorkflow")
@@ -644,6 +717,23 @@ struct MQTTConnectionTests {
         }
 
         #expect(session.inflightPacketsCount == 0)
+    }
+
+    @Test("Maximum Packet Size", arguments: MQTTQoS.allCases)
+    func maximumPacketSize(qos: MQTTQoS) async throws {
+        var logger = Logger(label: "maximumPacketSize")
+        logger.logLevel = .trace
+
+        try await withTestMQTTServer(
+            configuration: .init(versionConfiguration: .v5_0()),
+            logger: logger,
+            connackProperties: [.maximumPacketSize(50)]
+        ) { connection in
+            await #expect(throws: MQTTError.packetTooLarge) {
+                try await connection.publish(to: "foo", payload: ByteBuffer(repeating: 0xFF, count: 100), qos: qos)
+            }
+        } server: { _ in
+        }
     }
 }
 

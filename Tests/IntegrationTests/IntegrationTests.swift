@@ -23,7 +23,7 @@ import Testing
 #if canImport(Network)
 import NIOTransportServices
 #endif
-#if os(macOS) || os(Linux)
+#if os(macOS) || os(Linux) || os(Android)
 import NIOSSL
 #endif
 
@@ -107,7 +107,7 @@ struct IntegrationTests {
             .joined(separator: "/")
 
         static var eventLoopGroupSingleton: EventLoopGroup {
-            #if os(Linux)
+            #if os(Linux) || os(Android)
             MultiThreadedEventLoopGroup.singleton
             #else
             // Return TS Eventloop for non-Linux builds, as we use TS TLS
@@ -183,7 +183,7 @@ struct IntegrationTests {
             withTrustRoots: Bool = true,
             withClientKey: Bool = true
         ) throws -> MQTTConnectionConfiguration.TLS.Configuration {
-            #if os(Linux)
+            #if os(Linux) || os(Android)
             let rootCertificate = try NIOSSLCertificate.fromPEMFile(Self.rootPath + "/mosquitto/certs/ca.pem")
             let certificate = try NIOSSLCertificate.fromPEMFile(Self.rootPath + "/mosquitto/certs/client.pem")
             let privateKey = try NIOSSLPrivateKey(file: Self.rootPath + "/mosquitto/certs/client.key", format: .pem)
@@ -766,7 +766,7 @@ struct IntegrationTests {
         .joined(separator: "/")
 
     static var eventLoopGroupSingleton: EventLoopGroup {
-        #if os(Linux)
+        #if os(Linux) || os(Android)
         MultiThreadedEventLoopGroup.singleton
         #else
         // Return TS Eventloop for non-Linux builds, as we use TS TLS
@@ -790,13 +790,15 @@ extension MQTTError: Equatable {
             (.badResponse, .badResponse),
             (.unrecognisedPacketType, .unrecognisedPacketType),
             (.authWorkflowRequired, .authWorkflowRequired),
-            (.serverDisconnection, .serverDisconnection),
-            (.cancelledTask, .cancelledTask):
+            (.cancelledTask, .cancelledTask),
+            (.packetTooLarge, .packetTooLarge):
             true
         case (.connectionError(let lhsValue), .connectionError(let rhsValue)):
             lhsValue == rhsValue
         case (.reasonError(let lhsValue), .reasonError(let rhsValue)):
             lhsValue == rhsValue
+        case (.serverDisconnection(let lhsValue), .serverDisconnection(let rhsValue)):
+            lhsValue.reason == rhsValue.reason && lhsValue.properties == rhsValue.properties
         case (.versionMismatch(let expectedLHS, let actualLHS), .versionMismatch(let expectedRHS, let actualRHS)):
             expectedLHS == expectedRHS && actualLHS == actualRHS
         case (.invalidTopicFilter(let lhsValue), .invalidTopicFilter(let rhsValue)):

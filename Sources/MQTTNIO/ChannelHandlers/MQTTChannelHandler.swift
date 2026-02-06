@@ -29,7 +29,7 @@ final class MQTTChannelHandler: ChannelDuplexHandler {
 
     private let eventLoop: any EventLoop
     @usableFromInline
-    /*private*/ var stateMachine: StateMachine<ChannelHandlerContext>
+    var stateMachine: StateMachine<ChannelHandlerContext>
     private var subscriptions: MQTTSubscriptions
 
     private var decoder: NIOSingleStepByteToMessageProcessor<ByteToMQTTMessageDecoder>
@@ -39,6 +39,9 @@ final class MQTTChannelHandler: ChannelDuplexHandler {
     private var pingreqTimeout: TimeAmount
     private var lastPingreqEventTime: NIODeadline
     private var pingreqCallback: NIOScheduledCallback?
+
+    /// The Maximum Packet Size for this Server.
+    var maxPacketSize: UInt32 = .max
 
     init(
         configuration: Configuration,
@@ -106,14 +109,17 @@ final class MQTTChannelHandler: ChannelDuplexHandler {
 
     func write(context: ChannelHandlerContext, data: NIOAny, promise: EventLoopPromise<Void>?) {
         let message = unwrapOutboundIn(data)
-        self.logger.trace("MQTT Out", metadata: ["mqtt_message": .string("\(message)"), "mqtt_packet_id": .string("\(message.packetId)")])
         var bb = context.channel.allocator.buffer(capacity: 0)
         do {
             try message.write(version: self.configuration.version, to: &bb)
+            guard bb.readableBytes <= self.maxPacketSize else {
+                throw MQTTError.packetTooLarge
+            }
             context.write(wrapOutboundOut(bb), promise: promise)
         } catch {
             promise?.fail(error)
         }
+        self.logger.trace("MQTT Out", metadata: ["mqtt_message": .string("\(message)"), "mqtt_packet_id": .string("\(message.packetId)")])
         self.lastPingreqEventTime = .now()
     }
 
@@ -165,11 +171,11 @@ final class MQTTChannelHandler: ChannelDuplexHandler {
     }
 
     @usableFromInline
-    func cancel(requestID: Int) {
+    func cancel(requestID: Int, error: any Error = MQTTError.cancelledTask) {
         self.eventLoop.assertInEventLoop()
         switch self.stateMachine.cancel(requestID: requestID) {
         case .failTask(let cancelledTask):
-            cancelledTask.promise.fail(MQTTError.cancelledTask)
+            cancelledTask.promise.fail(error)
         case .doNothing:
             break
         }
@@ -340,7 +346,11 @@ final class MQTTChannelHandler: ChannelDuplexHandler {
         self.eventLoop.assertInEventLoop()
         switch self.stateMachine.sendPacket(nil) {
         case .sendPacket(let context):
-            _ = context.channel.writeAndFlush(message)
+            var sendError: (any Error)?
+            context.channel.writeAndFlush(message).assumeIsolated().whenFailure { error in
+                sendError = error
+            }
+            if let sendError { throw sendError }
         case .throwError(let error):
             throw error
         }
@@ -364,7 +374,9 @@ final class MQTTChannelHandler: ChannelDuplexHandler {
 
         switch self.stateMachine.sendPacket(task) {
         case .sendPacket(let context):
-            _ = context.channel.writeAndFlush(message)
+            context.channel.writeAndFlush(message).assumeIsolated().whenFailure { error in
+                self.cancel(requestID: requestID, error: error)
+            }
         case .throwError(let error):
             task.fail(error)
         }
@@ -411,7 +423,9 @@ final class MQTTChannelHandler: ChannelDuplexHandler {
     private func failTasksAndCloseSubscriptions(with error: any Error) {
         switch self.stateMachine.close() {
         case .failTasksAndClose(let tasks):
-            tasks.forEach { $0.fail(error) }
+            for task in tasks {
+                task.fail(error)
+            }
             self.subscriptions.close(error: error)
         case .doNothing:
             break

@@ -26,7 +26,7 @@ import Foundation
 import Network
 import NIOTransportServices
 #endif
-#if os(macOS) || os(Linux)
+#if os(macOS) || os(Linux) || os(Android)
 import NIOSSL
 #endif
 
@@ -546,7 +546,7 @@ public final actor MQTTConnection: Sendable {
                 switch tlsConfigType {
                 case .ts(let tsConfig):
                     options = try tsConfig.getNWProtocolTLSOptions(logger: logger)
-                #if os(macOS) || os(Linux) || os(Android)
+                #if os(macOS) || os(Linux) || os(Android) || os(Android)
                 case .niossl:
                     throw MQTTError.wrongTLSConfig
                 #endif
@@ -564,7 +564,7 @@ public final actor MQTTConnection: Sendable {
         }
         #endif
 
-        #if os(macOS) || os(Linux)
+        #if os(macOS) || os(Linux) || os(Android)
         if let clientBootstrap = ClientBootstrap(validatingGroup: eventLoopGroup) {
             if case .enable(let tlsConfig, _) = configuration.tls.base {
                 let tlsConfiguration: TLSConfiguration
@@ -768,7 +768,7 @@ public final actor MQTTConnection: Sendable {
             }
             // max packet size
             if case .maximumPacketSize(let maxPacketSize) = property {
-                self.connectionParameters.maxPacketSize = Int(maxPacketSize)
+                self.channelHandler.maxPacketSize = maxPacketSize
             }
             // supports retain
             if case .retainAvailable(let retainValue) = property, let retainAvailable = (retainValue != 0 ? true : false) {
@@ -918,7 +918,6 @@ extension MQTTConnection {
     /// Connection parameters. Limits set by either client or server.
     struct ConnectionParameters {
         var maxQoS: MQTTQoS = .exactlyOnce
-        var maxPacketSize: Int?
         var retainAvailable: Bool = true
         var maxTopicAlias: UInt16 = 65535
     }

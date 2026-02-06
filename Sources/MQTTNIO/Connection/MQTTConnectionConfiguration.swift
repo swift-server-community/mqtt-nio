@@ -14,7 +14,7 @@
 import NIOCore
 import NIOHTTP1
 
-#if os(macOS) || os(Linux)
+#if os(macOS) || os(Linux) || os(Android)
 import NIOSSL
 #endif
 
@@ -80,7 +80,7 @@ public struct MQTTConnectionConfiguration: Sendable {
         /// It is recommended on iOS that you use NIO Transport Services.
         public enum Configuration: Sendable {
             /// NIOSSL TLS configuration.
-            #if os(macOS) || os(Linux)
+            #if os(macOS) || os(Linux) || os(Android)
             case niossl(TLSConfiguration)
             #endif
             #if canImport(Network)
