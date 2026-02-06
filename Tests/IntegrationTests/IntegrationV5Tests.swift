@@ -87,13 +87,14 @@ struct IntegrationV5Tests {
 
     @Test("Connect with No Identifier")
     func connectWithNoIdentifier() async throws {
+        let session = MQTTSession(clientID: "")
         try await MQTTConnection.withConnection(
             address: .hostname(Self.hostname),
             configuration: .init(versionConfiguration: .v5_0()),
-            identifier: "",
+            session: session,
             logger: self.logger
         ) { connection in
-            //#expect(await !connection.identifier.isEmpty)
+            #expect(await !session.clientID.isEmpty)
         }
     }
 

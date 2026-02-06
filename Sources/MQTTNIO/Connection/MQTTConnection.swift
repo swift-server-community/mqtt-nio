@@ -760,7 +760,7 @@ public final actor MQTTConnection: Sendable {
             }
             // client identifier
             if case .assignedClientIdentifier(let identifier) = property {
-                // self.identifier = identifier
+                self.session?.setClientID(identifier)
             }
             // max QoS
             if case .maximumQoS(let qos) = property {
