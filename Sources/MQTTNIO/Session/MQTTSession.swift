@@ -14,30 +14,13 @@
 import NIOCore
 import Synchronization
 
+/// Represents an MQTT session, holding session state such as inflight messages.
+/// Used by ``MQTTConnection`` to manage session state across connections.
 public final class MQTTSession: Sendable {
     private let _clientID: Mutex<String>
 
-    /// Client Identifier for this session.
-    ///
-    /// If you provided an empty string as the Client Identifier when initializing this session,
-    /// the MQTT server should have generated a unique Client Identifier for you on the first connection with this session.
-    /// If that first connection was a MQTT v5 connection,
-    /// this property will contain the assigned Client Identifier.
-    public var clientID: String {
-        self._clientID.withLock { $0 }
-    }
-
-    func setClientID(_ clientID: String) {
-        self._clientID.withLock { $0 = clientID }
-    }
-
     /// Inflight messages
     let inflightPackets: Mutex<CircularBuffer<any MQTTPacket>>
-
-    /// Used for testing
-    package var inflightPacketsCount: Int {
-        self.inflightPackets.withLock { $0.count }
-    }
 
     /// Initialize a new ``MQTTSession`` with a unique client identifier.
     ///
@@ -54,7 +37,29 @@ public final class MQTTSession: Sendable {
         self._clientID = .init(clientID)
         self.inflightPackets = .init(.init(initialCapacity: 4))
     }
+}
 
+// MARK: - Client ID
+
+extension MQTTSession {
+    /// Client Identifier for this session.
+    ///
+    /// If you provided an empty string as the Client Identifier when initializing this session,
+    /// the MQTT server should have generated a unique Client Identifier for you on the first connection with this session.
+    /// If that first connection was a MQTT v5 connection,
+    /// this property will contain the assigned Client Identifier.
+    public var clientID: String {
+        self._clientID.withLock { $0 }
+    }
+
+    func setClientID(_ clientID: String) {
+        self._clientID.withLock { $0 = clientID }
+    }
+}
+
+// MARK: - Inflight Messages
+
+extension MQTTSession {
     /// Add packet to inflight messages
     func addInflight(packet: MQTTPacket) {
         self.inflightPackets.withLock { $0.append(packet) }
@@ -71,5 +76,10 @@ public final class MQTTSession: Sendable {
     /// Remove all packets from inflight messages
     func clearInflight() {
         self.inflightPackets.withLock { $0.removeAll() }
+    }
+
+    /// Used for testing
+    package var inflightPacketsCount: Int {
+        self.inflightPackets.withLock { $0.count }
     }
 }
