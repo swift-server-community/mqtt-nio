@@ -89,7 +89,6 @@ public final actor MQTTConnection: Sendable {
             address: address,
             session: nil,
             identifier: identifier,
-            cleanSession: true,
             configuration: configuration,
             eventLoop: eventLoop,
             logger: logger
@@ -150,7 +149,6 @@ public final actor MQTTConnection: Sendable {
             address: address,
             session: session,
             identifier: session.clientID,
-            cleanSession: false,
             configuration: configuration,
             eventLoop: eventLoop,
             logger: logger
@@ -224,8 +222,7 @@ public final actor MQTTConnection: Sendable {
     /// - Parameters:
     ///   - address: Internet address of the MQTT server.
     ///   - session: Optional ``MQTTSession`` to use for the connection.
-    ///   - identifier: Client identifier for the server.
-    ///   - cleanSession: Whether to start a clean session.
+    ///   - identifier: Client identifier for the server. Used if no session is provided.
     ///   - configuration: Configuration of the MQTT connection.
     ///   - eventLoop: `EventLoop` to run the connection on.
     ///   - logger: `Logger` to use for the connection.
@@ -235,7 +232,6 @@ public final actor MQTTConnection: Sendable {
         address: MQTTServerAddress,
         session: MQTTSession?,
         identifier: String,
-        cleanSession: Bool,
         configuration: MQTTConnectionConfiguration,
         eventLoop: any EventLoop = MultiThreadedEventLoopGroup.singleton.any(),
         logger: Logger
@@ -271,7 +267,7 @@ public final actor MQTTConnection: Sendable {
             if let session {
                 (session.clientID, false)
             } else {
-                (identifier, cleanSession)
+                (identifier, true)
             }
         let sessionPresent = try await connection.sendConnect(clientID: clientID, cleanSession: cleanSession)
         return (connection, sessionPresent)
