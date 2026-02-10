@@ -20,7 +20,7 @@ public final class MQTTSession: Sendable {
     private let _clientID: Mutex<String>
 
     /// Inflight messages
-    let inflightPackets: Mutex<CircularBuffer<any MQTTPacket>>
+    let inflightPackets: Mutex<MQTTInflight>
 
     /// Initialize a new ``MQTTSession`` with a unique client identifier.
     ///
@@ -35,7 +35,7 @@ public final class MQTTSession: Sendable {
     /// - Parameter clientID: Client identifier to use for this session. This must be unique.
     public init(clientID: String) {
         self._clientID = .init(clientID)
-        self.inflightPackets = .init(.init(initialCapacity: 4))
+        self.inflightPackets = .init(.init())
     }
 }
 
@@ -60,26 +60,8 @@ extension MQTTSession {
 // MARK: - Inflight Messages
 
 extension MQTTSession {
-    /// Add packet to inflight messages
-    func addInflight(packet: MQTTPacket) {
-        self.inflightPackets.withLock { $0.append(packet) }
-    }
-
-    /// Remove packet from inflight messages by packet identifier
-    func removeInflight(id: UInt16) {
-        self.inflightPackets.withLock { buffer in
-            guard let first = buffer.firstIndex(where: { $0.packetId == id }) else { return }
-            buffer.remove(at: first)
-        }
-    }
-
-    /// Remove all packets from inflight messages
-    func clearInflight() {
-        self.inflightPackets.withLock { $0.removeAll() }
-    }
-
     /// Used for testing
     package var inflightPacketsCount: Int {
-        self.inflightPackets.withLock { $0.count }
+        self.inflightPackets.withLock { $0.packets.count }
     }
 }

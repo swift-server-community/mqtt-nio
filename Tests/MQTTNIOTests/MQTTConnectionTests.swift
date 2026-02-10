@@ -39,9 +39,17 @@ struct MQTTConnectionTests {
         let version = configuration.version
         return try await withThrowingTaskGroup { group in
             group.addTask {
-                defer { connection.close() }
-                _ = try await connection.sendConnect(clientID: session?.clientID ?? "", cleanSession: session == nil)
-                try await clientOperation(connection)
+                do {
+                    _ = try await connection.sendConnect(clientID: session?.clientID ?? "", cleanSession: session == nil)
+                    try await clientOperation(connection)
+                    await connection.saveInflightToSession()
+                    connection.close()
+                } catch {
+                    await connection.saveInflightToSession()
+                    connection.close()
+                    throw error
+                }
+
             }
             group.addTask {
                 // wait for connect

@@ -43,6 +43,8 @@ public final actor MQTTConnection: Sendable {
     let channelHandler: MQTTChannelHandler
     let configuration: MQTTConnectionConfiguration
     let globalPacketId = Atomic<UInt16>(1)
+    /// Local copy of inflight messages
+    private var inflight: MQTTInflight?
     let isClosed: Atomic<Bool>
 
     var connectionParameters = ConnectionParameters()
@@ -63,6 +65,7 @@ public final actor MQTTConnection: Sendable {
         self.configuration = configuration
         self.session = session
         self.logger = logger
+        self.inflight = session.map { $0.inflightPackets.withLock { $0 } }
         self.isClosed = .init(false)
     }
 
@@ -153,8 +156,16 @@ public final actor MQTTConnection: Sendable {
             eventLoop: eventLoop,
             logger: logger
         )
-        defer { connection.close() }
-        return try await operation(connection, sessionPresent)
+        do {
+            let result = try await operation(connection, sessionPresent)
+            await connection.saveInflightToSession()
+            connection.close()
+            return result
+        } catch {
+            await connection.saveInflightToSession()
+            connection.close()
+            throw error
+        }
     }
 
     /// Connect to MQTT server and run operations using the connection and then close it.
@@ -333,6 +344,13 @@ public final actor MQTTConnection: Sendable {
             will: publish
         )
         return try await self._connect(packet: packet, authWorkflow: authenticator).sessionPresent
+    }
+
+    /// Copy the local copy of inflight messages back to the session.
+    func saveInflightToSession() {
+        if let inflight {
+            session?.inflightPackets.withLock { $0 = inflight }
+        }
     }
 
     func sendDisconnect() throws {
@@ -659,7 +677,7 @@ public final actor MQTTConnection: Sendable {
             if connack.sessionPresent {
                 try await self.resendOnRestart()
             } else {
-                self.session?.clearInflight()
+                self.inflight?.clear()
             }
             let ack = try self.processConnack(connack)
             return ack
@@ -707,8 +725,8 @@ public final actor MQTTConnection: Sendable {
 
     /// Resend PUBLISH and PUBREL messages
     func resendOnRestart() async throws {
-        let inflight = self.session?.inflightPackets.withLock { $0 } ?? []
-        self.session?.clearInflight()
+        let inflight = self.inflight?.packets ?? []
+        self.inflight?.clear()
         for packet in inflight {
             switch packet {
             case let publish as MQTTPublishPacket:
@@ -845,12 +863,12 @@ public final actor MQTTConnection: Sendable {
             return nil
         }
 
-        self.session?.addInflight(packet: packet)
+        self.inflight?.add(packet: packet)
         let ackPacket: any MQTTPacket
         do {
             ackPacket = try await self.sendMessage(packet) { message in
                 guard message.packetId == packet.packetId else { return false }
-                self.session?.removeInflight(id: packet.packetId)
+                self.inflight?.remove(id: packet.packetId)
                 if packet.publish.qos == .atLeastOnce {
                     guard message.type == .PUBACK else {
                         throw MQTTError.unexpectedMessage
@@ -872,7 +890,7 @@ public final actor MQTTConnection: Sendable {
             if case MQTTError.serverDisconnection(let ack) = error,
                 ack.reason == .malformedPacket
             {
-                self.session?.removeInflight(id: packet.packetId)
+                self.inflight?.remove(id: packet.packetId)
             }
             throw error
         }
@@ -886,11 +904,11 @@ public final actor MQTTConnection: Sendable {
     }
 
     func pubRel(packet: MQTTPubAckPacket) async throws -> any MQTTPacket {
-        self.session?.addInflight(packet: packet)
+        self.inflight?.add(packet: packet)
         return try await self.sendMessage(packet) { message in
             guard message.packetId == packet.packetId else { return false }
             guard message.type != .PUBREC else { return false }
-            self.session?.removeInflight(id: packet.packetId)
+            self.inflight?.remove(id: packet.packetId)
             guard message.type == .PUBCOMP else {
                 throw MQTTError.unexpectedMessage
             }
