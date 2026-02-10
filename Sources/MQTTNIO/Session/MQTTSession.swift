@@ -19,6 +19,9 @@ import Synchronization
 public final class MQTTSession: Sendable {
     private let _clientID: Mutex<String>
 
+    /// Whether a ``MQTTConnection`` is currently connected using this session.
+    let isConnected: Atomic<Bool>
+
     /// Inflight messages
     let inflightPackets: Mutex<MQTTInflight>
 
@@ -36,6 +39,7 @@ public final class MQTTSession: Sendable {
     public init(clientID: String) {
         self._clientID = .init(clientID)
         self.inflightPackets = .init(.init())
+        self.isConnected = .init(false)
     }
 }
 

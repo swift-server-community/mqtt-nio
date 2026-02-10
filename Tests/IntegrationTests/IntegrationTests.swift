@@ -754,6 +754,41 @@ struct IntegrationTests {
         }
     }
 
+    @Test("Multiple Connections with Same Session")
+    func multipleConnectionsWithSameSession() async throws {
+        let session = MQTTSession(clientID: "multipleConnectionsWithSameSession")
+
+        await #expect(throws: MQTTError.alreadyConnectedWithSession) {
+            try await withThrowingTaskGroup { group in
+                group.addTask {
+                    try await MQTTConnection.withConnection(
+                        address: .hostname(Self.hostname),
+                        session: session,
+                        logger: self.logger
+                    ) { connection in
+                        try await connection.subscribe(to: [.init(topicFilter: "multipleConnWithSession1", qos: .atMostOnce)]) { subscription in
+                            for try await _ in subscription {}
+                        }
+                    }
+                }
+
+                group.addTask {
+                    try await MQTTConnection.withConnection(
+                        address: .hostname(Self.hostname),
+                        session: session,
+                        logger: self.logger
+                    ) { connection in
+                        try await connection.subscribe(to: [.init(topicFilter: "multipleConnWithSession2", qos: .atMostOnce)]) { subscription in
+                            for try await _ in subscription {}
+                        }
+                    }
+                }
+
+                try await group.next()
+            }
+        }
+    }
+
     let logger: Logger = {
         var logger = Logger(label: "IntegrationTests")
         logger.logLevel = .trace
@@ -791,7 +826,8 @@ extension MQTTError: Equatable {
             (.unrecognisedPacketType, .unrecognisedPacketType),
             (.authWorkflowRequired, .authWorkflowRequired),
             (.cancelledTask, .cancelledTask),
-            (.packetTooLarge, .packetTooLarge):
+            (.packetTooLarge, .packetTooLarge),
+            (.alreadyConnectedWithSession, .alreadyConnectedWithSession):
             true
         case (.connectionError(let lhsValue), .connectionError(let rhsValue)):
             lhsValue == rhsValue

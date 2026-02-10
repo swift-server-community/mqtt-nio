@@ -343,14 +343,21 @@ public final actor MQTTConnection: Sendable {
             properties: properties,
             will: publish
         )
+        guard
+            self.session?.isConnected.compareExchange(expected: false, desired: true, successOrdering: .relaxed, failureOrdering: .relaxed).exchanged
+                ?? true
+        else {
+            throw MQTTError.alreadyConnectedWithSession
+        }
         return try await self._connect(packet: packet, authWorkflow: authenticator).sessionPresent
     }
 
     /// Copy the local copy of inflight messages back to the session.
     func saveInflightToSession() {
         if let inflight {
-            session?.inflightPackets.withLock { $0 = inflight }
+            self.session?.inflightPackets.withLock { $0 = inflight }
         }
+        self.session?.isConnected.store(false, ordering: .relaxed)
     }
 
     func sendDisconnect() throws {

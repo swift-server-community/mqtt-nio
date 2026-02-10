@@ -142,7 +142,8 @@ extension MQTTError: Equatable {
             (.unrecognisedPacketType, .unrecognisedPacketType),
             (.authWorkflowRequired, .authWorkflowRequired),
             (.cancelledTask, .cancelledTask),
-            (.packetTooLarge, .packetTooLarge):
+            (.packetTooLarge, .packetTooLarge),
+            (.alreadyConnectedWithSession, .alreadyConnectedWithSession):
             true
         case (.connectionError(let lhsValue), .connectionError(let rhsValue)):
             lhsValue == rhsValue
