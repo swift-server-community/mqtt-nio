@@ -23,7 +23,7 @@ import Testing
 struct MQTTConnectionTests {
     func withTestMQTTServer(
         configuration: MQTTConnectionConfiguration = .init(),
-        session: MQTTSession? = nil,
+        session: MQTTSession = MQTTSession(clientID: ""),
         logger: Logger = Logger(label: "test"),
         connackProperties: MQTTProperties = .init(),
         client clientOperation: @Sendable @escaping (MQTTConnection) async throws -> Void,
@@ -40,7 +40,7 @@ struct MQTTConnectionTests {
         return try await withThrowingTaskGroup { group in
             group.addTask {
                 do {
-                    _ = try await connection.sendConnect(clientID: session?.clientID ?? "", cleanSession: session == nil)
+                    _ = try await connection.sendConnect(clientID: session.clientID, cleanSession: session.clientID.isEmpty)
                     try await clientOperation(connection)
                     await connection.saveInflightToSession()
                     connection.close()
@@ -55,10 +55,8 @@ struct MQTTConnectionTests {
                 // wait for connect
                 let packet = try await channel.waitForOutboundPacket()
                 let connect = try MQTTConnectPacket.read(version: configuration.version, from: packet)
-                #expect(connect.cleanSession == (session == nil))
-                if let session {
-                    #expect(connect.clientIdentifier == session.clientID)
-                }
+                #expect(connect.cleanSession == session.clientID.isEmpty)
+                #expect(connect.clientIdentifier == session.clientID)
                 if case .v5_0(var connectProperties, _, _, let authWorkflow) = configuration.versionConfiguration {
                     if let authWorkflow {
                         connectProperties.append(.authenticationMethod(authWorkflow.methodName))
@@ -573,6 +571,7 @@ struct MQTTConnectionTests {
         let connection = try await MQTTConnection.setupChannelAndConnect(
             channel,
             configuration: .init(versionConfiguration: .v5_0(authWorkflow: SimpleAuthWorkflow())),
+            session: MQTTSession(clientID: ""),
             logger: logger
         )
         return try await withThrowingTaskGroup { group in

@@ -44,18 +44,18 @@ public final actor MQTTConnection: Sendable {
     let configuration: MQTTConnectionConfiguration
     let globalPacketId = Atomic<UInt16>(1)
     /// Local copy of inflight messages
-    private var inflight: MQTTInflight?
+    private var inflight: MQTTInflight
     let isClosed: Atomic<Bool>
 
     var connectionParameters = ConnectionParameters()
-    let session: MQTTSession?
+    let session: MQTTSession
 
     /// Initialize connection
     private init(
         channel: any Channel,
         channelHandler: MQTTChannelHandler,
         configuration: MQTTConnectionConfiguration,
-        session: MQTTSession?,
+        session: MQTTSession,
         address: MQTTServerAddress?,
         logger: Logger
     ) {
@@ -65,7 +65,7 @@ public final actor MQTTConnection: Sendable {
         self.configuration = configuration
         self.session = session
         self.logger = logger
-        self.inflight = session.map { $0.inflightPackets.withLock { $0 } }
+        self.inflight = session.inflightPackets.withLock { $0 }
         self.isClosed = .init(false)
     }
 
@@ -247,6 +247,7 @@ public final actor MQTTConnection: Sendable {
         eventLoop: any EventLoop = MultiThreadedEventLoopGroup.singleton.any(),
         logger: Logger
     ) async throws -> (MQTTConnection, Bool) {
+        let _session = session ?? MQTTSession(clientID: identifier)
         var configuration = configuration
         if configuration.pingInterval == nil {
             configuration.pingInterval = TimeAmount.seconds(max(Int64(configuration.keepAliveInterval.nanoseconds / 1_000_000_000) - 5, 5))
@@ -257,7 +258,7 @@ public final actor MQTTConnection: Sendable {
                 self._makeConnection(
                     address: address,
                     configuration: configuration,
-                    session: session,
+                    session: _session,
                     eventLoop: eventLoop,
                     logger: logger
                 )
@@ -266,7 +267,7 @@ public final actor MQTTConnection: Sendable {
                     self._makeConnection(
                         address: address,
                         configuration: readOnlyConfiguration,
-                        session: session,
+                        session: _session,
                         eventLoop: eventLoop,
                         logger: logger
                     )
@@ -274,13 +275,7 @@ public final actor MQTTConnection: Sendable {
             }
         let connection = try await future.get()
         try await connection.waitOnInitialized()
-        let (clientID, cleanSession) =
-            if let session {
-                (session.clientID, false)
-            } else {
-                (identifier, true)
-            }
-        let sessionPresent = try await connection.sendConnect(clientID: clientID, cleanSession: cleanSession)
+        let sessionPresent = try await connection.sendConnect(clientID: _session.clientID, cleanSession: session == nil)
         return (connection, sessionPresent)
     }
 
@@ -344,8 +339,7 @@ public final actor MQTTConnection: Sendable {
             will: publish
         )
         guard
-            self.session?.isConnected.compareExchange(expected: false, desired: true, successOrdering: .relaxed, failureOrdering: .relaxed).exchanged
-                ?? true
+            self.session.isConnected.compareExchange(expected: false, desired: true, successOrdering: .relaxed, failureOrdering: .relaxed).exchanged
         else {
             throw MQTTError.alreadyConnectedWithSession
         }
@@ -354,10 +348,8 @@ public final actor MQTTConnection: Sendable {
 
     /// Copy the local copy of inflight messages back to the session.
     func saveInflightToSession() {
-        if let inflight {
-            self.session?.inflightPackets.withLock { $0 = inflight }
-        }
-        self.session?.isConnected.store(false, ordering: .relaxed)
+        self.session.inflightPackets.withLock { $0 = inflight }
+        self.session.isConnected.store(false, ordering: .relaxed)
     }
 
     func sendDisconnect() throws {
@@ -390,7 +382,7 @@ public final actor MQTTConnection: Sendable {
     private static func _makeConnection(
         address: MQTTServerAddress,
         configuration: MQTTConnectionConfiguration,
-        session: MQTTSession?,
+        session: MQTTSession,
         eventLoop: any EventLoop,
         logger: Logger
     ) -> EventLoopFuture<MQTTConnection> {
@@ -477,7 +469,7 @@ public final actor MQTTConnection: Sendable {
     package static func setupChannelAndConnect(
         _ channel: any Channel,
         configuration: MQTTConnectionConfiguration = .init(),
-        session: MQTTSession? = nil,
+        session: MQTTSession,
         logger: Logger
     ) async throws -> MQTTConnection {
         if !channel.eventLoop.inEventLoop {
@@ -501,7 +493,7 @@ public final actor MQTTConnection: Sendable {
     private static func _setupChannelAndConnect(
         _ channel: Channel,
         configuration: MQTTConnectionConfiguration,
-        session: MQTTSession?,
+        session: MQTTSession,
         logger: Logger
     ) -> EventLoopFuture<MQTTConnection> {
         do {
@@ -684,7 +676,7 @@ public final actor MQTTConnection: Sendable {
             if connack.sessionPresent {
                 try await self.resendOnRestart()
             } else {
-                self.inflight?.clear()
+                self.inflight.clear()
             }
             let ack = try self.processConnack(connack)
             return ack
@@ -732,8 +724,8 @@ public final actor MQTTConnection: Sendable {
 
     /// Resend PUBLISH and PUBREL messages
     func resendOnRestart() async throws {
-        let inflight = self.inflight?.packets ?? []
-        self.inflight?.clear()
+        let inflight = self.inflight.packets
+        self.inflight.clear()
         for packet in inflight {
             switch packet {
             case let publish as MQTTPublishPacket:
@@ -781,7 +773,7 @@ public final actor MQTTConnection: Sendable {
             }
             // client identifier
             if case .assignedClientIdentifier(let identifier) = property {
-                self.session?.setClientID(identifier)
+                self.session.setClientID(identifier)
             }
             // max QoS
             if case .maximumQoS(let qos) = property {
@@ -870,12 +862,12 @@ public final actor MQTTConnection: Sendable {
             return nil
         }
 
-        self.inflight?.add(packet: packet)
+        self.inflight.add(packet: packet)
         let ackPacket: any MQTTPacket
         do {
             ackPacket = try await self.sendMessage(packet) { message in
                 guard message.packetId == packet.packetId else { return false }
-                self.inflight?.remove(id: packet.packetId)
+                self.inflight.remove(id: packet.packetId)
                 if packet.publish.qos == .atLeastOnce {
                     guard message.type == .PUBACK else {
                         throw MQTTError.unexpectedMessage
@@ -897,7 +889,7 @@ public final actor MQTTConnection: Sendable {
             if case MQTTError.serverDisconnection(let ack) = error,
                 ack.reason == .malformedPacket
             {
-                self.inflight?.remove(id: packet.packetId)
+                self.inflight.remove(id: packet.packetId)
             }
             throw error
         }
@@ -911,11 +903,11 @@ public final actor MQTTConnection: Sendable {
     }
 
     func pubRel(packet: MQTTPubAckPacket) async throws -> any MQTTPacket {
-        self.inflight?.add(packet: packet)
+        self.inflight.add(packet: packet)
         return try await self.sendMessage(packet) { message in
             guard message.packetId == packet.packetId else { return false }
             guard message.type != .PUBREC else { return false }
-            self.inflight?.remove(id: packet.packetId)
+            self.inflight.remove(id: packet.packetId)
             guard message.type == .PUBCOMP else {
                 throw MQTTError.unexpectedMessage
             }
