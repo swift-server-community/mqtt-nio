@@ -49,7 +49,6 @@ struct MQTTConnectionTests {
                     connection.close()
                     throw error
                 }
-
             }
             group.addTask {
                 // wait for connect
