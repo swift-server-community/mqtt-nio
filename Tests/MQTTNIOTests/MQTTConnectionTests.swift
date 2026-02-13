@@ -23,8 +23,7 @@ import Testing
 struct MQTTConnectionTests {
     func withTestMQTTServer(
         configuration: MQTTConnectionConfiguration = .init(),
-        cleanSession: Bool = true,
-        identifier: String = UUID().uuidString,
+        session: MQTTSession = MQTTSession(clientID: ""),
         logger: Logger = Logger(label: "test"),
         connackProperties: MQTTProperties = .init(),
         client clientOperation: @Sendable @escaping (MQTTConnection) async throws -> Void,
@@ -34,23 +33,29 @@ struct MQTTConnectionTests {
         let connection = try await MQTTConnection.setupChannelAndConnect(
             channel,
             configuration: configuration,
-            cleanSession: cleanSession,
-            identifier: identifier,
+            session: session,
             logger: logger
         )
         let version = configuration.version
         return try await withThrowingTaskGroup { group in
             group.addTask {
-                defer { connection.close() }
-                _ = try await connection.sendConnect()
-                try await clientOperation(connection)
+                do {
+                    _ = try await connection.sendConnect(clientID: session.clientID, cleanSession: session.clientID.isEmpty)
+                    try await clientOperation(connection)
+                    await connection.saveInflightToSession()
+                    connection.close()
+                } catch {
+                    await connection.saveInflightToSession()
+                    connection.close()
+                    throw error
+                }
             }
             group.addTask {
                 // wait for connect
                 let packet = try await channel.waitForOutboundPacket()
                 let connect = try MQTTConnectPacket.read(version: configuration.version, from: packet)
-                #expect(connect.cleanSession == cleanSession)
-                #expect(connect.clientIdentifier == identifier)
+                #expect(connect.cleanSession == session.clientID.isEmpty)
+                #expect(connect.clientIdentifier == session.clientID)
                 if case .v5_0(var connectProperties, _, _, let authWorkflow) = configuration.versionConfiguration {
                     if let authWorkflow {
                         connectProperties.append(.authenticationMethod(authWorkflow.methodName))
@@ -565,12 +570,13 @@ struct MQTTConnectionTests {
         let connection = try await MQTTConnection.setupChannelAndConnect(
             channel,
             configuration: .init(versionConfiguration: .v5_0(authWorkflow: SimpleAuthWorkflow())),
+            session: MQTTSession(clientID: ""),
             logger: logger
         )
         return try await withThrowingTaskGroup { group in
             group.addTask {
                 defer { connection.close() }
-                _ = try await connection.sendConnect()
+                _ = try await connection.sendConnect(clientID: "", cleanSession: true)
             }
             group.addTask {
                 // wait for connect
@@ -650,6 +656,73 @@ struct MQTTConnectionTests {
             _ = try await channel.waitForOutboundWrite(as: ByteBuffer.self)
             cont.yield()
         }
+    }
+
+    @Test("Inflight")
+    func inflight() async throws {
+        var logger = Logger(label: "inflight")
+        logger.logLevel = .trace
+
+        let session = MQTTSession(clientID: "inflight")
+
+        // This stream is used to pass the PUBLISH packet ID from the first server to the second
+        let (publishPacketIDStream, publishPacketIDCont) = AsyncStream.makeStream(of: UInt16.self)
+
+        // This stream is used to make the connection wait to close until the server has finished processing
+        let (stream, cont) = AsyncStream.makeStream(of: Void.self)
+
+        try await withTestMQTTServer(session: session, logger: logger) { connection in
+            async let _ = connection.publish(to: "testTopic", payload: ByteBuffer(string: "TestPayload"), qos: .exactlyOnce)
+            await stream.first { _ in true }
+            connection.close()
+        } server: { channel in
+            // Receive PUBLISH
+            var packet = try await channel.waitForOutboundPacket()
+            let publishPacket = try MQTTPublishPacket.read(version: .v3_1_1, from: packet)
+            #expect(publishPacket.packetId != 0)
+            #expect(publishPacket.publish.topicName == "testTopic")
+            #expect(publishPacket.publish.retain == false)
+            #expect(publishPacket.publish.payload == ByteBuffer(string: "TestPayload"))
+
+            // Send PUBLISH packet ID to second server
+            publishPacketIDCont.yield(publishPacket.packetId)
+
+            // Send PUBREC
+            let pubRec = MQTTPubAckPacket(type: .PUBREC, packetId: publishPacket.packetId)
+            try await channel.writeInboundPacket(pubRec, version: .v3_1_1)
+
+            // Read PUBREL
+            packet = try await channel.waitForOutboundPacket()
+            let pubRelPacket = try MQTTPubAckPacket.read(version: .v3_1_1, from: packet)
+            #expect(pubRelPacket.type == .PUBREL)
+            #expect(pubRelPacket.packetId == publishPacket.packetId)
+
+            // Should send PUBCOMP, but let's close the connection
+            cont.yield()
+        }
+
+        #expect(session.inflightPacketsCount > 0)
+
+        try await withTestMQTTServer(session: session, logger: logger) { _ in
+            await stream.first { _ in true }
+        } server: { channel in
+            // Read PUBREL
+            let packet = try await channel.waitForOutboundPacket()
+            let pubRelPacket = try MQTTPubAckPacket.read(version: .v3_1_1, from: packet)
+            #expect(pubRelPacket.type == .PUBREL)
+
+            // Get PUBLISH packet ID from first server
+            let publishPacketID = try #require(await publishPacketIDStream.first { pubRelPacket.packetId == $0 })
+
+            // Send PUBCOMP
+            let pubComp = MQTTPubAckPacket(type: .PUBCOMP, packetId: publishPacketID)
+            try await channel.writeInboundPacket(pubComp, version: .v3_1_1)
+
+            // We finished processing, let the connection close
+            cont.yield()
+        }
+
+        #expect(session.inflightPacketsCount == 0)
     }
 
     @Test("Maximum Packet Size", arguments: MQTTQoS.allCases)

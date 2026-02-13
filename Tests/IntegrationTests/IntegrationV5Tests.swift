@@ -86,13 +86,14 @@ struct IntegrationV5Tests {
 
     @Test("Connect with No Identifier")
     func connectWithNoIdentifier() async throws {
+        let session = MQTTSession(clientID: "")
         try await MQTTConnection.withConnection(
             address: .hostname(Self.hostname),
             configuration: .init(versionConfiguration: .v5_0()),
-            identifier: "",
+            session: session,
             logger: self.logger
         ) { connection in
-            #expect(await !connection.identifier.isEmpty)
+            #expect(!session.clientID.isEmpty)
         }
     }
 
@@ -243,37 +244,72 @@ struct IntegrationV5Tests {
         }
     }
 
-    @Test("Session Present")
-    func sessionPresent() async throws {
-        // First connection with `cleanSession` set to true
-        // `sessionPresent` should be false as this is the first connection with this client identifier
+    @Test("Session Expiry Interval")
+    func sessionExpiryInterval() async throws {
+        let session = MQTTSession(clientID: "sessionExpiryIntervalV5")
+
         try await MQTTConnection.withConnection(
             address: .hostname(Self.hostname),
             configuration: .init(
-                versionConfiguration:
-                    .v5_0(
-                        connectProperties: [.sessionExpiryInterval(3600)],
-                        disconnectProperties: [.sessionExpiryInterval(3600)]
-                    )
+                versionConfiguration: .v5_0(
+                    connectProperties: [.sessionExpiryInterval(0)],
+                    disconnectProperties: [.sessionExpiryInterval(0)]
+                )
             ),
-            identifier: "sessionPresentV5",
-            cleanSession: true,
+            session: session,
             logger: self.logger
         ) { connection, sessionPresent in
+            // First connection with this session, `sessionPresent` should be false
             #expect(sessionPresent == false)
             try await connection.ping()
         }
 
-        // Second connection with same client identifier and `cleanSession` set to false
-        // `sessionPresent` should be true as the previous connection set a session expiry interval
+        try await MQTTConnection.withConnection(
+            address: .hostname(Self.hostname),
+            configuration: .init(
+                versionConfiguration: .v5_0(
+                    connectProperties: [.sessionExpiryInterval(3600)],
+                    disconnectProperties: [.sessionExpiryInterval(3600)]
+                )
+            ),
+            session: session,
+            logger: self.logger
+        ) { connection, sessionPresent in
+            // We used the same session in the previous connection,
+            // but the Session Expiry Interval was set to 0
+            #expect(sessionPresent == false)
+            try await connection.ping()
+        }
+
+        try await MQTTConnection.withConnection(
+            address: .hostname(Self.hostname),
+            configuration: .init(
+                versionConfiguration: .v5_0(
+                    connectProperties: [.sessionExpiryInterval(4)],
+                    disconnectProperties: [.sessionExpiryInterval(4)]
+                )
+            ),
+            session: session,
+            logger: self.logger
+        ) { connection, sessionPresent in
+            // We used the same session in the previous connection,
+            // and the Session Expiry Interval was long enough for the session to still be valid
+            #expect(sessionPresent == true)
+            try await connection.ping()
+        }
+
+        // Wait for the session to expire
+        try await Task.sleep(for: .seconds(5))
+
         try await MQTTConnection.withConnection(
             address: .hostname(Self.hostname),
             configuration: .init(versionConfiguration: .v5_0()),
-            identifier: "sessionPresentV5",
-            cleanSession: false,
+            session: session,
             logger: self.logger
         ) { connection, sessionPresent in
-            #expect(sessionPresent == true)
+            // We used the same session in the previous connection,
+            // but the session should have expired by now
+            #expect(sessionPresent == false)
             try await connection.ping()
         }
     }

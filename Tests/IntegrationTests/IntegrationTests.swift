@@ -414,36 +414,35 @@ struct IntegrationTests {
 
     @Test("Session Present")
     func sessionPresent() async throws {
-        // First connection with `cleanSession` set to true
+        // First connection without a `MQTTSession` (and with `cleanSession` automatically set to true)
         // `sessionPresent` should be false as this is the first connection with this client identifier
         try await MQTTConnection.withConnection(
             address: .hostname(Self.hostname),
             identifier: "sessionPresent",
-            cleanSession: true,
             logger: self.logger
         ) { connection, sessionPresent in
             #expect(sessionPresent == false)
             try await connection.ping()
         }
 
-        // Second connection with same client identifier and `cleanSession` set to false
-        // `sessionPresent` should be false as previous session was with `cleanSession` true
+        let session = MQTTSession(clientID: "sessionPresent")
+
+        // Second connection with a `MQTTSession` with same client identifier (and `cleanSession` automatically set to false)
+        // `sessionPresent` should be false as previous connection was with `cleanSession` true
         try await MQTTConnection.withConnection(
             address: .hostname(Self.hostname),
-            identifier: "sessionPresent",
-            cleanSession: false,
+            session: session,
             logger: self.logger
         ) { connection, sessionPresent in
             #expect(sessionPresent == false)
             try await connection.ping()
         }
 
-        // Third connection with same client identifier and `cleanSession` set to false
-        // `sessionPresent` should be true as previous session was with `cleanSession` false
+        // Third connection with same `MQTTSession`
+        // `sessionPresent` should be true
         try await MQTTConnection.withConnection(
             address: .hostname(Self.hostname),
-            identifier: "sessionPresent",
-            cleanSession: false,
+            session: session,
             logger: self.logger
         ) { connection, sessionPresent in
             #expect(sessionPresent == true)
@@ -707,6 +706,89 @@ struct IntegrationTests {
         }
     }
 
+    @Test("Inflight")
+    func inflight() async throws {
+        try await withThrowingTaskGroup { group in
+            group.addTask {
+                try await MQTTConnection.withConnection(
+                    address: .hostname(Self.hostname),
+                    identifier: "inflight_subscriber",
+                    logger: self.logger
+                ) { connection in
+                    try await connection.subscribe(to: [.init(topicFilter: "testInflight", qos: .exactlyOnce)]) { subscription in
+                        for try await message in subscription {
+                            #expect(message.payload.readableBytes == 4)
+                            return
+                        }
+                    }
+                }
+            }
+
+            group.addTask {
+                try await Task.sleep(for: .milliseconds(500))
+                let session = MQTTSession(clientID: "inflight_publisher")
+
+                try await MQTTConnection.withConnection(
+                    address: .hostname(Self.hostname),
+                    session: session,
+                    logger: self.logger
+                ) { connection in
+                    async let _ = connection.publish(to: "testInflight", payload: ByteBuffer(string: "test"), qos: .exactlyOnce)
+                    connection.close()
+                }
+
+                #expect(session.inflightPacketsCount > 0)
+
+                try await MQTTConnection.withConnection(
+                    address: .hostname(Self.hostname),
+                    session: session,
+                    logger: self.logger
+                ) { connection in
+                    try await connection.ping()
+                }
+
+                #expect(session.inflightPacketsCount == 0)
+            }
+
+            try await group.waitForAll()
+        }
+    }
+
+    @Test("Multiple Connections with Same Session")
+    func multipleConnectionsWithSameSession() async throws {
+        let session = MQTTSession(clientID: "multipleConnectionsWithSameSession")
+
+        await #expect(throws: MQTTError.alreadyConnectedWithSession) {
+            try await withThrowingTaskGroup { group in
+                group.addTask {
+                    try await MQTTConnection.withConnection(
+                        address: .hostname(Self.hostname),
+                        session: session,
+                        logger: self.logger
+                    ) { connection in
+                        try await connection.subscribe(to: [.init(topicFilter: "multipleConnWithSession1", qos: .atMostOnce)]) { subscription in
+                            for try await _ in subscription {}
+                        }
+                    }
+                }
+
+                group.addTask {
+                    try await MQTTConnection.withConnection(
+                        address: .hostname(Self.hostname),
+                        session: session,
+                        logger: self.logger
+                    ) { connection in
+                        try await connection.subscribe(to: [.init(topicFilter: "multipleConnWithSession2", qos: .atMostOnce)]) { subscription in
+                            for try await _ in subscription {}
+                        }
+                    }
+                }
+
+                try await group.next()
+            }
+        }
+    }
+
     let logger: Logger = {
         var logger = Logger(label: "IntegrationTests")
         logger.logLevel = .trace
@@ -744,7 +826,8 @@ extension MQTTError: Equatable {
             (.unrecognisedPacketType, .unrecognisedPacketType),
             (.authWorkflowRequired, .authWorkflowRequired),
             (.cancelledTask, .cancelledTask),
-            (.packetTooLarge, .packetTooLarge):
+            (.packetTooLarge, .packetTooLarge),
+            (.alreadyConnectedWithSession, .alreadyConnectedWithSession):
             true
         case (.connectionError(let lhsValue), .connectionError(let rhsValue)):
             lhsValue == rhsValue

@@ -34,8 +34,6 @@ import NIOSSL
 public final actor MQTTConnection: Sendable {
     nonisolated public let unownedExecutor: UnownedSerialExecutor
 
-    /// Client identifier for the MQTT server.
-    public private(set) var identifier: String
     /// Request ID generator
     @usableFromInline
     static let requestIDGenerator: IDGenerator = .init()
@@ -45,20 +43,19 @@ public final actor MQTTConnection: Sendable {
     let channelHandler: MQTTChannelHandler
     let configuration: MQTTConnectionConfiguration
     let globalPacketId = Atomic<UInt16>(1)
-    /// Inflight messages
+    /// Local copy of inflight messages
     private var inflight: MQTTInflight
     let isClosed: Atomic<Bool>
 
     var connectionParameters = ConnectionParameters()
-    let cleanSession: Bool
+    let session: MQTTSession
 
     /// Initialize connection
     private init(
         channel: any Channel,
         channelHandler: MQTTChannelHandler,
         configuration: MQTTConnectionConfiguration,
-        cleanSession: Bool,
-        identifier: String,
+        session: MQTTSession,
         address: MQTTServerAddress?,
         logger: Logger
     ) {
@@ -66,20 +63,18 @@ public final actor MQTTConnection: Sendable {
         self.channel = channel
         self.channelHandler = channelHandler
         self.configuration = configuration
-        self.cleanSession = cleanSession
-        self.identifier = identifier
+        self.session = session
         self.logger = logger
-        self.inflight = .init()
+        self.inflight = session.inflightPackets.withLock { $0 }
         self.isClosed = .init(false)
     }
 
-    /// Connect to MQTT server and run operations using the connection and then close it.
+    /// Connect to MQTT server with a clean session and run operations using the connection and then close it.
     ///
     /// - Parameters:
     ///   - address: Internet address of the MQTT server.
     ///   - configuration: Configuration of the MQTT connection.
     ///   - identifier: Client identifier for the server. This must be unique.
-    ///   - cleanSession: Whether to start a clean session.
     ///   - eventLoop: EventLoop to run the connection on.
     ///   - logger: Logger to use for the connection.
     ///   - operation: Closure handling the MQTT connection.
@@ -88,16 +83,15 @@ public final actor MQTTConnection: Sendable {
     public static func withConnection<Value>(
         address: MQTTServerAddress,
         configuration: MQTTConnectionConfiguration = .init(),
-        identifier: String,
-        cleanSession: Bool = true,
+        identifier: String = "",
         eventLoop: any EventLoop = MultiThreadedEventLoopGroup.singleton.any(),
         logger: Logger,
         operation: (MQTTConnection, Bool) async throws -> sending Value
     ) async throws -> sending Value {
         let (connection, sessionPresent) = try await self.connect(
             address: address,
+            session: nil,
             identifier: identifier,
-            cleanSession: cleanSession,
             configuration: configuration,
             eventLoop: eventLoop,
             logger: logger
@@ -106,13 +100,12 @@ public final actor MQTTConnection: Sendable {
         return try await operation(connection, sessionPresent)
     }
 
-    /// Connect to MQTT server and run operations using the connection and then close it.
+    /// Connect to MQTT server with a clean session and run operations using the connection and then close it.
     ///
     /// - Parameters:
     ///   - address: Internet address of the MQTT server.
     ///   - configuration: Configuration of the MQTT connection.
     ///   - identifier: Client identifier for the server. This must be unique.
-    ///   - cleanSession: Whether to start a clean session.
     ///   - eventLoop: EventLoop to run the connection on.
     ///   - logger: Logger to use for the connection.
     ///   - operation: Closure handling the MQTT connection.
@@ -120,8 +113,7 @@ public final actor MQTTConnection: Sendable {
     public static func withConnection<Value>(
         address: MQTTServerAddress,
         configuration: MQTTConnectionConfiguration = .init(),
-        identifier: String,
-        cleanSession: Bool = true,
+        identifier: String = "",
         eventLoop: any EventLoop = MultiThreadedEventLoopGroup.singleton.any(),
         logger: Logger,
         operation: (MQTTConnection) async throws -> sending Value
@@ -130,7 +122,74 @@ public final actor MQTTConnection: Sendable {
             address: address,
             configuration: configuration,
             identifier: identifier,
-            cleanSession: cleanSession,
+            eventLoop: eventLoop,
+            logger: logger
+        ) { connection, _ in
+            try await operation(connection)
+        }
+    }
+
+    /// Connect to MQTT server and run operations using the connection and then close it.
+    ///
+    /// - Parameters:
+    ///   - address: Internet address of the MQTT server.
+    ///   - configuration: Configuration of the MQTT connection.
+    ///   - session: The ``MQTTSession`` to use for the connection.
+    ///   - eventLoop: EventLoop to run the connection on.
+    ///   - logger: Logger to use for the connection.
+    ///   - operation: Closure handling the MQTT connection.
+    ///     The closure receives the ``MQTTConnection`` and a `Bool` indicating if there was a previous session present.
+    /// - Returns: Value returned from the operation closure.
+    public static func withConnection<Value>(
+        address: MQTTServerAddress,
+        configuration: MQTTConnectionConfiguration = .init(),
+        session: MQTTSession,
+        eventLoop: any EventLoop = MultiThreadedEventLoopGroup.singleton.any(),
+        logger: Logger,
+        operation: (MQTTConnection, Bool) async throws -> sending Value
+    ) async throws -> sending Value {
+        let (connection, sessionPresent) = try await self.connect(
+            address: address,
+            session: session,
+            identifier: session.clientID,
+            configuration: configuration,
+            eventLoop: eventLoop,
+            logger: logger
+        )
+        do {
+            let result = try await operation(connection, sessionPresent)
+            await connection.saveInflightToSession()
+            connection.close()
+            return result
+        } catch {
+            await connection.saveInflightToSession()
+            connection.close()
+            throw error
+        }
+    }
+
+    /// Connect to MQTT server and run operations using the connection and then close it.
+    ///
+    /// - Parameters:
+    ///   - address: Internet address of the MQTT server.
+    ///   - configuration: Configuration of the MQTT connection.
+    ///   - session: The ``MQTTSession`` to use for the connection.
+    ///   - eventLoop: EventLoop to run the connection on.
+    ///   - logger: Logger to use for the connection.
+    ///   - operation: Closure handling the MQTT connection.
+    /// - Returns: Value returned from the operation closure.
+    public static func withConnection<Value>(
+        address: MQTTServerAddress,
+        configuration: MQTTConnectionConfiguration = .init(),
+        session: MQTTSession,
+        eventLoop: any EventLoop = MultiThreadedEventLoopGroup.singleton.any(),
+        logger: Logger,
+        operation: (MQTTConnection) async throws -> sending Value
+    ) async throws -> sending Value {
+        try await Self.withConnection(
+            address: address,
+            configuration: configuration,
+            session: session,
             eventLoop: eventLoop,
             logger: logger
         ) { connection, _ in
@@ -173,8 +232,8 @@ public final actor MQTTConnection: Sendable {
     ///
     /// - Parameters:
     ///   - address: Internet address of the MQTT server.
-    ///   - identifier: Client identifier for the server.
-    ///   - cleanSession: Whether to start a clean session.
+    ///   - session: Optional ``MQTTSession`` to use for the connection.
+    ///   - identifier: Client identifier for the server. Used if no session is provided.
     ///   - configuration: Configuration of the MQTT connection.
     ///   - eventLoop: `EventLoop` to run the connection on.
     ///   - logger: `Logger` to use for the connection.
@@ -182,12 +241,13 @@ public final actor MQTTConnection: Sendable {
     /// - Returns: Tuple of the ``MQTTConnection`` and a `Bool` indicating if there was a previous session present.
     private static func connect(
         address: MQTTServerAddress,
+        session: MQTTSession?,
         identifier: String,
-        cleanSession: Bool,
         configuration: MQTTConnectionConfiguration,
         eventLoop: any EventLoop = MultiThreadedEventLoopGroup.singleton.any(),
         logger: Logger
     ) async throws -> (MQTTConnection, Bool) {
+        let _session = session ?? MQTTSession(clientID: identifier)
         var configuration = configuration
         if configuration.pingInterval == nil {
             configuration.pingInterval = TimeAmount.seconds(max(Int64(configuration.keepAliveInterval.nanoseconds / 1_000_000_000) - 5, 5))
@@ -198,8 +258,7 @@ public final actor MQTTConnection: Sendable {
                 self._makeConnection(
                     address: address,
                     configuration: configuration,
-                    cleanSession: cleanSession,
-                    identifier: identifier,
+                    session: _session,
                     eventLoop: eventLoop,
                     logger: logger
                 )
@@ -208,8 +267,7 @@ public final actor MQTTConnection: Sendable {
                     self._makeConnection(
                         address: address,
                         configuration: readOnlyConfiguration,
-                        cleanSession: cleanSession,
-                        identifier: identifier,
+                        session: _session,
                         eventLoop: eventLoop,
                         logger: logger
                     )
@@ -217,7 +275,7 @@ public final actor MQTTConnection: Sendable {
             }
         let connection = try await future.get()
         try await connection.waitOnInitialized()
-        let sessionPresent = try await connection.sendConnect()
+        let sessionPresent = try await connection.sendConnect(clientID: _session.clientID, cleanSession: session == nil)
         return (connection, sessionPresent)
     }
 
@@ -226,8 +284,13 @@ public final actor MQTTConnection: Sendable {
     }
 
     /// Send CONNECT packet
+    ///
+    /// - Parameters:
+    ///   - clientID: Client identifier to use for the connection.
+    ///   - cleanSession: Whether to start a clean session.
+    ///
     /// - Returns: Whether there was a previous session present.
-    package func sendConnect() async throws -> Bool {
+    package func sendConnect(clientID: String, cleanSession: Bool) async throws -> Bool {
         let publish =
             switch configuration.versionConfiguration {
             case .v3_1_1(let will):
@@ -263,29 +326,30 @@ public final actor MQTTConnection: Sendable {
                 (authenticator, connectProperties)
             }
 
-        var cleanSession = self.cleanSession
-        // if connection has non zero session expiry then assume it doesnt clean session on close
-        for p in properties {
-            // check topic alias
-            if case .sessionExpiryInterval(let interval) = p {
-                if interval > 0 {
-                    cleanSession = false
-                }
-            }
-        }
         if let authenticator {
             properties.addOrReplace(.authenticationMethod(authenticator.methodName))
         }
         let packet = MQTTConnectPacket(
             cleanSession: cleanSession,
             keepAliveSeconds: UInt16(configuration.keepAliveInterval.nanoseconds / 1_000_000_000),
-            clientIdentifier: identifier,
+            clientIdentifier: clientID,
             userName: configuration.authentication?.userName,
             password: configuration.authentication?.password,
             properties: properties,
             will: publish
         )
+        guard
+            self.session.isConnected.compareExchange(expected: false, desired: true, successOrdering: .relaxed, failureOrdering: .relaxed).exchanged
+        else {
+            throw MQTTError.alreadyConnectedWithSession
+        }
         return try await self._connect(packet: packet, authWorkflow: authenticator).sessionPresent
+    }
+
+    /// Copy the local copy of inflight messages back to the session.
+    func saveInflightToSession() {
+        self.session.inflightPackets.withLock { $0 = inflight }
+        self.session.isConnected.store(false, ordering: .relaxed)
     }
 
     func sendDisconnect() throws {
@@ -318,8 +382,7 @@ public final actor MQTTConnection: Sendable {
     private static func _makeConnection(
         address: MQTTServerAddress,
         configuration: MQTTConnectionConfiguration,
-        cleanSession: Bool,
-        identifier: String,
+        session: MQTTSession,
         eventLoop: any EventLoop,
         logger: Logger
     ) -> EventLoopFuture<MQTTConnection> {
@@ -396,8 +459,7 @@ public final actor MQTTConnection: Sendable {
                 channel: channel,
                 channelHandler: handler,
                 configuration: configuration,
-                cleanSession: cleanSession,
-                identifier: identifier,
+                session: session,
                 address: address,
                 logger: logger
             )
@@ -407,8 +469,7 @@ public final actor MQTTConnection: Sendable {
     package static func setupChannelAndConnect(
         _ channel: any Channel,
         configuration: MQTTConnectionConfiguration = .init(),
-        cleanSession: Bool = false,
-        identifier: String = "TestClient",
+        session: MQTTSession,
         logger: Logger
     ) async throws -> MQTTConnection {
         if !channel.eventLoop.inEventLoop {
@@ -416,8 +477,7 @@ public final actor MQTTConnection: Sendable {
                 self._setupChannelAndConnect(
                     channel,
                     configuration: configuration,
-                    cleanSession: cleanSession,
-                    identifier: identifier,
+                    session: session,
                     logger: logger
                 )
             }.get()
@@ -425,8 +485,7 @@ public final actor MQTTConnection: Sendable {
         return try await self._setupChannelAndConnect(
             channel,
             configuration: configuration,
-            cleanSession: cleanSession,
-            identifier: identifier,
+            session: session,
             logger: logger
         ).get()
     }
@@ -434,8 +493,7 @@ public final actor MQTTConnection: Sendable {
     private static func _setupChannelAndConnect(
         _ channel: Channel,
         configuration: MQTTConnectionConfiguration,
-        cleanSession: Bool,
-        identifier: String,
+        session: MQTTSession,
         logger: Logger
     ) -> EventLoopFuture<MQTTConnection> {
         do {
@@ -450,8 +508,7 @@ public final actor MQTTConnection: Sendable {
                         channel: channel,
                         channelHandler: handler,
                         configuration: configuration,
-                        cleanSession: cleanSession,
-                        identifier: identifier,
+                        session: session,
                         address: .hostname("127.0.0.1", port: 1883),
                         logger: logger
                     )
@@ -716,7 +773,7 @@ public final actor MQTTConnection: Sendable {
             }
             // client identifier
             if case .assignedClientIdentifier(let identifier) = property {
-                self.identifier = identifier
+                self.session.setClientID(identifier)
             }
             // max QoS
             if case .maximumQoS(let qos) = property {
