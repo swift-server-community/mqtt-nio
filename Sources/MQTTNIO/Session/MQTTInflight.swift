@@ -20,7 +20,7 @@ struct MQTTInflight: Sendable {
     }
 
     /// add packet
-    mutating func add(packet: MQTTPacket) {
+    mutating func add(packet: any MQTTPacket) {
         self.packets.append(packet)
     }
 

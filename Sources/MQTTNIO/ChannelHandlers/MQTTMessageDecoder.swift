@@ -12,11 +12,11 @@
 //===----------------------------------------------------------------------===//
 
 import Logging
-import NIO
+import NIOCore
 
 /// Decode ByteBuffers into MQTT Messages
 struct ByteToMQTTMessageDecoder: NIOSingleStepByteToMessageDecoder {
-    mutating func decodeLast(buffer: inout ByteBuffer, seenEOF: Bool) throws -> MQTTPacket? {
+    mutating func decodeLast(buffer: inout ByteBuffer, seenEOF: Bool) throws -> (any MQTTPacket)? {
         try self.decode(buffer: &buffer)
     }
 
@@ -28,11 +28,11 @@ struct ByteToMQTTMessageDecoder: NIOSingleStepByteToMessageDecoder {
         self.version = version
     }
 
-    mutating func decode(buffer: inout ByteBuffer) throws -> MQTTPacket? {
+    mutating func decode(buffer: inout ByteBuffer) throws -> (any MQTTPacket)? {
         let origBuffer = buffer
         do {
             let packet = try MQTTIncomingPacket.read(from: &buffer)
-            let message: MQTTPacket
+            let message: any MQTTPacket
             switch packet.type {
             case .PUBLISH:
                 message = try MQTTPublishPacket.read(version: self.version, from: packet)

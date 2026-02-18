@@ -11,10 +11,10 @@
 //
 //===----------------------------------------------------------------------===//
 
-import NIO
+import NIOCore
 import Testing
 
-@testable import MQTTNIO
+@testable public import MQTTNIO
 
 @Suite("Core MQTT Tests")
 struct CoreMQTTTests {

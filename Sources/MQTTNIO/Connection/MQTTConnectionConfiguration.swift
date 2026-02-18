@@ -11,11 +11,11 @@
 //
 //===----------------------------------------------------------------------===//
 
-import NIOCore
-import NIOHTTP1
+public import NIOCore
+public import NIOHTTP1
 
 #if os(macOS) || os(Linux) || os(Android)
-import NIOSSL
+public import NIOSSL
 #endif
 
 /// A configuration object that defines how to connect to a MQTT server.
@@ -56,7 +56,7 @@ public struct MQTTConnectionConfiguration: Sendable {
             connectProperties: MQTTProperties = .init(),
             disconnectProperties: MQTTProperties = .init(),
             will: (topicName: String, payload: ByteBuffer, qos: MQTTQoS, retain: Bool, properties: MQTTProperties)? = nil,
-            authWorkflow: MQTTAuthenticator? = nil
+            authWorkflow: (any MQTTAuthenticator)? = nil
         )
 
         var version: Version {

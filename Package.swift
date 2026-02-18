@@ -2,9 +2,25 @@
 
 import PackageDescription
 
-var defaultSwiftSettings: [SwiftSetting] =
+let defaultSwiftSettings: [SwiftSetting] =
     [
-        .enableUpcomingFeature("NonisolatedNonsendingByDefault")
+        // https://github.com/swiftlang/swift-evolution/blob/main/proposals/0335-existential-any.md
+        .enableUpcomingFeature("ExistentialAny"),
+
+        // https://github.com/swiftlang/swift-evolution/blob/main/proposals/0409-access-level-on-imports.md
+        .enableUpcomingFeature("InternalImportsByDefault"),
+
+        // https://github.com/swiftlang/swift-evolution/blob/main/proposals/0444-member-import-visibility.md
+        .enableUpcomingFeature("MemberImportVisibility"),
+
+        // https://github.com/swiftlang/swift-evolution/blob/main/proposals/0470-isolated-conformances.md
+        .enableUpcomingFeature("InferIsolatedConformances"),
+
+        // https://github.com/swiftlang/swift-evolution/blob/main/proposals/0461-async-function-isolation.md
+        .enableUpcomingFeature("NonisolatedNonsendingByDefault"),
+
+        // https://github.com/swiftlang/swift-evolution/blob/main/proposals/0481-weak-let.md
+        .enableUpcomingFeature("ImmutableWeakCaptures"),
     ]
 
 let package = Package(

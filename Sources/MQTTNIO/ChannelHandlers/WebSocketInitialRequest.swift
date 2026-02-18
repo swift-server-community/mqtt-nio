@@ -11,7 +11,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-import NIO
+import NIOCore
 import NIOHTTP1
 
 // The HTTP handler to be used to initiate the request.
@@ -66,7 +66,7 @@ final class WebSocketInitialRequestHandler: ChannelInboundHandler, RemovableChan
         }
     }
 
-    public func errorCaught(context: ChannelHandlerContext, error: Error) {
+    public func errorCaught(context: ChannelHandlerContext, error: any Error) {
         self.upgradePromise.fail(error)
         // As we are not really interested getting notified on success or failure
         // we just pass nil as promise to reduce allocations.

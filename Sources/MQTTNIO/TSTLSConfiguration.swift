@@ -13,7 +13,7 @@
 
 #if canImport(Network)
 
-@preconcurrency import Security
+@preconcurrency public import Security
 
 import Foundation
 import Logging
@@ -37,7 +37,6 @@ public enum TSTLSVersion: Sendable {
     }
 }
 
-@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
 extension tls_protocol_version_t {
     var tsTLSVersion: TSTLSVersion {
         switch self {
@@ -124,7 +123,7 @@ public struct TSTLSConfiguration: Sendable {
         }
     }
 
-    /// The minimum TLS version to allow in negotiation. Defaults to tlsv1.
+    /// The minimum TLS version to allow in negotiation. Defaults to tlsv12.
     public var minimumTLSVersion: TSTLSVersion
 
     /// The maximum TLS version to allow in negotiation. If nil, there is no upper limit. Defaults to nil.

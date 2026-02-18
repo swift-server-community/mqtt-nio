@@ -11,7 +11,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-import NIO
+import NIOCore
 import NIOWebSocket
 
 /// WebSocket channel handler. Sends WebSocket frames, receives and combines frames.
@@ -135,7 +135,7 @@ final class WebSocketHandler: ChannelDuplexHandler {
         context.fireChannelInactive()
     }
 
-    func errorCaught(context: ChannelHandlerContext, error: Error) {
+    func errorCaught(context: ChannelHandlerContext, error: any Error) {
         let errorCode: WebSocketErrorCode
         if let error = error as? NIOWebSocketError {
             errorCode = WebSocketErrorCode(error)

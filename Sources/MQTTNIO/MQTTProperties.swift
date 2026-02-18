@@ -11,7 +11,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-import NIOCore
+public import NIOCore
 
 /// MQTT v5.0 properties. A property consists of a identifier and a value
 public struct MQTTProperties: Sendable, Equatable {

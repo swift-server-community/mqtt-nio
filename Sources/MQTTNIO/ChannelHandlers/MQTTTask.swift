@@ -11,7 +11,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-import NIO
+import NIOCore
 
 enum MQTTPromise<T: Sendable>: Sendable {
     case nio(EventLoopPromise<T>)
@@ -29,7 +29,7 @@ enum MQTTPromise<T: Sendable>: Sendable {
         }
     }
 
-    func fail(_ e: Error) {
+    func fail(_ e: any Error) {
         switch self {
         case .nio(let eventLoopPromise):
             eventLoopPromise.fail(e)
@@ -43,17 +43,17 @@ enum MQTTPromise<T: Sendable>: Sendable {
 
 /// Class encapsulating a single task
 final class MQTTTask {
-    let promise: MQTTPromise<MQTTPacket>
-    let checkInbound: (MQTTPacket) throws -> Bool
+    let promise: MQTTPromise<any MQTTPacket>
+    let checkInbound: (any MQTTPacket) throws -> Bool
     let requestID: Int
     let timeoutTask: Scheduled<Void>?
 
     init(
-        promise: MQTTPromise<MQTTPacket>,
+        promise: MQTTPromise<any MQTTPacket>,
         requestID: Int,
-        on eventLoop: EventLoop,
+        on eventLoop: any EventLoop,
         timeout: TimeAmount?,
-        checkInbound: @escaping (MQTTPacket) throws -> Bool
+        checkInbound: @escaping (any MQTTPacket) throws -> Bool
     ) {
         self.promise = promise
         self.checkInbound = checkInbound
@@ -67,12 +67,12 @@ final class MQTTTask {
         }
     }
 
-    func succeed(_ response: MQTTPacket) {
+    func succeed(_ response: any MQTTPacket) {
         self.timeoutTask?.cancel()
         self.promise.succeed(response)
     }
 
-    func fail(_ error: Error) {
+    func fail(_ error: any Error) {
         self.timeoutTask?.cancel()
         self.promise.fail(error)
     }

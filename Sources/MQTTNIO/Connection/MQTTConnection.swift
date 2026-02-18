@@ -11,9 +11,10 @@
 //
 //===----------------------------------------------------------------------===//
 
-import Logging
-import NIO
+public import Logging
+public import NIOCore
 import NIOHTTP1
+public import NIOPosix
 import NIOWebSocket
 import Synchronization
 
@@ -316,7 +317,7 @@ public final actor MQTTConnection: Sendable {
                     )
                 }
             }
-        let authenticator: MQTTAuthenticator?
+        let authenticator: (any MQTTAuthenticator)?
         var properties: MQTTProperties
         (authenticator, properties) =
             switch configuration.versionConfiguration {
@@ -491,7 +492,7 @@ public final actor MQTTConnection: Sendable {
     }
 
     private static func _setupChannelAndConnect(
-        _ channel: Channel,
+        _ channel: any Channel,
         configuration: MQTTConnectionConfiguration,
         session: MQTTSession,
         logger: Logger
@@ -663,7 +664,7 @@ public final actor MQTTConnection: Sendable {
     /// connect to broker
     func _connect(
         packet: MQTTConnectPacket,
-        authWorkflow: MQTTAuthenticator?
+        authWorkflow: (any MQTTAuthenticator)?
     ) async throws -> MQTTConnAckPacket {
         let message = try await self.sendMessage(packet) { message -> Bool in
             guard message.type == .CONNACK || message.type == .AUTH else { throw MQTTError.failedToConnect }
@@ -692,14 +693,14 @@ public final actor MQTTConnection: Sendable {
         }
     }
 
-    func sendMessageNoWait(_ message: MQTTPacket) throws {
+    func sendMessageNoWait(_ message: any MQTTPacket) throws {
         try self.channelHandler.sendMessageNoWait(message)
     }
 
     func sendMessage(
         _ message: any MQTTPacket,
-        checkInbound: @escaping (MQTTPacket) throws -> Bool
-    ) async throws -> MQTTPacket {
+        checkInbound: @escaping (any MQTTPacket) throws -> Bool
+    ) async throws -> any MQTTPacket {
         let requestID = Self.requestIDGenerator.next()
         return try await withTaskCancellationHandler {
             if Task.isCancelled {
@@ -797,7 +798,7 @@ public final actor MQTTConnection: Sendable {
 
     func processAuth(
         _ packet: MQTTAuthPacket,
-        authWorkflow: MQTTAuthenticator
+        authWorkflow: any MQTTAuthenticator
     ) async throws -> any MQTTPacket {
         let auth = MQTTAuthV5(reason: packet.reason, properties: packet.properties)
         // Authenticate

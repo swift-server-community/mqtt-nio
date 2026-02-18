@@ -11,7 +11,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-import NIOCore
+public import NIOCore
 
 extension MQTTConnection {
     /// Provides implementations of functions that expose MQTT Version 5.0 features.
@@ -52,10 +52,10 @@ extension MQTTConnection {
         /// - Returns: Final auth packet returned from server.
         public func auth(
             properties: MQTTProperties,
-            authWorkflow: MQTTAuthenticator? = nil
+            authWorkflow: (any MQTTAuthenticator)? = nil
         ) async throws -> MQTTAuthV5 {
             guard
-                let authWorkflow: MQTTAuthenticator =
+                let authWorkflow: any MQTTAuthenticator =
                     switch self.connection.configuration.versionConfiguration {
                     case .v3_1_1:
                         nil

@@ -101,7 +101,7 @@ final class MQTTChannelHandler: ChannelDuplexHandler {
         context.fireChannelInactive()
     }
 
-    func errorCaught(context: ChannelHandlerContext, error: Error) {
+    func errorCaught(context: ChannelHandlerContext, error: any Error) {
         // we caught an error so we should fail all active tasks
         self.failTasksAndCloseSubscriptions(with: error)
         self.logger.error("Error caught in channel handler: \(error)")
@@ -248,7 +248,7 @@ final class MQTTChannelHandler: ChannelDuplexHandler {
 
     /// Respond to PUBREL message by sending PUBCOMP. Do this separate from `responeToPublish` as the broker might send
     /// multiple PUBREL messages, if the client is slow to respond
-    private func respondToPubrel(_ message: MQTTPacket, context: ChannelHandlerContext) {
+    private func respondToPubrel(_ message: any MQTTPacket, context: ChannelHandlerContext) {
         _ = context.channel.writeAndFlush(MQTTPubAckPacket(type: .PUBCOMP, packetId: message.packetId))
     }
 
@@ -342,7 +342,7 @@ final class MQTTChannelHandler: ChannelDuplexHandler {
 
     // MARK: - Sending Messages
 
-    func sendMessageNoWait(_ message: MQTTPacket) throws {
+    func sendMessageNoWait(_ message: any MQTTPacket) throws {
         self.eventLoop.assertInEventLoop()
         switch self.stateMachine.sendPacket(nil) {
         case .sendPacket(let context):
@@ -357,10 +357,10 @@ final class MQTTChannelHandler: ChannelDuplexHandler {
     }
 
     func sendMessage(
-        _ message: MQTTPacket,
-        promise: MQTTPromise<MQTTPacket>,
+        _ message: any MQTTPacket,
+        promise: MQTTPromise<any MQTTPacket>,
         requestID: Int,
-        checkInbound: @escaping (MQTTPacket) throws -> Bool
+        checkInbound: @escaping (any MQTTPacket) throws -> Bool
     ) {
         self.eventLoop.assertInEventLoop()
 
@@ -383,11 +383,11 @@ final class MQTTChannelHandler: ChannelDuplexHandler {
     }
 
     func sendMessage(
-        _ message: MQTTPacket,
+        _ message: any MQTTPacket,
         requestID: Int,
-        checkInbound: @escaping (MQTTPacket) throws -> Bool
-    ) -> EventLoopFuture<MQTTPacket> {
-        let promise = self.eventLoop.makePromise(of: MQTTPacket.self)
+        checkInbound: @escaping (any MQTTPacket) throws -> Bool
+    ) -> EventLoopFuture<any MQTTPacket> {
+        let promise = self.eventLoop.makePromise(of: (any MQTTPacket).self)
         self.sendMessage(message, promise: .nio(promise), requestID: requestID, checkInbound: checkInbound)
         return promise.futureResult
     }
@@ -395,7 +395,7 @@ final class MQTTChannelHandler: ChannelDuplexHandler {
     // MARK: - Task Handling
 
     /// process packets where no equivalent task was found
-    private func processUnhandledPacket(_ packet: MQTTPacket, context: ChannelHandlerContext) {
+    private func processUnhandledPacket(_ packet: any MQTTPacket, context: ChannelHandlerContext) {
         // we only send response to v5 server
         guard self.configuration.version == .v5_0 else { return }
         switch packet.type {

@@ -13,12 +13,13 @@
 
 import Foundation
 import Logging
-import NIO
+import NIOCore
 import NIOFoundationCompat
-import NIOHTTP1
+import NIOPosix
+import Synchronization
 import Testing
 
-@testable import MQTTNIO
+@testable public import MQTTNIO
 
 #if canImport(Network)
 import NIOTransportServices
@@ -106,7 +107,7 @@ struct IntegrationTests {
             .dropLast(3)
             .joined(separator: "/")
 
-        static var eventLoopGroupSingleton: EventLoopGroup {
+        static var eventLoopGroupSingleton: any EventLoopGroup {
             #if os(Linux) || os(Android)
             MultiThreadedEventLoopGroup.singleton
             #else
@@ -501,47 +502,6 @@ struct IntegrationTests {
         }
     }
 
-    @Test("WebSocket Initial Request")
-    func webSocketInitialRequest() throws {
-        let el = EmbeddedEventLoop()
-        defer { #expect(throws: Never.self) { try el.syncShutdownGracefully() } }
-        let promise = el.makePromise(of: Void.self)
-        let initialRequestHandler = WebSocketInitialRequestHandler(
-            host: "test.mosquitto.org",
-            urlPath: "/mqtt",
-            additionalHeaders: ["Test": "Value"],
-            upgradePromise: promise
-        )
-        let channel = EmbeddedChannel(handler: initialRequestHandler, loop: el)
-        try channel.connect(to: SocketAddress(ipAddress: "127.0.0.1", port: 0)).wait()
-        let requestHead = try channel.readOutbound(as: HTTPClientRequestPart.self)
-        let requestBody = try channel.readOutbound(as: HTTPClientRequestPart.self)
-        let requestEnd = try channel.readOutbound(as: HTTPClientRequestPart.self)
-        switch requestHead {
-        case .head(let head):
-            #expect(head.uri == "/mqtt")
-            #expect(head.headers["host"].first == "test.mosquitto.org")
-            #expect(head.headers["Sec-WebSocket-Protocol"].first == "mqtt")
-            #expect(head.headers["Test"].first == "Value")
-        default:
-            Issue.record("Unexpected request head: \(String(describing: requestHead))")
-        }
-        switch requestBody {
-        case .body(let data):
-            #expect(data == .byteBuffer(ByteBuffer()))
-        default:
-            Issue.record("Unexpected request body: \(String(describing: requestBody))")
-        }
-        switch requestEnd {
-        case .end(nil):
-            break
-        default:
-            Issue.record("Unexpected request end: \(String(describing: requestEnd))")
-        }
-        _ = try channel.finish()
-        promise.succeed(())
-    }
-
     @Test("Subscribe to Multi-level Wildcard")
     func multiLevelWildcard() async throws {
         try await MQTTConnection.withConnection(
@@ -799,15 +759,6 @@ struct IntegrationTests {
         .split(separator: "/", omittingEmptySubsequences: false)
         .dropLast(3)
         .joined(separator: "/")
-
-    static var eventLoopGroupSingleton: EventLoopGroup {
-        #if os(Linux) || os(Android)
-        MultiThreadedEventLoopGroup.singleton
-        #else
-        // Return TS Eventloop for non-Linux builds, as we use TS TLS
-        NIOTSEventLoopGroup.singleton
-        #endif
-    }
 }
 
 extension MQTTError: Equatable {

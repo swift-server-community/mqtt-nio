@@ -71,7 +71,7 @@ extension MQTTChannelHandler {
                 case failTask(MQTTTask, any Error)
                 case unhandledTask
             }
-            mutating func processPacket(_ packet: MQTTPacket) -> ProcessPacketAction {
+            mutating func processPacket(_ packet: any MQTTPacket) -> ProcessPacketAction {
                 for (index, task) in self.tasks.enumerated() {
                     do {
                         // should this task respond to inbound packet

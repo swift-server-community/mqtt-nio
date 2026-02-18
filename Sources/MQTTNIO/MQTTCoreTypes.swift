@@ -11,7 +11,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-import NIOCore
+public import NIOCore
 
 /// Indicates the level of assurance for delivery of a packet.
 public enum MQTTQoS: UInt8, Sendable, CaseIterable {
