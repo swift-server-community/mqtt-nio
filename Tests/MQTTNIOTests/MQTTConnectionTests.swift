@@ -44,10 +44,10 @@ struct MQTTConnectionTests {
                     _ = try await connection.sendConnect(clientID: session.clientID, cleanSession: session.clientID.isEmpty)
                     try await clientOperation(connection)
                     await connection.saveInflightToSession()
-                    connection.close()
+                    await connection.close()
                 } catch {
                     await connection.saveInflightToSession()
-                    connection.close()
+                    await connection.close()
                     throw error
                 }
             }
@@ -576,8 +576,8 @@ struct MQTTConnectionTests {
         )
         return try await withThrowingTaskGroup { group in
             group.addTask {
-                defer { connection.close() }
                 _ = try await connection.sendConnect(clientID: "", cleanSession: true)
+                await connection.close()
             }
             group.addTask {
                 // wait for connect
@@ -675,7 +675,7 @@ struct MQTTConnectionTests {
         try await withTestMQTTServer(session: session, logger: logger) { connection in
             async let _ = connection.publish(to: "testTopic", payload: ByteBuffer(string: "TestPayload"), qos: .exactlyOnce)
             await stream.first { _ in true }
-            connection.close()
+            await connection.close()
         } server: { channel in
             // Receive PUBLISH
             var packet = try await channel.waitForOutboundPacket()

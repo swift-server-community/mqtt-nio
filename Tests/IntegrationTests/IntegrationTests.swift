@@ -694,7 +694,7 @@ struct IntegrationTests {
                     logger: self.logger
                 ) { connection in
                     async let _ = connection.publish(to: "testInflight", payload: ByteBuffer(string: "test"), qos: .exactlyOnce)
-                    connection.close()
+                    await connection.close()
                 }
 
                 #expect(session.inflightPacketsCount > 0)

@@ -97,8 +97,14 @@ public final actor MQTTConnection: Sendable {
             eventLoop: eventLoop,
             logger: logger
         )
-        defer { connection.close() }
-        return try await operation(connection, sessionPresent)
+        do {
+            let value = try await operation(connection, sessionPresent)
+            await connection.close()
+            return value
+        } catch {
+            await connection.close()
+            throw error
+        }
     }
 
     /// Connect to MQTT server with a clean session and run operations using the connection and then close it.
@@ -160,11 +166,11 @@ public final actor MQTTConnection: Sendable {
         do {
             let result = try await operation(connection, sessionPresent)
             await connection.saveInflightToSession()
-            connection.close()
+            await connection.close()
             return result
         } catch {
             await connection.saveInflightToSession()
-            connection.close()
+            await connection.close()
             throw error
         }
     }
@@ -367,7 +373,7 @@ public final actor MQTTConnection: Sendable {
     }
 
     /// Close connection
-    public nonisolated func close() {
+    public func close() async {
         guard self.isClosed.compareExchange(expected: false, desired: true, successOrdering: .relaxed, failureOrdering: .relaxed).exchanged
         else {
             return
@@ -377,6 +383,11 @@ public final actor MQTTConnection: Sendable {
                 try? $0.sendDisconnect()
                 $0.channel.close(mode: .all, promise: nil)
             }
+        }
+        do {
+            try await self.channel.closeFuture.get()
+        } catch {
+            logger.error("Failed to close connection after error", metadata: ["error": "\(error)"])
         }
     }
 
