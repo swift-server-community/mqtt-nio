@@ -576,8 +576,8 @@ struct MQTTConnectionTests {
         )
         return try await withThrowingTaskGroup { group in
             group.addTask {
+                defer { connection.close() }
                 _ = try await connection.sendConnect(clientID: "", cleanSession: true)
-                connection.close()
             }
             group.addTask {
                 // wait for connect
