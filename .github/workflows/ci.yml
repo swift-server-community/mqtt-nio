@@ -67,6 +67,7 @@ jobs:
       matrix:
         tag:
           - swift:6.2
+          - swift:6.3
     container:
       image: ${{ matrix.tag }}
     services:
