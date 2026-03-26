@@ -374,7 +374,7 @@ public final actor MQTTConnection: Sendable {
 
     /// Iterates over subscription tasks in the session queue and handles them.
     func handleSessionSubscriptionTasks() async throws {
-        for await task in session.subscriptionsQueue {
+        for await task in session.subscriptionsQueue.withLock({ $0.makeAsyncStream() }) {
             switch task {
             case .subscribe(let queuedSubscription):
                 let packet = MQTTSubscribePacket(

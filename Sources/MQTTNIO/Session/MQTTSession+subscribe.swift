@@ -11,8 +11,9 @@
 //
 //===----------------------------------------------------------------------===//
 
+import Synchronization
+
 extension MQTTSession {
-    @inlinable
     public func subscribe<Value>(
         to subscriptions: [MQTTSubscribeInfoV5],
         subscribeProperties: MQTTProperties = .init(),
@@ -20,7 +21,7 @@ extension MQTTSession {
         process: (MQTTSubscription) async throws -> Value
     ) async throws -> Value {
         let (id, stream) = try self.subscribe(to: subscriptions, properties: subscribeProperties)
-        defer { self.subscriptionsQueueContinuation.yield(.unsubscribe(.init(id: id, properties: unsubscribeProperties))) }
+        defer { self.subscriptionsQueue.withLock { $0.add(.unsubscribe(.init(id: id, properties: unsubscribeProperties))) } }
         return try await process(stream)
     }
 
@@ -40,7 +41,7 @@ extension MQTTSession {
             subscriptions: subscriptions,
             properties: properties
         )
-        subscriptionsQueueContinuation.yield(.subscribe(subscription))
+        subscriptionsQueue.withLock { $0.add(.subscribe(subscription)) }
         return (subscriptionID, stream)
     }
 }

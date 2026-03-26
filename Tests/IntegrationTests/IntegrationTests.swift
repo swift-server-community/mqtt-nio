@@ -782,6 +782,7 @@ struct IntegrationTests {
 
                     #expect(!sessionPresent)
                     try await connection.publish(to: "subscribeWithSession", payload: ByteBuffer(string: "test"), qos: .atMostOnce)
+                    try await Task.sleep(for: .milliseconds(100))
                 }
 
                 try await MQTTConnection.withConnection(
