@@ -28,7 +28,9 @@ public final class MQTTSession: Sendable {
 
     let subscriptions: Mutex<MQTTSubscriptions>
 
-    let subscriptionsQueue: Mutex<SessionSubscriptionTaskQueue>
+    let subscriptionsQueue: AsyncStream<SessionSubscriptionTask>
+    @usableFromInline
+    let subscriptionsQueueContinuation: AsyncStream<SessionSubscriptionTask>.Continuation
 
     /// Initialize a new ``MQTTSession`` with a unique client identifier.
     ///
@@ -48,7 +50,7 @@ public final class MQTTSession: Sendable {
         self.inflightPackets = .init(.init())
         self.subscriptions = .init(.init(logger: logger))
         self.isConnected = .init(false)
-        self.subscriptionsQueue = .init(.init())
+        (self.subscriptionsQueue, self.subscriptionsQueueContinuation) = AsyncStream.makeStream()
     }
 }
 
@@ -115,33 +117,5 @@ extension MQTTSession {
     enum SessionSubscriptionTask: Sendable {
         case subscribe(QueuedSubscription)
         case unsubscribe(QueuedUnsubscription)
-    }
-
-    struct SessionSubscriptionTaskQueue {
-        var queue: [SessionSubscriptionTask]
-        var continuation: AsyncStream<SessionSubscriptionTask>.Continuation?
-
-        init() {
-            self.queue = []
-            self.continuation = nil
-        }
-
-        mutating func add(_ task: SessionSubscriptionTask) {
-            if let continuation = self.continuation {
-                continuation.yield(task)
-            } else {
-                self.queue.append(task)
-            }
-        }
-
-        mutating func makeAsyncStream() -> AsyncStream<SessionSubscriptionTask> {
-            let (stream, continuation) = AsyncStream<SessionSubscriptionTask>.makeStream()
-            self.continuation = continuation
-            for task in self.queue {
-                continuation.yield(task)
-            }
-            self.queue.removeAll()
-            return stream
-        }
     }
 }
