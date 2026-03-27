@@ -441,7 +441,6 @@ final class MQTTChannelHandler: ChannelDuplexHandler {
             for task in tasks {
                 task.fail(error)
             }
-            //self.session.subscriptions.withLock { $0.close(error: error) }
         case .doNothing:
             break
         }
