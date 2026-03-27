@@ -172,6 +172,7 @@ public final actor MQTTConnection: Sendable {
             eventLoop: eventLoop,
             logger: logger
         )
+        if !sessionPresent { session.subscriptions.withLock { $0.close(error: MQTTError.noSessionPresent) } }
         do {
             let result = try await withThrowingTaskGroup { group in
                 group.addTask { try await connection.handleSessionSubscriptionTasks() }

@@ -799,6 +799,65 @@ struct IntegrationTests {
         }
     }
 
+    @Test("Close Subscriptions on No Session Present")
+    func closeSubscriptionsNoSessionPresent() async throws {
+        // Make an initial connection with `cleanSession` to clear any existing session state
+        try await MQTTConnection.withConnection(
+            address: .hostname(Self.hostname),
+            identifier: "closeSubscriptionsNoSessionPresent",
+            logger: self.logger
+        ) { connection in
+            try await connection.ping()
+        }
+
+        let session = MQTTSession(clientID: "closeSubscriptionsNoSessionPresent", logger: self.logger)
+
+        await withThrowingTaskGroup { group in
+            group.addTask {
+                _ = await #expect(throws: MQTTError.noSessionPresent) {
+                    try await session.subscribe(to: [.init(topicFilter: "closeSubscriptionsNoSessionPresent", qos: .exactlyOnce)]) { subscription in
+                        for try await _ in subscription {}
+                    }
+                }
+            }
+
+            group.addTask {
+                try await MQTTConnection.withConnection(
+                    address: .hostname(Self.hostname),
+                    session: session,
+                    logger: self.logger
+                ) { connection, sessionPresent in
+                    // First connection with the session
+                    #expect(!sessionPresent)
+                    try await connection.publish(to: "closeSubscriptionsNoSessionPresent", payload: ByteBuffer(string: "test"), qos: .exactlyOnce)
+                }
+
+                // Make a connection with `cleanSession` to clear existing session state
+                try await MQTTConnection.withConnection(
+                    address: .hostname(Self.hostname),
+                    identifier: "closeSubscriptionsNoSessionPresent",
+                    logger: self.logger
+                ) { connection, sessionPresent in
+                    // `sessionPresent` should be false as this connection is with `cleanSession` true
+                    #expect(!sessionPresent)
+                    try await connection.ping()
+                }
+
+                try await MQTTConnection.withConnection(
+                    address: .hostname(Self.hostname),
+                    session: session,
+                    logger: self.logger
+                ) { connection, sessionPresent in
+                    // The previous connection was with `cleanSession` true,
+                    // so even though this connection is with the same session,
+                    // `sessionPresent` should be false and the subscriptions should be closed
+                    #expect(!sessionPresent)
+                    try await connection.publish(to: "closeSubscriptionsNoSessionPresent", payload: ByteBuffer(string: "test"), qos: .exactlyOnce)
+                }
+            }
+        }
+    }
+
     let logger: Logger = {
         var logger = Logger(label: "IntegrationTests")
         logger.logLevel = .trace
@@ -828,7 +887,8 @@ extension MQTTError: Equatable {
             (.authWorkflowRequired, .authWorkflowRequired),
             (.cancelledTask, .cancelledTask),
             (.packetTooLarge, .packetTooLarge),
-            (.alreadyConnectedWithSession, .alreadyConnectedWithSession):
+            (.alreadyConnectedWithSession, .alreadyConnectedWithSession),
+            (.noSessionPresent, .noSessionPresent):
             true
         case (.connectionError(let lhsValue), .connectionError(let rhsValue)):
             lhsValue == rhsValue
