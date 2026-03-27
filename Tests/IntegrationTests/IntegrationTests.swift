@@ -764,7 +764,7 @@ struct IntegrationTests {
 
         await withThrowingTaskGroup { group in
             group.addTask {
-                try await session.subscribe(to: [.init(topicFilter: "subscribeWithSession", qos: .atMostOnce)]) { subscription in
+                try await session.subscribe(to: [.init(topicFilter: "subscribeWithSession", qos: .exactlyOnce)]) { subscription in
                     var iterator = subscription.makeAsyncIterator()
                     try #expect(await (iterator.next()?.payload).map { String(buffer: $0) } == "test")
                     try #expect(await (iterator.next()?.payload).map { String(buffer: $0) } == "test2")
@@ -781,7 +781,7 @@ struct IntegrationTests {
                     try await Task.sleep(for: .milliseconds(100))
 
                     #expect(!sessionPresent)
-                    try await connection.publish(to: "subscribeWithSession", payload: ByteBuffer(string: "test"), qos: .atMostOnce)
+                    try await connection.publish(to: "subscribeWithSession", payload: ByteBuffer(string: "test"), qos: .exactlyOnce)
                 }
 
                 try await MQTTConnection.withConnection(
@@ -790,7 +790,7 @@ struct IntegrationTests {
                     logger: self.logger
                 ) { connection, sessionPresent in
                     #expect(sessionPresent)
-                    try await connection.publish(to: "subscribeWithSession", payload: ByteBuffer(string: "test2"), qos: .atMostOnce)
+                    try await connection.publish(to: "subscribeWithSession", payload: ByteBuffer(string: "test2"), qos: .exactlyOnce)
 
                     // Wait to ensure the UNSUBSCRIBE is sent before the connection is closed
                     try await Task.sleep(for: .milliseconds(100))
