@@ -37,7 +37,7 @@ struct IntegrationV5Tests {
             address: .hostname(Self.hostname),
             configuration: .init(versionConfiguration: .v5_0()),
             identifier: "connectV5",
-            logger: self.logger
+            logger: Logger(label: #function).withLogLevel(.trace)
         ) { connection in
             try await connection.ping()
         }
@@ -59,7 +59,7 @@ struct IntegrationV5Tests {
                 )
             ),
             identifier: "connectWithWillV5",
-            logger: self.logger
+            logger: Logger(label: #function).withLogLevel(.trace)
         ) { connection in
             try await connection.ping()
         }
@@ -78,7 +78,7 @@ struct IntegrationV5Tests {
             address: .hostname(Self.hostname),
             configuration: .init(versionConfiguration: .v5_0(connectProperties: .init([property]))),
             identifier: "connectWithPropertyV5_\(property)",
-            logger: self.logger
+            logger: Logger(label: #function).withLogLevel(.trace)
         ) { connection in
             try await connection.ping()
         }
@@ -91,7 +91,7 @@ struct IntegrationV5Tests {
             address: .hostname(Self.hostname),
             configuration: .init(versionConfiguration: .v5_0()),
             session: session,
-            logger: self.logger
+            logger: Logger(label: #function).withLogLevel(.trace)
         ) { connection in
             #expect(!session.clientID.isEmpty)
         }
@@ -103,7 +103,7 @@ struct IntegrationV5Tests {
             address: .hostname(Self.hostname),
             configuration: .init(versionConfiguration: .v5_0()),
             identifier: "publishV5QoS\(qos.rawValue)WithProperty\(String(describing: property))",
-            logger: self.logger
+            logger: Logger(label: #function).withLogLevel(.trace)
         ) { connection in
             let properties: MQTTProperties = if let property { .init([property]) } else { .init() }
             _ = try await connection.v5.publish(
@@ -124,7 +124,7 @@ struct IntegrationV5Tests {
             address: .hostname(Self.hostname),
             configuration: .init(versionConfiguration: .v5_0()),
             identifier: "subscribeFlagsV5",
-            logger: self.logger
+            logger: Logger(label: #function).withLogLevel(.trace)
         ) { connection in
             try await withThrowingTaskGroup { group in
                 group.addTask {
@@ -173,7 +173,7 @@ struct IntegrationV5Tests {
             address: .hostname(Self.hostname),
             configuration: .init(versionConfiguration: .v5_0()),
             identifier: "contentTypeV5",
-            logger: self.logger
+            logger: Logger(label: #function).withLogLevel(.trace)
         ) { connection in
             try await withThrowingTaskGroup { group in
                 group.addTask {
@@ -213,7 +213,7 @@ struct IntegrationV5Tests {
             address: .hostname(Self.hostname),
             configuration: .init(versionConfiguration: .v5_0()),
             identifier: "userPropertyV5",
-            logger: self.logger
+            logger: Logger(label: #function).withLogLevel(.trace)
         ) { connection in
             try await withThrowingTaskGroup { group in
                 group.addTask {
@@ -257,7 +257,7 @@ struct IntegrationV5Tests {
                 )
             ),
             session: session,
-            logger: self.logger
+            logger: Logger(label: #function).withLogLevel(.trace)
         ) { connection, sessionPresent in
             // First connection with this session, `sessionPresent` should be false
             #expect(sessionPresent == false)
@@ -273,7 +273,7 @@ struct IntegrationV5Tests {
                 )
             ),
             session: session,
-            logger: self.logger
+            logger: Logger(label: #function).withLogLevel(.trace)
         ) { connection, sessionPresent in
             // We used the same session in the previous connection,
             // but the Session Expiry Interval was set to 0
@@ -290,7 +290,7 @@ struct IntegrationV5Tests {
                 )
             ),
             session: session,
-            logger: self.logger
+            logger: Logger(label: #function).withLogLevel(.trace)
         ) { connection, sessionPresent in
             // We used the same session in the previous connection,
             // and the Session Expiry Interval was long enough for the session to still be valid
@@ -305,7 +305,7 @@ struct IntegrationV5Tests {
             address: .hostname(Self.hostname),
             configuration: .init(versionConfiguration: .v5_0()),
             session: session,
-            logger: self.logger
+            logger: Logger(label: #function).withLogLevel(.trace)
         ) { connection, sessionPresent in
             // We used the same session in the previous connection,
             // but the session should have expired by now
@@ -321,7 +321,7 @@ struct IntegrationV5Tests {
                 address: .hostname(Self.hostname),
                 configuration: .init(versionConfiguration: .v5_0(connectProperties: [.authenticationMethod("test")])),
                 identifier: "badAuthenticationMethodV5",
-                logger: self.logger
+                logger: Logger(label: #function).withLogLevel(.trace)
             ) { _, _ in }
         }
     }
@@ -332,7 +332,7 @@ struct IntegrationV5Tests {
             address: .hostname(Self.hostname),
             configuration: .init(versionConfiguration: .v5_0()),
             identifier: "invalidTopicNameV5",
-            logger: self.logger
+            logger: Logger(label: #function).withLogLevel(.trace)
         ) { connection in
             _ = await #expect(throws: MQTTPacketError.invalidTopicName) {
                 try await connection.v5.publish(
@@ -351,7 +351,7 @@ struct IntegrationV5Tests {
             address: .hostname(Self.hostname),
             configuration: .init(versionConfiguration: .v5_0()),
             identifier: "badPublishV5",
-            logger: self.logger
+            logger: Logger(label: #function).withLogLevel(.trace)
         ) { connection in
             let error = await #expect(throws: MQTTError.self) {
                 try await connection.v5.publish(
@@ -377,7 +377,7 @@ struct IntegrationV5Tests {
             address: .hostname(Self.hostname),
             configuration: .init(versionConfiguration: .v5_0()),
             identifier: "outOfRangeTopicAliasV5",
-            logger: self.logger
+            logger: Logger(label: #function).withLogLevel(.trace)
         ) { connection in
             _ = await #expect(throws: MQTTPacketError.topicAliasOutOfRange) {
                 try await connection.v5.publish(
@@ -396,7 +396,7 @@ struct IntegrationV5Tests {
             address: .hostname(Self.hostname),
             configuration: .init(versionConfiguration: .v5_0()),
             identifier: "publishWithSubscriptionIDV5",
-            logger: self.logger
+            logger: Logger(label: #function).withLogLevel(.trace)
         ) { connection in
             _ = await #expect(throws: MQTTPacketError.publishIncludesSubscription) {
                 try await connection.v5.publish(
@@ -415,7 +415,7 @@ struct IntegrationV5Tests {
             address: .hostname(Self.hostname),
             configuration: .init(versionConfiguration: .v5_0()),
             identifier: "reAuthV5",
-            logger: self.logger
+            logger: Logger(label: #function).withLogLevel(.trace)
         ) { connection in
             struct EmptyAuthenticator: MQTTAuthenticator {
                 var methodName: String { "Empty" }
@@ -444,7 +444,7 @@ struct IntegrationV5Tests {
             address: .hostname("test.mosquitto.org"),
             configuration: .init(versionConfiguration: .v5_0()),
             identifier: "subscribeAllV5",
-            logger: self.logger
+            logger: Logger(label: #function).withLogLevel(.trace)
         ) { connection in
             try await connection.v5.subscribe(to: [.init(topicFilter: "#", qos: .exactlyOnce)]) { _ in
                 try await Task.sleep(for: .seconds(5))
@@ -458,7 +458,7 @@ struct IntegrationV5Tests {
             address: .hostname(Self.hostname),
             configuration: .init(versionConfiguration: .v5_0()),
             identifier: "multiLevelWildcardV5",
-            logger: self.logger
+            logger: Logger(label: #function).withLogLevel(.trace)
         ) { connection in
             try await withThrowingTaskGroup { group in
                 group.addTask {
@@ -509,7 +509,7 @@ struct IntegrationV5Tests {
             address: .hostname(Self.hostname),
             configuration: .init(versionConfiguration: .v5_0()),
             identifier: "singleLevelWildcardV5",
-            logger: self.logger
+            logger: Logger(label: #function).withLogLevel(.trace)
         ) { connection in
             try await withThrowingTaskGroup { group in
                 group.addTask {
@@ -562,7 +562,7 @@ struct IntegrationV5Tests {
             address: .hostname(Self.hostname),
             configuration: .init(versionConfiguration: .v5_0()),
             identifier: "overlappingSubscriptionsV5",
-            logger: self.logger
+            logger: Logger(label: #function).withLogLevel(.trace)
         ) { connection in
             try await withThrowingTaskGroup { group in
                 group.addTask {
@@ -605,7 +605,7 @@ struct IntegrationV5Tests {
             address: .hostname(Self.hostname),
             configuration: .init(versionConfiguration: .v5_0()),
             identifier: "maximumPacketSizeV5QoS\(qos.rawValue)",
-            logger: self.logger
+            logger: Logger(label: #function).withLogLevel(.trace)
         ) { connection in
             let largePayload = ByteBufferAllocator().buffer(repeating: 0xFF, count: 150_000)
             await #expect(throws: MQTTError.packetTooLarge) {
@@ -617,10 +617,4 @@ struct IntegrationV5Tests {
             }
         }
     }
-
-    let logger: Logger = {
-        var logger = Logger(label: "MQTTNIOTests")
-        logger.logLevel = .trace
-        return logger
-    }()
 }

@@ -42,7 +42,7 @@ struct IntegrationTests {
                 )
             ),
             identifier: "connectWithWill",
-            logger: self.logger
+            logger: Logger(label: #function).withLogLevel(.trace)
         ) { connection in
             try await connection.ping()
         }
@@ -54,7 +54,7 @@ struct IntegrationTests {
             address: .hostname(Self.hostname),
             configuration: .init(pingInterval: .seconds(2)),
             identifier: "keepAlivePing",
-            logger: self.logger
+            logger: Logger(label: #function).withLogLevel(.trace)
         ) { connection in
             try await Task.sleep(for: .seconds(5))
         }
@@ -66,7 +66,7 @@ struct IntegrationTests {
             address: .hostname(Self.hostname, port: 1884),
             configuration: .init(authentication: .init(userName: "mqttnio", password: "mqttnio-password")),
             identifier: "connectWithUsernameAndPassword",
-            logger: self.logger
+            logger: Logger(label: #function).withLogLevel(.trace)
         ) { connection in
             try await connection.ping()
         }
@@ -79,7 +79,7 @@ struct IntegrationTests {
                 address: .hostname(Self.hostname, port: 1884),
                 configuration: .init(authentication: .init(userName: "wrong", password: "wrong")),
                 identifier: "connectWithWrongUsernameAndPassword",
-                logger: self.logger
+                logger: Logger(label: #function).withLogLevel(.trace)
             ) { connection in
                 try await connection.ping()
             }
@@ -92,7 +92,7 @@ struct IntegrationTests {
             address: .hostname(Self.hostname, port: 8080),
             configuration: .init(webSocketConfiguration: .init()),
             identifier: "webSocketConnect",
-            logger: self.logger
+            logger: Logger(label: #function).withLogLevel(.trace)
         ) { connection in
             try await connection.ping()
         }
@@ -116,12 +116,6 @@ struct IntegrationTests {
             #endif
         }
 
-        let logger: Logger = {
-            var logger = Logger(label: "IntegrationTLSTests")
-            logger.logLevel = .trace
-            return logger
-        }()
-
         @Test("Connect with TLS")
         func tlsConnect() async throws {
             try await MQTTConnection.withConnection(
@@ -129,7 +123,7 @@ struct IntegrationTests {
                 configuration: .init(tls: .enable(self.getTLSConfiguration(), tlsServerName: "soto.codes")),
                 identifier: "tlsConnect",
                 eventLoop: Self.eventLoopGroupSingleton.any(),
-                logger: self.logger
+                logger: Logger(label: #function).withLogLevel(.trace)
             ) { connection in
                 try await connection.ping()
             }
@@ -146,7 +140,7 @@ struct IntegrationTests {
                 ),
                 identifier: "webSocketAndTLSConnect",
                 eventLoop: Self.eventLoopGroupSingleton.any(),
-                logger: self.logger
+                logger: Logger(label: #function).withLogLevel(.trace)
             ) { connection in
                 try await connection.ping()
             }
@@ -173,7 +167,7 @@ struct IntegrationTests {
                 ),
                 identifier: "tlsConnectFromP12",
                 eventLoop: Self.eventLoopGroupSingleton.any(),
-                logger: self.logger
+                logger: Logger(label: #function).withLogLevel(.trace)
             ) { connection in
                 try await connection.ping()
             }
@@ -219,7 +213,7 @@ struct IntegrationTests {
         try await MQTTConnection.withConnection(
             address: .unixDomainSocket(path: Self.rootPath + "/mosquitto/socket/mosquitto.sock"),
             identifier: "unixDomainSocketConnect",
-            logger: self.logger
+            logger: Logger(label: #function).withLogLevel(.trace)
         ) { connection in
             try await connection.ping()
         }
@@ -230,7 +224,7 @@ struct IntegrationTests {
         try await MQTTConnection.withConnection(
             address: .hostname(Self.hostname),
             identifier: "publishQoS\(qos.rawValue)",
-            logger: self.logger
+            logger: Logger(label: #function).withLogLevel(.trace)
         ) { connection in
             try await connection.publish(
                 to: "testMQTTPublishQoS",
@@ -245,7 +239,7 @@ struct IntegrationTests {
         try await MQTTConnection.withConnection(
             address: .hostname(Self.hostname),
             identifier: "sendPingreq",
-            logger: self.logger
+            logger: Logger(label: #function).withLogLevel(.trace)
         ) { connection in
             try await connection.ping()
         }
@@ -272,7 +266,7 @@ struct IntegrationTests {
             try await MQTTConnection.withConnection(
                 address: .hostname(Self.hostname),
                 identifier: "serverDisconnect",
-                logger: self.logger
+                logger: Logger(label: #function).withLogLevel(.trace)
             ) { connection in
                 try await connection.sendMessage(MQTTForceDisconnectMessage()) { _ in true }
             }
@@ -289,7 +283,7 @@ struct IntegrationTests {
             address: .hostname(Self.hostname, port: 8080),
             configuration: .init(webSocketConfiguration: .init()),
             identifier: "publishRetain",
-            logger: self.logger
+            logger: Logger(label: #function).withLogLevel(.trace)
         ) { connection in
             try await withThrowingTaskGroup { group in
                 group.addTask {
@@ -327,7 +321,7 @@ struct IntegrationTests {
                     address: .hostname(Self.hostname, port: 8080),
                     configuration: .init(webSocketConfiguration: .init()),
                     identifier: "publishToClient_subscriber",
-                    logger: self.logger
+                    logger: Logger(label: #function).withLogLevel(.trace)
                 ) { connection in
                     try await connection.subscribe(
                         to: [
@@ -359,7 +353,7 @@ struct IntegrationTests {
                     address: .hostname(Self.hostname, port: 8080),
                     configuration: .init(webSocketConfiguration: .init()),
                     identifier: "publishToClient_publisher",
-                    logger: self.logger
+                    logger: Logger(label: #function).withLogLevel(.trace)
                 ) { connection in
                     try await Task.sleep(for: .seconds(1))
                     try await connection.publish(to: "testAtLeastOnce", payload: payload, qos: .atLeastOnce)
@@ -382,7 +376,7 @@ struct IntegrationTests {
                 try await MQTTConnection.withConnection(
                     address: .hostname(Self.hostname),
                     identifier: "publishLargePayloadToClient_subscriber",
-                    logger: self.logger
+                    logger: Logger(label: #function).withLogLevel(.trace)
                 ) { connection in
                     try await connection.subscribe(to: [.init(topicFilter: "testLargeAtLeastOnce", qos: .atLeastOnce)]) { subscription in
                         try await confirmation("publishLargePayloadToClient") { receivedMessage in
@@ -402,7 +396,7 @@ struct IntegrationTests {
                 try await MQTTConnection.withConnection(
                     address: .hostname(Self.hostname),
                     identifier: "publishLargePayloadToClient_publisher",
-                    logger: self.logger
+                    logger: Logger(label: #function).withLogLevel(.trace)
                 ) { connection in
                     try await Task.sleep(for: .seconds(1))
                     try await connection.publish(to: "testLargeAtLeastOnce", payload: payload, qos: .atLeastOnce)
@@ -420,7 +414,7 @@ struct IntegrationTests {
         try await MQTTConnection.withConnection(
             address: .hostname(Self.hostname),
             identifier: "sessionPresent",
-            logger: self.logger
+            logger: Logger(label: #function).withLogLevel(.trace)
         ) { connection, sessionPresent in
             #expect(sessionPresent == false)
             try await connection.ping()
@@ -433,7 +427,7 @@ struct IntegrationTests {
         try await MQTTConnection.withConnection(
             address: .hostname(Self.hostname),
             session: session,
-            logger: self.logger
+            logger: Logger(label: #function).withLogLevel(.trace)
         ) { connection, sessionPresent in
             #expect(sessionPresent == false)
             try await connection.ping()
@@ -444,7 +438,7 @@ struct IntegrationTests {
         try await MQTTConnection.withConnection(
             address: .hostname(Self.hostname),
             session: session,
-            logger: self.logger
+            logger: Logger(label: #function).withLogLevel(.trace)
         ) { connection, sessionPresent in
             #expect(sessionPresent == true)
             try await connection.ping()
@@ -456,7 +450,7 @@ struct IntegrationTests {
         try await MQTTConnection.withConnection(
             address: .hostname("test.mosquitto.org"),
             identifier: "subscribeAll",
-            logger: self.logger
+            logger: Logger(label: #function).withLogLevel(.trace)
         ) { connection in
             try await connection.subscribe(to: [.init(topicFilter: "#", qos: .exactlyOnce)]) { subscription in
                 try await Task.sleep(for: .seconds(5))
@@ -470,7 +464,7 @@ struct IntegrationTests {
         try await MQTTConnection.withConnection(
             address: .hostname("127.0.0.1"),
             identifier: "rawIPConnect",
-            logger: self.logger
+            logger: Logger(label: #function).withLogLevel(.trace)
         ) { connection in
             try await connection.ping()
         }
@@ -482,7 +476,7 @@ struct IntegrationTests {
         try await MQTTConnection.withConnection(
             address: .hostname(Self.hostname),
             identifier: "packetID",
-            logger: self.logger
+            logger: Logger(label: #function).withLogLevel(.trace)
         ) { connection in
             let initial = await connection.globalPacketId.load(ordering: .relaxed)
             try await connection.publish(
@@ -507,7 +501,7 @@ struct IntegrationTests {
         try await MQTTConnection.withConnection(
             address: .hostname(Self.hostname),
             identifier: "multiLevelWildcard",
-            logger: self.logger
+            logger: Logger(label: #function).withLogLevel(.trace)
         ) { connection in
             try await withThrowingTaskGroup { group in
                 group.addTask {
@@ -547,7 +541,7 @@ struct IntegrationTests {
         try await MQTTConnection.withConnection(
             address: .hostname(Self.hostname),
             identifier: "singleLevelWildcard",
-            logger: self.logger
+            logger: Logger(label: #function).withLogLevel(.trace)
         ) { connection in
             try await withThrowingTaskGroup { group in
                 group.addTask {
@@ -590,7 +584,7 @@ struct IntegrationTests {
         try await MQTTConnection.withConnection(
             address: .hostname(Self.hostname),
             identifier: "overlappingSubscriptions",
-            logger: self.logger
+            logger: Logger(label: #function).withLogLevel(.trace)
         ) { connection in
             try await withThrowingTaskGroup { group in
                 group.addTask {
@@ -627,7 +621,7 @@ struct IntegrationTests {
         try await MQTTConnection.withConnection(
             address: .hostname(Self.hostname),
             identifier: "cancellation",
-            logger: self.logger
+            logger: Logger(label: #function).withLogLevel(.trace)
         ) { connection in
             await withThrowingTaskGroup { group in
                 group.addTask {
@@ -649,7 +643,7 @@ struct IntegrationTests {
         try await MQTTConnection.withConnection(
             address: .hostname(Self.hostname),
             identifier: "alreadyCancelled",
-            logger: self.logger
+            logger: Logger(label: #function).withLogLevel(.trace)
         ) { connection in
             await withThrowingTaskGroup(of: Void.self) { group in
                 group.cancelAll()
@@ -673,7 +667,7 @@ struct IntegrationTests {
                 try await MQTTConnection.withConnection(
                     address: .hostname(Self.hostname),
                     identifier: "inflight_subscriber",
-                    logger: self.logger
+                    logger: Logger(label: #function).withLogLevel(.trace)
                 ) { connection in
                     try await connection.subscribe(to: [.init(topicFilter: "testInflight", qos: .exactlyOnce)]) { subscription in
                         for try await message in subscription {
@@ -691,7 +685,7 @@ struct IntegrationTests {
                 try await MQTTConnection.withConnection(
                     address: .hostname(Self.hostname),
                     session: session,
-                    logger: self.logger
+                    logger: Logger(label: #function).withLogLevel(.trace)
                 ) { connection in
                     async let _ = connection.publish(to: "testInflight", payload: ByteBuffer(string: "test"), qos: .exactlyOnce)
                     connection.close()
@@ -702,7 +696,7 @@ struct IntegrationTests {
                 try await MQTTConnection.withConnection(
                     address: .hostname(Self.hostname),
                     session: session,
-                    logger: self.logger
+                    logger: Logger(label: #function).withLogLevel(.trace)
                 ) { connection in
                     try await connection.ping()
                 }
@@ -724,7 +718,7 @@ struct IntegrationTests {
                     try await MQTTConnection.withConnection(
                         address: .hostname(Self.hostname),
                         session: session,
-                        logger: self.logger
+                        logger: Logger(label: #function).withLogLevel(.trace)
                     ) { connection in
                         try await connection.subscribe(to: [.init(topicFilter: "multipleConnWithSession1", qos: .atMostOnce)]) { subscription in
                             for try await _ in subscription {}
@@ -736,7 +730,7 @@ struct IntegrationTests {
                     try await MQTTConnection.withConnection(
                         address: .hostname(Self.hostname),
                         session: session,
-                        logger: self.logger
+                        logger: Logger(label: #function).withLogLevel(.trace)
                     ) { connection in
                         try await connection.subscribe(to: [.init(topicFilter: "multipleConnWithSession2", qos: .atMostOnce)]) { subscription in
                             for try await _ in subscription {}
@@ -748,12 +742,6 @@ struct IntegrationTests {
             }
         }
     }
-
-    let logger: Logger = {
-        var logger = Logger(label: "IntegrationTests")
-        logger.logLevel = .trace
-        return logger
-    }()
 
     static let rootPath = #filePath
         .split(separator: "/", omittingEmptySubsequences: false)
@@ -793,5 +781,13 @@ extension MQTTError: Equatable {
         default:
             false
         }
+    }
+}
+
+extension Logger {
+    func withLogLevel(_ logLevel: Logger.Level) -> Logger {
+        var logger = self
+        logger.logLevel = logLevel
+        return logger
     }
 }
