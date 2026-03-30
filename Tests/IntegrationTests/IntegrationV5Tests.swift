@@ -86,7 +86,7 @@ struct IntegrationV5Tests {
 
     @Test("Connect with No Identifier")
     func connectWithNoIdentifier() async throws {
-        let session = MQTTSession(clientID: "", logger: self.logger)
+        let session = MQTTSession(clientID: "", logger: Logger(label: #function).withLogLevel(.trace))
         try await MQTTConnection.withConnection(
             address: .hostname(Self.hostname),
             configuration: .init(versionConfiguration: .v5_0()),
@@ -246,7 +246,7 @@ struct IntegrationV5Tests {
 
     @Test("Session Expiry Interval")
     func sessionExpiryInterval() async throws {
-        let session = MQTTSession(clientID: "sessionExpiryIntervalV5", logger: self.logger)
+        let session = MQTTSession(clientID: "sessionExpiryIntervalV5", logger: Logger(label: #function).withLogLevel(.trace))
 
         try await MQTTConnection.withConnection(
             address: .hostname(Self.hostname),
