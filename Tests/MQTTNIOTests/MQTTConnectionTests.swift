@@ -25,7 +25,7 @@ struct MQTTConnectionTests {
     func withTestMQTTServer(
         configuration: MQTTConnectionConfiguration = .init(),
         session: MQTTSession = MQTTSession(clientID: "", logger: Logger(label: "test_session")),
-        logger: Logger = Logger(label: "test"),
+        logger: Logger,
         connackProperties: MQTTProperties = .init(),
         client clientOperation: @Sendable @escaping (MQTTConnection) async throws -> Void,
         server serverOperation: @Sendable @escaping (NIOAsyncTestingChannel) async throws -> Void,
@@ -82,7 +82,7 @@ struct MQTTConnectionTests {
         subscribeInfos: [MQTTSubscribeInfo],
         cleanSession: Bool = true,
         identifier: String = UUID().uuidString,
-        logger: Logger = Logger(label: "test"),
+        logger: Logger,
         client clientOperation: @Sendable @escaping (MQTTSubscription) async throws -> Void,
         server serverOperation: @Sendable @escaping (NIOAsyncTestingChannel) async throws -> Void,
     ) async throws {
@@ -129,7 +129,7 @@ struct MQTTConnectionTests {
         subscribeInfos: [MQTTSubscribeInfoV5],
         cleanSession: Bool = true,
         identifier: String = UUID().uuidString,
-        logger: Logger = Logger(label: "test"),
+        logger: Logger,
         client clientOperation: @Sendable @escaping (MQTTSubscription) async throws -> Void,
         server serverOperation: @Sendable @escaping (NIOAsyncTestingChannel, UInt32) async throws -> Void,
     ) async throws {
@@ -185,18 +185,14 @@ struct MQTTConnectionTests {
 
     @Test
     func testConnectDisconnect() async throws {
-        var logger = Logger(label: "testConnectDisconnect")
-        logger.logLevel = .trace
-        try await withTestMQTTServer(logger: logger) { _ in
+        try await withTestMQTTServer(logger: Logger(label: #function).withLogLevel(.trace)) { _ in
         } server: { _ in
         }
     }
 
     @Test
     func testPublishQoS0ClientToServer() async throws {
-        var logger = Logger(label: "testPublishQoS0ClientToServer")
-        logger.logLevel = .trace
-        try await withTestMQTTServer(logger: logger) { connection in
+        try await withTestMQTTServer(logger: Logger(label: #function).withLogLevel(.trace)) { connection in
             try await connection.publish(to: "testTopic", payload: ByteBuffer(string: "TestPayload"), qos: .atMostOnce, retain: false)
         } server: { channel in
             let packet = try await channel.waitForOutboundPacket()
@@ -210,9 +206,7 @@ struct MQTTConnectionTests {
 
     @Test
     func testPublishQoS1ClientToServer() async throws {
-        var logger = Logger(label: "testPublishQoS1ClientToServer")
-        logger.logLevel = .trace
-        try await withTestMQTTServer(logger: logger) { connection in
+        try await withTestMQTTServer(logger: Logger(label: #function).withLogLevel(.trace)) { connection in
             try await connection.publish(to: "testTopic", payload: ByteBuffer(string: "TestPayload"), qos: .atLeastOnce, retain: false)
         } server: { channel in
             let packet = try await channel.waitForOutboundPacket()
@@ -228,9 +222,7 @@ struct MQTTConnectionTests {
 
     @Test
     func testPublishQoS2ClientToServer() async throws {
-        var logger = Logger(label: "testPublishQoS2ClientToServer")
-        logger.logLevel = .trace
-        try await withTestMQTTServer(logger: logger) { connection in
+        try await withTestMQTTServer(logger: Logger(label: #function).withLogLevel(.trace)) { connection in
             try await connection.publish(to: "testTopic", payload: ByteBuffer(string: "TestPayload"), qos: .exactlyOnce, retain: false)
         } server: { channel in
             // receive PUBLISH
@@ -256,11 +248,9 @@ struct MQTTConnectionTests {
 
     @Test
     func testSubscribeAndPublishQoS0() async throws {
-        var logger = Logger(label: "testSubscribeAndPublishQoS0")
-        logger.logLevel = .trace
         try await testSubscribe(
             subscribeInfos: [.init(topicFilter: "testTopic", qos: .atMostOnce)],
-            logger: logger
+            logger: Logger(label: #function).withLogLevel(.trace)
         ) { sub in
             var iterator = sub.makeAsyncIterator()
             let event = try #require(try await iterator.next())
@@ -283,11 +273,9 @@ struct MQTTConnectionTests {
 
     @Test
     func testSubscribeAndPublishQoS1() async throws {
-        var logger = Logger(label: "testSubscribeAndPublishQoS1")
-        logger.logLevel = .trace
         try await testSubscribe(
             subscribeInfos: [.init(topicFilter: "testTopic", qos: .atLeastOnce)],
-            logger: logger
+            logger: Logger(label: #function).withLogLevel(.trace)
         ) { sub in
             var iterator = sub.makeAsyncIterator()
             let event = try #require(try await iterator.next())
@@ -315,11 +303,9 @@ struct MQTTConnectionTests {
 
     @Test
     func testSubscribeAndPublishQoS2() async throws {
-        var logger = Logger(label: "testSubscribeAndPublishQoS2")
-        logger.logLevel = .trace
         try await testSubscribe(
             subscribeInfos: [.init(topicFilter: "testTopic", qos: .exactlyOnce)],
-            logger: logger
+            logger: Logger(label: #function).withLogLevel(.trace)
         ) { sub in
             var iterator = sub.makeAsyncIterator()
             let event = try #require(try await iterator.next())
@@ -355,11 +341,9 @@ struct MQTTConnectionTests {
 
     @Test
     func testSubscribeAndDuplicatePublishQoS2() async throws {
-        var logger = Logger(label: "testSubscribeAndDuplicatePublishQoS2")
-        logger.logLevel = .trace
         try await testSubscribe(
             subscribeInfos: [.init(topicFilter: "testTopic", qos: .exactlyOnce)],
-            logger: logger
+            logger: Logger(label: #function).withLogLevel(.trace)
         ) { sub in
             var iterator = sub.makeAsyncIterator()
             let event = try #require(try await iterator.next())
@@ -413,11 +397,9 @@ struct MQTTConnectionTests {
 
     @Test
     func testTopicFilter() async throws {
-        var logger = Logger(label: "testTopicFilter")
-        logger.logLevel = .trace
         try await testSubscribe(
             subscribeInfos: [.init(topicFilter: "testTopic/+", qos: .atMostOnce)],
-            logger: logger
+            logger: Logger(label: #function).withLogLevel(.trace)
         ) { sub in
             var iterator = sub.makeAsyncIterator()
             let event = try #require(try await iterator.next())
@@ -453,11 +435,9 @@ struct MQTTConnectionTests {
 
     @Test
     func testSubscriptionIdFilter() async throws {
-        var logger = Logger(label: "testSubscriptionIdFilter")
-        logger.logLevel = .trace
         try await testSubscribeV5(
             subscribeInfos: [.init(topicFilter: "testTopic/+", qos: .atMostOnce)],
-            logger: logger
+            logger: Logger(label: #function).withLogLevel(.trace)
         ) { sub in
             var iterator = sub.makeAsyncIterator()
             let event = try #require(try await iterator.next())
@@ -493,15 +473,16 @@ struct MQTTConnectionTests {
 
     @Test("Multiple Subscription Identifiers")
     func multipleSubscriptionIDs() async throws {
-        var logger = Logger(label: "multipleSubscriptionIDs")
-        logger.logLevel = .trace
         let subscribeInfos: [MQTTSubscribeInfo] = [
             .init(topicFilter: "test/topic/#", qos: .atMostOnce),
             .init(topicFilter: "test/#", qos: .atMostOnce),
             .init(topicFilter: "test/topic", qos: .atMostOnce),
         ]
 
-        try await withTestMQTTServer(configuration: .init(versionConfiguration: .v5_0()), logger: logger) { connection in
+        try await withTestMQTTServer(
+            configuration: .init(versionConfiguration: .v5_0()),
+            logger: Logger(label: #function).withLogLevel(.trace)
+        ) { connection in
             try await withThrowingTaskGroup { group in
                 for subscribeInfo in subscribeInfos {
                     group.addTask {
@@ -565,14 +546,12 @@ struct MQTTConnectionTests {
 
     @Test
     func testAuthWorkflow() async throws {
-        var logger = Logger(label: "testAuthWorkflow")
-        logger.logLevel = .trace
         let channel = NIOAsyncTestingChannel()
         let connection = try await MQTTConnection.setupChannelAndConnect(
             channel,
             configuration: .init(versionConfiguration: .v5_0(authWorkflow: SimpleAuthWorkflow())),
-            session: MQTTSession(clientID: "", logger: logger),
-            logger: logger
+            session: MQTTSession(clientID: "", logger: Logger(label: #function).withLogLevel(.trace)),
+            logger: Logger(label: #function).withLogLevel(.trace)
         )
         return try await withThrowingTaskGroup { group in
             group.addTask {
@@ -608,11 +587,9 @@ struct MQTTConnectionTests {
 
     @Test
     func testReAuthenticate() async throws {
-        var logger = Logger(label: "testReAuthenticate")
-        logger.logLevel = .trace
         try await withTestMQTTServer(
             configuration: .init(versionConfiguration: .v5_0(authWorkflow: SimpleAuthWorkflow())),
-            logger: logger
+            logger: Logger(label: #function).withLogLevel(.trace)
         ) { connection in
             _ = try await connection.v5.auth(properties: [])
         } server: { channel in
@@ -639,11 +616,8 @@ struct MQTTConnectionTests {
 
     @Test("Cancellation")
     func cancellation() async throws {
-        var logger = Logger(label: "cancellation")
-        logger.logLevel = .trace
-
         let (stream, cont) = AsyncStream.makeStream(of: Void.self)
-        try await withTestMQTTServer(logger: logger) { connection in
+        try await withTestMQTTServer(logger: Logger(label: #function).withLogLevel(.trace)) { connection in
             await withThrowingTaskGroup { group in
                 group.addTask {
                     await #expect(throws: MQTTError.cancelledTask) {
@@ -661,9 +635,7 @@ struct MQTTConnectionTests {
 
     @Test("Inflight")
     func inflight() async throws {
-        var logger = Logger(label: "inflight")
-        logger.logLevel = .trace
-
+        let logger = Logger(label: #function).withLogLevel(.trace)
         let session = MQTTSession(clientID: "inflight", logger: logger)
 
         // This stream is used to pass the PUBLISH packet ID from the first server to the second
@@ -728,8 +700,7 @@ struct MQTTConnectionTests {
 
     @Test("Maximum Packet Size", arguments: MQTTQoS.allCases)
     func maximumPacketSize(qos: MQTTQoS) async throws {
-        var logger = Logger(label: "maximumPacketSize")
-        logger.logLevel = .trace
+        let logger = Logger(label: #function).withLogLevel(.trace)
 
         try await withTestMQTTServer(
             configuration: .init(versionConfiguration: .v5_0()),

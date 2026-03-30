@@ -20,7 +20,7 @@ import Testing
 struct MQTTSubscriptionsTests {
     @Test("Subscribe and Unsubscribe")
     func subscribeAndUnsubscribe() throws {
-        var subscriptions = MQTTSubscriptions(logger: self.logger)
+        var subscriptions = MQTTSubscriptions(logger: Logger(label: #function).withLogLevel(.trace))
         let subscribeInfos = [
             MQTTSubscribeInfoV5(topicFilter: "test/topic/1", qos: .atMostOnce),
             MQTTSubscribeInfoV5(topicFilter: "test/topic/2/#", qos: .atLeastOnce),
@@ -60,7 +60,7 @@ struct MQTTSubscriptionsTests {
 
     @Test("Subscribe and Remove Subscription")
     func subscribeAndRemove() throws {
-        var subscriptions = MQTTSubscriptions(logger: self.logger)
+        var subscriptions = MQTTSubscriptions(logger: Logger(label: #function).withLogLevel(.trace))
         let subscribeInfos = [
             MQTTSubscribeInfoV5(topicFilter: "test/topic/1", qos: .atMostOnce),
             MQTTSubscribeInfoV5(topicFilter: "test/topic/2/#", qos: .atLeastOnce),
@@ -91,10 +91,12 @@ struct MQTTSubscriptionsTests {
             #expect(subscriptions.subscriptionMap[tf] == nil)
         }
     }
+}
 
-    let logger: Logger = {
-        var logger = Logger(label: "MQTTNIOTests")
-        logger.logLevel = .trace
+extension Logger {
+    func withLogLevel(_ logLevel: Logger.Level) -> Logger {
+        var logger = self
+        logger.logLevel = logLevel
         return logger
-    }()
+    }
 }
