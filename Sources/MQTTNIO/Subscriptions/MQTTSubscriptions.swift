@@ -67,7 +67,11 @@ struct MQTTSubscriptions {
 
     /// Connection is closing, let's inform all the subscriptions that are not opened by the session
     mutating func close(error: any Error) {
-        for subscription in subscriptionIDMap.values where !subscription.openedBySession {
+        // If the error is `MQTTError.noSessionPresent`,
+        // then we should close also the subscriptions opened by the session
+        let noSessionPresent = if case MQTTError.noSessionPresent = error { true } else { false }
+
+        for subscription in subscriptionIDMap.values where !subscription.openedBySession || noSessionPresent {
             subscription.sendError(error)
             self.removeSubscription(id: subscription.id)
         }
