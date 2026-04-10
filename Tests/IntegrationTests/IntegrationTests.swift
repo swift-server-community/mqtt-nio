@@ -852,6 +852,60 @@ struct IntegrationTests {
         }
     }
 
+    @Test("Close Subscriptions")
+    func closeSubscriptions() async throws {
+        // Make an initial connection with `cleanSession` to clear any existing session state
+        try await MQTTConnection.withConnection(
+            address: .hostname(Self.hostname),
+            identifier: "closeSubscriptions",
+            logger: Logger(label: #function).withLogLevel(.trace)
+        ) { connection in
+            try await connection.ping()
+        }
+
+        let logger = Logger(label: #function).withLogLevel(.trace)
+
+        let session = MQTTSession(clientID: "closeSubscriptions", logger: logger)
+
+        await withThrowingTaskGroup { group in
+            let (stream, continuation) = AsyncStream<Void>.makeStream()
+
+            group.addTask {
+                _ = await #expect(throws: Never.self) {
+                    // Open a subscription with the session that won't throw an error when the connection is closed
+                    try await session.subscribe(to: [.init(topicFilter: "sessionSub", qos: .exactlyOnce)]) { subscription in
+                        await stream.first { _ in true }
+                    }
+                }
+            }
+
+            group.addTask {
+                try await MQTTConnection.withConnection(
+                    address: .hostname(Self.hostname),
+                    session: session,
+                    logger: logger
+                ) { connection in
+                    try await withThrowingTaskGroup { group in
+                        group.addTask {
+                            _ = await #expect(throws: MQTTError.self) {
+                                // Open a subscription with the connection that will throw an error when the connection is closed
+                                try await connection.subscribe(to: [.init(topicFilter: "connectionSub", qos: .exactlyOnce)]) { subscription in
+                                    for try await _ in subscription {}
+                                }
+                            }
+                        }
+
+                        try await Task.sleep(for: .seconds(1))
+                        connection.close()
+                    }
+                }
+
+                // Signal to the session subscription that the connection has been closed
+                continuation.yield()
+            }
+        }
+    }
+
     static let rootPath = #filePath
         .split(separator: "/", omittingEmptySubsequences: false)
         .dropLast(3)

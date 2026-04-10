@@ -97,7 +97,7 @@ final class MQTTChannelHandler: ChannelDuplexHandler {
         self.pingreqCallback = nil
 
         // channel is inactive so we should fail all tasks in progress
-        self.failTasks(with: MQTTError.serverClosedConnection)
+        self.failTasksAndCloseSubscriptions(with: MQTTError.serverClosedConnection)
         self.logger.trace("Channel became inactive.")
 
         context.fireChannelInactive()
@@ -105,7 +105,7 @@ final class MQTTChannelHandler: ChannelDuplexHandler {
 
     func errorCaught(context: ChannelHandlerContext, error: any Error) {
         // we caught an error so we should fail all active tasks
-        self.failTasks(with: error)
+        self.failTasksAndCloseSubscriptions(with: error)
         self.logger.error("Error caught in channel handler: \(error)")
     }
 
@@ -155,7 +155,7 @@ final class MQTTChannelHandler: ChannelDuplexHandler {
                 case .unhandledTask:
                     self.processUnhandledPacket(message, context: context)
                 case .closeConnection(let error):
-                    self.failTasks(with: error)
+                    self.failTasksAndCloseSubscriptions(with: error)
                     context.fireErrorCaught(error)
                     context.close(promise: nil)
                     if case MQTTError.unexpectedMessage = error {
@@ -165,7 +165,7 @@ final class MQTTChannelHandler: ChannelDuplexHandler {
                 }
             }
         } catch {
-            self.failTasks(with: error)
+            self.failTasksAndCloseSubscriptions(with: error)
             context.fireErrorCaught(error)
             context.close(promise: nil)
             self.logger.error("Error processing MQTT message", metadata: ["mqtt_error": .string("\(error)")])
@@ -202,7 +202,7 @@ final class MQTTChannelHandler: ChannelDuplexHandler {
                     case .success(let publish):
                         self.session.subscriptions.withLock { $0.notify(publish) }
                     case .failure(let error):
-                        self.failTasks(with: error)
+                        self.failTasksAndCloseSubscriptions(with: error)
                         context.fireErrorCaught(error)
                         context.close(promise: nil)
                         self.logger.error("Error sending PUBACK", metadata: ["mqtt_error": .string("\(error)")])
@@ -236,7 +236,7 @@ final class MQTTChannelHandler: ChannelDuplexHandler {
                         self.respondToPublish(message, context: context)
                         return
                     default:
-                        self.failTasks(with: error)
+                        self.failTasksAndCloseSubscriptions(with: error)
                         context.fireErrorCaught(error)
                         context.close(promise: nil)
                         self.logger.error("Error during QoS 2 publish flow", metadata: ["mqtt_error": .string("\(error)")])
@@ -435,12 +435,13 @@ final class MQTTChannelHandler: ChannelDuplexHandler {
         }
     }
 
-    private func failTasks(with error: any Error) {
+    private func failTasksAndCloseSubscriptions(with error: any Error) {
         switch self.stateMachine.close() {
         case .failTasksAndClose(let tasks):
             for task in tasks {
                 task.fail(error)
             }
+            self.session.subscriptions.withLock { $0.close(error: error) }
         case .doNothing:
             break
         }
@@ -472,7 +473,7 @@ final class MQTTChannelHandler: ChannelDuplexHandler {
                     .whenComplete { result in
                         switch result {
                         case .failure(let error):
-                            channelHandler.failTasks(with: error)
+                            channelHandler.failTasksAndCloseSubscriptions(with: error)
                             context.fireErrorCaught(error)
                         case .success:
                             break
