@@ -758,7 +758,7 @@ struct IntegrationTests {
 
         await withThrowingTaskGroup { group in
             group.addTask {
-                try await session.subscribe(to: [.init(topicFilter: "subscribeWithSession", qos: .exactlyOnce)]) { subscription in
+                try await session.subscribe(to: [.init(topicFilter: "subscribeWithSession", qos: .atLeastOnce)]) { subscription in
                     var iterator = subscription.makeAsyncIterator()
                     try #expect(await (iterator.next()?.payload).map { String(buffer: $0) } == "test")
                     try #expect(await (iterator.next()?.payload).map { String(buffer: $0) } == "test2")
@@ -775,7 +775,7 @@ struct IntegrationTests {
                     try await Task.sleep(for: .milliseconds(100))
 
                     #expect(!sessionPresent)
-                    try await connection.publish(to: "subscribeWithSession", payload: ByteBuffer(string: "test"), qos: .exactlyOnce)
+                    try await connection.publish(to: "subscribeWithSession", payload: ByteBuffer(string: "test"), qos: .atLeastOnce)
                 }
 
                 try await MQTTConnection.withConnection(
@@ -784,7 +784,7 @@ struct IntegrationTests {
                     logger: Logger(label: #function).withLogLevel(.trace)
                 ) { connection, sessionPresent in
                     #expect(sessionPresent)
-                    try await connection.publish(to: "subscribeWithSession", payload: ByteBuffer(string: "test2"), qos: .exactlyOnce)
+                    try await connection.publish(to: "subscribeWithSession", payload: ByteBuffer(string: "test2"), qos: .atLeastOnce)
 
                     // Wait to ensure the UNSUBSCRIBE is sent before the connection is closed
                     try await Task.sleep(for: .milliseconds(100))
@@ -809,7 +809,7 @@ struct IntegrationTests {
         await withThrowingTaskGroup { group in
             group.addTask {
                 _ = await #expect(throws: MQTTError.noSessionPresent) {
-                    try await session.subscribe(to: [.init(topicFilter: "closeSubscriptionsNoSessionPresent", qos: .exactlyOnce)]) { subscription in
+                    try await session.subscribe(to: [.init(topicFilter: "closeSubscriptionsNoSessionPresent", qos: .atLeastOnce)]) { subscription in
                         for try await _ in subscription {}
                     }
                 }
@@ -823,7 +823,7 @@ struct IntegrationTests {
                 ) { connection, sessionPresent in
                     // First connection with the session
                     #expect(!sessionPresent)
-                    try await connection.publish(to: "closeSubscriptionsNoSessionPresent", payload: ByteBuffer(string: "test"), qos: .exactlyOnce)
+                    try await connection.publish(to: "closeSubscriptionsNoSessionPresent", payload: ByteBuffer(string: "test"), qos: .atLeastOnce)
                 }
 
                 // Make a connection with `cleanSession` to clear existing session state
@@ -846,7 +846,7 @@ struct IntegrationTests {
                     // so even though this connection is with the same session,
                     // `sessionPresent` should be false and the subscriptions should be closed
                     #expect(!sessionPresent)
-                    try await connection.publish(to: "closeSubscriptionsNoSessionPresent", payload: ByteBuffer(string: "test"), qos: .exactlyOnce)
+                    try await connection.publish(to: "closeSubscriptionsNoSessionPresent", payload: ByteBuffer(string: "test"), qos: .atLeastOnce)
                 }
             }
         }
@@ -873,7 +873,7 @@ struct IntegrationTests {
             group.addTask {
                 _ = await #expect(throws: Never.self) {
                     // Open a subscription with the session that won't throw an error when the connection is closed
-                    try await session.subscribe(to: [.init(topicFilter: "sessionSub", qos: .exactlyOnce)]) { subscription in
+                    try await session.subscribe(to: [.init(topicFilter: "sessionSub", qos: .atLeastOnce)]) { subscription in
                         await stream.first { _ in true }
                     }
                 }
@@ -889,7 +889,7 @@ struct IntegrationTests {
                         group.addTask {
                             _ = await #expect(throws: MQTTError.self) {
                                 // Open a subscription with the connection that will throw an error when the connection is closed
-                                try await connection.subscribe(to: [.init(topicFilter: "connectionSub", qos: .exactlyOnce)]) { subscription in
+                                try await connection.subscribe(to: [.init(topicFilter: "connectionSub", qos: .atLeastOnce)]) { subscription in
                                     for try await _ in subscription {}
                                 }
                             }
