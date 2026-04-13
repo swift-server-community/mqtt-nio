@@ -821,6 +821,9 @@ struct IntegrationTests {
                     session: session,
                     logger: Logger(label: #function).withLogLevel(.trace)
                 ) { connection, sessionPresent in
+                    // Wait for the subscription to be established before publishing
+                    try await Task.sleep(for: .milliseconds(100))
+
                     // First connection with the session
                     #expect(!sessionPresent)
                     try await connection.publish(to: "closeSubscriptionsNoSessionPresent", payload: ByteBuffer(string: "test"), qos: .atLeastOnce)
@@ -847,6 +850,8 @@ struct IntegrationTests {
                     // `sessionPresent` should be false and the subscriptions should be closed
                     #expect(!sessionPresent)
                     try await connection.publish(to: "closeSubscriptionsNoSessionPresent", payload: ByteBuffer(string: "test"), qos: .atLeastOnce)
+
+                    try await Task.sleep(for: .milliseconds(100))
                 }
             }
         }
