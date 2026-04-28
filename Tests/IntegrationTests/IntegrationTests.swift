@@ -247,21 +247,6 @@ struct IntegrationTests {
 
     @Test("Server-Initiated Disconnection")
     func serverDisconnect() async throws {
-        struct MQTTForceDisconnectMessage: MQTTPacket {
-            var type: MQTTPacketType { .PUBLISH }
-            var description: String { "FORCEDISCONNECT" }
-
-            func write(version: MQTTConnectionConfiguration.Version, to byteBuffer: inout ByteBuffer) throws {
-                // writing publish header with no content will cause a disconnect from the server
-                byteBuffer.writeInteger(UInt8(0x30))
-                byteBuffer.writeInteger(UInt8(0x0))
-            }
-
-            static func read(version: MQTTConnectionConfiguration.Version, from packet: MQTTIncomingPacket) throws -> Self {
-                throw InternalError.notImplemented
-            }
-        }
-
         await #expect(throws: MQTTError.serverClosedConnection) {
             try await MQTTConnection.withConnection(
                 address: .hostname(Self.hostname),
@@ -1009,10 +994,78 @@ struct IntegrationTests {
         }
     }
 
+    @Test("Connection Subscription Cleanup", arguments: [true, false])
+    func connectionSubscriptionCleanup(clientClose: Bool) async throws {
+        let logger = Logger(label: #function).withLogLevel(.trace)
+        let identifier = "connectionSubscriptionCleanup_" + (clientClose ? "clientClose" : "forceDisconnect")
+
+        // Make an initial connection with `cleanSession` to clear any existing session state
+        try await MQTTConnection.withConnection(
+            address: .hostname(Self.hostname),
+            identifier: identifier,
+            logger: logger
+        ) { connection in
+            try await connection.ping()
+        }
+
+        let session = MQTTSession(clientID: identifier, logger: logger)
+
+        try await MQTTConnection.withConnection(
+            address: .hostname(Self.hostname),
+            session: session,
+            logger: logger
+        ) { connection, sessionPresent in
+            #expect(!sessionPresent)
+
+            try await withThrowingTaskGroup { group in
+                group.addTask {
+                    try await connection.subscribe(to: [.init(topicFilter: identifier, qos: .atLeastOnce)]) { subscription in
+                        for try await _ in subscription {}
+                    }
+                }
+
+                try await Task.sleep(for: .milliseconds(100))
+
+                // Check that the subscription is registered in the session
+                session.subscriptions.withLock {
+                    #expect($0.subscriptionIDMap.count == 1)
+                }
+
+                if clientClose {
+                    connection.close()
+                } else {
+                    _ = try? await connection.sendMessage(MQTTForceDisconnectMessage()) { _ in true }
+                }
+
+                try await Task.sleep(for: .milliseconds(100))
+
+                // Check that the subscription has been removed from the session after the connection is closed
+                session.subscriptions.withLock {
+                    #expect($0.subscriptionIDMap.isEmpty)
+                }
+            }
+        }
+    }
+
     static let rootPath = #filePath
         .split(separator: "/", omittingEmptySubsequences: false)
         .dropLast(3)
         .joined(separator: "/")
+
+    struct MQTTForceDisconnectMessage: MQTTPacket {
+        var type: MQTTPacketType { .PUBLISH }
+        var description: String { "FORCEDISCONNECT" }
+
+        func write(version: MQTTConnectionConfiguration.Version, to byteBuffer: inout ByteBuffer) throws {
+            // writing publish header with no content will cause a disconnect from the server
+            byteBuffer.writeInteger(UInt8(0x30))
+            byteBuffer.writeInteger(UInt8(0x0))
+        }
+
+        static func read(version: MQTTConnectionConfiguration.Version, from packet: MQTTIncomingPacket) throws -> Self {
+            throw InternalError.notImplemented
+        }
+    }
 }
 
 extension MQTTError: Equatable {
