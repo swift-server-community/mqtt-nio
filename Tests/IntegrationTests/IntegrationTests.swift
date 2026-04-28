@@ -971,6 +971,44 @@ struct IntegrationTests {
         }
     }
 
+    @Test("Failed Subscription on Session")
+    func failedSubscriptionOnSession() async throws {
+        let logger = Logger(label: #function).withLogLevel(.trace)
+
+        // Make an initial connection with `cleanSession` to clear any existing session state
+        try await MQTTConnection.withConnection(
+            address: .hostname(Self.hostname),
+            identifier: "failedSubscriptionOnSession",
+            logger: logger
+        ) { connection in
+            try await connection.ping()
+        }
+
+        let session = MQTTSession(clientID: "failedSubscriptionOnSession", logger: logger)
+
+        await withThrowingTaskGroup { group in
+            group.addTask {
+                _ = await #expect(throws: MQTTError.serverClosedConnection) {
+                    // Subscribe with an invalid topic filter to cause the server to close the connection
+                    try await session.subscribe(to: [.init(topicFilter: "", qos: .atLeastOnce)]) { subscription in
+                        for try await _ in subscription {}
+                    }
+                }
+            }
+
+            group.addTask {
+                try await MQTTConnection.withConnection(
+                    address: .hostname(Self.hostname),
+                    session: session,
+                    logger: logger
+                ) { connection, sessionPresent in
+                    #expect(!sessionPresent)
+                    try await connection.ping()
+                }
+            }
+        }
+    }
+
     static let rootPath = #filePath
         .split(separator: "/", omittingEmptySubsequences: false)
         .dropLast(3)
