@@ -383,13 +383,20 @@ public final actor MQTTConnection: Sendable {
                     properties: queuedSubscription.properties,
                     packetId: self.updatePacketId()
                 )
+                let promise = self.channel.eventLoop.makePromise(of: UInt32.self)
                 self.channelHandler.subscribe(
                     id: queuedSubscription.id,
                     streamContinuation: queuedSubscription.continuation,
                     packet: packet,
-                    promise: .forget,  // TODO: fix this
+                    promise: .nio(promise),
                     requestID: Self.requestIDGenerator.next()
                 )
+                do {
+                    _ = try await promise.futureResult.get()
+                } catch {
+                    queuedSubscription.continuation.finish(throwing: error)
+                    throw error
+                }
             case .unsubscribe(let queuedUnsubscription):
                 try await self.unsubscribe(id: queuedUnsubscription.id, properties: queuedUnsubscription.properties)
             }
