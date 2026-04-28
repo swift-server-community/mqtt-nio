@@ -743,22 +743,22 @@ struct IntegrationTests {
         }
     }
 
-    @Test("Subscribe with Session")
-    func subscribeWithSession() async throws {
+    @Test("Subscribe with Session before Connection")
+    func subscribeWithSessionBeforeConnection() async throws {
         // Make an initial connection with `cleanSession` to clear any existing session state
         try await MQTTConnection.withConnection(
             address: .hostname(Self.hostname),
-            identifier: "subscribeWithSession",
+            identifier: "subscribeWithSessionBeforeConnection",
             logger: Logger(label: #function).withLogLevel(.trace)
         ) { connection in
             try await connection.ping()
         }
 
-        let session = MQTTSession(clientID: "subscribeWithSession", logger: Logger(label: #function).withLogLevel(.trace))
+        let session = MQTTSession(clientID: "subscribeWithSessionBeforeConnection", logger: Logger(label: #function).withLogLevel(.trace))
 
         await withThrowingTaskGroup { group in
             group.addTask {
-                try await session.subscribe(to: [.init(topicFilter: "subscribeWithSession", qos: .atLeastOnce)]) { subscription in
+                try await session.subscribe(to: [.init(topicFilter: "subscribeWithSessionBeforeConnection", qos: .atLeastOnce)]) { subscription in
                     var iterator = subscription.makeAsyncIterator()
                     try #expect(await (iterator.next()?.payload).map { String(buffer: $0) } == "test")
                     try #expect(await (iterator.next()?.payload).map { String(buffer: $0) } == "test2")
@@ -775,7 +775,7 @@ struct IntegrationTests {
                     try await Task.sleep(for: .milliseconds(100))
 
                     #expect(!sessionPresent)
-                    try await connection.publish(to: "subscribeWithSession", payload: ByteBuffer(string: "test"), qos: .atLeastOnce)
+                    try await connection.publish(to: "subscribeWithSessionBeforeConnection", payload: ByteBuffer(string: "test"), qos: .atLeastOnce)
                 }
 
                 try await MQTTConnection.withConnection(
@@ -784,7 +784,67 @@ struct IntegrationTests {
                     logger: Logger(label: #function).withLogLevel(.trace)
                 ) { connection, sessionPresent in
                     #expect(sessionPresent)
-                    try await connection.publish(to: "subscribeWithSession", payload: ByteBuffer(string: "test2"), qos: .atLeastOnce)
+                    try await connection.publish(to: "subscribeWithSessionBeforeConnection", payload: ByteBuffer(string: "test2"), qos: .atLeastOnce)
+
+                    // Wait to ensure the UNSUBSCRIBE is sent before the connection is closed
+                    try await Task.sleep(for: .milliseconds(100))
+                }
+            }
+        }
+    }
+
+    @Test("Subscribe with Session after Connection")
+    func subscribeWithSessionAfterConnection() async throws {
+        let logger = Logger(label: #function).withLogLevel(.trace)
+
+        // Make an initial connection with `cleanSession` to clear any existing session state
+        try await MQTTConnection.withConnection(
+            address: .hostname(Self.hostname),
+            identifier: "subscribeWithSessionAfterConnection",
+            logger: logger
+        ) { connection in
+            try await connection.ping()
+        }
+
+        let session = MQTTSession(clientID: "subscribeWithSessionAfterConnection", logger: logger)
+
+        let (stream, continuation) = AsyncStream<Void>.makeStream()
+
+        await withThrowingTaskGroup { group in
+            group.addTask {
+                // Wait for the connection task to signal that the connection has been established before subscribing
+                await stream.first { _ in true }
+
+                try await session.subscribe(to: [.init(topicFilter: "subscribeWithSessionAfterConnection", qos: .atLeastOnce)]) { subscription in
+                    var iterator = subscription.makeAsyncIterator()
+                    try #expect(await (iterator.next()?.payload).map { String(buffer: $0) } == "test")
+                    try #expect(await (iterator.next()?.payload).map { String(buffer: $0) } == "test2")
+                }
+            }
+
+            group.addTask {
+                try await MQTTConnection.withConnection(
+                    address: .hostname(Self.hostname),
+                    session: session,
+                    logger: logger
+                ) { connection, sessionPresent in
+                    #expect(!sessionPresent)
+
+                    // Signal to the subscription task that the connection has been established and it can subscribe
+                    continuation.yield()
+                    // Wait for the subscription to be established before publishing
+                    try await Task.sleep(for: .milliseconds(100))
+
+                    try await connection.publish(to: "subscribeWithSessionAfterConnection", payload: ByteBuffer(string: "test"), qos: .atLeastOnce)
+                }
+
+                try await MQTTConnection.withConnection(
+                    address: .hostname(Self.hostname),
+                    session: session,
+                    logger: logger
+                ) { connection, sessionPresent in
+                    #expect(sessionPresent)
+                    try await connection.publish(to: "subscribeWithSessionAfterConnection", payload: ByteBuffer(string: "test2"), qos: .atLeastOnce)
 
                     // Wait to ensure the UNSUBSCRIBE is sent before the connection is closed
                     try await Task.sleep(for: .milliseconds(100))
