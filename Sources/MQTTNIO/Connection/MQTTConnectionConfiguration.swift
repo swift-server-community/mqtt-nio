@@ -157,14 +157,22 @@ public struct MQTTConnectionConfiguration: Sendable {
         public var initialRequestHeaders: HTTPHeaders
     }
 
+    /// Configuration for sending `PINGREQ` messages.
+    public enum PingConfiguration: Sendable {
+        /// Use the server's keep alive interval to determine when to send `PINGREQ` messages.
+        case useServerKeepAlive
+        /// Override calculated interval between each `PINGREQ` message.
+        case pingInterval(Duration)
+        /// Disable the automatic sending of `PINGREQ` messages.
+        case disable
+    }
+
     /// Connection configuration for the version of MQTT server to connect to.
     public var versionConfiguration: VersionConfiguration
-    /// Disable the automatic sending of `PINGREQ` messages.
-    public var disablePing: Bool
     /// MQTT keep alive period.
     public var keepAliveInterval: Duration
-    /// Override interval between each `PINGREQ` message.
-    public var pingInterval: Duration?
+    /// Configuration for sending `PINGREQ` messages.
+    public var pingConfiguration: PingConfiguration
     /// Timeout for connecting to server.
     public var connectTimeout: Duration
     /// Timeout for server response.
@@ -184,9 +192,8 @@ public struct MQTTConnectionConfiguration: Sendable {
     ///
     /// - Parameters:
     ///   - versionConfiguration: Connection configuration for the version of MQTT server to connect to.
-    ///   - disablePing: Disable the automatic sending of `PINGREQ` messages.
     ///   - keepAliveInterval: MQTT keep alive period.
-    ///   - pingInterval: Override calculated interval between each `PINGREQ` message.
+    ///   - pingConfiguration: Configuration for sending `PINGREQ` messages.
     ///   - connectTimeout: Timeout for connecting to server.
     ///   - timeout: Timeout for server ACK responses.
     ///   - authentication: Optional credentials for accessing the MQTT server. Set to `nil` for unauthenticated access.
@@ -194,9 +201,8 @@ public struct MQTTConnectionConfiguration: Sendable {
     ///   - webSocketConfiguration: Configuration to set if using a WebSocket connection.
     public init(
         versionConfiguration: VersionConfiguration = .v3_1_1(),
-        disablePing: Bool = false,
         keepAliveInterval: Duration = .seconds(90),
-        pingInterval: Duration? = nil,
+        pingConfiguration: PingConfiguration = .useServerKeepAlive,
         connectTimeout: Duration = .seconds(10),
         timeout: Duration? = nil,
         authentication: Authentication? = nil,
@@ -204,9 +210,8 @@ public struct MQTTConnectionConfiguration: Sendable {
         webSocketConfiguration: WebSocketConfiguration? = nil
     ) {
         self.versionConfiguration = versionConfiguration
-        self.disablePing = disablePing
         self.keepAliveInterval = keepAliveInterval
-        self.pingInterval = pingInterval
+        self.pingConfiguration = pingConfiguration
         self.connectTimeout = connectTimeout
         self.timeout = timeout
         self.authentication = authentication

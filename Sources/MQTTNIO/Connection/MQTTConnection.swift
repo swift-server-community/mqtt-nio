@@ -249,11 +249,6 @@ public final actor MQTTConnection: Sendable {
         logger: Logger
     ) async throws -> (MQTTConnection, Bool) {
         let _session = session ?? MQTTSession(clientID: identifier)
-        var configuration = configuration
-        if configuration.pingInterval == nil {
-            configuration.pingInterval = max(configuration.keepAliveInterval - .seconds(5), .seconds(5))
-        }
-        let readOnlyConfiguration = configuration
         let future =
             if eventLoop.inEventLoop {
                 self._makeConnection(
@@ -267,7 +262,7 @@ public final actor MQTTConnection: Sendable {
                 eventLoop.flatSubmit {
                     self._makeConnection(
                         address: address,
-                        configuration: readOnlyConfiguration,
+                        configuration: configuration,
                         session: _session,
                         eventLoop: eventLoop,
                         logger: logger

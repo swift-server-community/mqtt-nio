@@ -52,7 +52,7 @@ struct IntegrationTests {
     func keepAlivePing() async throws {
         try await MQTTConnection.withConnection(
             address: .hostname(Self.hostname),
-            configuration: .init(pingInterval: .seconds(2)),
+            configuration: .init(pingConfiguration: .pingInterval(.seconds(2))),
             identifier: "keepAlivePing",
             logger: self.logger
         ) { connection in

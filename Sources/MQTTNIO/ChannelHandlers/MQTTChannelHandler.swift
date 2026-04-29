@@ -16,8 +16,7 @@ import NIOCore
 
 final class MQTTChannelHandler: ChannelDuplexHandler {
     struct Configuration {
-        let disablePing: Bool
-        let pingInterval: TimeAmount
+        let pingInterval: TimeAmount?
         let timeout: TimeAmount?
         let version: MQTTConnectionConfiguration.Version
     }
@@ -36,7 +35,7 @@ final class MQTTChannelHandler: ChannelDuplexHandler {
     private let logger: Logger
     private let configuration: Configuration
 
-    private var pingreqTimeout: TimeAmount
+    private var pingreqTimeout: TimeAmount?
     private var lastPingreqEventTime: NIODeadline
     private var pingreqCallback: NIOScheduledCallback?
 
@@ -62,7 +61,7 @@ final class MQTTChannelHandler: ChannelDuplexHandler {
 
     private func setInitialized(context: ChannelHandlerContext) {
         self.stateMachine.setInitialized(context: context)
-        if !self.configuration.disablePing {
+        if self.pingreqTimeout != nil {
             guard self.pingreqCallback == nil else { return }
             self.schedulePingreqCallback()
         }
@@ -445,7 +444,7 @@ final class MQTTChannelHandler: ChannelDuplexHandler {
             case .schedule(let context):
                 // if lastEventTime plus the timeout is less than now send PINGREQ
                 // otherwise reschedule task
-                if channelHandler.lastPingreqEventTime + channelHandler.pingreqTimeout <= .now() {
+                if let pingreqTimeout = channelHandler.pingreqTimeout, channelHandler.lastPingreqEventTime + pingreqTimeout <= .now() {
                     guard context.channel.isActive else { return }
                     channelHandler.sendMessage(
                         MQTTPingreqPacket(),
@@ -478,17 +477,26 @@ final class MQTTChannelHandler: ChannelDuplexHandler {
     }
 
     func schedulePingreqCallback() {
-        self.pingreqCallback = try? self.eventLoop.scheduleCallback(
-            at: self.lastPingreqEventTime + self.pingreqTimeout,
-            handler: MQTTPingreqSchedule(channelHandler: .init(self, eventLoop: self.eventLoop))
-        )
+        if let pingreqTimeout = self.pingreqTimeout {
+            self.pingreqCallback = try? self.eventLoop.scheduleCallback(
+                at: self.lastPingreqEventTime + pingreqTimeout,
+                handler: MQTTPingreqSchedule(channelHandler: .init(self, eventLoop: self.eventLoop))
+            )
+        }
     }
 }
 
 extension MQTTChannelHandler.Configuration {
     init(_ other: MQTTConnectionConfiguration) {
-        self.disablePing = other.disablePing
-        self.pingInterval = other.pingInterval.map(TimeAmount.init) ?? .seconds(5)  // TODO: fix this
+        self.pingInterval =
+            switch other.pingConfiguration {
+            case .useServerKeepAlive:
+                .init(max(other.keepAliveInterval - .seconds(5), .seconds(5)))
+            case .pingInterval(let interval):
+                .init(interval)
+            case .disable:
+                nil
+            }
         self.timeout = other.timeout.map(TimeAmount.init)
         self.version = other.version
     }
