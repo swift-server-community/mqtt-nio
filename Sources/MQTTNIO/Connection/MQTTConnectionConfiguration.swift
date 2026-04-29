@@ -162,13 +162,13 @@ public struct MQTTConnectionConfiguration: Sendable {
     /// Disable the automatic sending of `PINGREQ` messages.
     public var disablePing: Bool
     /// MQTT keep alive period.
-    public var keepAliveInterval: TimeAmount
+    public var keepAliveInterval: Duration
     /// Override interval between each `PINGREQ` message.
-    public var pingInterval: TimeAmount?
+    public var pingInterval: Duration?
     /// Timeout for connecting to server.
-    public var connectTimeout: TimeAmount
+    public var connectTimeout: Duration
     /// Timeout for server response.
-    public var timeout: TimeAmount?
+    public var timeout: Duration?
     /// Optional authentication credentials for accessing the MQTT server.
     ///
     /// Set this property when connecting to a server that requires authentication.
@@ -195,10 +195,10 @@ public struct MQTTConnectionConfiguration: Sendable {
     public init(
         versionConfiguration: VersionConfiguration = .v3_1_1(),
         disablePing: Bool = false,
-        keepAliveInterval: TimeAmount = .seconds(90),
-        pingInterval: TimeAmount? = nil,
-        connectTimeout: TimeAmount = .seconds(10),
-        timeout: TimeAmount? = nil,
+        keepAliveInterval: Duration = .seconds(90),
+        pingInterval: Duration? = nil,
+        connectTimeout: Duration = .seconds(10),
+        timeout: Duration? = nil,
         authentication: Authentication? = nil,
         tls: TLS = .disable,
         webSocketConfiguration: WebSocketConfiguration? = nil

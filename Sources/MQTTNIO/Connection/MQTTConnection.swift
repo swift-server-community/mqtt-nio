@@ -251,7 +251,7 @@ public final actor MQTTConnection: Sendable {
         let _session = session ?? MQTTSession(clientID: identifier)
         var configuration = configuration
         if configuration.pingInterval == nil {
-            configuration.pingInterval = TimeAmount.seconds(max(Int64(configuration.keepAliveInterval.nanoseconds / 1_000_000_000) - 5, 5))
+            configuration.pingInterval = max(configuration.keepAliveInterval - .seconds(5), .seconds(5))
         }
         let readOnlyConfiguration = configuration
         let future =
@@ -332,7 +332,7 @@ public final actor MQTTConnection: Sendable {
         }
         let packet = MQTTConnectPacket(
             cleanSession: cleanSession,
-            keepAliveSeconds: UInt16(configuration.keepAliveInterval.nanoseconds / 1_000_000_000),
+            keepAliveSeconds: UInt16(configuration.keepAliveInterval.components.seconds),
             clientIdentifier: clientID,
             userName: configuration.authentication?.userName,
             password: configuration.authentication?.password,
@@ -400,7 +400,7 @@ public final actor MQTTConnection: Sendable {
         let channelPromise = eventLoop.makePromise(of: (any Channel).self)
         do {
             let connect = try Self._getBootstrap(configuration: configuration, eventLoopGroup: eventLoop, host: host, logger: logger)
-                .connectTimeout(configuration.connectTimeout)
+                .connectTimeout(.init(configuration.connectTimeout))
                 .channelInitializer { channel in
                     do {
                         // are we using websockets

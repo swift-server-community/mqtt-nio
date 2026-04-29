@@ -488,8 +488,8 @@ final class MQTTChannelHandler: ChannelDuplexHandler {
 extension MQTTChannelHandler.Configuration {
     init(_ other: MQTTConnectionConfiguration) {
         self.disablePing = other.disablePing
-        self.pingInterval = other.pingInterval ?? .seconds(5)  // TODO: fix this
-        self.timeout = other.timeout
+        self.pingInterval = other.pingInterval.map(TimeAmount.init) ?? .seconds(5)  // TODO: fix this
+        self.timeout = other.timeout.map(TimeAmount.init)
         self.version = other.version
     }
 }
