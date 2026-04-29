@@ -14,7 +14,7 @@
 import NIO
 
 /// Task handler.
-final class MQTTTaskHandler: ChannelInboundHandler, RemovableChannelHandler {
+final class MQTTTaskHandler: @unchecked Sendable, ChannelInboundHandler, RemovableChannelHandler {
     typealias InboundIn = MQTTPacket
 
     var eventLoop: EventLoop!

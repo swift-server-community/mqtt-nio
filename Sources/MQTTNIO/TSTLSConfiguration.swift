@@ -282,7 +282,7 @@ extension TSTLSConfiguration {
     }
 
     /// Dispatch queue used by Network framework TLS to control certificate verification
-    static var tlsDispatchQueue = DispatchQueue(label: "TSTLSConfiguration")
+    static let tlsDispatchQueue = DispatchQueue(label: "TSTLSConfiguration")
 }
 
 /// Deprecated TSTLSConfiguration

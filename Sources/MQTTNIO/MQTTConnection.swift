@@ -161,7 +161,7 @@ final class MQTTConnection {
         channel: Channel,
         webSocketConfiguration: MQTTClient.WebSocketConfiguration,
         upgradePromise promise: EventLoopPromise<Void>,
-        afterHandlerAdded: @escaping () throws -> Void
+        afterHandlerAdded: @escaping @Sendable () throws -> Void
     ) -> EventLoopFuture<Void> {
         // initial HTTP request handler, before upgrade
         let httpHandler = WebSocketInitialRequestHandler(
