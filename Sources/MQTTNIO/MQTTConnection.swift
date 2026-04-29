@@ -57,11 +57,6 @@ final class MQTTConnection {
                 .channelOption(ChannelOptions.socket(IPPROTO_TCP, TCP_NODELAY), value: 1)
                 .connectTimeout(client.configuration.connectTimeout)
                 .channelInitializer { channel in
-                    // Work out what handlers to add
-                    let handlers: [ChannelHandler] = [
-                        MQTTMessageHandler(client, pingInterval: pingInterval),
-                        taskHandler,
-                    ]
                     // are we using websockets
                     if let webSocketConfiguration = client.configuration.webSocketConfiguration {
                         // prepare for websockets and on upgrade add handlers
@@ -75,10 +70,14 @@ final class MQTTConnection {
                             webSocketConfiguration: webSocketConfiguration,
                             upgradePromise: promise
                         ) {
-                            try channel.pipeline.syncOperations.addHandlers(handlers)
+                            try channel.pipeline.syncOperations.addHandler(MQTTMessageHandler(client, pingInterval: pingInterval))
+                            try channel.pipeline.syncOperations.addHandler(taskHandler)
                         }
                     } else {
-                        return channel.pipeline.addHandlers(handlers)
+                        return channel.pipeline.addHandlers([
+                            MQTTMessageHandler(client, pingInterval: pingInterval),
+                            taskHandler,
+                        ])
                     }
                 }
 
