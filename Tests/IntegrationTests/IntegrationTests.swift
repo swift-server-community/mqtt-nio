@@ -770,9 +770,6 @@ struct IntegrationTests {
                 ) { connection, sessionPresent in
                     #expect(sessionPresent)
                     try await connection.publish(to: "subscribeWithSessionBeforeConnection", payload: ByteBuffer(string: "test2"), qos: .atLeastOnce)
-
-                    // Wait to ensure the UNSUBSCRIBE is sent before the connection is closed
-                    try await Task.sleep(for: .milliseconds(100))
                 }
             }
         }
@@ -830,9 +827,6 @@ struct IntegrationTests {
                 ) { connection, sessionPresent in
                     #expect(sessionPresent)
                     try await connection.publish(to: "subscribeWithSessionAfterConnection", payload: ByteBuffer(string: "test2"), qos: .atLeastOnce)
-
-                    // Wait to ensure the UNSUBSCRIBE is sent before the connection is closed
-                    try await Task.sleep(for: .milliseconds(100))
                 }
             }
         }
@@ -894,9 +888,7 @@ struct IntegrationTests {
                     // so even though this connection is with the same session,
                     // `sessionPresent` should be false and the subscriptions should be closed
                     #expect(!sessionPresent)
-                    try await connection.publish(to: "closeSubscriptionsNoSessionPresent", payload: ByteBuffer(string: "test"), qos: .atLeastOnce)
-
-                    try await Task.sleep(for: .milliseconds(100))
+                    try await connection.ping()
                 }
             }
         }
@@ -945,6 +937,7 @@ struct IntegrationTests {
                             }
                         }
 
+                        // Wait for the session subscription to be setup
                         try await Task.sleep(for: .seconds(1))
                         connection.close()
                     }
@@ -1017,14 +1010,20 @@ struct IntegrationTests {
         ) { connection, sessionPresent in
             #expect(!sessionPresent)
 
-            try await withThrowingTaskGroup { group in
+            await withThrowingTaskGroup { group in
+                // Used to signal when the subscription has been established
+                let (stream, continuation) = AsyncStream<Void>.makeStream()
+
                 group.addTask {
                     try await connection.subscribe(to: [.init(topicFilter: identifier, qos: .atLeastOnce)]) { subscription in
+                        // Signal that the subscription has been established
+                        continuation.yield()
                         for try await _ in subscription {}
                     }
                 }
 
-                try await Task.sleep(for: .milliseconds(100))
+                // Wait for the subscription to be setup
+                await stream.first { _ in true }
 
                 // Check that the subscription is registered in the session
                 session.subscriptions.withLock {
@@ -1037,7 +1036,9 @@ struct IntegrationTests {
                     _ = try? await connection.sendMessage(MQTTForceDisconnectMessage()) { _ in true }
                 }
 
-                try await Task.sleep(for: .milliseconds(100))
+                await #expect(throws: MQTTError.self) {
+                    try await group.next()
+                }
 
                 // Check that the subscription has been removed from the session after the connection is closed
                 session.subscriptions.withLock {
