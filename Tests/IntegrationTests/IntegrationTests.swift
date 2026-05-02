@@ -247,21 +247,6 @@ struct IntegrationTests {
 
     @Test("Server-Initiated Disconnection")
     func serverDisconnect() async throws {
-        struct MQTTForceDisconnectMessage: MQTTPacket {
-            var type: MQTTPacketType { .PUBLISH }
-            var description: String { "FORCEDISCONNECT" }
-
-            func write(version: MQTTConnectionConfiguration.Version, to byteBuffer: inout ByteBuffer) throws {
-                // writing publish header with no content will cause a disconnect from the server
-                byteBuffer.writeInteger(UInt8(0x30))
-                byteBuffer.writeInteger(UInt8(0x0))
-            }
-
-            static func read(version: MQTTConnectionConfiguration.Version, from packet: MQTTIncomingPacket) throws -> Self {
-                throw InternalError.notImplemented
-            }
-        }
-
         await #expect(throws: MQTTError.serverClosedConnection) {
             try await MQTTConnection.withConnection(
                 address: .hostname(Self.hostname),
@@ -420,7 +405,7 @@ struct IntegrationTests {
             try await connection.ping()
         }
 
-        let session = MQTTSession(clientID: "sessionPresent")
+        let session = MQTTSession(clientID: "sessionPresent", logger: Logger(label: #function).withLogLevel(.trace))
 
         // Second connection with a `MQTTSession` with same client identifier (and `cleanSession` automatically set to false)
         // `sessionPresent` should be false as previous connection was with `cleanSession` true
@@ -680,7 +665,7 @@ struct IntegrationTests {
 
             group.addTask {
                 try await Task.sleep(for: .milliseconds(500))
-                let session = MQTTSession(clientID: "inflight_publisher")
+                let session = MQTTSession(clientID: "inflight_publisher", logger: Logger(label: #function).withLogLevel(.trace))
 
                 try await MQTTConnection.withConnection(
                     address: .hostname(Self.hostname),
@@ -710,7 +695,7 @@ struct IntegrationTests {
 
     @Test("Multiple Connections with Same Session")
     func multipleConnectionsWithSameSession() async throws {
-        let session = MQTTSession(clientID: "multipleConnectionsWithSameSession")
+        let session = MQTTSession(clientID: "multipleConnectionsWithSameSession", logger: Logger(label: #function).withLogLevel(.trace))
 
         await #expect(throws: MQTTError.alreadyConnectedWithSession) {
             try await withThrowingTaskGroup { group in
@@ -743,10 +728,345 @@ struct IntegrationTests {
         }
     }
 
+    @Test("Subscribe with Session before Connection")
+    func subscribeWithSessionBeforeConnection() async throws {
+        // Make an initial connection with `cleanSession` to clear any existing session state
+        try await MQTTConnection.withConnection(
+            address: .hostname(Self.hostname),
+            identifier: "subscribeWithSessionBeforeConnection",
+            logger: Logger(label: #function).withLogLevel(.trace)
+        ) { connection in
+            try await connection.ping()
+        }
+
+        let session = MQTTSession(clientID: "subscribeWithSessionBeforeConnection", logger: Logger(label: #function).withLogLevel(.trace))
+
+        await withThrowingTaskGroup { group in
+            group.addTask {
+                try await session.subscribe(to: [.init(topicFilter: "subscribeWithSessionBeforeConnection", qos: .atLeastOnce)]) { subscription in
+                    var iterator = subscription.makeAsyncIterator()
+                    try #expect(await (iterator.next()?.payload).map { String(buffer: $0) } == "test")
+                    try #expect(await (iterator.next()?.payload).map { String(buffer: $0) } == "test2")
+                }
+            }
+
+            group.addTask {
+                try await MQTTConnection.withConnection(
+                    address: .hostname(Self.hostname),
+                    session: session,
+                    logger: Logger(label: #function).withLogLevel(.trace)
+                ) { connection, sessionPresent in
+                    // Wait for the subscription to be established before publishing
+                    try await Task.sleep(for: .milliseconds(100))
+
+                    #expect(!sessionPresent)
+                    try await connection.publish(to: "subscribeWithSessionBeforeConnection", payload: ByteBuffer(string: "test"), qos: .atLeastOnce)
+                }
+
+                try await MQTTConnection.withConnection(
+                    address: .hostname(Self.hostname),
+                    session: session,
+                    logger: Logger(label: #function).withLogLevel(.trace)
+                ) { connection, sessionPresent in
+                    #expect(sessionPresent)
+                    try await connection.publish(to: "subscribeWithSessionBeforeConnection", payload: ByteBuffer(string: "test2"), qos: .atLeastOnce)
+                }
+            }
+        }
+    }
+
+    @Test("Subscribe with Session after Connection")
+    func subscribeWithSessionAfterConnection() async throws {
+        let logger = Logger(label: #function).withLogLevel(.trace)
+
+        // Make an initial connection with `cleanSession` to clear any existing session state
+        try await MQTTConnection.withConnection(
+            address: .hostname(Self.hostname),
+            identifier: "subscribeWithSessionAfterConnection",
+            logger: logger
+        ) { connection in
+            try await connection.ping()
+        }
+
+        let session = MQTTSession(clientID: "subscribeWithSessionAfterConnection", logger: logger)
+
+        let (stream, continuation) = AsyncStream<Void>.makeStream()
+
+        await withThrowingTaskGroup { group in
+            group.addTask {
+                // Wait for the connection task to signal that the connection has been established before subscribing
+                await stream.first { _ in true }
+
+                try await session.subscribe(to: [.init(topicFilter: "subscribeWithSessionAfterConnection", qos: .atLeastOnce)]) { subscription in
+                    var iterator = subscription.makeAsyncIterator()
+                    try #expect(await (iterator.next()?.payload).map { String(buffer: $0) } == "test")
+                    try #expect(await (iterator.next()?.payload).map { String(buffer: $0) } == "test2")
+                }
+            }
+
+            group.addTask {
+                try await MQTTConnection.withConnection(
+                    address: .hostname(Self.hostname),
+                    session: session,
+                    logger: logger
+                ) { connection, sessionPresent in
+                    #expect(!sessionPresent)
+
+                    // Signal to the subscription task that the connection has been established and it can subscribe
+                    continuation.yield()
+                    // Wait for the subscription to be established before publishing
+                    try await Task.sleep(for: .milliseconds(100))
+
+                    try await connection.publish(to: "subscribeWithSessionAfterConnection", payload: ByteBuffer(string: "test"), qos: .atLeastOnce)
+                }
+
+                try await MQTTConnection.withConnection(
+                    address: .hostname(Self.hostname),
+                    session: session,
+                    logger: logger
+                ) { connection, sessionPresent in
+                    #expect(sessionPresent)
+                    try await connection.publish(to: "subscribeWithSessionAfterConnection", payload: ByteBuffer(string: "test2"), qos: .atLeastOnce)
+                }
+            }
+        }
+    }
+
+    @Test("Close Subscriptions on No Session Present")
+    func closeSubscriptionsNoSessionPresent() async throws {
+        // Make an initial connection with `cleanSession` to clear any existing session state
+        try await MQTTConnection.withConnection(
+            address: .hostname(Self.hostname),
+            identifier: "closeSubscriptionsNoSessionPresent",
+            logger: Logger(label: #function).withLogLevel(.trace)
+        ) { connection in
+            try await connection.ping()
+        }
+
+        let session = MQTTSession(clientID: "closeSubscriptionsNoSessionPresent", logger: Logger(label: #function).withLogLevel(.trace))
+
+        await withThrowingTaskGroup { group in
+            group.addTask {
+                _ = await #expect(throws: MQTTError.noSessionPresent) {
+                    try await session.subscribe(to: [.init(topicFilter: "closeSubscriptionsNoSessionPresent", qos: .atLeastOnce)]) { subscription in
+                        for try await _ in subscription {}
+                    }
+                }
+            }
+
+            group.addTask {
+                try await MQTTConnection.withConnection(
+                    address: .hostname(Self.hostname),
+                    session: session,
+                    logger: Logger(label: #function).withLogLevel(.trace)
+                ) { connection, sessionPresent in
+                    // Wait for the subscription to be established before publishing
+                    try await Task.sleep(for: .milliseconds(100))
+
+                    // First connection with the session
+                    #expect(!sessionPresent)
+                    try await connection.publish(to: "closeSubscriptionsNoSessionPresent", payload: ByteBuffer(string: "test"), qos: .atLeastOnce)
+                }
+
+                // Make a connection with `cleanSession` to clear existing session state
+                try await MQTTConnection.withConnection(
+                    address: .hostname(Self.hostname),
+                    identifier: "closeSubscriptionsNoSessionPresent",
+                    logger: Logger(label: #function).withLogLevel(.trace)
+                ) { connection, sessionPresent in
+                    // `sessionPresent` should be false as this connection is with `cleanSession` true
+                    #expect(!sessionPresent)
+                    try await connection.ping()
+                }
+
+                try await MQTTConnection.withConnection(
+                    address: .hostname(Self.hostname),
+                    session: session,
+                    logger: Logger(label: #function).withLogLevel(.trace)
+                ) { connection, sessionPresent in
+                    // The previous connection was with `cleanSession` true,
+                    // so even though this connection is with the same session,
+                    // `sessionPresent` should be false and the subscriptions should be closed
+                    #expect(!sessionPresent)
+                    try await connection.ping()
+                }
+            }
+        }
+    }
+
+    @Test("Close Subscriptions")
+    func closeSubscriptions() async throws {
+        // Make an initial connection with `cleanSession` to clear any existing session state
+        try await MQTTConnection.withConnection(
+            address: .hostname(Self.hostname),
+            identifier: "closeSubscriptions",
+            logger: Logger(label: #function).withLogLevel(.trace)
+        ) { connection in
+            try await connection.ping()
+        }
+
+        let logger = Logger(label: #function).withLogLevel(.trace)
+
+        let session = MQTTSession(clientID: "closeSubscriptions", logger: logger)
+
+        await withThrowingTaskGroup { group in
+            let (stream, continuation) = AsyncStream<Void>.makeStream()
+
+            group.addTask {
+                _ = await #expect(throws: Never.self) {
+                    // Open a subscription with the session that won't throw an error when the connection is closed
+                    try await session.subscribe(to: [.init(topicFilter: "sessionSub", qos: .atLeastOnce)]) { subscription in
+                        await stream.first { _ in true }
+                    }
+                }
+            }
+
+            group.addTask {
+                try await MQTTConnection.withConnection(
+                    address: .hostname(Self.hostname),
+                    session: session,
+                    logger: logger
+                ) { connection in
+                    try await withThrowingTaskGroup { group in
+                        group.addTask {
+                            _ = await #expect(throws: MQTTError.self) {
+                                // Open a subscription with the connection that will throw an error when the connection is closed
+                                try await connection.subscribe(to: [.init(topicFilter: "connectionSub", qos: .atLeastOnce)]) { subscription in
+                                    for try await _ in subscription {}
+                                }
+                            }
+                        }
+
+                        // Wait for the session subscription to be setup
+                        try await Task.sleep(for: .seconds(1))
+                        connection.close()
+                    }
+                }
+
+                // Signal to the session subscription that the connection has been closed
+                continuation.yield()
+            }
+        }
+    }
+
+    @Test("Failed Subscription on Session")
+    func failedSubscriptionOnSession() async throws {
+        let logger = Logger(label: #function).withLogLevel(.trace)
+
+        // Make an initial connection with `cleanSession` to clear any existing session state
+        try await MQTTConnection.withConnection(
+            address: .hostname(Self.hostname),
+            identifier: "failedSubscriptionOnSession",
+            logger: logger
+        ) { connection in
+            try await connection.ping()
+        }
+
+        let session = MQTTSession(clientID: "failedSubscriptionOnSession", logger: logger)
+
+        await withThrowingTaskGroup { group in
+            group.addTask {
+                _ = await #expect(throws: MQTTError.serverClosedConnection) {
+                    // Subscribe with an invalid topic filter to cause the server to close the connection
+                    try await session.subscribe(to: [.init(topicFilter: "", qos: .atLeastOnce)]) { subscription in
+                        for try await _ in subscription {}
+                    }
+                }
+            }
+
+            group.addTask {
+                try await MQTTConnection.withConnection(
+                    address: .hostname(Self.hostname),
+                    session: session,
+                    logger: logger
+                ) { connection, sessionPresent in
+                    #expect(!sessionPresent)
+                    try await connection.ping()
+                }
+            }
+        }
+    }
+
+    @Test("Connection Subscription Cleanup", arguments: [true, false])
+    func connectionSubscriptionCleanup(clientClose: Bool) async throws {
+        let logger = Logger(label: #function).withLogLevel(.trace)
+        let identifier = "connectionSubscriptionCleanup_" + (clientClose ? "clientClose" : "forceDisconnect")
+
+        // Make an initial connection with `cleanSession` to clear any existing session state
+        try await MQTTConnection.withConnection(
+            address: .hostname(Self.hostname),
+            identifier: identifier,
+            logger: logger
+        ) { connection in
+            try await connection.ping()
+        }
+
+        let session = MQTTSession(clientID: identifier, logger: logger)
+
+        try await MQTTConnection.withConnection(
+            address: .hostname(Self.hostname),
+            session: session,
+            logger: logger
+        ) { connection, sessionPresent in
+            #expect(!sessionPresent)
+
+            await withThrowingTaskGroup { group in
+                // Used to signal when the subscription has been established
+                let (stream, continuation) = AsyncStream<Void>.makeStream()
+
+                group.addTask {
+                    try await connection.subscribe(to: [.init(topicFilter: identifier, qos: .atLeastOnce)]) { subscription in
+                        // Signal that the subscription has been established
+                        continuation.yield()
+                        for try await _ in subscription {}
+                    }
+                }
+
+                // Wait for the subscription to be setup
+                await stream.first { _ in true }
+
+                // Check that the subscription is registered in the session
+                session.subscriptions.withLock {
+                    #expect($0.subscriptionIDMap.count == 1)
+                }
+
+                if clientClose {
+                    connection.close()
+                } else {
+                    _ = try? await connection.sendMessage(MQTTForceDisconnectMessage()) { _ in true }
+                }
+
+                await #expect(throws: MQTTError.self) {
+                    try await group.next()
+                }
+
+                // Check that the subscription has been removed from the session after the connection is closed
+                session.subscriptions.withLock {
+                    #expect($0.subscriptionIDMap.isEmpty)
+                }
+            }
+        }
+    }
+
     static let rootPath = #filePath
         .split(separator: "/", omittingEmptySubsequences: false)
         .dropLast(3)
         .joined(separator: "/")
+
+    struct MQTTForceDisconnectMessage: MQTTPacket {
+        var type: MQTTPacketType { .PUBLISH }
+        var description: String { "FORCEDISCONNECT" }
+
+        func write(version: MQTTConnectionConfiguration.Version, to byteBuffer: inout ByteBuffer) throws {
+            // writing publish header with no content will cause a disconnect from the server
+            byteBuffer.writeInteger(UInt8(0x30))
+            byteBuffer.writeInteger(UInt8(0x0))
+        }
+
+        static func read(version: MQTTConnectionConfiguration.Version, from packet: MQTTIncomingPacket) throws -> Self {
+            throw InternalError.notImplemented
+        }
+    }
 }
 
 extension MQTTError: Equatable {
@@ -766,7 +1086,8 @@ extension MQTTError: Equatable {
             (.authWorkflowRequired, .authWorkflowRequired),
             (.cancelledTask, .cancelledTask),
             (.packetTooLarge, .packetTooLarge),
-            (.alreadyConnectedWithSession, .alreadyConnectedWithSession):
+            (.alreadyConnectedWithSession, .alreadyConnectedWithSession),
+            (.noSessionPresent, .noSessionPresent):
             true
         case (.connectionError(let lhsValue), .connectionError(let rhsValue)):
             lhsValue == rhsValue

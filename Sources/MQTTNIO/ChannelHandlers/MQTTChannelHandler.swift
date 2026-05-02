@@ -13,6 +13,7 @@
 
 import Logging
 import NIOCore
+import Synchronization
 
 final class MQTTChannelHandler: ChannelDuplexHandler {
     struct Configuration {
@@ -30,7 +31,7 @@ final class MQTTChannelHandler: ChannelDuplexHandler {
     private let eventLoop: any EventLoop
     @usableFromInline
     var stateMachine: StateMachine<ChannelHandlerContext>
-    private var subscriptions: MQTTSubscriptions
+    let session: MQTTSession
 
     private var decoder: NIOSingleStepByteToMessageProcessor<ByteToMQTTMessageDecoder>
     private let logger: Logger
@@ -46,11 +47,12 @@ final class MQTTChannelHandler: ChannelDuplexHandler {
     init(
         configuration: Configuration,
         eventLoop: any EventLoop,
+        session: MQTTSession,
         logger: Logger
     ) {
         self.configuration = configuration
         self.eventLoop = eventLoop
-        self.subscriptions = MQTTSubscriptions(logger: logger)
+        self.session = session
         self.decoder = .init(.init(version: configuration.version))
         self.stateMachine = .init()
         self.logger = logger
@@ -189,7 +191,7 @@ final class MQTTChannelHandler: ChannelDuplexHandler {
         struct DuplicatePublishError: Error {}
         switch message.publish.qos {
         case .atMostOnce:
-            self.subscriptions.notify(message.publish)
+            self.session.subscriptions.withLock { $0.notify(message.publish) }
 
         case .atLeastOnce:
             context.channel.writeAndFlush(MQTTPubAckPacket(type: .PUBACK, packetId: message.packetId))
@@ -198,7 +200,7 @@ final class MQTTChannelHandler: ChannelDuplexHandler {
                 .whenComplete { result in
                     switch result {
                     case .success(let publish):
-                        self.subscriptions.notify(publish)
+                        self.session.subscriptions.withLock { $0.notify(publish) }
                     case .failure(let error):
                         self.failTasksAndCloseSubscriptions(with: error)
                         context.fireErrorCaught(error)
@@ -240,7 +242,7 @@ final class MQTTChannelHandler: ChannelDuplexHandler {
                         self.logger.error("Error during QoS 2 publish flow", metadata: ["mqtt_error": .string("\(error)")])
                     }
                 case .success:
-                    self.subscriptions.notify(message.publish)
+                    self.session.subscriptions.withLock { $0.notify(message.publish) }
                 }
             }
         }
@@ -254,7 +256,17 @@ final class MQTTChannelHandler: ChannelDuplexHandler {
 
     // MARK: - Subscriptions
 
+    /// Add a subscription to ``MQTTSubscriptions``.
+    ///
+    /// - Parameters:
+    ///   - id: Provide a subscription ID if the subscription was opened by a ``MQTTSession``.
+    ///         If `nil`, a new subscription ID will automatically be generated.
+    ///   - continuation: The subscription stream continuation to send messages to.
+    ///   - packet: The ``MQTTSubscribePacket`` containing the subscription information.
+    ///   - promise: The promise to complete with the subscription ID once the subscription is added.
+    ///   - requestID: The request ID for the subscribe operation.
     func subscribe(
+        id: UInt32? = nil,
         streamContinuation: MQTTSubscription.Continuation,
         packet: MQTTSubscribePacket,
         promise: MQTTPromise<UInt32>,
@@ -264,11 +276,14 @@ final class MQTTChannelHandler: ChannelDuplexHandler {
 
         let subscribeAction: MQTTSubscriptions.SubscribeAction
         do {
-            subscribeAction = try self.subscriptions.addSubscription(
-                continuation: streamContinuation,
-                subscriptions: packet.subscriptions,
-                version: self.configuration.version
-            )
+            subscribeAction = try self.session.subscriptions.withLock { subscriptions in
+                try subscriptions.addSubscription(
+                    id: id,
+                    continuation: streamContinuation,
+                    subscriptions: packet.subscriptions,
+                    version: self.configuration.version
+                )
+            }
         } catch {
             promise.fail(error)
             return
@@ -299,7 +314,7 @@ final class MQTTChannelHandler: ChannelDuplexHandler {
                 case .success:
                     promise.succeed(subscriptionID)
                 case .failure(let error):
-                    self.subscriptions.removeSubscription(id: subscriptionID)
+                    self.session.subscriptions.withLock { $0.removeSubscription(id: subscriptionID) }
                     promise.fail(error)
                 }
             }
@@ -316,7 +331,7 @@ final class MQTTChannelHandler: ChannelDuplexHandler {
         requestID: Int
     ) {
         self.eventLoop.assertInEventLoop()
-        switch self.subscriptions.unsubscribe(id: id) {
+        switch self.session.subscriptions.withLock({ $0.unsubscribe(id: id) }) {
         case .unsubscribe(let subscriptions):
             let packet = MQTTUnsubscribePacket(subscriptions: subscriptions, properties: properties, packetId: packetID)
             guard !packet.subscriptions.isEmpty else {
@@ -426,7 +441,7 @@ final class MQTTChannelHandler: ChannelDuplexHandler {
             for task in tasks {
                 task.fail(error)
             }
-            self.subscriptions.close(error: error)
+            self.session.subscriptions.withLock { $0.close(error: error) }
         case .doNothing:
             break
         }
