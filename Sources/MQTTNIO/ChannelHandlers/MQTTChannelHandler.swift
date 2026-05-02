@@ -450,6 +450,7 @@ final class MQTTChannelHandler: ChannelDuplexHandler {
 
     struct MQTTPingreqSchedule: NIOScheduledCallbackHandler {
         let channelHandler: NIOLoopBound<MQTTChannelHandler>
+        let pingreqTimeout: TimeAmount
 
         func handleScheduledCallback(eventLoop: some EventLoop) {
             let channelHandler = self.channelHandler.value
@@ -459,7 +460,7 @@ final class MQTTChannelHandler: ChannelDuplexHandler {
             case .schedule(let context):
                 // if lastEventTime plus the timeout is less than now send PINGREQ
                 // otherwise reschedule task
-                if let pingreqTimeout = channelHandler.pingreqTimeout, channelHandler.lastPingreqEventTime + pingreqTimeout <= .now() {
+                if channelHandler.lastPingreqEventTime + pingreqTimeout <= .now() {
                     guard context.channel.isActive else { return }
                     channelHandler.sendMessage(
                         MQTTPingreqPacket(),
@@ -495,7 +496,7 @@ final class MQTTChannelHandler: ChannelDuplexHandler {
         if let pingreqTimeout = self.pingreqTimeout {
             self.pingreqCallback = try? self.eventLoop.scheduleCallback(
                 at: self.lastPingreqEventTime + pingreqTimeout,
-                handler: MQTTPingreqSchedule(channelHandler: .init(self, eventLoop: self.eventLoop))
+                handler: MQTTPingreqSchedule(channelHandler: .init(self, eventLoop: self.eventLoop), pingreqTimeout: pingreqTimeout)
             )
         }
     }
