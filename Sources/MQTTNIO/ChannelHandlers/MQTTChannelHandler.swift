@@ -504,7 +504,7 @@ final class MQTTChannelHandler: ChannelDuplexHandler {
 extension MQTTChannelHandler.Configuration {
     init(_ other: MQTTConnectionConfiguration) {
         self.pingInterval =
-            switch other.pingConfiguration {
+            switch other.pingConfiguration.base {
             case .useServerKeepAlive:
                 .init(max(other.keepAliveInterval - .seconds(5), .seconds(5)))
             case .pingInterval(let interval):

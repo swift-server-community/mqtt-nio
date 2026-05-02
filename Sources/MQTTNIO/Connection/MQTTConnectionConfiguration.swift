@@ -158,13 +158,25 @@ public struct MQTTConnectionConfiguration: Sendable {
     }
 
     /// Configuration for sending `PINGREQ` messages.
-    public enum PingConfiguration: Sendable {
+    public struct PingConfiguration: Sendable {
+        enum Base {
+            case useServerKeepAlive
+            case pingInterval(Duration)
+            case disable
+        }
+        let base: Base
+
         /// Use the server's keep alive interval to determine when to send `PINGREQ` messages.
-        case useServerKeepAlive
+        public static var useServerKeepAlive: Self { .init(base: .useServerKeepAlive) }
+
         /// Override calculated interval between each `PINGREQ` message.
-        case pingInterval(Duration)
+        /// - Parameter interval: The interval at which to send `PINGREQ` messages.
+        public static func pingInterval(_ interval: Duration) -> Self {
+            .init(base: .pingInterval(interval))
+        }
+
         /// Disable the automatic sending of `PINGREQ` messages.
-        case disable
+        public static var disable: Self { .init(base: .disable) }
     }
 
     /// Connection configuration for the version of MQTT server to connect to.
