@@ -58,7 +58,8 @@ let package = Package(
         .testTarget(
             name: "IntegrationTests",
             dependencies: [
-                .target(name: "MQTTNIO")
+                .target(name: "MQTTNIO"),
+                .product(name: "NIOFoundationCompat", package: "swift-nio"),
             ],
             swiftSettings: defaultSwiftSettings
         ),

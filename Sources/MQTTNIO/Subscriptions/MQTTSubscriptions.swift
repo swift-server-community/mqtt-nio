@@ -65,13 +65,16 @@ struct MQTTSubscriptions {
         }
     }
 
-    /// Connection is closing, let's inform all the subscriptions
+    /// Connection is closing, let's inform all the subscriptions that are not opened by the session
     mutating func close(error: any Error) {
-        for subscription in subscriptionIDMap.values {
+        // If the error is `MQTTError.noSessionPresent`,
+        // then we should close also the subscriptions opened by the session
+        let noSessionPresent = if case MQTTError.noSessionPresent = error { true } else { false }
+
+        for subscription in subscriptionIDMap.values where !subscription.openedBySession || noSessionPresent {
             subscription.sendError(error)
+            self.removeSubscription(id: subscription.id)
         }
-        self.subscriptionIDMap = [:]
-        self.subscriptionMap = [:]
     }
 
     static func getSubscriptionID() -> UInt32 {
@@ -87,22 +90,31 @@ struct MQTTSubscriptions {
     }
 
     /// Add subscription to topic.
+    ///
+    /// - Parameters:
+    ///   - id: Provide a subscription ID if the subscription was opened by a ``MQTTSession``.
+    ///         If `nil`, a new subscription ID will automatically be generated.
+    ///   - continuation: The subscription stream continuation to send messages to.
+    ///   - subscriptions: The list of topic filters and QoS levels to subscribe to.
+    ///   - version: The MQTT version of the subscription.
     mutating func addSubscription(
+        id: UInt32?,
         continuation: MQTTSubscription.Continuation,
         subscriptions: [MQTTSubscribeInfoV5],
         version: MQTTConnectionConfiguration.Version
     ) throws -> SubscribeAction {
-        let id = Self.getSubscriptionID()
+        let subID = id ?? Self.getSubscriptionID()
         let subscription = SubscriptionRef(
-            id: id,
+            id: subID,
             version: version,
             continuation: continuation,
-            topicFilters: try subscriptions.map { try TopicFilter($0.topicFilter) }
+            topicFilters: try subscriptions.map { try TopicFilter($0.topicFilter) },
+            openedBySession: id != nil
         )
-        defer { subscriptionIDMap[id] = subscription }
+        defer { subscriptionIDMap[subID] = subscription }
         switch version {
         case .v3_1_1:
-            var action = SubscribeAction.doNothing(id)
+            var action = SubscribeAction.doNothing(subID)
             for topicFilter in subscription.topicFilters {
                 switch subscriptionMap[topicFilter, default: .init()].add(subscription: subscription) {
                 case .subscribe:
@@ -113,11 +125,11 @@ struct MQTTSubscriptions {
             }
             return action
         case .v5_0:
-            switch self.subscriptionIDMap[id] {
+            switch self.subscriptionIDMap[subID] {
             case .none:
                 return .subscribe(subscription)
             case .some:
-                return .doNothing(id)
+                return .doNothing(subID)
             }
         }
     }
@@ -183,17 +195,20 @@ final class SubscriptionRef: Identifiable {
     let version: MQTTConnectionConfiguration.Version
     let topicFilters: [TopicFilter]
     let continuation: MQTTSubscription.Continuation
+    let openedBySession: Bool
 
-    init(
+    fileprivate init(
         id: UInt32,
         version: MQTTConnectionConfiguration.Version,
         continuation: MQTTSubscription.Continuation,
-        topicFilters: [TopicFilter]
+        topicFilters: [TopicFilter],
+        openedBySession: Bool
     ) {
         self.id = id
         self.version = version
         self.topicFilters = topicFilters
         self.continuation = continuation
+        self.openedBySession = openedBySession
     }
 
     func sendMessage(_ message: MQTTPublishInfo) {

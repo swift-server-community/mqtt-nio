@@ -87,8 +87,8 @@ public final actor MQTTConnection: Sendable {
         identifier: String = "",
         eventLoop: any EventLoop = MultiThreadedEventLoopGroup.singleton.any(),
         logger: Logger,
-        operation: (MQTTConnection, Bool) async throws -> sending Value
-    ) async throws -> sending Value {
+        operation: (MQTTConnection, Bool) async throws -> Value
+    ) async throws -> Value {
         let (connection, sessionPresent) = try await self.connect(
             address: address,
             session: nil,
@@ -132,8 +132,8 @@ public final actor MQTTConnection: Sendable {
         identifier: String = "",
         eventLoop: any EventLoop = MultiThreadedEventLoopGroup.singleton.any(),
         logger: Logger,
-        operation: (MQTTConnection) async throws -> sending Value
-    ) async throws -> sending Value {
+        operation: (MQTTConnection) async throws -> Value
+    ) async throws -> Value {
         try await Self.withConnection(
             address: address,
             configuration: configuration,
@@ -162,8 +162,8 @@ public final actor MQTTConnection: Sendable {
         session: MQTTSession,
         eventLoop: any EventLoop = MultiThreadedEventLoopGroup.singleton.any(),
         logger: Logger,
-        operation: (MQTTConnection, Bool) async throws -> sending Value
-    ) async throws -> sending Value {
+        operation: (MQTTConnection, Bool) async throws -> Value
+    ) async throws -> Value {
         let (connection, sessionPresent) = try await self.connect(
             address: address,
             session: session,
@@ -172,8 +172,13 @@ public final actor MQTTConnection: Sendable {
             eventLoop: eventLoop,
             logger: logger
         )
+        if !sessionPresent { session.subscriptions.withLock { $0.close(error: MQTTError.noSessionPresent) } }
         do {
-            let result = try await operation(connection, sessionPresent)
+            let result = try await withThrowingTaskGroup { group in
+                group.addTask { try await connection.handleSessionSubscriptionTasks() }
+                defer { group.cancelAll() }
+                return try await operation(connection, sessionPresent)
+            }
             await connection.saveInflightToSession()
             await connection.closeAndCleanup()
             return result
@@ -200,8 +205,8 @@ public final actor MQTTConnection: Sendable {
         session: MQTTSession,
         eventLoop: any EventLoop = MultiThreadedEventLoopGroup.singleton.any(),
         logger: Logger,
-        operation: (MQTTConnection) async throws -> sending Value
-    ) async throws -> sending Value {
+        operation: (MQTTConnection) async throws -> Value
+    ) async throws -> Value {
         try await Self.withConnection(
             address: address,
             configuration: configuration,
@@ -263,7 +268,7 @@ public final actor MQTTConnection: Sendable {
         eventLoop: any EventLoop = MultiThreadedEventLoopGroup.singleton.any(),
         logger: Logger
     ) async throws -> (MQTTConnection, Bool) {
-        let _session = session ?? MQTTSession(clientID: identifier)
+        let _session = session ?? MQTTSession(clientID: identifier, logger: logger)
         var configuration = configuration
         if configuration.pingInterval == nil {
             configuration.pingInterval = TimeAmount.seconds(max(Int64(configuration.keepAliveInterval.nanoseconds / 1_000_000_000) - 5, 5))
@@ -368,6 +373,36 @@ public final actor MQTTConnection: Sendable {
         self.session.isConnected.store(false, ordering: .relaxed)
     }
 
+    /// Iterates over subscription tasks in the session queue and handles them.
+    func handleSessionSubscriptionTasks() async throws {
+        for await task in session.subscriptionsQueue {
+            switch task {
+            case .subscribe(let queuedSubscription):
+                let packet = MQTTSubscribePacket(
+                    subscriptions: queuedSubscription.subscriptions,
+                    properties: queuedSubscription.properties,
+                    packetId: self.updatePacketId()
+                )
+                let promise = self.channel.eventLoop.makePromise(of: UInt32.self)
+                self.channelHandler.subscribe(
+                    id: queuedSubscription.id,
+                    streamContinuation: queuedSubscription.continuation,
+                    packet: packet,
+                    promise: .nio(promise),
+                    requestID: Self.requestIDGenerator.next()
+                )
+                do {
+                    _ = try await promise.futureResult.get()
+                } catch {
+                    queuedSubscription.continuation.finish(throwing: error)
+                    throw error
+                }
+            case .unsubscribe(let queuedUnsubscription):
+                try await self.unsubscribe(id: queuedUnsubscription.id, properties: queuedUnsubscription.properties)
+            }
+        }
+    }
+
     func sendDisconnect() throws {
         if channel.isActive {
             let disconnectPacket: MQTTDisconnectPacket =
@@ -432,10 +467,10 @@ public final actor MQTTConnection: Sendable {
                                 webSocketConfiguration: webSocketConfiguration,
                                 upgradePromise: promise
                             ) {
-                                try self._setupChannel(channel, configuration: configuration, logger: logger)
+                                try self._setupChannel(channel, configuration: configuration, session: session, logger: logger)
                             }
                         } else {
-                            try self._setupChannel(channel, configuration: configuration, logger: logger)
+                            try self._setupChannel(channel, configuration: configuration, session: session, logger: logger)
                         }
                         return eventLoop.makeSucceededVoidFuture()
                     } catch {
@@ -518,6 +553,7 @@ public final actor MQTTConnection: Sendable {
                     let handler = try self._setupChannel(
                         channel,
                         configuration: configuration,
+                        session: session,
                         logger: logger
                     )
                     return MQTTConnection(
@@ -539,12 +575,14 @@ public final actor MQTTConnection: Sendable {
     private static func _setupChannel(
         _ channel: any Channel,
         configuration: MQTTConnectionConfiguration,
+        session: MQTTSession,
         logger: Logger
     ) throws -> MQTTChannelHandler {
         channel.eventLoop.assertInEventLoop()
         let mqttChannelHandler = MQTTChannelHandler(
             configuration: MQTTChannelHandler.Configuration(configuration),
             eventLoop: channel.eventLoop,
+            session: session,
             logger: logger
         )
         try channel.pipeline.syncOperations.addHandler(mqttChannelHandler)
