@@ -13,7 +13,6 @@
 
 public import HTTPTypes
 public import NIOCore
-import NIOHTTP1
 
 #if os(macOS) || os(Linux) || os(Android)
 public import NIOSSL
