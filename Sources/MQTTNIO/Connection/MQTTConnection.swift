@@ -14,6 +14,7 @@
 public import Logging
 public import NIOCore
 import NIOHTTP1
+import NIOHTTPTypesHTTP1
 public import NIOPosix
 import NIOWebSocket
 import Synchronization
@@ -684,7 +685,7 @@ public final actor MQTTConnection: Sendable {
         let httpHandler = WebSocketInitialRequestHandler(
             host: hostHeader,
             urlPath: webSocketConfiguration.urlPath,
-            additionalHeaders: webSocketConfiguration.initialRequestHeaders,
+            additionalHeaders: .init(webSocketConfiguration.initialRequestHeaders),
             upgradePromise: promise
         )
 

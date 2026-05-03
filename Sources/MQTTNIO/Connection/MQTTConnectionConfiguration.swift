@@ -11,8 +11,9 @@
 //
 //===----------------------------------------------------------------------===//
 
+public import HTTPTypes
 public import NIOCore
-public import NIOHTTP1
+import NIOHTTP1
 
 #if os(macOS) || os(Linux) || os(Android)
 public import NIOSSL
@@ -142,7 +143,7 @@ public struct MQTTConnectionConfiguration: Sendable {
         public init(
             urlPath: String = "/mqtt",
             maxFrameSize: Int = 1 << 14,
-            initialRequestHeaders: HTTPHeaders = [:]
+            initialRequestHeaders: HTTPFields = [:]
         ) {
             self.urlPath = urlPath
             self.maxFrameSize = maxFrameSize
@@ -154,7 +155,7 @@ public struct MQTTConnectionConfiguration: Sendable {
         /// Max frame size WebSocket client will allow.
         public var maxFrameSize: Int
         /// Additional headers to add to initial HTTP request.
-        public var initialRequestHeaders: HTTPHeaders
+        public var initialRequestHeaders: HTTPFields
     }
 
     /// Connection configuration for the version of MQTT server to connect to.
