@@ -63,10 +63,8 @@ final class MQTTChannelHandler: ChannelDuplexHandler {
 
     private func setInitialized(context: ChannelHandlerContext) {
         self.stateMachine.setInitialized(context: context)
-        if self.pingreqTimeout != nil {
-            guard self.pingreqCallback == nil else { return }
-            self.schedulePingreqCallback()
-        }
+        guard self.pingreqCallback == nil else { return }
+        self.schedulePingreqCallback()
     }
 
     func waitOnInitialized() -> EventLoopFuture<Void> {
