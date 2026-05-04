@@ -15,7 +15,6 @@ import Foundation
 import Logging
 import NIOCore
 import NIOFoundationCompat
-import NIOHTTP1
 import Testing
 
 @testable import MQTTNIO

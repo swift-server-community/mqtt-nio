@@ -34,6 +34,8 @@ let package = Package(
         .package(url: "https://github.com/apple/swift-nio.git", from: "2.90.1"),
         .package(url: "https://github.com/apple/swift-nio-ssl.git", from: "2.36.0"),
         .package(url: "https://github.com/apple/swift-nio-transport-services.git", from: "1.26.0"),
+        .package(url: "https://github.com/apple/swift-http-types.git", from: "1.0.0"),
+        .package(url: "https://github.com/apple/swift-nio-extras.git", from: "1.22.0"),
     ],
     targets: [
         .target(
@@ -45,6 +47,8 @@ let package = Package(
                 .product(name: "NIOWebSocket", package: "swift-nio"),
                 .product(name: "NIOSSL", package: "swift-nio-ssl", condition: .when(platforms: [.linux, .macOS, .android])),
                 .product(name: "NIOTransportServices", package: "swift-nio-transport-services"),
+                .product(name: "HTTPTypes", package: "swift-http-types"),
+                .product(name: "NIOHTTPTypesHTTP1", package: "swift-nio-extras"),
             ],
             swiftSettings: defaultSwiftSettings
         ),
