@@ -270,11 +270,6 @@ public final actor MQTTConnection: Sendable {
         logger: Logger
     ) async throws -> (MQTTConnection, Bool) {
         let _session = session ?? MQTTSession(clientID: identifier, logger: logger)
-        var configuration = configuration
-        if configuration.pingInterval == nil {
-            configuration.pingInterval = TimeAmount.seconds(max(Int64(configuration.keepAliveInterval.nanoseconds / 1_000_000_000) - 5, 5))
-        }
-        let readOnlyConfiguration = configuration
         let future =
             if eventLoop.inEventLoop {
                 self._makeConnection(
@@ -288,7 +283,7 @@ public final actor MQTTConnection: Sendable {
                 eventLoop.flatSubmit {
                     self._makeConnection(
                         address: address,
-                        configuration: readOnlyConfiguration,
+                        configuration: configuration,
                         session: _session,
                         eventLoop: eventLoop,
                         logger: logger
@@ -353,7 +348,7 @@ public final actor MQTTConnection: Sendable {
         }
         let packet = MQTTConnectPacket(
             cleanSession: cleanSession,
-            keepAliveSeconds: UInt16(configuration.keepAliveInterval.nanoseconds / 1_000_000_000),
+            keepAliveSeconds: UInt16(configuration.keepAliveInterval.components.seconds),
             clientIdentifier: clientID,
             userName: configuration.authentication?.userName,
             password: configuration.authentication?.password,
@@ -451,7 +446,7 @@ public final actor MQTTConnection: Sendable {
         let channelPromise = eventLoop.makePromise(of: (any Channel).self)
         do {
             let connect = try Self._getBootstrap(configuration: configuration, eventLoopGroup: eventLoop, host: host, logger: logger)
-                .connectTimeout(configuration.connectTimeout)
+                .connectTimeout(.init(configuration.connectTimeout))
                 .channelInitializer { channel in
                     do {
                         // are we using websockets
