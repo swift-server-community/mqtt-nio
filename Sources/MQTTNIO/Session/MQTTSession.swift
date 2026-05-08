@@ -28,9 +28,14 @@ public final class MQTTSession: Sendable {
 
     let subscriptions: Mutex<MQTTSubscriptions>
 
+    /// See ``MQTTSession/waitUntilNoActiveSubscriptions()``
+    let emptySubscriptionsStream: AsyncStream<Void>
+
     let subscriptionsQueue: AsyncStream<SessionSubscriptionTask>
     @usableFromInline
     let subscriptionsQueueContinuation: AsyncStream<SessionSubscriptionTask>.Continuation
+
+    let logger: Logger
 
     /// Initialize a new ``MQTTSession`` with a unique client identifier.
     ///
@@ -48,9 +53,12 @@ public final class MQTTSession: Sendable {
     public init(clientID: String, logger: Logger) {
         self._clientID = .init(clientID)
         self.inflightPackets = .init(.init())
-        self.subscriptions = .init(.init(logger: logger))
+        let (emptySubscriptionsStream, emptySubscriptionsContinuation) = AsyncStream<Void>.makeStream()
+        self.subscriptions = .init(.init(logger: logger, emptySubscriptionsContinuation: emptySubscriptionsContinuation))
+        self.emptySubscriptionsStream = emptySubscriptionsStream
         self.isConnected = .init(false)
         (self.subscriptionsQueue, self.subscriptionsQueueContinuation) = AsyncStream.makeStream()
+        self.logger = logger
     }
 }
 
@@ -117,5 +125,22 @@ extension MQTTSession {
     enum SessionSubscriptionTask: Sendable {
         case subscribe(QueuedSubscription)
         case unsubscribe(QueuedUnsubscription)
+    }
+
+    /// Wait until there are no active subscriptions opened via this session or via any ``MQTTConnection``s using this session.
+    ///
+    /// This function waits only for subscriptions that have been acknowledged by the server,
+    /// so for example if a subscription is opened via this ``MQTTSession`` but the session is not passed to a ``MQTTConnection``,
+    /// this function will not wait for that subscription.
+    ///
+    /// If new subscriptions are opened while waiting, this function will also wait for those subscriptions to complete.
+    public func waitUntilNoActiveSubscriptions() async {
+        if self.subscriptions.withLock({ $0.subscriptionIDMap.isEmpty }) {
+            self.logger.trace("No active subscriptions to wait for")
+            return
+        }
+        self.logger.trace("Waiting for \(self.subscriptions.withLock { $0.subscriptionIDMap.count }) active subscriptions to complete")
+        await self.emptySubscriptionsStream.first(where: { _ in true })
+        self.logger.trace("All active subscriptions completed")
     }
 }

@@ -762,35 +762,18 @@ struct MQTTConnectionTests {
     @Test("Subscription with Session")
     func subscriptionWithSession() async throws {
         let logger = Logger(label: #function).withLogLevel(.trace)
-        let session = MQTTSession(clientID: "testClient", logger: logger)
+        let session = MQTTSession(clientID: "subscriptionWithSession", logger: logger)
 
-        let subscribeInfos = [MQTTSubscribeInfoV5(topicFilter: "testTopic", qos: .atLeastOnce)]
-
-        try await withTestMQTTServer(session: session, logger: logger) { connection in
-            try await session.subscribe(to: subscribeInfos) { sub in
-                var iterator = sub.makeAsyncIterator()
-                let event = try #require(try await iterator.next())
-                #expect(event.payload == ByteBuffer(string: "TestPayload"))
-            }
+        try await withTestSessionSubscription(
+            to: [.init(topicFilter: "testTopic", qos: .atLeastOnce)],
+            session: session,
+            logger: logger
+        ) { subscription in
+            var iterator = subscription.makeAsyncIterator()
+            let event = try #require(try await iterator.next())
+            #expect(event.payload == ByteBuffer(string: "TestPayload"))
         } server: { channel in
-            // receive SUBSCRIBE
-            var packet = try await channel.waitForOutboundPacket()
-            let subscribePacket = try MQTTSubscribePacket.read(version: .v3_1_1, from: packet)
-            #expect(subscribeInfos.count == subscribePacket.subscriptions.count)
-            for index in 0..<subscribePacket.subscriptions.count {
-                #expect(subscribePacket.subscriptions[index].topicFilter == subscribeInfos[index].topicFilter)
-                #expect(subscribePacket.subscriptions[index].qos == subscribeInfos[index].qos)
-            }
-            // send SUBACK
-            let suback = MQTTSubAckPacket(
-                type: .SUBACK,
-                packetId: subscribePacket.packetId,
-                reasons: subscribeInfos.map { _ in .success },
-                properties: .init()
-            )
-            try await channel.writeInboundPacket(suback, version: .v3_1_1)
-
-            // send PUBLISH
+            // Send PUBLISH
             let publish = MQTTPublishPacket(
                 publish: .init(
                     qos: .atLeastOnce,
@@ -802,24 +785,66 @@ struct MQTTConnectionTests {
                 packetId: 32768
             )
             try await channel.writeInboundPacket(publish, version: .v3_1_1)
-            // read PUBACK
+            // Read PUBACK
             let publishPacket = try await channel.waitForOutboundPacket()
             let pubAck = try MQTTPubAckPacket.read(version: .v3_1_1, from: publishPacket)
             #expect(pubAck.type == .PUBACK)
             #expect(pubAck.packetId == publish.packetId)
+        }
+    }
 
-            // receive UNSUBSCRIBE
-            packet = try await channel.waitForOutboundPacket()
-            let unsubscribePacket = try MQTTUnsubscribePacket.read(version: .v3_1_1, from: packet)
-            #expect(unsubscribePacket.subscriptions == subscribeInfos.map { $0.topicFilter })
-            // send SUBACK
-            let unsuback = MQTTSubAckPacket(
-                type: .UNSUBACK,
-                packetId: unsubscribePacket.packetId,
-                reasons: subscribeInfos.map { _ in .success },
-                properties: .init()
-            )
-            try await channel.writeInboundPacket(unsuback, version: .v3_1_1)
+    @Test("Wait Until No Active Subscriptions")
+    func waitUntilNoActiveSubscriptions() async throws {
+        let logger = Logger(label: #function).withLogLevel(.trace)
+        let session = MQTTSession(clientID: "waitUntilNoActiveSubscriptions", logger: logger)
+
+        let subscribeInfos: [[MQTTSubscribeInfoV5]] = [
+            [.init(topicFilter: "testTopic1", qos: .atMostOnce)],
+            [.init(topicFilter: "testTopic2", qos: .atMostOnce)],
+            [.init(topicFilter: "testTopic3", qos: .atMostOnce)],
+        ]
+
+        try await withThrowingTaskGroup { group in
+            let (stream, continuation) = AsyncStream.makeStream(of: Void.self)
+
+            group.addTask {
+                try await withTestSessionSubscriptions(
+                    to: subscribeInfos,
+                    session: session,
+                    logger: logger
+                ) { subscription in
+                    var iterator = subscription.makeAsyncIterator()
+                    let event = try #require(try await iterator.next())
+                    #expect(event.payload == ByteBuffer(string: "TestPayload"))
+                } server: { channel in
+                    // Signal that all subscriptions are active
+                    continuation.yield()
+
+                    for subscribeInfo in subscribeInfos {
+                        // Send PUBLISH
+                        let publish = MQTTPublishPacket(
+                            publish: .init(
+                                qos: .atMostOnce,
+                                retain: false,
+                                topicName: subscribeInfo.first!.topicFilter,
+                                payload: ByteBuffer(string: "TestPayload"),
+                                properties: .init()
+                            ),
+                            packetId: 32768
+                        )
+                        try await channel.writeInboundPacket(publish, version: .v3_1_1)
+                    }
+                }
+            }
+
+            group.addTask {
+                // Wait until all subscriptions are active
+                await stream.first { _ in true }
+
+                await session.waitUntilNoActiveSubscriptions()
+            }
+
+            try await group.waitForAll()
         }
     }
 }

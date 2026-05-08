@@ -20,7 +20,10 @@ import Testing
 struct MQTTSubscriptionsTests {
     @Test("Subscribe and Unsubscribe")
     func subscribeAndUnsubscribe() throws {
-        var subscriptions = MQTTSubscriptions(logger: Logger(label: #function).withLogLevel(.trace))
+        var subscriptions = MQTTSubscriptions(
+            logger: Logger(label: #function).withLogLevel(.trace),
+            emptySubscriptionsContinuation: AsyncStream.makeStream().continuation
+        )
         let subscribeInfos = [
             MQTTSubscribeInfoV5(topicFilter: "test/topic/1", qos: .atMostOnce),
             MQTTSubscribeInfoV5(topicFilter: "test/topic/2/#", qos: .atLeastOnce),
@@ -60,7 +63,10 @@ struct MQTTSubscriptionsTests {
 
     @Test("Subscribe and Remove Subscription")
     func subscribeAndRemove() throws {
-        var subscriptions = MQTTSubscriptions(logger: Logger(label: #function).withLogLevel(.trace))
+        var subscriptions = MQTTSubscriptions(
+            logger: Logger(label: #function).withLogLevel(.trace),
+            emptySubscriptionsContinuation: AsyncStream.makeStream().continuation
+        )
         let subscribeInfos = [
             MQTTSubscribeInfoV5(topicFilter: "test/topic/1", qos: .atMostOnce),
             MQTTSubscribeInfoV5(topicFilter: "test/topic/2/#", qos: .atLeastOnce),
