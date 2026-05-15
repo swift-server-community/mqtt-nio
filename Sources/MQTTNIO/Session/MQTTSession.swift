@@ -138,8 +138,8 @@ extension MQTTSession {
                 }
                 self.logger.trace("Waiting for \(subscriptions.subscriptionIDMap.count) active subscriptions to complete")
                 subscriptions.emptySubscriptionsContinuations.append(continuation)
-                self.logger.trace("All active subscriptions completed")
             }
         }
+        self.logger.trace("All active subscriptions completed")
     }
 }

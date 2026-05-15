@@ -1065,7 +1065,7 @@ struct IntegrationTests {
 
         try await withThrowingTaskGroup { group in
             let (connectionStream, connectionContinuation) = AsyncStream.makeStream(of: Void.self)
-            let (waitStream, waitContinuation) = AsyncStream.makeStream(of: Void.self)
+            let (sessionStream, sessionContinuation) = AsyncStream.makeStream(of: Void.self)
 
             group.addTask {
                 // Wait for the connection task to signal that the connection has been established before subscribing
@@ -1089,16 +1089,18 @@ struct IntegrationTests {
                     connectionContinuation.yield()
                     // Wait for the subscription to be established before publishing
                     try await Task.sleep(for: .milliseconds(100))
+                    // Signal that the session subscription is active
+                    sessionContinuation.yield()
 
                     try await withThrowingTaskGroup { connectionGroup in
                         let (publishStream, publishContinuation) = AsyncStream.makeStream(of: Void.self)
 
                         connectionGroup.addTask {
-                            try await connection.subscribe(to: [.init(topicFilter: "wait/connection", qos: .atLeastOnce)]) { subscription in
-                                // Signal that both the session and connection subscriptions are active
-                                waitContinuation.yield()
-                                publishContinuation.yield()
+                            // Wait for `waitUntilNoActiveSubscriptions` to be called
+                            try await Task.sleep(for: .milliseconds(100))
 
+                            try await connection.subscribe(to: [.init(topicFilter: "wait/connection", qos: .atLeastOnce)]) { subscription in
+                                publishContinuation.yield()
                                 var iterator = subscription.makeAsyncIterator()
                                 try #expect(await (iterator.next()?.payload).map { String(buffer: $0) } == "test")
                             }
@@ -1111,8 +1113,8 @@ struct IntegrationTests {
                         }
 
                         connectionGroup.addTask {
-                            // Wait until the subscriptions are active
-                            await waitStream.first { _ in true }
+                            // Wait until the session subscription is active
+                            await sessionStream.first { _ in true }
 
                             await connection.waitUntilNoActiveSubscriptions()
                         }
