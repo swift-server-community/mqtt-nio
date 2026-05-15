@@ -1110,16 +1110,16 @@ struct IntegrationTests {
                             try await connection.publish(to: "wait/connection", payload: ByteBuffer(string: "test"), qos: .atLeastOnce)
                         }
 
+                        connectionGroup.addTask {
+                            // Wait until the subscriptions are active
+                            await waitStream.first { _ in true }
+
+                            await connection.waitUntilNoActiveSubscriptions()
+                        }
+
                         try await connectionGroup.waitForAll()
                     }
                 }
-            }
-
-            group.addTask {
-                // Wait until the subscriptions are active
-                await waitStream.first { _ in true }
-
-                await session.waitUntilNoActiveSubscriptions()
             }
 
             try await group.waitForAll()

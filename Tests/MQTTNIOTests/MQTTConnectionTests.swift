@@ -772,6 +772,7 @@ struct MQTTConnectionTests {
             var iterator = subscription.makeAsyncIterator()
             let event = try #require(try await iterator.next())
             #expect(event.payload == ByteBuffer(string: "TestPayload"))
+        } client: { _ in
         } server: { channel in
             // Send PUBLISH
             let publish = MQTTPublishPacket(
@@ -804,47 +805,39 @@ struct MQTTConnectionTests {
             [.init(topicFilter: "testTopic3", qos: .atMostOnce)],
         ]
 
-        try await withThrowingTaskGroup { group in
-            let (stream, continuation) = AsyncStream.makeStream(of: Void.self)
+        let (stream, continuation) = AsyncStream.makeStream(of: Void.self)
 
-            group.addTask {
-                try await withTestSessionSubscriptions(
-                    to: subscribeInfos,
-                    session: session,
-                    logger: logger
-                ) { subscription in
-                    var iterator = subscription.makeAsyncIterator()
-                    let event = try #require(try await iterator.next())
-                    #expect(event.payload == ByteBuffer(string: "TestPayload"))
-                } server: { channel in
-                    // Signal that all subscriptions are active
-                    continuation.yield()
+        try await withTestSessionSubscriptions(
+            to: subscribeInfos,
+            session: session,
+            logger: logger
+        ) { subscription in
+            var iterator = subscription.makeAsyncIterator()
+            let event = try #require(try await iterator.next())
+            #expect(event.payload == ByteBuffer(string: "TestPayload"))
+        } client: { connection in
+            // Wait until all subscriptions are active
+            await stream.first { _ in true }
 
-                    for subscribeInfo in subscribeInfos {
-                        // Send PUBLISH
-                        let publish = MQTTPublishPacket(
-                            publish: .init(
-                                qos: .atMostOnce,
-                                retain: false,
-                                topicName: subscribeInfo.first!.topicFilter,
-                                payload: ByteBuffer(string: "TestPayload"),
-                                properties: .init()
-                            ),
-                            packetId: 32768
-                        )
-                        try await channel.writeInboundPacket(publish, version: .v3_1_1)
-                    }
-                }
+            await connection.waitUntilNoActiveSubscriptions()
+        } server: { channel in
+            // Signal that all subscriptions are active
+            continuation.yield()
+
+            for subscribeInfo in subscribeInfos {
+                // Send PUBLISH
+                let publish = MQTTPublishPacket(
+                    publish: .init(
+                        qos: .atMostOnce,
+                        retain: false,
+                        topicName: subscribeInfo.first!.topicFilter,
+                        payload: ByteBuffer(string: "TestPayload"),
+                        properties: .init()
+                    ),
+                    packetId: 32768
+                )
+                try await channel.writeInboundPacket(publish, version: .v3_1_1)
             }
-
-            group.addTask {
-                // Wait until all subscriptions are active
-                await stream.first { _ in true }
-
-                await session.waitUntilNoActiveSubscriptions()
-            }
-
-            try await group.waitForAll()
         }
     }
 }

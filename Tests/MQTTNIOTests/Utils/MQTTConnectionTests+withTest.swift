@@ -16,23 +16,27 @@ extension MQTTConnectionTests {
     ///         Each inner array represents a separate subscription.
     ///   - session: The ``MQTTSession`` to use for opening the subscriptions.
     ///   - logger: The logger to use for the test MQTT server.
-    ///   - clientOperation: An async operation to perform for each subscription opened via the session.
+    ///   - subscribeOperation: An async operation to perform for each subscription opened via the session.
     ///         The opened subscription will be passed as a parameter to this operation.
+    ///   - clientOperation: An async operation to perform for the client side of the test.
+    ///         The ``MQTTConnection`` will be passed as a parameter to this operation.
     ///   - serverOperation: An async operation to perform for each subscription on the server side.
     ///         The test MQTT server channel will be passed as a parameter to this operation.
     func withTestSessionSubscriptions(
         to subscribeInfos: [[MQTTSubscribeInfoV5]],
         session: MQTTSession,
         logger: Logger,
-        client clientOperation: @Sendable @escaping (MQTTSubscription) async throws -> Void,
+        subscribe subscribeOperation: @Sendable @escaping (MQTTSubscription) async throws -> Void,
+        client clientOperation: @Sendable @escaping (MQTTConnection) async throws -> Void,
         server serverOperation: @Sendable @escaping (NIOAsyncTestingChannel) async throws -> Void
     ) async throws {
         try await withTestMQTTServer(session: session, logger: logger) { connection in
             await withThrowingTaskGroup { group in
+                group.addTask { try await clientOperation(connection) }
                 for subscribeInfo in subscribeInfos {
                     group.addTask {
                         try await session.subscribe(to: subscribeInfo) { subscription in
-                            try await clientOperation(subscription)
+                            try await subscribeOperation(subscription)
                         }
                     }
                 }
@@ -76,21 +80,25 @@ extension MQTTConnectionTests {
     ///   - subscribeInfos: An array of ``MQTTSubscribeInfoV5`` to subscribe to for this subscription.
     ///   - session: The ``MQTTSession`` to use for opening the subscription.
     ///   - logger: The logger to use for the test MQTT server.
-    ///   - clientOperation: An async operation to perform for the subscription opened via the session.
+    ///   - subscribeOperation: An async operation to perform for the subscription opened via the session.
     ///         The opened subscription will be passed as a parameter to this operation.
+    ///   - clientOperation: An async operation to perform for the client side of the test.
+    ///         The ``MQTTConnection`` will be passed as a parameter to this operation.
     ///   - serverOperation: An async operation to perform for the subscription on the server side.
     ///         The test MQTT server channel will be passed as a parameter to this operation.
     func withTestSessionSubscription(
         to subscribeInfos: [MQTTSubscribeInfoV5],
         session: MQTTSession,
         logger: Logger,
-        client clientOperation: @Sendable @escaping (MQTTSubscription) async throws -> Void,
+        subscribe subscribeOperation: @Sendable @escaping (MQTTSubscription) async throws -> Void,
+        client clientOperation: @Sendable @escaping (MQTTConnection) async throws -> Void,
         server serverOperation: @Sendable @escaping (NIOAsyncTestingChannel) async throws -> Void
     ) async throws {
         try await withTestSessionSubscriptions(
             to: [subscribeInfos],
             session: session,
             logger: logger,
+            subscribe: subscribeOperation,
             client: clientOperation,
             server: serverOperation
         )
