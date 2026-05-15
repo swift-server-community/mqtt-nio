@@ -20,15 +20,15 @@ struct MQTTSubscriptions {
     let logger: Logger
 
     /// See ``MQTTSession/waitUntilNoActiveSubscriptions()``
-    let emptySubscriptionsContinuation: AsyncStream<Void>.Continuation
+    var emptySubscriptionsContinuations: [CheckedContinuation<Void, Never>]
 
     static let globalSubscriptionID = Atomic<UInt32>(0)
 
-    init(logger: Logger, emptySubscriptionsContinuation: AsyncStream<Void>.Continuation) {
+    init(logger: Logger) {
         self.subscriptionIDMap = [:]
         self.logger = logger
         self.subscriptionMap = [:]
-        self.emptySubscriptionsContinuation = emptySubscriptionsContinuation
+        self.emptySubscriptionsContinuations = []
     }
 
     /// We received a message
@@ -153,7 +153,10 @@ struct MQTTSubscriptions {
             self.subscriptionIDMap[id] = nil
             if self.subscriptionIDMap.isEmpty {
                 // See `MQTTSession.waitUntilNoActiveSubscriptions()`
-                self.emptySubscriptionsContinuation.yield()
+                for continuation in self.emptySubscriptionsContinuations {
+                    continuation.resume()
+                }
+                self.emptySubscriptionsContinuations.removeAll()
             }
         }
         switch subscription.version {
