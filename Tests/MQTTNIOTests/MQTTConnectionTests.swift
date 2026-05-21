@@ -840,6 +840,15 @@ struct MQTTConnectionTests {
             }
         }
     }
+
+    @Test("Wait with No Active Subscriptions")
+    func waitWithNoActiveSubscriptions() async throws {
+        try await withTestMQTTServer(logger: Logger(label: #function).withLogLevel(.trace)) { connection in
+            // Should return immediately as there are no active subscriptions
+            await connection.waitUntilNoActiveSubscriptions()
+        } server: { _ in
+        }
+    }
 }
 
 struct SimpleAuthWorkflow: MQTTAuthenticator {

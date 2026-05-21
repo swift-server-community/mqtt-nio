@@ -134,6 +134,7 @@ extension MQTTSession {
             self.subscriptions.withLock { subscriptions in
                 if subscriptions.subscriptionIDMap.isEmpty {
                     self.logger.trace("No active subscriptions to wait for")
+                    continuation.resume()
                     return
                 }
                 self.logger.trace("Waiting for \(subscriptions.subscriptionIDMap.count) active subscriptions to complete")
