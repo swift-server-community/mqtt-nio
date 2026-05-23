@@ -11,7 +11,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-import Foundation
 import Logging
 import NIOCore
 import NIOEmbedded
@@ -22,171 +21,6 @@ import Testing
 
 @Suite("MQTTConnection Tests")
 struct MQTTConnectionTests {
-    func withTestMQTTServer(
-        configuration: MQTTConnectionConfiguration = .init(),
-        session: MQTTSession = MQTTSession(clientID: "", logger: Logger(label: "test_session")),
-        logger: Logger,
-        connackProperties: MQTTProperties = .init(),
-        client clientOperation: @Sendable @escaping (MQTTConnection) async throws -> Void,
-        server serverOperation: @Sendable @escaping (NIOAsyncTestingChannel) async throws -> Void,
-    ) async throws {
-        let channel = NIOAsyncTestingChannel()
-        let connection = try await MQTTConnection.setupChannelAndConnect(
-            channel,
-            configuration: configuration,
-            session: session,
-            logger: logger
-        )
-        let version = configuration.version
-        return try await withThrowingTaskGroup { group in
-            group.addTask {
-                do {
-                    _ = try await connection.sendConnect(clientID: session.clientID, cleanSession: session.clientID.isEmpty)
-                    try await withThrowingTaskGroup { group in
-                        group.addTask { try await connection.handleSessionSubscriptionTasks() }
-                        defer { group.cancelAll() }
-                        try await clientOperation(connection)
-                    }
-                    await connection.saveInflightToSession()
-                    connection.close()
-                } catch {
-                    await connection.saveInflightToSession()
-                    connection.close()
-                    throw error
-                }
-            }
-            group.addTask {
-                // wait for connect
-                let packet = try await channel.waitForOutboundPacket()
-                let connect = try MQTTConnectPacket.read(version: configuration.version, from: packet)
-                #expect(connect.cleanSession == session.clientID.isEmpty)
-                #expect(connect.clientIdentifier == session.clientID)
-                if case .v5_0(var connectProperties, _, _, let authWorkflow) = configuration.versionConfiguration {
-                    if let authWorkflow {
-                        connectProperties.append(.authenticationMethod(authWorkflow.methodName))
-                    }
-                    #expect(connectProperties == connect.properties)
-                }
-
-                let connack = MQTTConnAckPacket(returnCode: 0, acknowledgeFlags: 1, properties: connackProperties)
-                try await channel.writeInboundPacket(connack, version: version)
-
-                try await serverOperation(channel)
-
-                // wait for disconnect
-                let disconnectPacket = try await channel.waitForOutboundPacket()
-                #expect(disconnectPacket.type == .DISCONNECT)
-                #expect(disconnectPacket.packetId == 0)
-            }
-            try await group.waitForAll()
-        }
-    }
-
-    func testSubscribe(
-        subscribeInfos: [MQTTSubscribeInfo],
-        cleanSession: Bool = true,
-        identifier: String = UUID().uuidString,
-        logger: Logger,
-        client clientOperation: @Sendable @escaping (MQTTSubscription) async throws -> Void,
-        server serverOperation: @Sendable @escaping (NIOAsyncTestingChannel) async throws -> Void,
-    ) async throws {
-        try await withTestMQTTServer(logger: logger) { connection in
-            try await connection.subscribe(to: subscribeInfos) { sub in
-                try await clientOperation(sub)
-            }
-        } server: { channel in
-            // receive SUBSCRIBE
-            var packet = try await channel.waitForOutboundPacket()
-            let subscribePacket = try MQTTSubscribePacket.read(version: .v3_1_1, from: packet)
-            #expect(subscribeInfos.count == subscribePacket.subscriptions.count)
-            for index in 0..<subscribePacket.subscriptions.count {
-                #expect(subscribePacket.subscriptions[index].topicFilter == subscribeInfos[index].topicFilter)
-                #expect(subscribePacket.subscriptions[index].qos == subscribeInfos[index].qos)
-            }
-            // send SUBACK
-            let suback = MQTTSubAckPacket(
-                type: .SUBACK,
-                packetId: subscribePacket.packetId,
-                reasons: subscribeInfos.map { _ in .success },
-                properties: .init()
-            )
-            try await channel.writeInboundPacket(suback, version: .v3_1_1)
-
-            try await serverOperation(channel)
-
-            // receive UNSUBSCRIBE
-            packet = try await channel.waitForOutboundPacket()
-            let unsubscribePacket = try MQTTUnsubscribePacket.read(version: .v3_1_1, from: packet)
-            #expect(unsubscribePacket.subscriptions == subscribeInfos.map { $0.topicFilter })
-            // send SUBACK
-            let unsuback = MQTTSubAckPacket(
-                type: .UNSUBACK,
-                packetId: unsubscribePacket.packetId,
-                reasons: subscribeInfos.map { _ in .success },
-                properties: .init()
-            )
-            try await channel.writeInboundPacket(unsuback, version: .v3_1_1)
-        }
-    }
-
-    func testSubscribeV5(
-        subscribeInfos: [MQTTSubscribeInfoV5],
-        cleanSession: Bool = true,
-        identifier: String = UUID().uuidString,
-        logger: Logger,
-        client clientOperation: @Sendable @escaping (MQTTSubscription) async throws -> Void,
-        server serverOperation: @Sendable @escaping (NIOAsyncTestingChannel, UInt32) async throws -> Void,
-    ) async throws {
-        try await withTestMQTTServer(configuration: .init(versionConfiguration: .v5_0()), logger: logger) { connection in
-            try await connection.v5.subscribe(to: subscribeInfos) { sub in
-                try await clientOperation(sub)
-            }
-        } server: { channel in
-            // receive SUBSCRIBE
-            var packet = try await channel.waitForOutboundPacket()
-            let subscribePacket = try MQTTSubscribePacket.read(version: .v5_0, from: packet)
-            #expect(subscribeInfos.count == subscribePacket.subscriptions.count)
-            for index in 0..<subscribePacket.subscriptions.count {
-                #expect(subscribePacket.subscriptions[index].topicFilter == subscribeInfos[index].topicFilter)
-                #expect(subscribePacket.subscriptions[index].qos == subscribeInfos[index].qos)
-            }
-            let properties = try #require(subscribePacket.properties)
-            let subscriptionId: UInt32 = try #require(
-                {
-                    for property in properties {
-                        if case .subscriptionIdentifier(let id) = property {
-                            return id
-                        }
-                    }
-                    return nil
-                }()
-            )
-            // send SUBACK
-            let suback = MQTTSubAckPacket(
-                type: .SUBACK,
-                packetId: subscribePacket.packetId,
-                reasons: subscribeInfos.map { _ in .success },
-                properties: .init()
-            )
-            try await channel.writeInboundPacket(suback, version: .v5_0)
-
-            try await serverOperation(channel, subscriptionId)
-
-            // receive UNSUBSCRIBE
-            packet = try await channel.waitForOutboundPacket()
-            let unsubscribePacket = try MQTTUnsubscribePacket.read(version: .v5_0, from: packet)
-            #expect(unsubscribePacket.subscriptions == subscribeInfos.map { $0.topicFilter })
-            // send SUBACK
-            let unsuback = MQTTSubAckPacket(
-                type: .UNSUBACK,
-                packetId: unsubscribePacket.packetId,
-                reasons: subscribeInfos.map { _ in .success },
-                properties: .init()
-            )
-            try await channel.writeInboundPacket(unsuback, version: .v5_0)
-        }
-    }
-
     @Test
     func testConnectDisconnect() async throws {
         try await withTestMQTTServer(logger: Logger(label: #function).withLogLevel(.trace)) { _ in
@@ -252,7 +86,7 @@ struct MQTTConnectionTests {
 
     @Test
     func testSubscribeAndPublishQoS0() async throws {
-        try await testSubscribe(
+        try await withTestSubscription(
             subscribeInfos: [.init(topicFilter: "testTopic", qos: .atMostOnce)],
             logger: Logger(label: #function).withLogLevel(.trace)
         ) { sub in
@@ -277,7 +111,7 @@ struct MQTTConnectionTests {
 
     @Test
     func testSubscribeAndPublishQoS1() async throws {
-        try await testSubscribe(
+        try await withTestSubscription(
             subscribeInfos: [.init(topicFilter: "testTopic", qos: .atLeastOnce)],
             logger: Logger(label: #function).withLogLevel(.trace)
         ) { sub in
@@ -307,7 +141,7 @@ struct MQTTConnectionTests {
 
     @Test
     func testSubscribeAndPublishQoS2() async throws {
-        try await testSubscribe(
+        try await withTestSubscription(
             subscribeInfos: [.init(topicFilter: "testTopic", qos: .exactlyOnce)],
             logger: Logger(label: #function).withLogLevel(.trace)
         ) { sub in
@@ -345,7 +179,7 @@ struct MQTTConnectionTests {
 
     @Test
     func testSubscribeAndDuplicatePublishQoS2() async throws {
-        try await testSubscribe(
+        try await withTestSubscription(
             subscribeInfos: [.init(topicFilter: "testTopic", qos: .exactlyOnce)],
             logger: Logger(label: #function).withLogLevel(.trace)
         ) { sub in
@@ -401,7 +235,7 @@ struct MQTTConnectionTests {
 
     @Test
     func testTopicFilter() async throws {
-        try await testSubscribe(
+        try await withTestSubscription(
             subscribeInfos: [.init(topicFilter: "testTopic/+", qos: .atMostOnce)],
             logger: Logger(label: #function).withLogLevel(.trace)
         ) { sub in
@@ -439,7 +273,7 @@ struct MQTTConnectionTests {
 
     @Test
     func testSubscriptionIdFilter() async throws {
-        try await testSubscribeV5(
+        try await withTestV5Subscription(
             subscribeInfos: [.init(topicFilter: "testTopic/+", qos: .atMostOnce)],
             logger: Logger(label: #function).withLogLevel(.trace)
         ) { sub in
