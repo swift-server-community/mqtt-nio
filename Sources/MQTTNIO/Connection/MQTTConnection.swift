@@ -241,7 +241,7 @@ public final actor MQTTConnection: Sendable {
     /// Ping the server to test if it is still alive and to tell it you are alive.
     ///
     /// You shouldn't need to call this as the ``MQTTConnection`` automatically sends `PINGREQ` messages to the server to ensure the connection is still live.
-    /// If you initialize the client with the configuration ``MQTTConnectionConfiguration/disablePing`` to `true`
+    /// If you initialize the client with the configuration ``MQTTConnectionConfiguration/PingConfiguration/disable`` to `true`
     /// then these are disabled and it is up to you to send the `PINGREQ` messages yourself.
     public func ping() async throws {
         _ = try await self.sendMessage(MQTTPingreqPacket()) { message in

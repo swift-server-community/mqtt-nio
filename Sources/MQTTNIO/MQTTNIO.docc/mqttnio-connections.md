@@ -4,7 +4,10 @@ Support for TLS, WebSockets, and Unix Domain Sockets.
 
 ## TLS
 
-MQTT NIO supports TLS connections. You can enable this through the `Configuration` provided at initialization. Set`Configuration.useSSL` to `true` and provide your SSL certificates via the `Configuration.tlsConfiguration` struct. For example to connect to the mosquitto test server `test.mosquitto.org` on port 8884 you need to provide their root certificate and your own certificate. They provide details on the website [https://test.mosquitto.org/](https://test.mosquitto.org/) on how to generate these.
+MQTT NIO supports TLS connections.
+You can enable this through the ``MQTTConnectionConfiguration/TLS`` provided at initialization.
+For example, to connect to the mosquitto test server `test.mosquitto.org` on port 8884 you need to provide their root certificate and your own certificate.
+They provide details on the website [https://test.mosquitto.org/](https://test.mosquitto.org/) on how to generate these.
 
 ```swift
 let rootCertificate = try NIOSSLCertificate.fromPEMBytes([UInt8](mosquittoCertificateText.utf8))
@@ -15,38 +18,49 @@ let tlsConfiguration: TLSConfiguration? = TLSConfiguration.forClient(
     certificateChain: myCertificate.map { .certificate($0) },
     privateKey: .privateKey(myPrivateKey)
 )
-let client = MQTTClient(
-    host: "test.mosquitto.org",
-    port: 8884,
-    identifier: "MySSLClient",
-    eventLoopGroupProvider: .createNew,
-    configuration: .init(useSSL: true, tlsConfiguration: .niossl(tlsConfiguration)),
-)
+
+try await MQTTConnection.withConnection(
+    address: .hostname("test.mosquitto.org", port: 8884),
+    configuration: .init(tls: .enable(.niossl(tlsConfiguration))),
+    identifier: "My SSL Client",
+    logger: Logger(...)
+) { connection in
+    // Connected to the broker with an encrypted connection
+}
 ```
 
 ## WebSockets
 
-MQTT also supports Web Socket connections. Provide a `WebSocketConfiguration` when initializing `MQTTClient.Configuration` to enable this.
+MQTT also supports WebSocket connections.
+Provide a ``MQTTConnectionConfiguration/WebSocketConfiguration`` when connecting to enable this.
 
 ## NIO Transport Services
 
-On macOS and iOS you can use the NIO Transport Services library (NIOTS) and Apple's `Network.framework` for communication with the MQTT broker. If you don't provide an `eventLoopGroup` or a `TLSConfigurationType` then this is the default for both platforms. If you do provide either of these then the library will base it's decision on whether to use NIOTS or NIOSSL on what you provide. Provide a `MultiThreadedEventLoopGroup` or `NIOSSL.TLSConfiguration` and the client will use NIOSSL. Provide a `NIOTSEventLoopGroup` or `TSTLSConfiguration` and the client will use NIOTS. If you provide a `MultiThreadedEventLoopGroup` and a `TSTLSConfiguration` then the client will throw an error. If you are running on iOS you should always choose NIOTS.
+On macOS and iOS you can use the `NIOTransportServices` library and Apple's `Network.framework` for communication with the MQTT broker.
+You have to provide the correct `eventLoopGroup` and ``MQTTConnectionConfiguration/TLS/Configuration`` to choose between `NIOTransportServices` and `NIOSSL`.
+
+Provide a `MultiThreadedEventLoopGroup` and a ``MQTTConnectionConfiguration/TLS/Configuration/niossl(_:)-enum.case`` and the client will use `NIOSSL`.
+Provide a `NIOTSEventLoopGroup` or ``MQTTConnectionConfiguration/TLS/Configuration/ts(_:)-enum.case`` and the client will use `NIOTransportServices`.
+If you provide a `MultiThreadedEventLoopGroup` and a ``MQTTConnectionConfiguration/TLS/Configuration/ts(_:)-enum.case`` then the client will throw an error.
+
+If you are running on iOS you should always choose `NIOTransportServices`.
 
 ## Unix Domain Sockets
 
 MQTT NIO can connect to a local MQTT broker via a Unix Domain Socket.
 
 ```swift
-let client = MQTTClient(
-    unixSocketPath: "/path/to/broker.socket",
-    identifier: "UDSClient",
-    eventLoopGroupProvider: .createNew
-)
+try await MQTTConnection.withConnection(
+    address: .unixDomainSocket(path: "/path/to/broker.socket"),
+    identifier: "My UDS Client",
+    logger: Logger(...)
+) { connection in
+    // Connected to the broker via a Unix Domain Socket
+}
 ```
 
-Under the hood, `MQTTClient.port` will be 0 and `MQTTClient.host` will be the specified unix socket path when connecting to a unix socket.
-
-Note that mosquitto supports listening on a unix domain socket. This can be enabled by adding a `listener` option to the mosquitto config.
+Note that mosquitto supports listening on a Unix domain socket.
+This can be enabled by adding a `listener` option to the mosquitto config.
 
 ```
 listener 0 /path/to/broker.socket

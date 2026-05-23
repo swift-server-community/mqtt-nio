@@ -17,5 +17,49 @@ MQTTNIO is a Swift NIO based implementation of a MQTT client. It supports
 - Apple's Network framework via [NIOTransportServices](https://github.com/apple/swift-nio-transport-services) (required for iOS).
 - Unix domain sockets
 
+## Overview
+
+Create a connection to the MQTT broker with `MQTTConnection.withConnection` and use it inside the closure.
+When the closure returns the connection will be closed.
+
+```swift
+try await MQTTConnection.withConnection(
+    address: .hostname("mqtt.eclipse.org"),
+    identifier: "My Client",
+    logger: Logger(...)
+) { connection in
+    // You are now connected to the MQTT broker
+    // The connection will be active only inside this closure
+}
+```
+
+Subscribe to a topic with `MQTTConnection.subscribe`,
+providing a closure that receives an `AsyncSequence` of incoming `PUBLISH` messages sent from the broker to that topic.
+When the closure finishes executing, the corresponding `UNSUBSCRIBE` message is automatically sent to the broker, and the subscription is cleaned up.
+
+```swift
+let subscribeInfo = MQTTSubscribeInfo(topicFilter: "my-topics", qos: .atLeastOnce)
+try await connection.subscribe(to: [subscribeInfo]) { subscription in
+    for try await message in subscription {
+        var buffer = message.payload
+        let string = buffer.readString(length: buffer.readableBytes)
+        // No need to filter messages, as only messages for "my-topics" are received here
+        print(string)
+    }
+}
+```
+
+Publish to a topic with `MQTTConnection.publish`.
+
+```swift
+try await connection.publish(
+    to: "my-topics",
+    payload: ByteBuffer(string: "This is the Test payload"),
+    qos: .atLeastOnce
+)
+```
+
+## Documentation
+
 User guides and reference documentation for MQTT NIO can be found on the [Swift Package Index](https://swiftpackageindex.com/swift-server-community/mqtt-nio/documentation/mqttnio).
-There is also a sample demonstrating the use of MQTTNIO in an iOS app found [here](https://github.com/adam-fowler/EmCuTeeTee).
+There is also a sample demonstrating the use of MQTTNIO v2 in an iOS app found [here](https://github.com/adam-fowler/EmCuTeeTee).
