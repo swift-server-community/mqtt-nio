@@ -19,12 +19,16 @@ struct MQTTSubscriptions {
     var subscriptionMap: [TopicFilter: MQTTTopicStateMachine<SubscriptionRef>]
     let logger: Logger
 
+    /// See ``MQTTSession/waitUntilNoActiveSubscriptions()``
+    var emptySubscriptionsContinuations: [CheckedContinuation<Void, Never>]
+
     static let globalSubscriptionID = Atomic<UInt32>(0)
 
     init(logger: Logger) {
         self.subscriptionIDMap = [:]
         self.logger = logger
         self.subscriptionMap = [:]
+        self.emptySubscriptionsContinuations = []
     }
 
     /// We received a message
@@ -145,7 +149,16 @@ struct MQTTSubscriptions {
     /// If a message topic ends up with no subscriptions, then add it to the list of topics to unsubscribe from.
     mutating func unsubscribe(id: UInt32) -> UnsubscribeAction {
         guard let subscription = subscriptionIDMap[id] else { return .doNothing }
-        defer { self.subscriptionIDMap[id] = nil }
+        defer {
+            self.subscriptionIDMap[id] = nil
+            if self.subscriptionIDMap.isEmpty {
+                // See `MQTTSession.waitUntilNoActiveSubscriptions()`
+                for continuation in self.emptySubscriptionsContinuations {
+                    continuation.resume()
+                }
+                self.emptySubscriptionsContinuations.removeAll()
+            }
+        }
         switch subscription.version {
         case .v3_1_1:
             var action: UnsubscribeAction = .doNothing

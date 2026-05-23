@@ -32,6 +32,8 @@ public final class MQTTSession: Sendable {
     @usableFromInline
     let subscriptionsQueueContinuation: AsyncStream<SessionSubscriptionTask>.Continuation
 
+    let logger: Logger
+
     /// Initialize a new ``MQTTSession`` with a unique client identifier.
     ///
     /// If you provide an empty string as the Client Identifier,
@@ -51,6 +53,7 @@ public final class MQTTSession: Sendable {
         self.subscriptions = .init(.init(logger: logger))
         self.isConnected = .init(false)
         (self.subscriptionsQueue, self.subscriptionsQueueContinuation) = AsyncStream.makeStream()
+        self.logger = logger
     }
 }
 
@@ -117,5 +120,27 @@ extension MQTTSession {
     enum SessionSubscriptionTask: Sendable {
         case subscribe(QueuedSubscription)
         case unsubscribe(QueuedUnsubscription)
+    }
+
+    /// Wait until there are no active subscriptions opened via this session or via any ``MQTTConnection``s using this session.
+    ///
+    /// This function waits only for subscriptions that have been acknowledged by the server,
+    /// so for example if a subscription is opened via this ``MQTTSession`` but the session is not passed to a ``MQTTConnection``,
+    /// this function will not wait for that subscription.
+    ///
+    /// If new subscriptions are opened while waiting, this function will also wait for those subscriptions to complete.
+    public func waitUntilNoActiveSubscriptions() async {
+        await withCheckedContinuation { continuation in
+            self.subscriptions.withLock { subscriptions in
+                if subscriptions.subscriptionIDMap.isEmpty {
+                    self.logger.trace("No active subscriptions to wait for")
+                    continuation.resume()
+                    return
+                }
+                self.logger.trace("Waiting for \(subscriptions.subscriptionIDMap.count) active subscriptions to complete")
+                subscriptions.emptySubscriptionsContinuations.append(continuation)
+            }
+        }
+        self.logger.trace("All active subscriptions completed")
     }
 }

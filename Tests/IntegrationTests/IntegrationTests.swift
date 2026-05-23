@@ -1048,6 +1048,86 @@ struct IntegrationTests {
         }
     }
 
+    @Test("Wait Until No Active Subscriptions")
+    func waitUntilNoActiveSubscriptions() async throws {
+        let logger = Logger(label: #function).withLogLevel(.trace)
+
+        // Make an initial connection with `cleanSession` to clear any existing session state
+        try await MQTTConnection.withConnection(
+            address: .hostname(Self.hostname),
+            identifier: "waitUntilNoActiveSubscriptions",
+            logger: logger
+        ) { connection in
+            try await connection.ping()
+        }
+
+        let session = MQTTSession(clientID: "waitUntilNoActiveSubscriptions", logger: logger)
+
+        try await withThrowingTaskGroup { group in
+            let (connectionStream, connectionContinuation) = AsyncStream.makeStream(of: Void.self)
+            let (sessionStream, sessionContinuation) = AsyncStream.makeStream(of: Void.self)
+
+            group.addTask {
+                // Wait for the connection task to signal that the connection has been established before subscribing
+                await connectionStream.first { _ in true }
+
+                try await session.subscribe(to: [.init(topicFilter: "wait/session", qos: .atLeastOnce)]) { subscription in
+                    var iterator = subscription.makeAsyncIterator()
+                    try #expect(await (iterator.next()?.payload).map { String(buffer: $0) } == "test")
+                }
+            }
+
+            group.addTask {
+                try await MQTTConnection.withConnection(
+                    address: .hostname(Self.hostname),
+                    session: session,
+                    logger: logger
+                ) { connection, sessionPresent in
+                    #expect(!sessionPresent)
+
+                    // Signal to the subscription task that the connection has been established and it can subscribe
+                    connectionContinuation.yield()
+                    // Wait for the subscription to be established before publishing
+                    try await Task.sleep(for: .milliseconds(100))
+                    // Signal that the session subscription is active
+                    sessionContinuation.yield()
+
+                    try await withThrowingTaskGroup { connectionGroup in
+                        let (publishStream, publishContinuation) = AsyncStream.makeStream(of: Void.self)
+
+                        connectionGroup.addTask {
+                            // Wait for `waitUntilNoActiveSubscriptions` to be called
+                            try await Task.sleep(for: .milliseconds(100))
+
+                            try await connection.subscribe(to: [.init(topicFilter: "wait/connection", qos: .atLeastOnce)]) { subscription in
+                                publishContinuation.yield()
+                                var iterator = subscription.makeAsyncIterator()
+                                try #expect(await (iterator.next()?.payload).map { String(buffer: $0) } == "test")
+                            }
+                        }
+
+                        connectionGroup.addTask {
+                            await publishStream.first { _ in true }
+                            try await connection.publish(to: "wait/session", payload: ByteBuffer(string: "test"), qos: .atLeastOnce)
+                            try await connection.publish(to: "wait/connection", payload: ByteBuffer(string: "test"), qos: .atLeastOnce)
+                        }
+
+                        connectionGroup.addTask {
+                            // Wait until the session subscription is active
+                            await sessionStream.first { _ in true }
+
+                            await connection.waitUntilNoActiveSubscriptions()
+                        }
+
+                        try await connectionGroup.waitForAll()
+                    }
+                }
+            }
+
+            try await group.waitForAll()
+        }
+    }
+
     static let rootPath = #filePath
         .split(separator: "/", omittingEmptySubsequences: false)
         .dropLast(3)
