@@ -250,6 +250,15 @@ public final actor MQTTConnection: Sendable {
         }
     }
 
+    /// Wait until there are no active subscriptions opened via this connection or via a ``MQTTSession`` associated with this connection.
+    ///
+    /// This function waits only for subscriptions that have been acknowledged by the server.
+    ///
+    /// If new subscriptions are opened while waiting, this function will also wait for those subscriptions to complete.
+    public func waitUntilNoActiveSubscriptions() async {
+        await self.session.waitUntilNoActiveSubscriptions()
+    }
+
     /// Connect to MQTT server and return the connection and whether there was a previous session present.
     ///
     /// - Parameters:
