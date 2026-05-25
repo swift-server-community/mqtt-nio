@@ -676,8 +676,7 @@ struct IntegrationTests {
                     connection.close()
                 }
 
-                //TODO: get inflight count
-                //#expect(session.inflightPacketsCount > 0)
+                #expect(try session.storage.borrow { $0.inflight.packets.count } > 0)
 
                 try await MQTTConnection.withConnection(
                     address: .hostname(Self.hostname),
@@ -687,8 +686,7 @@ struct IntegrationTests {
                     try await connection.ping()
                 }
 
-                //TODO: get inflight count
-                //#expect(session.inflightPacketsCount == 0)
+                #expect(try session.storage.borrow { $0.inflight.packets.count } == 0)
             }
 
             try await group.waitForAll()
@@ -1027,7 +1025,8 @@ struct IntegrationTests {
                 // Wait for the subscription to be setup
                 await stream.first { _ in true }
 
-                // Check that the subscription is registered in the session
+                // Check that the subscription is registered in the session, cannot check this from the
+                // session as the storage is borrowed by the connection
                 /*TODO: check subscriptions
                 session.subscriptions.withLock {
                     #expect($0.subscriptionIDMap.count == 1)
@@ -1042,14 +1041,9 @@ struct IntegrationTests {
                 await #expect(throws: MQTTError.self) {
                     try await group.next()
                 }
-
-                // Check that the subscription has been removed from the session after the connection is closed
-                /*TODO: check subscriptions
-                session.subscriptions.withLock {
-                    #expect($0.subscriptionIDMap.isEmpty)
-                }*/
             }
         }
+        #expect(try session.storage.borrow { $0.subscriptions.subscriptionIDMap.isEmpty })
     }
 
     @Test("Wait Until No Active Subscriptions")

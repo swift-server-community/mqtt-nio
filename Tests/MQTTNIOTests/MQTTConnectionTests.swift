@@ -512,8 +512,7 @@ struct MQTTConnectionTests {
             cont.yield()
         }
 
-        //TODO: Fix accessing packet count
-        //#expect(session.inflightPacketsCount > 0)
+        #expect(try session.storage.borrow { $0.inflight.packets.count > 0 })
 
         try await withTestMQTTServer(session: session, logger: logger) { _ in
             await stream.first { _ in true }
@@ -534,8 +533,7 @@ struct MQTTConnectionTests {
             cont.yield()
         }
 
-        //TODO: Fix accessing packet count
-        //#expect(session.inflightPacketsCount == 0)
+        #expect(try session.storage.borrow { $0.inflight.packets.count == 0 })
     }
 
     @Test("Maximum Packet Size", arguments: MQTTQoS.allCases)

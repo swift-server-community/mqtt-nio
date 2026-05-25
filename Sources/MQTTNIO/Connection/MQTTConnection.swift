@@ -100,22 +100,23 @@ public final actor MQTTConnection: Sendable {
         )
         do {
             let value = try await operation(connection, sessionPresent)
-            await connection.closeAndCleanup(session: nil)
+            await connection.closeAndCleanup()
             return value
         } catch {
-            await connection.closeAndCleanup(session: nil)
+            await connection.closeAndCleanup()
             throw error
         }
     }
 
-    package func closeAndCleanup(session: MQTTSession?) async {
+    @discardableResult package func closeAndCleanup() async -> MQTTSessionStorage {
         self.close()
-        session?.storage.put(self.channelHandler.session)
+        let sessionStorage = self.channelHandler.session
         do {
             try await self.channel.closeFuture.get()
         } catch {
             logger.error("Failed to close connection", metadata: ["error": "\(error)"])
         }
+        return sessionStorage
     }
 
     /// Connect to MQTT server with a clean session and run operations using the connection and then close it.
@@ -166,36 +167,38 @@ public final actor MQTTConnection: Sendable {
         logger: Logger,
         operation: (MQTTConnection, Bool) async throws -> Value
     ) async throws -> Value {
-        guard let sessionStorage = session.storage.take() else {
-            throw MQTTError.alreadyConnectedWithSession
-        }
-        let connection: MQTTConnection
-        let sessionPresent: Bool
         do {
-            (connection, sessionPresent) = try await self.connect(
-                address: address,
-                session: sessionStorage,
-                identifier: session.clientID,
-                configuration: configuration,
-                eventLoop: eventLoop,
-                logger: logger
-            )
-        } catch {
-            session.storage.put(sessionStorage)
-            throw error
-        }
-        if !sessionPresent { await connection.closeSubscriptions() }
-        do {
-            let result = try await withThrowingTaskGroup { group in
-                group.addTask { try await connection.handleSessionSubscriptionTasks(session: session) }
-                defer { group.cancelAll() }
-                return try await operation(connection, sessionPresent)
+            return try await session.storage.mutatingBorrow { sessionStorage in
+                let connection: MQTTConnection
+                let sessionPresent: Bool
+                do {
+                    (connection, sessionPresent) = try await self.connect(
+                        address: address,
+                        session: sessionStorage,
+                        identifier: sessionStorage.clientID,
+                        configuration: configuration,
+                        eventLoop: eventLoop,
+                        logger: logger
+                    )
+                } catch {
+                    return (sessionStorage, .failure(error))
+                }
+                if !sessionPresent { await connection.closeSubscriptions() }
+                do {
+                    let result: Value = try await withThrowingTaskGroup { group in
+                        group.addTask { try await connection.handleSessionSubscriptionTasks(session: session) }
+                        defer { group.cancelAll() }
+                        return try await operation(connection, sessionPresent)
+                    }
+                    let sessionStorage = await connection.closeAndCleanup()
+                    return (sessionStorage, .success(result))
+                } catch {
+                    let sessionStorage = await connection.closeAndCleanup()
+                    return (sessionStorage, .failure(error))
+                }
             }
-            await connection.closeAndCleanup(session: session)
-            return result
-        } catch {
-            await connection.closeAndCleanup(session: session)
-            throw error
+        } catch UniqueReferenceError.alreadyBorrowed {
+            throw MQTTError.alreadyConnectedWithSession
         }
     }
 
@@ -269,7 +272,16 @@ public final actor MQTTConnection: Sendable {
     ///
     /// If new subscriptions are opened while waiting, this function will also wait for those subscriptions to complete.
     public func waitUntilNoActiveSubscriptions() async {
-        await self.channelHandler.session.waitUntilNoActiveSubscriptions()
+        await withCheckedContinuation { continuation in
+            if self.channelHandler.session.subscriptions.subscriptionIDMap.isEmpty {
+                self.logger.trace("No active subscriptions to wait for")
+                continuation.resume()
+                return
+            }
+            self.logger.trace("Waiting for \(self.channelHandler.session.subscriptions.subscriptionIDMap.count) active subscriptions to complete")
+            self.channelHandler.session.subscriptions.emptySubscriptionsContinuations.append(continuation)
+        }
+        self.logger.trace("All active subscriptions completed")
     }
 
     /// Connect to MQTT server and return the connection and whether there was a previous session present.

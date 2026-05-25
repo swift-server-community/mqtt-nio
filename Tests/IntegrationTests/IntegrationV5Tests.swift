@@ -92,8 +92,8 @@ struct IntegrationV5Tests {
             session: session,
             logger: Logger(label: #function).withLogLevel(.trace)
         ) { connection in
-            #expect(!session.clientID.isEmpty)
         }
+        #expect(try !session.storage.borrow { $0.clientID }.isEmpty)
     }
 
     @Test("Publish", arguments: MQTTQoS.allCases, [MQTTProperties.Property.contentType("text/plain"), nil])

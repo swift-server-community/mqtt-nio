@@ -43,54 +43,67 @@ extension MQTTConnectionTests {
         server serverOperation: @Sendable @escaping (NIOAsyncTestingChannel) async throws -> Void,
     ) async throws {
         let channel = NIOAsyncTestingChannel()
-        let connection = try await MQTTConnection.setupChannelAndConnect(
-            channel,
-            configuration: configuration,
-            session: session,
-            logger: logger
-        )
-        let version = configuration.version
-        return try await withThrowingTaskGroup { group in
-            group.addTask {
+        do {
+            try await session.storage.mutatingBorrow { sessionStorage -> (MQTTSessionStorage, Result<Void, any Error>) in
+                let connection: MQTTConnection
                 do {
-                    _ = try await connection.sendConnect(clientID: session.clientID, cleanSession: session.clientID.isEmpty)
-                    try await withThrowingTaskGroup { group in
-                        group.addTask { try await connection.handleSessionSubscriptionTasks() }
-                        defer { group.cancelAll() }
-                        try await clientOperation(connection)
-                    }
-                    await connection.saveInflightToSession()
-                    connection.close()
+                    connection = try await MQTTConnection.setupChannelAndConnect(
+                        channel,
+                        configuration: configuration,
+                        session: sessionStorage,
+                        logger: logger
+                    )
                 } catch {
-                    await connection.saveInflightToSession()
-                    connection.close()
-                    throw error
+                    return (sessionStorage, .failure(error))
                 }
-            }
-            group.addTask {
-                // Wait for CONNECT
-                let packet = try await channel.waitForOutboundPacket()
-                let connect = try MQTTConnectPacket.read(version: configuration.version, from: packet)
-                #expect(connect.cleanSession == session.clientID.isEmpty)
-                #expect(connect.clientIdentifier == session.clientID)
-                if case .v5_0(var connectProperties, _, _, let authWorkflow) = configuration.versionConfiguration {
-                    if let authWorkflow {
-                        connectProperties.append(.authenticationMethod(authWorkflow.methodName))
+                let version = configuration.version
+                return await withTaskGroup(of: (MQTTSessionStorage, Result<Void, any Error>).self) { group in
+                    group.addTask {
+                        do {
+                            _ = try await connection.sendConnect(clientID: sessionStorage.clientID, cleanSession: sessionStorage.clientID.isEmpty)
+                            try await withThrowingTaskGroup { group in
+                                group.addTask { try await connection.handleSessionSubscriptionTasks(session: session) }
+                                defer { group.cancelAll() }
+                                try await clientOperation(connection)
+                            }
+                            let sessionStorage = await connection.closeAndCleanup()
+                            return (sessionStorage, .success(()))
+                        } catch {
+                            let sessionStorage = await connection.closeAndCleanup()
+                            return (sessionStorage, .failure(error))
+                        }
                     }
-                    #expect(connectProperties == connect.properties)
+                    do {
+                        // wait for connect
+                        let packet = try await channel.waitForOutboundPacket()
+                        let connect = try MQTTConnectPacket.read(version: configuration.version, from: packet)
+                        #expect(connect.cleanSession == sessionStorage.clientID.isEmpty)
+                        #expect(connect.clientIdentifier == sessionStorage.clientID)
+                        if case .v5_0(var connectProperties, _, _, let authWorkflow) = configuration.versionConfiguration {
+                            if let authWorkflow {
+                                connectProperties.append(.authenticationMethod(authWorkflow.methodName))
+                            }
+                            #expect(connectProperties == connect.properties)
+                        }
+
+                        let connack = MQTTConnAckPacket(returnCode: 0, acknowledgeFlags: 1, properties: connackProperties)
+                        try await channel.writeInboundPacket(connack, version: version)
+
+                        try await serverOperation(channel)
+
+                        // wait for disconnect
+                        let disconnectPacket = try await channel.waitForOutboundPacket()
+                        #expect(disconnectPacket.type == .DISCONNECT)
+                        #expect(disconnectPacket.packetId == 0)
+                    } catch {
+                        return (sessionStorage, .failure(error))
+                    }
+
+                    return await group.next()!
                 }
-
-                let connack = MQTTConnAckPacket(returnCode: 0, acknowledgeFlags: 1, properties: connackProperties)
-                try await channel.writeInboundPacket(connack, version: version)
-
-                try await serverOperation(channel)
-
-                // Wait for DISCONNECT
-                let disconnectPacket = try await channel.waitForOutboundPacket()
-                #expect(disconnectPacket.type == .DISCONNECT)
-                #expect(disconnectPacket.packetId == 0)
             }
-            try await group.waitForAll()
+        } catch UniqueReferenceError.alreadyBorrowed {
+            throw MQTTError.alreadyConnectedWithSession
         }
     }
 
