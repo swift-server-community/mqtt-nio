@@ -18,7 +18,6 @@ enum UniqueReferenceError: Error {
 }
 
 struct UniqueReference<Value: Sendable>: ~Copyable, Sendable {
-
     let ref: Mutex<Value?>
 
     init(_ value: Value) {
