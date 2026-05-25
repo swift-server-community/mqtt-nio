@@ -383,11 +383,6 @@ public final actor MQTTConnection: Sendable {
             properties: properties,
             will: publish
         )
-        /*guard
-            self.session.isConnected.compareExchange(expected: false, desired: true, successOrdering: .relaxed, failureOrdering: .relaxed).exchanged
-        else {
-            throw MQTTError.alreadyConnectedWithSession
-        }*/
         return try await self._connect(packet: packet, authWorkflow: authenticator).sessionPresent
     }
 
