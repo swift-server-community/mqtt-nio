@@ -46,18 +46,20 @@ public final actor MQTTConnection: Sendable {
     let configuration: MQTTConnectionConfiguration
     let globalPacketId = Atomic<UInt16>(1)
     /// Local copy of inflight messages
-    private var inflight: MQTTInflight
+    /*private var inflight: MQTTInflight {
+        get { self.channelHandler.sessionStorage.inflightPackets }
+        set { self.channelHandler.sessionStorage.inflightPackets = newValue }
+    }*/
     let isClosed: Atomic<Bool>
 
     var connectionParameters = ConnectionParameters()
-    let session: MQTTSession
+    //let session: MQTTSession
 
     /// Initialize connection
     private init(
         channel: any Channel,
         channelHandler: MQTTChannelHandler,
         configuration: MQTTConnectionConfiguration,
-        session: MQTTSession,
         address: MQTTServerAddress?,
         logger: Logger
     ) {
@@ -65,9 +67,7 @@ public final actor MQTTConnection: Sendable {
         self.channel = channel
         self.channelHandler = channelHandler
         self.configuration = configuration
-        self.session = session
         self.logger = logger
-        self.inflight = session.inflightPackets.withLock { $0 }
         self.isClosed = .init(false)
     }
 
@@ -100,16 +100,17 @@ public final actor MQTTConnection: Sendable {
         )
         do {
             let value = try await operation(connection, sessionPresent)
-            await connection.closeAndCleanup()
+            await connection.closeAndCleanup(session: nil)
             return value
         } catch {
-            await connection.closeAndCleanup()
+            await connection.closeAndCleanup(session: nil)
             throw error
         }
     }
 
-    private func closeAndCleanup() async {
+    package func closeAndCleanup(session: MQTTSession?) async {
         self.close()
+        session?.storage.put(self.channelHandler.session)
         do {
             try await self.channel.closeFuture.get()
         } catch {
@@ -165,29 +166,41 @@ public final actor MQTTConnection: Sendable {
         logger: Logger,
         operation: (MQTTConnection, Bool) async throws -> Value
     ) async throws -> Value {
-        let (connection, sessionPresent) = try await self.connect(
-            address: address,
-            session: session,
-            identifier: session.clientID,
-            configuration: configuration,
-            eventLoop: eventLoop,
-            logger: logger
-        )
-        if !sessionPresent { session.subscriptions.withLock { $0.close(error: MQTTError.noSessionPresent) } }
+        guard let sessionStorage = session.storage.take() else {
+            throw MQTTError.alreadyConnectedWithSession
+        }
+        let connection: MQTTConnection
+        let sessionPresent: Bool
+        do {
+            (connection, sessionPresent) = try await self.connect(
+                address: address,
+                session: sessionStorage,
+                identifier: session.clientID,
+                configuration: configuration,
+                eventLoop: eventLoop,
+                logger: logger
+            )
+        } catch {
+            session.storage.put(sessionStorage)
+            throw error
+        }
+        if !sessionPresent { await connection.closeSubscriptions() }
         do {
             let result = try await withThrowingTaskGroup { group in
-                group.addTask { try await connection.handleSessionSubscriptionTasks() }
+                group.addTask { try await connection.handleSessionSubscriptionTasks(session: session) }
                 defer { group.cancelAll() }
                 return try await operation(connection, sessionPresent)
             }
-            await connection.saveInflightToSession()
-            await connection.closeAndCleanup()
+            await connection.closeAndCleanup(session: session)
             return result
         } catch {
-            await connection.saveInflightToSession()
-            await connection.closeAndCleanup()
+            await connection.closeAndCleanup(session: session)
             throw error
         }
+    }
+
+    func closeSubscriptions() {
+        self.channelHandler.session.subscriptions.close(error: MQTTError.noSessionPresent)
     }
 
     /// Connect to MQTT server and run operations using the connection and then close it.
@@ -256,7 +269,7 @@ public final actor MQTTConnection: Sendable {
     ///
     /// If new subscriptions are opened while waiting, this function will also wait for those subscriptions to complete.
     public func waitUntilNoActiveSubscriptions() async {
-        await self.session.waitUntilNoActiveSubscriptions()
+        await self.channelHandler.session.waitUntilNoActiveSubscriptions()
     }
 
     /// Connect to MQTT server and return the connection and whether there was a previous session present.
@@ -272,13 +285,13 @@ public final actor MQTTConnection: Sendable {
     /// - Returns: Tuple of the ``MQTTConnection`` and a `Bool` indicating if there was a previous session present.
     private static func connect(
         address: MQTTServerAddress,
-        session: MQTTSession?,
+        session: MQTTSessionStorage?,
         identifier: String,
         configuration: MQTTConnectionConfiguration,
         eventLoop: any EventLoop = MultiThreadedEventLoopGroup.singleton.any(),
         logger: Logger
     ) async throws -> (MQTTConnection, Bool) {
-        let _session = session ?? MQTTSession(clientID: identifier, logger: logger)
+        let _session = session ?? MQTTSessionStorage(clientID: identifier, logger: logger)
         let future =
             if eventLoop.inEventLoop {
                 self._makeConnection(
@@ -364,22 +377,16 @@ public final actor MQTTConnection: Sendable {
             properties: properties,
             will: publish
         )
-        guard
+        /*guard
             self.session.isConnected.compareExchange(expected: false, desired: true, successOrdering: .relaxed, failureOrdering: .relaxed).exchanged
         else {
             throw MQTTError.alreadyConnectedWithSession
-        }
+        }*/
         return try await self._connect(packet: packet, authWorkflow: authenticator).sessionPresent
     }
 
-    /// Copy the local copy of inflight messages back to the session.
-    func saveInflightToSession() {
-        self.session.inflightPackets.withLock { $0 = inflight }
-        self.session.isConnected.store(false, ordering: .relaxed)
-    }
-
     /// Iterates over subscription tasks in the session queue and handles them.
-    func handleSessionSubscriptionTasks() async throws {
+    func handleSessionSubscriptionTasks(session: MQTTSession) async throws {
         for await task in session.subscriptionsQueue {
             switch task {
             case .subscribe(let queuedSubscription):
@@ -438,7 +445,7 @@ public final actor MQTTConnection: Sendable {
     private static func _makeConnection(
         address: MQTTServerAddress,
         configuration: MQTTConnectionConfiguration,
-        session: MQTTSession,
+        session: MQTTSessionStorage,
         eventLoop: any EventLoop,
         logger: Logger
     ) -> EventLoopFuture<MQTTConnection> {
@@ -515,7 +522,6 @@ public final actor MQTTConnection: Sendable {
                 channel: channel,
                 channelHandler: handler,
                 configuration: configuration,
-                session: session,
                 address: address,
                 logger: logger
             )
@@ -525,7 +531,7 @@ public final actor MQTTConnection: Sendable {
     package static func setupChannelAndConnect(
         _ channel: any Channel,
         configuration: MQTTConnectionConfiguration = .init(),
-        session: MQTTSession,
+        session: MQTTSessionStorage,
         logger: Logger
     ) async throws -> MQTTConnection {
         if !channel.eventLoop.inEventLoop {
@@ -549,7 +555,7 @@ public final actor MQTTConnection: Sendable {
     private static func _setupChannelAndConnect(
         _ channel: any Channel,
         configuration: MQTTConnectionConfiguration,
-        session: MQTTSession,
+        session: MQTTSessionStorage,
         logger: Logger
     ) -> EventLoopFuture<MQTTConnection> {
         do {
@@ -565,7 +571,6 @@ public final actor MQTTConnection: Sendable {
                         channel: channel,
                         channelHandler: handler,
                         configuration: configuration,
-                        session: session,
                         address: .hostname("127.0.0.1", port: 1883),
                         logger: logger
                     )
@@ -580,7 +585,7 @@ public final actor MQTTConnection: Sendable {
     private static func _setupChannel(
         _ channel: any Channel,
         configuration: MQTTConnectionConfiguration,
-        session: MQTTSession,
+        session: MQTTSessionStorage,
         logger: Logger
     ) throws -> MQTTChannelHandler {
         channel.eventLoop.assertInEventLoop()
@@ -735,7 +740,7 @@ public final actor MQTTConnection: Sendable {
             if connack.sessionPresent {
                 try await self.resendOnRestart()
             } else {
-                self.inflight.clear()
+                self.channelHandler.session.inflight.clear()
             }
             let ack = try self.processConnack(connack)
             return ack
@@ -783,8 +788,8 @@ public final actor MQTTConnection: Sendable {
 
     /// Resend PUBLISH and PUBREL messages
     func resendOnRestart() async throws {
-        let inflight = self.inflight.packets
-        self.inflight.clear()
+        let inflight = self.channelHandler.session.inflight.packets
+        self.channelHandler.session.inflight.clear()
         for packet in inflight {
             switch packet {
             case let publish as MQTTPublishPacket:
@@ -832,7 +837,7 @@ public final actor MQTTConnection: Sendable {
             }
             // client identifier
             if case .assignedClientIdentifier(let identifier) = property {
-                self.session.setClientID(identifier)
+                self.channelHandler.session.clientID = identifier
             }
             // max QoS
             if case .maximumQoS(let qos) = property {
@@ -921,12 +926,12 @@ public final actor MQTTConnection: Sendable {
             return nil
         }
 
-        self.inflight.add(packet: packet)
+        self.channelHandler.session.inflight.add(packet: packet)
         let ackPacket: any MQTTPacket
         do {
             ackPacket = try await self.sendMessage(packet) { message in
                 guard message.packetId == packet.packetId else { return false }
-                self.inflight.remove(id: packet.packetId)
+                self.channelHandler.session.inflight.remove(id: packet.packetId)
                 if packet.publish.qos == .atLeastOnce {
                     guard message.type == .PUBACK else {
                         throw MQTTError.unexpectedMessage
@@ -948,7 +953,7 @@ public final actor MQTTConnection: Sendable {
             if case MQTTError.serverDisconnection(let ack) = error,
                 ack.reason == .malformedPacket
             {
-                self.inflight.remove(id: packet.packetId)
+                self.channelHandler.session.inflight.remove(id: packet.packetId)
             }
             throw error
         }
@@ -962,11 +967,11 @@ public final actor MQTTConnection: Sendable {
     }
 
     func pubRel(packet: MQTTPubAckPacket) async throws -> any MQTTPacket {
-        self.inflight.add(packet: packet)
+        self.channelHandler.session.inflight.add(packet: packet)
         return try await self.sendMessage(packet) { message in
             guard message.packetId == packet.packetId else { return false }
             guard message.type != .PUBREC else { return false }
-            self.inflight.remove(id: packet.packetId)
+            self.channelHandler.session.inflight.remove(id: packet.packetId)
             guard message.type == .PUBCOMP else {
                 throw MQTTError.unexpectedMessage
             }

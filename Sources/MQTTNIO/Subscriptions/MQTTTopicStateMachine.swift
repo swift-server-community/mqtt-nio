@@ -12,9 +12,9 @@
 //===----------------------------------------------------------------------===//
 
 @usableFromInline
-struct MQTTTopicStateMachine<Value: Identifiable> where Value: AnyObject {
+struct MQTTTopicStateMachine<Value: Identifiable & Sendable>: Sendable where Value: AnyObject {
     @usableFromInline
-    enum State {
+    enum State: Sendable {
         case uninitialized
         case active([Value])
         case closed

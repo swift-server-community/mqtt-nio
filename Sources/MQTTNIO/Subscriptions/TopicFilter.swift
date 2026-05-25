@@ -11,7 +11,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-struct TopicFilter: Hashable {
+struct TopicFilter: Hashable, Sendable {
     enum Level: Equatable {
         case string(Substring)
         case multiLevelWildcard

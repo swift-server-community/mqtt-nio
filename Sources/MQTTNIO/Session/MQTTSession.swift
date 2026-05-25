@@ -23,10 +23,7 @@ public final class MQTTSession: Sendable {
     /// Whether a ``MQTTConnection`` is currently connected using this session.
     let isConnected: Atomic<Bool>
 
-    /// Inflight messages
-    let inflightPackets: Mutex<MQTTInflight>
-
-    let subscriptions: Mutex<MQTTSubscriptions>
+    let storage: UniqueReference<MQTTSessionStorage>
 
     let subscriptionsQueue: AsyncStream<SessionSubscriptionTask>
     @usableFromInline
@@ -49,11 +46,10 @@ public final class MQTTSession: Sendable {
     ///   - logger: Logger to use for this session.
     public init(clientID: String, logger: Logger) {
         self._clientID = .init(clientID)
-        self.inflightPackets = .init(.init())
-        self.subscriptions = .init(.init(logger: logger))
         self.isConnected = .init(false)
         (self.subscriptionsQueue, self.subscriptionsQueueContinuation) = AsyncStream.makeStream()
         self.logger = logger
+        self.storage = .init(.init(clientID: clientID, logger: logger))
     }
 }
 
@@ -72,15 +68,6 @@ extension MQTTSession {
 
     func setClientID(_ clientID: String) {
         self._clientID.withLock { $0 = clientID }
-    }
-}
-
-// MARK: - Inflight Messages
-
-extension MQTTSession {
-    /// Used for testing
-    package var inflightPacketsCount: Int {
-        self.inflightPackets.withLock { $0.packets.count }
     }
 }
 
@@ -122,6 +109,19 @@ extension MQTTSession {
         case unsubscribe(QueuedUnsubscription)
     }
 
+}
+
+package struct MQTTSessionStorage: Sendable {
+    var inflight: MQTTInflight
+    var subscriptions: MQTTSubscriptions
+    var clientID: String
+
+    package init(clientID: String, logger: Logger) {
+        self.inflight = .init()
+        self.subscriptions = .init(logger: logger)
+        self.clientID = clientID
+    }
+
     /// Wait until there are no active subscriptions opened via this session or via any ``MQTTConnection``s using this session.
     ///
     /// This function waits only for subscriptions that have been acknowledged by the server,
@@ -130,17 +130,38 @@ extension MQTTSession {
     ///
     /// If new subscriptions are opened while waiting, this function will also wait for those subscriptions to complete.
     public func waitUntilNoActiveSubscriptions() async {
-        await withCheckedContinuation { continuation in
-            self.subscriptions.withLock { subscriptions in
-                if subscriptions.subscriptionIDMap.isEmpty {
-                    self.logger.trace("No active subscriptions to wait for")
-                    continuation.resume()
-                    return
-                }
-                self.logger.trace("Waiting for \(subscriptions.subscriptionIDMap.count) active subscriptions to complete")
-                subscriptions.emptySubscriptionsContinuations.append(continuation)
+        /*await withCheckedContinuation { continuation in
+            if subscriptions.subscriptionIDMap.isEmpty {
+                self.subscriptions.logger.trace("No active subscriptions to wait for")
+                continuation.resume()
+                return
             }
+            self.subscriptions.logger.trace("Waiting for \(subscriptions.subscriptionIDMap.count) active subscriptions to complete")
+            subscriptions.emptySubscriptionsContinuations.append(continuation)
         }
-        self.logger.trace("All active subscriptions completed")
+        self.subscriptions.logger.trace("All active subscriptions completed")*/
+    }
+}
+
+struct UniqueReference<Value: Sendable>: ~Copyable, Sendable {
+    let ref: Mutex<Value?>
+
+    init(_ value: Value) {
+        self.ref = .init(value)
+    }
+
+    func take() -> Value? {
+        self.ref.withLock {
+            let value = $0
+            $0 = nil
+            return value
+        }
+    }
+
+    func put(_ value: Value) {
+        self.ref.withLock {
+            guard $0 == nil else { preconditionFailure("Value already stored") }
+            $0 = value
+        }
     }
 }
