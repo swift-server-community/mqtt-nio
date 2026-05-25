@@ -18,7 +18,7 @@ import Synchronization
 /// Represents an MQTT session, holding session state such as inflight messages.
 /// Used by ``MQTTConnection`` to manage session state across connections.
 public final class MQTTSession: Sendable {
-    // data associated with session that is borrowed by the connection
+    /// Data associated with session that is borrowed by the connection
     let storage: UniqueReference<MQTTSessionStorage>
 
     let subscriptionsQueue: AsyncStream<SessionSubscriptionTask>
