@@ -1025,12 +1025,7 @@ struct IntegrationTests {
                 // Wait for the subscription to be setup
                 await stream.first { _ in true }
 
-                // Check that the subscription is registered in the session, cannot check this from the
-                // session as the storage is borrowed by the connection
-                /*TODO: check subscriptions
-                session.subscriptions.withLock {
-                    #expect($0.subscriptionIDMap.count == 1)
-                }*/
+                await #expect(connection.session.subscriptions.subscriptionIDMap.count == 1)
 
                 if clientClose {
                     connection.close()
@@ -1145,4 +1140,9 @@ struct IntegrationTests {
             throw InternalError.notImplemented
         }
     }
+}
+
+extension MQTTConnection {
+    /// Test helper to get session
+    var session: MQTTSessionStorage { self.channelHandler.session }
 }

@@ -45,15 +45,9 @@ public final actor MQTTConnection: Sendable {
     let channelHandler: MQTTChannelHandler
     let configuration: MQTTConnectionConfiguration
     let globalPacketId = Atomic<UInt16>(1)
-    /// Local copy of inflight messages
-    /*private var inflight: MQTTInflight {
-        get { self.channelHandler.sessionStorage.inflightPackets }
-        set { self.channelHandler.sessionStorage.inflightPackets = newValue }
-    }*/
     let isClosed: Atomic<Bool>
 
     var connectionParameters = ConnectionParameters()
-    //let session: MQTTSession
 
     /// Initialize connection
     private init(
