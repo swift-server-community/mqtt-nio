@@ -388,7 +388,7 @@ struct MQTTConnectionTests {
         let connection = try await MQTTConnection.setupChannelAndConnect(
             channel,
             configuration: .init(versionConfiguration: .v5_0(authWorkflow: SimpleAuthWorkflow())),
-            session: MQTTSession(clientID: "", logger: Logger(label: #function).withLogLevel(.trace)),
+            session: MQTTSessionStorage(clientID: "", logger: Logger(label: #function).withLogLevel(.trace)),
             logger: Logger(label: #function).withLogLevel(.trace)
         )
         return try await withThrowingTaskGroup { group in
@@ -512,7 +512,7 @@ struct MQTTConnectionTests {
             cont.yield()
         }
 
-        #expect(session.inflightPacketsCount > 0)
+        #expect(try session.storage.borrow { $0.inflight.packets.count > 0 })
 
         try await withTestMQTTServer(session: session, logger: logger) { _ in
             await stream.first { _ in true }
@@ -533,7 +533,7 @@ struct MQTTConnectionTests {
             cont.yield()
         }
 
-        #expect(session.inflightPacketsCount == 0)
+        #expect(try session.storage.borrow { $0.inflight.packets.count == 0 })
     }
 
     @Test("Maximum Packet Size", arguments: MQTTQoS.allCases)

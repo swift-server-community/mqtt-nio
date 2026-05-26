@@ -14,7 +14,7 @@
 import Logging
 import Synchronization
 
-struct MQTTSubscriptions {
+struct MQTTSubscriptions: Sendable {
     var subscriptionIDMap: [UInt32: SubscriptionRef]
     var subscriptionMap: [TopicFilter: MQTTTopicStateMachine<SubscriptionRef>]
     let logger: Logger
@@ -203,7 +203,7 @@ struct MQTTSubscriptions {
 }
 
 /// Individual subscription associated with one subscribe
-final class SubscriptionRef: Identifiable {
+final class SubscriptionRef: Identifiable, Sendable {
     let id: UInt32
     let version: MQTTConnectionConfiguration.Version
     let topicFilters: [TopicFilter]
