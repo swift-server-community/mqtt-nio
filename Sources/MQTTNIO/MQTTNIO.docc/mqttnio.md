@@ -32,6 +32,8 @@ try await MQTTConnection.withConnection(
 }
 ```
 
+> Tip: See <doc:mqttnio-connections> for more details on the different types of connections you can open and how to configure them.
+
 Subscribe to a topic with ``MQTTConnection/subscribe(to:process:)``,
 providing a closure that receives an `AsyncSequence` of incoming `PUBLISH` messages sent from the broker to that topic.
 When the closure finishes executing, the corresponding `UNSUBSCRIBE` message is automatically sent to the broker, and the subscription is cleaned up.
