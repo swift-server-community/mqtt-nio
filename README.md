@@ -21,6 +21,7 @@ MQTTNIO is a Swift NIO based implementation of a MQTT client. It supports
 
 Create a connection to the MQTT broker with `MQTTConnection.withConnection` and use it inside the closure.
 When the closure returns the connection will be closed.
+`CONNECT` and `DISCONNECT` packets are sent automatically, respectively before and after the closure is executed.
 
 ```swift
 try await MQTTConnection.withConnection(
