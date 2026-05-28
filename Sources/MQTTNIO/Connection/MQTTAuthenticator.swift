@@ -11,6 +11,7 @@
 //
 //===----------------------------------------------------------------------===//
 
+/// A custom authenticator workflow for MQTT v5.
 public protocol MQTTAuthenticator: Sendable {
     /// Authentication method name passed from client to server and back in the authentication method property
     var methodName: String { get }

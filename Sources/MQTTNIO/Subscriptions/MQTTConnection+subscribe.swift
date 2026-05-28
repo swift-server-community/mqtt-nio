@@ -85,7 +85,7 @@ extension MQTTConnection.V5 {
     /// The subscription is automatically unsubscribed when the `process` closure returns or throws.
     ///
     /// - Parameters:
-    ///   - subscriptions: Array of ``MQTTSubscribeInfo`` defining the subscriptions.
+    ///   - subscriptions: Array of ``MQTTSubscribeInfoV5`` defining the subscriptions.
     ///   - subscribeProperties: Properties to attach to the subscribe packet.
     ///   - unsubscribeProperties: Properties to attach to the unsubscribe packet.
     ///   - process: Closure where messages received from the subscription are processed.
