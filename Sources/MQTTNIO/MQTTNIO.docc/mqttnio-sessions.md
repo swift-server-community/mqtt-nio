@@ -51,7 +51,7 @@ await withThrowingTaskGroup { group in
             address: .hostname("localhost"),
             session: session,
             logger: Logger(...)
-        ) { connection in
+        ) { connection, _ in
             // The subscription will receive messages as normal while this connection is active.
             // When this connection is closed, the subscription will remain active
             // and will receive messages when a new connection is opened with the same session.
@@ -81,7 +81,7 @@ await withThrowingTaskGroup { group in
             address: .hostname("localhost"),
             session: session,
             logger: Logger(...)
-        ) { connection in
+        ) { connection, _ in
             await connection.waitUntilNoActiveSubscriptions()
             // This will wait until there are no active subscriptions on the connection or the session.
         }

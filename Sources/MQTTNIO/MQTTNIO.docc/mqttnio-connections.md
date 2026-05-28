@@ -22,13 +22,13 @@ try await MQTTConnection.withConnection(
 
 If you establish a MQTT v5.0 connection (see <doc:mqttnio-v5>), you can define ``MQTTProperties`` to be sent with the `CONNECT` and `DISCONNECT` packets in the ``MQTTConnectionConfiguration/versionConfiguration``.
 
-The four available variants of `withConnection` are:
+You can wait for the connection to be closed, either by the client (by returning from the closure, calling ``MQTTConnection/close()`` or throwing an error) or by the server, with the ``MQTTConnection/waitForClose()`` method.
+
+The available variants of `withConnection` are:
 - ``MQTTConnection/withConnection(address:configuration:identifier:eventLoop:logger:operation:)-(_,_,_,_,_,(MQTTConnection)->Value)``
     - Connect to the MQTT server with a clean session (clean start in MQTT v5.0) using the provided identifier for the session; you cannot resume a previous session.
-- ``MQTTConnection/withConnection(address:configuration:session:eventLoop:logger:operation:)-(_,_,_,_,_,(MQTTConnection)->Value)``
-    - Connect to the MQTT server using the provided session; see <doc:mqttnio-sessions> for more details.
 - ``MQTTConnection/withConnection(address:configuration:session:eventLoop:logger:operation:)-(_,_,_,_,_,(MQTTConnection,Bool)->Value)``
-    - Like the previous method, but the closure also receives a `Bool` indicating whether the server had a previous session for the provided session client ID and whether that session has been resumed.
+    - Connect to the MQTT server using the provided session; see <doc:mqttnio-sessions> for more details. The closure also receives a `Bool` indicating whether the server had a previous session for the provided session client ID and whether that session has been resumed.
 
 With the method `withConnection`, you can open various types of connections to MQTT brokers:
 
