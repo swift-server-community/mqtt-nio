@@ -63,4 +63,4 @@ try await connection.publish(
 ## Documentation
 
 User guides and reference documentation for MQTT NIO can be found on the [Swift Package Index](https://swiftpackageindex.com/swift-server-community/mqtt-nio/documentation/mqttnio).
-There is also a sample demonstrating the use of MQTTNIO v2 in an iOS app found [here](https://github.com/adam-fowler/EmCuTeeTee).
+There is also a sample demonstrating the use of MQTTNIO in an iOS app found [here](https://github.com/adam-fowler/EmCuTeeTee).
