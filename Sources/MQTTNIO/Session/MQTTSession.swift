@@ -31,9 +31,6 @@ public final class MQTTSession: Sendable {
     ///
     /// If you provide an empty string as the Client Identifier,
     /// the MQTT server should generate a unique Client Identifier for you on the first connection with this session.
-    ///
-    /// If that first connection was a MQTT v5 connection,
-    /// you can retrieve the assigned Client Identifier from ``MQTTSession/clientID`` after the connection is established.
     /// If you reuse the same session for other connections,
     /// the following connections will use the new Client Identifier assigned by the server.
     ///

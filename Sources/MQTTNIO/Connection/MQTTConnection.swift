@@ -67,6 +67,11 @@ public final actor MQTTConnection: Sendable {
 
     /// Connect to MQTT server with a clean session and run operations using the connection and then close it.
     ///
+    /// `CONNECT` and `DISCONNECT` packets are sent automatically, respectively before and after the `operation` closure is executed.
+    /// `DISCONNECT` is sent even if `operation` throws an error.
+    /// If you establish a MQTT v5.0 connection (see <doc:mqttnio-v5>), you can define ``MQTTProperties``
+    /// to be sent with the `CONNECT` and `DISCONNECT` packets in the ``MQTTConnectionConfiguration/versionConfiguration``.
+    ///
     /// - Parameters:
     ///   - address: Internet address of the MQTT server.
     ///   - configuration: Configuration of the MQTT connection.
@@ -123,6 +128,11 @@ public final actor MQTTConnection: Sendable {
     }
 
     /// Connect to MQTT server and run operations using the connection and then close it.
+    ///
+    /// `CONNECT` and `DISCONNECT` packets are sent automatically, respectively before and after the `operation` closure is executed.
+    /// `DISCONNECT` is sent even if `operation` throws an error.
+    /// If you establish a MQTT v5.0 connection (see <doc:mqttnio-v5>), you can define ``MQTTProperties``
+    /// to be sent with the `CONNECT` and `DISCONNECT` packets in the ``MQTTConnectionConfiguration/versionConfiguration``.
     ///
     /// - Parameters:
     ///   - address: Internet address of the MQTT server.
@@ -202,7 +212,7 @@ public final actor MQTTConnection: Sendable {
     /// Ping the server to test if it is still alive and to tell it you are alive.
     ///
     /// You shouldn't need to call this as the ``MQTTConnection`` automatically sends `PINGREQ` messages to the server to ensure the connection is still live.
-    /// If you initialize the client with the configuration ``MQTTConnectionConfiguration/disablePing`` to `true`
+    /// If you initialize the client with the ``MQTTConnectionConfiguration/pingConfiguration`` to ``MQTTConnectionConfiguration/PingConfiguration/disable``
     /// then these are disabled and it is up to you to send the `PINGREQ` messages yourself.
     public func ping() async throws {
         _ = try await self.sendMessage(MQTTPingreqPacket()) { message in

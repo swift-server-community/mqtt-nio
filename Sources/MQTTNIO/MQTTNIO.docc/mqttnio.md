@@ -1,6 +1,8 @@
 # ``MQTTNIO``
 
-A Swift NIO based MQTT client
+A Swift NIO based v3.1.1 and v5.0 MQTT client.
+
+## Overview
 
 MQTT (Message Queuing Telemetry Transport) is a lightweight messaging protocol that was developed by IBM and first released in 1999. It uses the pub/sub pattern and translates messages between devices, servers, and applications. It is commonly used in Internet of things (IoT) technologies.
 
@@ -11,55 +13,52 @@ MQTTNIO is a Swift NIO based implementation of a MQTT client. It supports
 - WebSocket connections
 - Posix sockets
 - Apple's Network framework via [NIOTransportServices](https://github.com/apple/swift-nio-transport-services) (required for iOS).
+- Unix domain sockets
 
-## Usage
+### Usage
 
-Create a client and connect to the MQTT broker.
+Create a connection to the MQTT broker with ``MQTTConnection/withConnection(address:configuration:identifier:eventLoop:logger:operation:)-(_,_,_,_,_,(MQTTConnection)->Value)`` and use it inside the closure.
+When the closure returns the connection will be closed.
+`CONNECT` and `DISCONNECT` packets are sent automatically, respectively before and after the closure is executed.
 
 ```swift
-let client = MQTTClient(
-    host: "mqtt.eclipse.org",
-    port: 1883,
+try await MQTTConnection.withConnection(
+    address: .hostname("mqtt.eclipse.org"),
     identifier: "My Client",
-    eventLoopGroupProvider: .createNew
-)
-do {
-    try await client.connect()
-    print("Succesfully connected")
-} catch {
-    print("Error while connecting \(error)")
+    logger: Logger(...)
+) { connection in
+    // You are now connected to the MQTT broker
+    // The connection will be active only inside this closure
 }
 ```
 
-Subscribe to a topic and add a publish listener to report publish messages sent from the server/broker.
+> Tip: See <doc:mqttnio-connections> for more details on the different types of connections you can open and how to configure them.
+
+Subscribe to a topic with ``MQTTConnection/subscribe(to:process:)``,
+providing a closure that receives an `AsyncSequence` of incoming `PUBLISH` messages sent from the broker to that topic.
+When the closure finishes executing, the corresponding `UNSUBSCRIBE` message is automatically sent to the broker, and the subscription is cleaned up.
+
 ```swift
-let subscription = MQTTSubscribeInfo(topicFilter: "my-topics", qos: .atLeastOnce)
-_ = try await client.subscribe(to: [subscription])
-let listener = client.createPublishListener()
-for await result in listener {
-    switch result {
-    case .success(let publish):
-        if publish.topicName == "my-topics" {
-            var buffer = publish.payload
-            let string = buffer.readString(length: buffer.readableBytes)
-            print(string)
-        }
-    case .failure(let error):
-        print("Error while receiving PUBLISH event")
+let subscribeInfo = MQTTSubscribeInfo(topicFilter: "my-topics", qos: .atLeastOnce)
+try await connection.subscribe(to: [subscribeInfo]) { subscription in
+    for try await message in subscription {
+        var buffer = message.payload
+        let string = buffer.readString(length: buffer.readableBytes)
+        // No need to filter messages, as only messages for "my-topics" are received here
+        print(string)
     }
 }
 ```
 
-Publish to a topic.
+Publish to a topic with ``MQTTConnection/publish(to:payload:qos:retain:)``.
+
 ```swift
-try await client.publish(
+try await connection.publish(
     to: "my-topics",
     payload: ByteBuffer(string: "This is the Test payload"),
     qos: .atLeastOnce
 )
 ```
-
-MQTTClient supports both Swift concurrency and SwiftNIO `EventLoopFuture`. The above examples use Swift concurrency but there are equivalent versions of these functions that return `EventLoopFuture`s. You can find out more about Swift NIO and `EventLoopFuture` [here](https://swiftpackageindex.com/apple/swift-nio/main/documentation/niocore/eventloopfuture).
 
 ## Topics
 
@@ -67,18 +66,21 @@ MQTTClient supports both Swift concurrency and SwiftNIO `EventLoopFuture`. The a
 
 - <doc:mqttnio-v5>
 - <doc:mqttnio-connections>
+- <doc:mqttnio-sessions>
 - <doc:mqttnio-aws>
 
-### Client
+### Connection
 
-- ``MQTTClient``
+- ``MQTTConnection``
+- ``MQTTConnectionConfiguration``
+- ``MQTTServerAddress``
+- ``MQTTSession``
 
 ### Subscribe/Publish
 
+- ``MQTTSubscription``
 - ``MQTTSubscribeInfo``
-- ``MQTTSuback``
 - ``MQTTPublishInfo``
-- ``MQTTPublishListener``
 - ``MQTTQoS``
 - ``MQTTPacketType``
 
@@ -87,21 +89,16 @@ MQTTClient supports both Swift concurrency and SwiftNIO `EventLoopFuture`. The a
 - ``MQTTError``
 - ``MQTTPacketError``
 
-### V5 Connection
-
-- ``MQTTConnackV5``
-
 ### V5 Subscribe/Publish
 
 - ``MQTTSubscribeInfoV5``
 - ``MQTTProperties``
 - ``MQTTReasonCode``
 - ``MQTTAckV5``
-- ``MQTTSubackV5``
-- ``MQTTPublishIdListener``
 
 ### V5 Authentication
 
+- ``MQTTAuthenticator``
 - ``MQTTAuthV5``
 
 ### TLS
