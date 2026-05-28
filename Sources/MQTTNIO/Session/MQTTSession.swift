@@ -80,6 +80,7 @@ extension MQTTSession {
     enum SessionSubscriptionTask: Sendable {
         case subscribe(QueuedSubscription)
         case unsubscribe(QueuedUnsubscription)
+        case cancel
     }
 
 }

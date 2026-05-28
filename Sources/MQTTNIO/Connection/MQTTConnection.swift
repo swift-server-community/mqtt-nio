@@ -168,15 +168,19 @@ public final actor MQTTConnection: Sendable {
                     return (sessionStorage, .failure(error))
                 }
                 if !sessionPresent { await connection.closeSubscriptions() }
+
+                // stick this in an unstructured task to avoid cancellation on iterating the subscribe
+                // request queue. Will use `withTaskCancellationShield` when Swift 6.4 comes out
+                let task = Task { await connection.handleSessionSubscriptionTasks(session: session) }
                 do {
-                    let result: Value = try await withThrowingTaskGroup { group in
-                        group.addTask { try await connection.handleSessionSubscriptionTasks(session: session) }
-                        defer { group.cancelAll() }
-                        return try await operation(connection, sessionPresent)
-                    }
+                    let value = try await operation(connection, sessionPresent)
+                    session.subscriptionsQueueContinuation.yield(.cancel)
+                    await task.value
                     let sessionStorage = await connection.closeAndCleanup()
-                    return (sessionStorage, .success(result))
+                    return (sessionStorage, .success(value))
                 } catch {
+                    session.subscriptionsQueueContinuation.yield(.cancel)
+                    await task.value
                     let sessionStorage = await connection.closeAndCleanup()
                     return (sessionStorage, .failure(error))
                 }
@@ -364,7 +368,7 @@ public final actor MQTTConnection: Sendable {
     }
 
     /// Iterates over subscription tasks in the session queue and handles them.
-    func handleSessionSubscriptionTasks(session: MQTTSession) async throws {
+    func handleSessionSubscriptionTasks(session: MQTTSession) async {
         for await task in session.subscriptionsQueue {
             switch task {
             case .subscribe(let queuedSubscription):
@@ -385,10 +389,15 @@ public final actor MQTTConnection: Sendable {
                     _ = try await promise.futureResult.get()
                 } catch {
                     queuedSubscription.continuation.finish(throwing: error)
-                    throw error
                 }
             case .unsubscribe(let queuedUnsubscription):
-                try await self.unsubscribe(id: queuedUnsubscription.id, properties: queuedUnsubscription.properties)
+                do {
+                    try await self.unsubscribe(id: queuedUnsubscription.id, properties: queuedUnsubscription.properties)
+                } catch {
+                    self.logger.info("Error unsubscribing from channel", metadata: ["mqtt_subscription": .stringConvertible(queuedUnsubscription.id)])
+                }
+            case .cancel:
+                return
             }
         }
     }

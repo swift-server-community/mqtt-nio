@@ -62,8 +62,8 @@ extension MQTTConnectionTests {
                         do {
                             _ = try await connection.sendConnect(clientID: sessionStorage.clientID, cleanSession: sessionStorage.clientID.isEmpty)
                             try await withThrowingTaskGroup { group in
-                                group.addTask { try await connection.handleSessionSubscriptionTasks(session: session) }
-                                defer { group.cancelAll() }
+                                group.addTask { await connection.handleSessionSubscriptionTasks(session: session) }
+                                defer { session.subscriptionsQueueContinuation.yield(.cancel) }
                                 try await clientOperation(connection)
                             }
                             let sessionStorage = await connection.closeAndCleanup()

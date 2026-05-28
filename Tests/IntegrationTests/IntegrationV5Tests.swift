@@ -246,7 +246,6 @@ struct IntegrationV5Tests {
     @Test("Session Expiry Interval")
     func sessionExpiryInterval() async throws {
         let session = MQTTSession(clientID: "sessionExpiryIntervalV5", logger: Logger(label: #function).withLogLevel(.trace))
-
         try await MQTTConnection.withConnection(
             address: .hostname(Self.hostname),
             configuration: .init(
@@ -263,53 +262,66 @@ struct IntegrationV5Tests {
             try await connection.ping()
         }
 
-        try await MQTTConnection.withConnection(
-            address: .hostname(Self.hostname),
-            configuration: .init(
-                versionConfiguration: .v5_0(
-                    connectProperties: [.sessionExpiryInterval(3600)],
-                    disconnectProperties: [.sessionExpiryInterval(3600)]
-                )
-            ),
-            session: session,
-            logger: Logger(label: #function).withLogLevel(.trace)
-        ) { connection, sessionPresent in
-            // We used the same session in the previous connection,
-            // but the Session Expiry Interval was set to 0
-            #expect(sessionPresent == false)
-            try await connection.ping()
-        }
+        try await withThrowingTaskGroup { group in
+            group.addTask {
+                try await session.subscribe(to: [.init(topicFilter: "test", qos: .atMostOnce)]) { sub in
+                    var iterator = sub.makeAsyncIterator()
+                    _ = try? await iterator.next()
+                }
+            }
+            group.addTask {
+                try await MQTTConnection.withConnection(
+                    address: .hostname(Self.hostname),
+                    configuration: .init(
+                        versionConfiguration: .v5_0(
+                            connectProperties: [.sessionExpiryInterval(3600)],
+                            disconnectProperties: [.sessionExpiryInterval(3600)]
+                        )
+                    ),
+                    session: session,
+                    logger: Logger(label: #function).withLogLevel(.trace)
+                ) { connection, sessionPresent in
+                    // We used the same session in the previous connection,
+                    // but the Session Expiry Interval was set to 0
+                    #expect(sessionPresent == false)
+                    try await connection.ping()
+                    try await Task.sleep(for: .milliseconds(500))
+                }
 
-        try await MQTTConnection.withConnection(
-            address: .hostname(Self.hostname),
-            configuration: .init(
-                versionConfiguration: .v5_0(
-                    connectProperties: [.sessionExpiryInterval(4)],
-                    disconnectProperties: [.sessionExpiryInterval(4)]
-                )
-            ),
-            session: session,
-            logger: Logger(label: #function).withLogLevel(.trace)
-        ) { connection, sessionPresent in
-            // We used the same session in the previous connection,
-            // and the Session Expiry Interval was long enough for the session to still be valid
-            #expect(sessionPresent == true)
-            try await connection.ping()
-        }
+                try await MQTTConnection.withConnection(
+                    address: .hostname(Self.hostname),
+                    configuration: .init(
+                        versionConfiguration: .v5_0(
+                            connectProperties: [.sessionExpiryInterval(4)],
+                            disconnectProperties: [.sessionExpiryInterval(4)]
+                        )
+                    ),
+                    session: session,
+                    logger: Logger(label: #function).withLogLevel(.trace)
+                ) { connection, sessionPresent in
+                    // We used the same session in the previous connection,
+                    // and the Session Expiry Interval was long enough for the session to still be valid
+                    #expect(sessionPresent == true)
+                    try await connection.ping()
+                }
 
-        // Wait for the session to expire
-        try await Task.sleep(for: .seconds(5))
+                // Wait for the session to expire
+                try await Task.sleep(for: .seconds(5))
 
-        try await MQTTConnection.withConnection(
-            address: .hostname(Self.hostname),
-            configuration: .init(versionConfiguration: .v5_0()),
-            session: session,
-            logger: Logger(label: #function).withLogLevel(.trace)
-        ) { connection, sessionPresent in
-            // We used the same session in the previous connection,
-            // but the session should have expired by now
-            #expect(sessionPresent == false)
-            try await connection.ping()
+                try await MQTTConnection.withConnection(
+                    address: .hostname(Self.hostname),
+                    configuration: .init(versionConfiguration: .v5_0()),
+                    session: session,
+                    logger: Logger(label: #function).withLogLevel(.trace)
+                ) { connection, sessionPresent in
+                    // We used the same session in the previous connection,
+                    // but the session should have expired by now
+                    #expect(sessionPresent == false)
+                    try await connection.ping()
+                }
+            }
+            try await group.next()
+            group.cancelAll()
         }
     }
 
