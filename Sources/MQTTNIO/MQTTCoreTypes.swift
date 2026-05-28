@@ -98,7 +98,7 @@ public struct MQTTSubscribeInfo: Sendable {
 /// MQTT Sub ACK
 ///
 /// Contains data returned in subscribe ack packets
-public struct MQTTSuback: Sendable {
+struct MQTTSuback: Sendable {
     public enum ReturnCode: UInt8, Sendable {
         case grantedQoS0 = 0
         case grantedQoS1 = 1
