@@ -74,7 +74,7 @@ public final actor MQTTConnection: Sendable {
     ///   - eventLoop: EventLoop to run the connection on.
     ///   - logger: Logger to use for the connection.
     ///   - operation: Closure handling the MQTT connection.
-    ///     The closure receives the ``MQTTConnection`` and a `Bool` indicating if there was a previous session present.
+    ///     The closure receives the ``MQTTConnection``
     /// - Returns: Value returned from the operation closure.
     public static func withConnection<Value>(
         address: MQTTServerAddress,
@@ -82,9 +82,9 @@ public final actor MQTTConnection: Sendable {
         identifier: String = "",
         eventLoop: any EventLoop = MultiThreadedEventLoopGroup.singleton.any(),
         logger: Logger,
-        operation: (MQTTConnection, Bool) async throws -> Value
+        operation: (MQTTConnection) async throws -> Value
     ) async throws -> Value {
-        let (connection, sessionPresent) = try await self.connect(
+        let (connection, _) = try await self.connect(
             address: address,
             session: nil,
             identifier: identifier,
@@ -93,7 +93,7 @@ public final actor MQTTConnection: Sendable {
             logger: logger
         )
         do {
-            let value = try await operation(connection, sessionPresent)
+            let value = try await operation(connection)
             await connection.closeAndCleanup()
             return value
         } catch {
@@ -113,32 +113,12 @@ public final actor MQTTConnection: Sendable {
         return sessionStorage
     }
 
-    /// Connect to MQTT server with a clean session and run operations using the connection and then close it.
-    ///
-    /// - Parameters:
-    ///   - address: Internet address of the MQTT server.
-    ///   - configuration: Configuration of the MQTT connection.
-    ///   - identifier: Client identifier for the server. This must be unique.
-    ///   - eventLoop: EventLoop to run the connection on.
-    ///   - logger: Logger to use for the connection.
-    ///   - operation: Closure handling the MQTT connection.
-    /// - Returns: Value returned from the operation closure.
-    public static func withConnection<Value>(
-        address: MQTTServerAddress,
-        configuration: MQTTConnectionConfiguration = .init(),
-        identifier: String = "",
-        eventLoop: any EventLoop = MultiThreadedEventLoopGroup.singleton.any(),
-        logger: Logger,
-        operation: (MQTTConnection) async throws -> Value
-    ) async throws -> Value {
-        try await Self.withConnection(
-            address: address,
-            configuration: configuration,
-            identifier: identifier,
-            eventLoop: eventLoop,
-            logger: logger
-        ) { connection, _ in
-            try await operation(connection)
+    ///  Wait on connection closing
+    public func waitOnClose() async {
+        do {
+            try await self.channel.closeFuture.get()
+        } catch {
+            logger.error("Failed to close connection", metadata: ["error": "\(error)"])
         }
     }
 
@@ -198,35 +178,6 @@ public final actor MQTTConnection: Sendable {
 
     func closeSubscriptions() {
         self.channelHandler.session.subscriptions.close(error: MQTTError.noSessionPresent)
-    }
-
-    /// Connect to MQTT server and run operations using the connection and then close it.
-    ///
-    /// - Parameters:
-    ///   - address: Internet address of the MQTT server.
-    ///   - configuration: Configuration of the MQTT connection.
-    ///   - session: The ``MQTTSession`` to use for the connection.
-    ///   - eventLoop: EventLoop to run the connection on.
-    ///   - logger: Logger to use for the connection.
-    ///   - operation: Closure handling the MQTT connection.
-    /// - Returns: Value returned from the operation closure.
-    public static func withConnection<Value>(
-        address: MQTTServerAddress,
-        configuration: MQTTConnectionConfiguration = .init(),
-        session: MQTTSession,
-        eventLoop: any EventLoop = MultiThreadedEventLoopGroup.singleton.any(),
-        logger: Logger,
-        operation: (MQTTConnection) async throws -> Value
-    ) async throws -> Value {
-        try await Self.withConnection(
-            address: address,
-            configuration: configuration,
-            session: session,
-            eventLoop: eventLoop,
-            logger: logger
-        ) { connection, _ in
-            try await operation(connection)
-        }
     }
 
     /// Publish message to topic.

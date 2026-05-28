@@ -91,7 +91,7 @@ struct IntegrationV5Tests {
             configuration: .init(versionConfiguration: .v5_0()),
             session: session,
             logger: Logger(label: #function).withLogLevel(.trace)
-        ) { connection in
+        ) { connection, sessionPresent in
         }
         #expect(try !session.storage.borrow { $0.clientID }.isEmpty)
     }
@@ -321,7 +321,7 @@ struct IntegrationV5Tests {
                 configuration: .init(versionConfiguration: .v5_0(connectProperties: [.authenticationMethod("test")])),
                 identifier: "badAuthenticationMethodV5",
                 logger: Logger(label: #function).withLogLevel(.trace)
-            ) { _, _ in }
+            ) { _ in }
         }
     }
 
