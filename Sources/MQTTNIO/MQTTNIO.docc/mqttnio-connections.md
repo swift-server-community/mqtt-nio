@@ -25,8 +25,6 @@ If you establish a MQTT v5.0 connection (see <doc:mqttnio-v5>), you can define `
 The four available variants of `withConnection` are:
 - ``MQTTConnection/withConnection(address:configuration:identifier:eventLoop:logger:operation:)-(_,_,_,_,_,(MQTTConnection)->Value)``
     - Connect to the MQTT server with a clean session (clean start in MQTT v5.0) using the provided identifier for the session; you cannot resume a previous session.
-- ``MQTTConnection/withConnection(address:configuration:identifier:eventLoop:logger:operation:)-(_,_,_,_,_,(MQTTConnection,Bool)->Value)``
-    - Like the previous method, but the closure also receives a `Bool` indicating whether the server had a previous session for the provided identifier; however, given that the connection is established with a clean session, the previous session is not resumed.
 - ``MQTTConnection/withConnection(address:configuration:session:eventLoop:logger:operation:)-(_,_,_,_,_,(MQTTConnection)->Value)``
     - Connect to the MQTT server using the provided session; see <doc:mqttnio-sessions> for more details.
 - ``MQTTConnection/withConnection(address:configuration:session:eventLoop:logger:operation:)-(_,_,_,_,_,(MQTTConnection,Bool)->Value)``

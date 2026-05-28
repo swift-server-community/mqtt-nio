@@ -78,8 +78,7 @@ public final actor MQTTConnection: Sendable {
     ///   - identifier: Client identifier for the server. This must be unique.
     ///   - eventLoop: EventLoop to run the connection on.
     ///   - logger: Logger to use for the connection.
-    ///   - operation: Closure handling the MQTT connection.
-    ///     The closure receives the ``MQTTConnection`` and a `Bool` indicating if there was a previous session present.
+    ///   - operation: Closure handling the MQTT connection
     /// - Returns: Value returned from the operation closure.
     public static func withConnection<Value>(
         address: MQTTServerAddress,
@@ -87,9 +86,9 @@ public final actor MQTTConnection: Sendable {
         identifier: String = "",
         eventLoop: any EventLoop = MultiThreadedEventLoopGroup.singleton.any(),
         logger: Logger,
-        operation: (MQTTConnection, Bool) async throws -> Value
+        operation: (MQTTConnection) async throws -> Value
     ) async throws -> Value {
-        let (connection, sessionPresent) = try await self.connect(
+        let (connection, _) = try await self.connect(
             address: address,
             session: nil,
             identifier: identifier,
@@ -98,7 +97,7 @@ public final actor MQTTConnection: Sendable {
             logger: logger
         )
         do {
-            let value = try await operation(connection, sessionPresent)
+            let value = try await operation(connection)
             await connection.closeAndCleanup()
             return value
         } catch {
@@ -116,40 +115,6 @@ public final actor MQTTConnection: Sendable {
             logger.error("Failed to close connection", metadata: ["error": "\(error)"])
         }
         return sessionStorage
-    }
-
-    /// Connect to MQTT server with a clean session and run operations using the connection and then close it.
-    ///
-    /// `CONNECT` and `DISCONNECT` packets are sent automatically, respectively before and after the `operation` closure is executed.
-    /// `DISCONNECT` is sent even if `operation` throws an error.
-    /// If you establish a MQTT v5.0 connection (see <doc:mqttnio-v5>), you can define ``MQTTProperties``
-    /// to be sent with the `CONNECT` and `DISCONNECT` packets in the ``MQTTConnectionConfiguration/versionConfiguration``.
-    ///
-    /// - Parameters:
-    ///   - address: Internet address of the MQTT server.
-    ///   - configuration: Configuration of the MQTT connection.
-    ///   - identifier: Client identifier for the server. This must be unique.
-    ///   - eventLoop: EventLoop to run the connection on.
-    ///   - logger: Logger to use for the connection.
-    ///   - operation: Closure handling the MQTT connection.
-    /// - Returns: Value returned from the operation closure.
-    public static func withConnection<Value>(
-        address: MQTTServerAddress,
-        configuration: MQTTConnectionConfiguration = .init(),
-        identifier: String = "",
-        eventLoop: any EventLoop = MultiThreadedEventLoopGroup.singleton.any(),
-        logger: Logger,
-        operation: (MQTTConnection) async throws -> Value
-    ) async throws -> Value {
-        try await Self.withConnection(
-            address: address,
-            configuration: configuration,
-            identifier: identifier,
-            eventLoop: eventLoop,
-            logger: logger
-        ) { connection, _ in
-            try await operation(connection)
-        }
     }
 
     /// Connect to MQTT server and run operations using the connection and then close it.

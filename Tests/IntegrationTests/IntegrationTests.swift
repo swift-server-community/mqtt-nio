@@ -400,8 +400,7 @@ struct IntegrationTests {
             address: .hostname(Self.hostname),
             identifier: "sessionPresent",
             logger: Logger(label: #function).withLogLevel(.trace)
-        ) { connection, sessionPresent in
-            #expect(sessionPresent == false)
+        ) { connection in
             try await connection.ping()
         }
 
@@ -873,9 +872,7 @@ struct IntegrationTests {
                     address: .hostname(Self.hostname),
                     identifier: "closeSubscriptionsNoSessionPresent",
                     logger: Logger(label: #function).withLogLevel(.trace)
-                ) { connection, sessionPresent in
-                    // `sessionPresent` should be false as this connection is with `cleanSession` true
-                    #expect(!sessionPresent)
+                ) { connection in
                     try await connection.ping()
                 }
 
