@@ -670,7 +670,7 @@ struct IntegrationTests {
                     address: .hostname(Self.hostname),
                     session: session,
                     logger: Logger(label: #function).withLogLevel(.trace)
-                ) { connection in
+                ) { connection, sessionPresent in
                     async let _ = connection.publish(to: "testInflight", payload: ByteBuffer(string: "test"), qos: .exactlyOnce)
                     connection.close()
                 }
@@ -681,7 +681,7 @@ struct IntegrationTests {
                     address: .hostname(Self.hostname),
                     session: session,
                     logger: Logger(label: #function).withLogLevel(.trace)
-                ) { connection in
+                ) { connection, sessionPresent in
                     try await connection.ping()
                 }
 
@@ -703,7 +703,7 @@ struct IntegrationTests {
                         address: .hostname(Self.hostname),
                         session: session,
                         logger: Logger(label: #function).withLogLevel(.trace)
-                    ) { connection in
+                    ) { connection, sessionPresent in
                         try await connection.subscribe(to: [.init(topicFilter: "multipleConnWithSession1", qos: .atMostOnce)]) { subscription in
                             for try await _ in subscription {}
                         }
@@ -715,7 +715,7 @@ struct IntegrationTests {
                         address: .hostname(Self.hostname),
                         session: session,
                         logger: Logger(label: #function).withLogLevel(.trace)
-                    ) { connection in
+                    ) { connection, sessionPresent in
                         try await connection.subscribe(to: [.init(topicFilter: "multipleConnWithSession2", qos: .atMostOnce)]) { subscription in
                             for try await _ in subscription {}
                         }
@@ -923,7 +923,7 @@ struct IntegrationTests {
                     address: .hostname(Self.hostname),
                     session: session,
                     logger: logger
-                ) { connection in
+                ) { connection, sessionPresent in
                     try await withThrowingTaskGroup { group in
                         group.addTask {
                             _ = await #expect(throws: MQTTError.self) {
