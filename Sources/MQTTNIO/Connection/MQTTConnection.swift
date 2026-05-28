@@ -281,7 +281,23 @@ public final actor MQTTConnection: Sendable {
             }
         let connection = try await future.get()
         try await connection.waitOnInitialized()
-        let sessionPresent = try await connection.sendConnect(clientID: _session.clientID, cleanSession: session == nil)
+
+        // cleanSession means different things for v3.1.1 and v5.0. If you set cleanSession in v3.1.1 it will
+        // also not save the session, but you can set cleanSession (called cleanStart in v5) in v5 as it
+        // will save the session if the session expiry interval is set. Therefore we can start with clean start
+        // if our session is empty on v5
+        let cleanSession =
+            if let session {
+                switch configuration.version {
+                case .v3_1_1:
+                    false
+                case .v5_0:
+                    session.subscriptions.subscriptionIDMap.isEmpty && session.inflight.packets.isEmpty
+                }
+            } else {
+                true
+            }
+        let sessionPresent = try await connection.sendConnect(clientID: _session.clientID, cleanSession: cleanSession)
         return (connection, sessionPresent)
     }
 
@@ -302,7 +318,7 @@ public final actor MQTTConnection: Sendable {
             case .v3_1_1(let will):
                 will.map {
                     MQTTPublishInfo(
-                        qos: .atMostOnce,
+                        qos: $0.qos,
                         retain: $0.retain,
                         dup: false,
                         topicName: $0.topicName,
@@ -313,7 +329,7 @@ public final actor MQTTConnection: Sendable {
             case .v5_0(_, _, let will, _):
                 will.map {
                     MQTTPublishInfo(
-                        qos: .atMostOnce,
+                        qos: $0.qos,
                         retain: $0.retain,
                         dup: false,
                         topicName: $0.topicName,
