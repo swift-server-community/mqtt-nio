@@ -1035,7 +1035,7 @@ struct IntegrationTests {
 
     @Test("Wait Until No Active Subscriptions")
     func waitUntilNoActiveSubscriptions() async throws {
-        let logger = Logger(label: #function).withLogLevel(.trace)
+        let logger = Logger(label: "Integration.\(#function)").withLogLevel(.trace)
 
         // Make an initial connection with `cleanSession` to clear any existing session state
         try await MQTTConnection.withConnection(
