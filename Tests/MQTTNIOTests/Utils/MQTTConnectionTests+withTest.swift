@@ -263,6 +263,7 @@ extension MQTTConnectionTests {
         client clientOperation: @Sendable @escaping (MQTTConnection) async throws -> Void,
         server serverOperation: @Sendable @escaping (NIOAsyncTestingChannel) async throws -> Void
     ) async throws {
+        let (stream, cont) = AsyncStream.makeStream(of: Void.self)
         try await withTestMQTTServer(session: session, logger: logger) { connection in
             try await withThrowingTaskGroup { group in
                 for subscribeInfo in subscribeInfos {
@@ -274,9 +275,8 @@ extension MQTTConnectionTests {
                 }
                 // Make sure all subscriptions have been called before running
                 // client operation
-                try await Task.sleep(for: .milliseconds(50))
+                await stream.first { _ in true }
                 try await clientOperation(connection)
-                group.cancelAll()
             }
         } server: { channel in
             for _ in subscribeInfos {
@@ -292,7 +292,7 @@ extension MQTTConnectionTests {
                 )
                 try await channel.writeInboundPacket(suback, version: .v3_1_1)
             }
-
+            cont.yield()
             try await serverOperation(channel)
 
             for _ in subscribeInfos {
