@@ -1,15 +1,10 @@
-//===----------------------------------------------------------------------===//
 //
 // This source file is part of the MQTTNIO project
+// Copyright (c) 2020-2026 the MQTTNIO authors
 //
-// Copyright (c) 2020-2021 Adam Fowler
-// Licensed under Apache License v2.0
-//
-// See LICENSE.txt for license information
-//
+// See LICENSE for license information
 // SPDX-License-Identifier: Apache-2.0
 //
-//===----------------------------------------------------------------------===//
 
 /// MQTT v5 Connack
 struct MQTTConnackV5: Sendable {
