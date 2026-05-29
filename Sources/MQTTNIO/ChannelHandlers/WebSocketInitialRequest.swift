@@ -33,13 +33,13 @@ final class WebSocketInitialRequestHandler: ChannelInboundHandler, RemovableChan
         self.upgradePromise = upgradePromise
     }
 
-    public func handlerAdded(context: ChannelHandlerContext) {
+    func handlerAdded(context: ChannelHandlerContext) {
         if context.channel.isActive {
             sendInitialRequest(context: context)
         }
     }
 
-    public func channelActive(context: ChannelHandlerContext) {
+    func channelActive(context: ChannelHandlerContext) {
         sendInitialRequest(context: context)
         context.fireChannelActive()
     }
@@ -64,7 +64,7 @@ final class WebSocketInitialRequestHandler: ChannelInboundHandler, RemovableChan
         context.writeAndFlush(self.wrapOutboundOut(.end(nil)), promise: nil)
     }
 
-    public func channelRead(context: ChannelHandlerContext, data: NIOAny) {
+    func channelRead(context: ChannelHandlerContext, data: NIOAny) {
         let clientResponse = self.unwrapInboundIn(data)
 
         switch clientResponse {
@@ -77,7 +77,7 @@ final class WebSocketInitialRequestHandler: ChannelInboundHandler, RemovableChan
         }
     }
 
-    public func errorCaught(context: ChannelHandlerContext, error: any Error) {
+    func errorCaught(context: ChannelHandlerContext, error: any Error) {
         self.upgradePromise.fail(error)
         // As we are not really interested getting notified on success or failure
         // we just pass nil as promise to reduce allocations.
