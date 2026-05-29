@@ -170,7 +170,7 @@ public final actor MQTTConnection: Sendable {
                 if !sessionPresent { await connection.closeSubscriptions() }
 
                 // stick this in an unstructured task to avoid cancellation on iterating the subscribe
-                // request queue. Will use `withTaskCancellationShield` when Swift 6.4 comes out
+                // request queue. TODO: use `withTaskCancellationShield` when Swift 6.4 comes out
                 let task = Task { await connection.handleSessionSubscriptionTasks(session: session) }
                 do {
                     let value = try await operation(connection, sessionPresent)

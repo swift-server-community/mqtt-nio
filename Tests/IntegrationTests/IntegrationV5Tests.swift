@@ -263,6 +263,7 @@ struct IntegrationV5Tests {
         }
 
         try await withThrowingTaskGroup { group in
+            // Add a subscription to the session to ensure it doesn't always send cleanStart
             group.addTask {
                 try await session.subscribe(to: [.init(topicFilter: "test", qos: .atMostOnce)]) { sub in
                     var iterator = sub.makeAsyncIterator()
