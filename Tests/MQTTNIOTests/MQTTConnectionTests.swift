@@ -648,7 +648,7 @@ struct MQTTConnectionTests {
             // Wait until all subscriptions are active
             await stream.first { _ in true }
 
-            await connection.waitUntilNoActiveSubscriptions()
+            try await connection.waitUntilNoActiveSubscriptions()
         } server: { channel in
             // Signal that all subscriptions are active
             continuation.yield()
@@ -674,7 +674,7 @@ struct MQTTConnectionTests {
     func waitWithNoActiveSubscriptions() async throws {
         try await withTestMQTTServer(logger: Logger(label: #function).withLogLevel(.trace)) { connection in
             // Should return immediately as there are no active subscriptions
-            await connection.waitUntilNoActiveSubscriptions()
+            try await connection.waitUntilNoActiveSubscriptions()
         } server: { _ in
         }
     }

@@ -14,8 +14,8 @@ struct MQTTSubscriptions: Sendable {
     var subscriptionMap: [TopicFilter: MQTTTopicStateMachine<SubscriptionRef>]
     let logger: Logger
 
-    /// See ``MQTTSession/waitUntilNoActiveSubscriptions()``
-    var emptySubscriptionsContinuations: [CheckedContinuation<Void, Never>]
+    /// See ``MQTTConnection/waitUntilNoActiveSubscriptions()``
+    var emptySubscriptionsContinuations: [Int: CheckedContinuation<Void, any Error>]
 
     static let globalSubscriptionID = Atomic<UInt32>(0)
 
@@ -23,7 +23,7 @@ struct MQTTSubscriptions: Sendable {
         self.subscriptionIDMap = [:]
         self.logger = logger
         self.subscriptionMap = [:]
-        self.emptySubscriptionsContinuations = []
+        self.emptySubscriptionsContinuations = [:]
     }
 
     /// We received a message
@@ -70,10 +70,13 @@ struct MQTTSubscriptions: Sendable {
         // then we should close also the subscriptions opened by the session
         let noSessionPresent = if case MQTTError.noSessionPresent = error { true } else { false }
 
-        for subscription in subscriptionIDMap.values where !subscription.openedBySession || noSessionPresent {
+        // send error to subscription
+        for subscription in self.subscriptionIDMap.values where !subscription.openedBySession || noSessionPresent {
             subscription.sendError(error)
             self.removeSubscription(id: subscription.id)
         }
+
+        self.resumeWaitForEmptySubscriptions(.failure(error))
     }
 
     static func getSubscriptionID() -> UInt32 {
@@ -147,11 +150,7 @@ struct MQTTSubscriptions: Sendable {
         defer {
             self.subscriptionIDMap[id] = nil
             if self.subscriptionIDMap.isEmpty {
-                // See `MQTTSession.waitUntilNoActiveSubscriptions()`
-                for continuation in self.emptySubscriptionsContinuations {
-                    continuation.resume()
-                }
-                self.emptySubscriptionsContinuations.removeAll()
+                self.resumeWaitForEmptySubscriptions(.success(()))
             }
         }
         switch subscription.version {
@@ -194,6 +193,23 @@ struct MQTTSubscriptions: Sendable {
             break
         }
         subscriptionIDMap[id] = nil
+    }
+
+    mutating func addWaitForEmptySubscriptions(id: Int, continuation: CheckedContinuation<Void, any Error>) {
+        self.emptySubscriptionsContinuations[id] = continuation
+    }
+
+    mutating func cancelWaitForEmptySubscriptions(id: Int) {
+        let continuation = self.emptySubscriptionsContinuations.removeValue(forKey: id)
+        continuation?.resume(throwing: CancellationError())
+    }
+
+    mutating func resumeWaitForEmptySubscriptions(_ result: Result<Void, any Error>) {
+        // send error to empty subscription continuation
+        for cont in self.emptySubscriptionsContinuations.values {
+            cont.resume(with: result)
+        }
+        self.emptySubscriptionsContinuations.removeAll()
     }
 }
 

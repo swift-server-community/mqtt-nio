@@ -294,6 +294,19 @@ extension MQTTChannelHandler {
             }
         }
 
+        /// Is connection closed
+        @usableFromInline
+        func isClosed() -> Bool {
+            switch self.state {
+            case .uninitialized:
+                return false
+            case .initialized:
+                return false
+            case .closed:
+                return true
+            }
+        }
+
         private static var uninitialized: Self {
             StateMachine(.uninitialized)
         }

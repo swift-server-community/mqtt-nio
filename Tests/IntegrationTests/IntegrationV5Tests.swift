@@ -448,12 +448,12 @@ struct IntegrationV5Tests {
     @Test("Subscribe to All Topics", .disabled(if: ProcessInfo.processInfo.environment["CI"] != nil))
     func subscribeAll() async throws {
         try await MQTTConnection.withConnection(
-            address: .hostname("test.mosquitto.org"),
+            address: .hostname("broker.hivemq.com"),
             configuration: .init(versionConfiguration: .v5_0()),
             identifier: "subscribeAllV5",
             logger: Logger(label: #function).withLogLevel(.trace)
         ) { connection in
-            try await connection.v5.subscribe(to: [.init(topicFilter: "#", qos: .exactlyOnce)]) { _ in
+            try await connection.v5.subscribe(to: [.init(topicFilter: "test/#", qos: .exactlyOnce)]) { _ in
                 try await Task.sleep(for: .seconds(5))
             }
         }
