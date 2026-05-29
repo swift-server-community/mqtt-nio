@@ -12,6 +12,7 @@
 //===----------------------------------------------------------------------===//
 
 /// MQTTClient errors
+@nonexhaustive
 public enum MQTTError: Error, Sendable {
     /// Value returned in connection error
     public enum ConnectionReturnValue: UInt8, Sendable {
