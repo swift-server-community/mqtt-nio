@@ -33,7 +33,18 @@ final class WebSocketInitialRequestHandler: ChannelInboundHandler, RemovableChan
         self.upgradePromise = upgradePromise
     }
 
+    public func handlerAdded(context: ChannelHandlerContext) {
+        if context.channel.isActive {
+            sendInitialRequest(context: context)
+        }
+    }
+
     public func channelActive(context: ChannelHandlerContext) {
+        sendInitialRequest(context: context)
+        context.fireChannelActive()
+    }
+
+    func sendInitialRequest(context: ChannelHandlerContext) {
         // We are connected. It's time to send the message to the server to initialize the upgrade dance.
         var headers = HTTPHeaders()
         headers.add(name: "Content-Length", value: "0")
