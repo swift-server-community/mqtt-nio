@@ -11,7 +11,6 @@ needs to be listed here.
 
 - Adam Fowler <adamfowler71@gmail.com>
 - Benedek Kozma <cyberbeni@gmail.com>
-- Francesco Paolo Severino <96546612+fpseverino@users.noreply.github.com>
 - Francesco Paolo Severino <francescopaolo.severino@gmail.com>
 - Michael Housh <m-housh@users.noreply.github.com>
 - Michal Šrůtek <35694712+michalsrutek@users.noreply.github.com>
