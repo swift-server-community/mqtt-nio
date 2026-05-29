@@ -1120,7 +1120,7 @@ struct IntegrationTests {
         // Make an initial connection with `cleanSession` to clear any existing session state
         try await MQTTConnection.withConnection(
             address: .hostname(Self.hostname),
-            identifier: "waitUntilNoActiveSubscriptions",
+            identifier: "cancelActiveSubscriptionsWait",
             logger: logger
         ) { connection in
             try await connection.ping()
