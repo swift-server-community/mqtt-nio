@@ -1178,9 +1178,19 @@ struct IntegrationTests {
         ) { connection, sessionPresent in
             try await connection.publish(to: "test", payload: .init(), qos: .atLeastOnce)
             await stream.first { _ in true }
-            async let _ = connection.waitUntilNoActiveSubscriptions()
+            let (stream2, cont2) = AsyncStream.makeStream(of: Void.self)
+            await withThrowingTaskGroup { group in
+                group.addTask {
+                    cont2.yield()
+                    await #expect(throws: CancellationError.self) {
+                        try await connection.waitUntilNoActiveSubscriptions()
+                    }
+                }
+                await stream2.first { _ in true }
+                try? await Task.sleep(for: .milliseconds(50))
+                group.cancelAll()
+            }
         }
-
     }
 
     static let rootPath = #filePath
