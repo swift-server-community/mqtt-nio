@@ -91,9 +91,9 @@ struct IntegrationV5Tests {
             configuration: .init(versionConfiguration: .v5_0()),
             session: session,
             logger: Logger(label: #function).withLogLevel(.trace)
-        ) { connection in
-            #expect(!session.clientID.isEmpty)
+        ) { connection, sessionPresent in
         }
+        #expect(try !session.storage.borrow { $0.clientID }.isEmpty)
     }
 
     @Test("Publish", arguments: MQTTQoS.allCases, [MQTTProperties.Property.contentType("text/plain"), nil])
@@ -321,7 +321,7 @@ struct IntegrationV5Tests {
                 configuration: .init(versionConfiguration: .v5_0(connectProperties: [.authenticationMethod("test")])),
                 identifier: "badAuthenticationMethodV5",
                 logger: Logger(label: #function).withLogLevel(.trace)
-            ) { _, _ in }
+            ) { _ in }
         }
     }
 

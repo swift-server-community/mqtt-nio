@@ -12,7 +12,7 @@
 //===----------------------------------------------------------------------===//
 
 /// MQTT v5 Connack
-public struct MQTTConnackV5: Sendable {
+struct MQTTConnackV5: Sendable {
     /// is using session state from previous session
     public var sessionPresent: Bool
     /// connect reason code
@@ -79,7 +79,7 @@ public struct MQTTSubscribeInfoV5: Sendable {
 /// MQTT v5 Sub ACK packet
 ///
 /// Contains data returned in subscribe/unsubscribe ack packets
-public struct MQTTSubackV5: Sendable {
+struct MQTTSubackV5: Sendable {
     /// MQTT v5 subscription reason code
     public var reasons: [MQTTReasonCode]
     /// MQTT v5 properties

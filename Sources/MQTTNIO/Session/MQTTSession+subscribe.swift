@@ -12,6 +12,18 @@
 //===----------------------------------------------------------------------===//
 
 extension MQTTSession {
+    /// Subscribe to a destination and keep the subscription active across connections using this ``MQTTSession``.
+    ///
+    /// The subscription will be sent to the broker immediately if the session is connected,
+    /// otherwise it will be sent when the session connects.
+    /// The subscription is automatically unsubscribed when the `process` closure returns or throws.
+    ///
+    /// - Parameters:
+    ///   - subscriptions: Array of ``MQTTSubscribeInfoV5`` defining the subscriptions.
+    ///   - subscribeProperties: Properties to attach to the subscribe packet.
+    ///   - unsubscribeProperties: Properties to attach to the unsubscribe packet.
+    ///   - process: Closure where messages received from the subscription are processed.
+    ///     The closure receives a ``MQTTSubscription`` `AsyncSequence` to listen for messages.
     @inlinable
     public func subscribe<Value>(
         to subscriptions: [MQTTSubscribeInfoV5],

@@ -14,7 +14,7 @@
 import NIOCore
 import Testing
 
-@testable public import MQTTNIO
+@testable import MQTTNIO
 
 @Suite("Core MQTT Tests")
 struct CoreMQTTTests {
@@ -123,41 +123,5 @@ struct CoreMQTTTests {
         #expect(subscriptionMap[topicName: "sport"].count == 2)
         #expect(subscriptionMap[topicName: "sport/"].count == 3)
         #expect(subscriptionMap[topicName: "/finance"].count == 3)
-    }
-}
-
-extension MQTTError: Equatable {
-    public static func == (lhs: MQTTError, rhs: MQTTError) -> Bool {
-        switch (lhs, rhs) {
-        case (.failedToConnect, .failedToConnect),
-            (.connectionClosed, .connectionClosed),
-            (.serverClosedConnection, .serverClosedConnection),
-            (.unexpectedMessage, .unexpectedMessage),
-            (.decodeError, .decodeError),
-            (.websocketUpgradeFailed, .websocketUpgradeFailed),
-            (.timeout, .timeout),
-            (.retrySend, .retrySend),
-            (.wrongTLSConfig, .wrongTLSConfig),
-            (.badResponse, .badResponse),
-            (.unrecognisedPacketType, .unrecognisedPacketType),
-            (.authWorkflowRequired, .authWorkflowRequired),
-            (.cancelledTask, .cancelledTask),
-            (.packetTooLarge, .packetTooLarge),
-            (.alreadyConnectedWithSession, .alreadyConnectedWithSession),
-            (.noSessionPresent, .noSessionPresent):
-            true
-        case (.connectionError(let lhsValue), .connectionError(let rhsValue)):
-            lhsValue == rhsValue
-        case (.reasonError(let lhsValue), .reasonError(let rhsValue)):
-            lhsValue == rhsValue
-        case (.serverDisconnection(let lhsValue), .serverDisconnection(let rhsValue)):
-            lhsValue.reason == rhsValue.reason && lhsValue.properties == rhsValue.properties
-        case (.versionMismatch(let expectedLHS, let actualLHS), .versionMismatch(let expectedRHS, let actualRHS)):
-            expectedLHS == expectedRHS && actualLHS == actualRHS
-        case (.invalidTopicFilter(let lhsValue), .invalidTopicFilter(let rhsValue)):
-            lhsValue == rhsValue
-        default:
-            false
-        }
     }
 }

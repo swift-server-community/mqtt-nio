@@ -19,7 +19,7 @@ import NIOPosix
 import Synchronization
 import Testing
 
-@testable public import MQTTNIO
+@testable import MQTTNIO
 
 #if canImport(Network)
 import NIOTransportServices
@@ -400,8 +400,7 @@ struct IntegrationTests {
             address: .hostname(Self.hostname),
             identifier: "sessionPresent",
             logger: Logger(label: #function).withLogLevel(.trace)
-        ) { connection, sessionPresent in
-            #expect(sessionPresent == false)
+        ) { connection in
             try await connection.ping()
         }
 
@@ -671,22 +670,22 @@ struct IntegrationTests {
                     address: .hostname(Self.hostname),
                     session: session,
                     logger: Logger(label: #function).withLogLevel(.trace)
-                ) { connection in
+                ) { connection, sessionPresent in
                     async let _ = connection.publish(to: "testInflight", payload: ByteBuffer(string: "test"), qos: .exactlyOnce)
                     connection.close()
                 }
 
-                #expect(session.inflightPacketsCount > 0)
+                #expect(try session.storage.borrow { $0.inflight.packets.count } > 0)
 
                 try await MQTTConnection.withConnection(
                     address: .hostname(Self.hostname),
                     session: session,
                     logger: Logger(label: #function).withLogLevel(.trace)
-                ) { connection in
+                ) { connection, sessionPresent in
                     try await connection.ping()
                 }
 
-                #expect(session.inflightPacketsCount == 0)
+                #expect(try session.storage.borrow { $0.inflight.packets.count } == 0)
             }
 
             try await group.waitForAll()
@@ -704,7 +703,7 @@ struct IntegrationTests {
                         address: .hostname(Self.hostname),
                         session: session,
                         logger: Logger(label: #function).withLogLevel(.trace)
-                    ) { connection in
+                    ) { connection, sessionPresent in
                         try await connection.subscribe(to: [.init(topicFilter: "multipleConnWithSession1", qos: .atMostOnce)]) { subscription in
                             for try await _ in subscription {}
                         }
@@ -716,7 +715,7 @@ struct IntegrationTests {
                         address: .hostname(Self.hostname),
                         session: session,
                         logger: Logger(label: #function).withLogLevel(.trace)
-                    ) { connection in
+                    ) { connection, sessionPresent in
                         try await connection.subscribe(to: [.init(topicFilter: "multipleConnWithSession2", qos: .atMostOnce)]) { subscription in
                             for try await _ in subscription {}
                         }
@@ -873,9 +872,7 @@ struct IntegrationTests {
                     address: .hostname(Self.hostname),
                     identifier: "closeSubscriptionsNoSessionPresent",
                     logger: Logger(label: #function).withLogLevel(.trace)
-                ) { connection, sessionPresent in
-                    // `sessionPresent` should be false as this connection is with `cleanSession` true
-                    #expect(!sessionPresent)
+                ) { connection in
                     try await connection.ping()
                 }
 
@@ -926,7 +923,7 @@ struct IntegrationTests {
                     address: .hostname(Self.hostname),
                     session: session,
                     logger: logger
-                ) { connection in
+                ) { connection, sessionPresent in
                     try await withThrowingTaskGroup { group in
                         group.addTask {
                             _ = await #expect(throws: MQTTError.self) {
@@ -1025,10 +1022,7 @@ struct IntegrationTests {
                 // Wait for the subscription to be setup
                 await stream.first { _ in true }
 
-                // Check that the subscription is registered in the session
-                session.subscriptions.withLock {
-                    #expect($0.subscriptionIDMap.count == 1)
-                }
+                await #expect(connection.session.subscriptions.subscriptionIDMap.count == 1)
 
                 if clientClose {
                     connection.close()
@@ -1039,13 +1033,9 @@ struct IntegrationTests {
                 await #expect(throws: MQTTError.self) {
                     try await group.next()
                 }
-
-                // Check that the subscription has been removed from the session after the connection is closed
-                session.subscriptions.withLock {
-                    #expect($0.subscriptionIDMap.isEmpty)
-                }
             }
         }
+        #expect(try session.storage.borrow { $0.subscriptions.subscriptionIDMap.isEmpty })
     }
 
     @Test("Wait Until No Active Subscriptions")
@@ -1149,46 +1139,7 @@ struct IntegrationTests {
     }
 }
 
-extension MQTTError: Equatable {
-    public static func == (lhs: MQTTError, rhs: MQTTError) -> Bool {
-        switch (lhs, rhs) {
-        case (.failedToConnect, .failedToConnect),
-            (.connectionClosed, .connectionClosed),
-            (.serverClosedConnection, .serverClosedConnection),
-            (.unexpectedMessage, .unexpectedMessage),
-            (.decodeError, .decodeError),
-            (.websocketUpgradeFailed, .websocketUpgradeFailed),
-            (.timeout, .timeout),
-            (.retrySend, .retrySend),
-            (.wrongTLSConfig, .wrongTLSConfig),
-            (.badResponse, .badResponse),
-            (.unrecognisedPacketType, .unrecognisedPacketType),
-            (.authWorkflowRequired, .authWorkflowRequired),
-            (.cancelledTask, .cancelledTask),
-            (.packetTooLarge, .packetTooLarge),
-            (.alreadyConnectedWithSession, .alreadyConnectedWithSession),
-            (.noSessionPresent, .noSessionPresent):
-            true
-        case (.connectionError(let lhsValue), .connectionError(let rhsValue)):
-            lhsValue == rhsValue
-        case (.reasonError(let lhsValue), .reasonError(let rhsValue)):
-            lhsValue == rhsValue
-        case (.serverDisconnection(let lhsValue), .serverDisconnection(let rhsValue)):
-            lhsValue.reason == rhsValue.reason && lhsValue.properties == rhsValue.properties
-        case (.versionMismatch(let expectedLHS, let actualLHS), .versionMismatch(let expectedRHS, let actualRHS)):
-            expectedLHS == expectedRHS && actualLHS == actualRHS
-        case (.invalidTopicFilter(let lhsValue), .invalidTopicFilter(let rhsValue)):
-            lhsValue == rhsValue
-        default:
-            false
-        }
-    }
-}
-
-extension Logger {
-    func withLogLevel(_ logLevel: Logger.Level) -> Logger {
-        var logger = self
-        logger.logLevel = logLevel
-        return logger
-    }
+extension MQTTConnection {
+    /// Test helper to get session
+    var session: MQTTSessionStorage { self.channelHandler.session }
 }
