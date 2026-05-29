@@ -1,15 +1,10 @@
-//===----------------------------------------------------------------------===//
 //
 // This source file is part of the MQTTNIO project
+// Copyright (c) 2020-2026 the MQTTNIO authors
 //
-// Copyright (c) 2020-2025 Adam Fowler
-// Licensed under Apache License v2.0
-//
-// See LICENSE.txt for license information
-//
+// See LICENSE for license information
 // SPDX-License-Identifier: Apache-2.0
 //
-//===----------------------------------------------------------------------===//
 
 /// A MQTT broker address to connect to.
 public struct MQTTServerAddress: Sendable, Equatable, Hashable {
