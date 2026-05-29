@@ -61,14 +61,23 @@ extension MQTTConnectionTests {
                     group.addTask {
                         do {
                             _ = try await connection.sendConnect(clientID: sessionStorage.clientID, cleanSession: sessionStorage.clientID.isEmpty)
-                            try await withThrowingTaskGroup { group in
-                                group.addTask { try await connection.handleSessionSubscriptionTasks(session: session) }
-                                defer { group.cancelAll() }
-                                try await clientOperation(connection)
-                            }
+                        } catch {
+                            let sessionStorage = await connection.closeAndCleanup()
+                            return (sessionStorage, .failure(error))
+
+                        }
+                        // stick this in an unstructured task to avoid cancellation on iterating the subscribe
+                        // request queue. TODO: use `withTaskCancellationShield` when Swift 6.4 comes out
+                        let task = Task { await connection.handleSessionSubscriptionTasks(session: session) }
+                        do {
+                            try await clientOperation(connection)
+                            session.subscriptionsQueueContinuation.yield(.cancel)
+                            await task.value
                             let sessionStorage = await connection.closeAndCleanup()
                             return (sessionStorage, .success(()))
                         } catch {
+                            session.subscriptionsQueueContinuation.yield(.cancel)
+                            await task.value
                             let sessionStorage = await connection.closeAndCleanup()
                             return (sessionStorage, .failure(error))
                         }
