@@ -634,8 +634,6 @@ struct MQTTConnectionTests {
             [.init(topicFilter: "testTopic3", qos: .atMostOnce)],
         ]
 
-        let (stream, continuation) = AsyncStream.makeStream(of: Void.self)
-
         try await withTestSessionSubscriptions(
             to: subscribeInfos,
             session: session,
@@ -645,14 +643,8 @@ struct MQTTConnectionTests {
             let event = try #require(try await iterator.next())
             #expect(event.payload == ByteBuffer(string: "TestPayload"))
         } client: { connection in
-            // Wait until all subscriptions are active
-            await stream.first { _ in true }
-
             try await connection.waitUntilNoActiveSubscriptions()
         } server: { channel in
-            // Signal that all subscriptions are active
-            continuation.yield()
-
             for subscribeInfo in subscribeInfos {
                 // Send PUBLISH
                 let publish = MQTTPublishPacket(

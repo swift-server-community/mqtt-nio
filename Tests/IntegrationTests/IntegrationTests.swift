@@ -1187,7 +1187,6 @@ struct IntegrationTests {
                     }
                 }
                 await stream2.first { _ in true }
-                try? await Task.sleep(for: .milliseconds(50))
                 group.cancelAll()
             }
         }
