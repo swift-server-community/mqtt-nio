@@ -225,17 +225,37 @@ public final actor MQTTConnection: Sendable {
     /// This function waits only for subscriptions that have been acknowledged by the server.
     ///
     /// If new subscriptions are opened while waiting, this function will also wait for those subscriptions to complete.
-    public func waitUntilNoActiveSubscriptions() async {
-        await withCheckedContinuation { continuation in
-            if self.channelHandler.session.subscriptions.subscriptionIDMap.isEmpty {
-                self.logger.trace("No active subscriptions to wait for")
-                continuation.resume()
-                return
+    ///
+    /// - Throws: If connection is closed while waiting it will throw the error that caused the connection to close
+    public func waitUntilNoActiveSubscriptions() async throws {
+        let id = Self.requestIDGenerator.next()
+        try await withTaskCancellationHandler {
+            try await withCheckedThrowingContinuation { continuation in
+                if self.channelHandler.session.subscriptions.subscriptionIDMap.isEmpty {
+                    self.logger.trace("No active subscriptions to wait for")
+                    continuation.resume()
+                    return
+                }
+                if self.channelHandler.stateMachine.isClosed() {
+                    continuation.resume(throwing: MQTTError.connectionClosed)
+                    return
+                }
+                self.logger.trace("Waiting for \(self.channelHandler.session.subscriptions.subscriptionIDMap.count) active subscriptions to complete")
+                self.channelHandler.session.subscriptions.addWaitForEmptySubscriptions(id: id, continuation: continuation)
             }
-            self.logger.trace("Waiting for \(self.channelHandler.session.subscriptions.subscriptionIDMap.count) active subscriptions to complete")
-            self.channelHandler.session.subscriptions.emptySubscriptionsContinuations.append(continuation)
+        } onCancel: {
+            self.cancelWaitForEmptySubscriptions(id: id)
         }
         self.logger.trace("All active subscriptions completed")
+    }
+
+    @usableFromInline
+    nonisolated func cancelWaitForEmptySubscriptions(id: Int) {
+        self.channel.eventLoop.execute {
+            self.assumeIsolated { this in
+                this.channelHandler.session.subscriptions.cancelWaitForEmptySubscriptions(id: id)
+            }
+        }
     }
 
     /// Connect to MQTT server and return the connection and whether there was a previous session present.

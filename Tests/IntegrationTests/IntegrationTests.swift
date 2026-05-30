@@ -427,11 +427,11 @@ struct IntegrationTests {
     @Test("Subscribe to All Topics", .disabled(if: ProcessInfo.processInfo.environment["CI"] != nil))
     func subscribeAll() async throws {
         try await MQTTConnection.withConnection(
-            address: .hostname("test.mosquitto.org"),
+            address: .hostname("broker.hivemq.com"),
             identifier: "subscribeAll",
             logger: Logger(label: #function).withLogLevel(.trace)
         ) { connection in
-            try await connection.subscribe(to: [.init(topicFilter: "#", qos: .exactlyOnce)]) { subscription in
+            try await connection.subscribe(to: [.init(topicFilter: "test/#", qos: .exactlyOnce)]) { subscription in
                 try await Task.sleep(for: .seconds(5))
             }
         }
@@ -1035,7 +1035,7 @@ struct IntegrationTests {
 
     @Test("Wait Until No Active Subscriptions")
     func waitUntilNoActiveSubscriptions() async throws {
-        let logger = Logger(label: #function).withLogLevel(.trace)
+        let logger = Logger(label: "Integration.\(#function)").withLogLevel(.trace)
 
         // Make an initial connection with `cleanSession` to clear any existing session state
         try await MQTTConnection.withConnection(
@@ -1101,7 +1101,7 @@ struct IntegrationTests {
                             // Wait until the session subscription is active
                             await sessionStream.first { _ in true }
 
-                            await connection.waitUntilNoActiveSubscriptions()
+                            try await connection.waitUntilNoActiveSubscriptions()
                         }
 
                         try await connectionGroup.waitForAll()
@@ -1110,6 +1110,85 @@ struct IntegrationTests {
             }
 
             try await group.waitForAll()
+        }
+    }
+
+    @Test("Cancel Active Subscriptions Wait On Close")
+    func cancelActiveSubscriptionsWait() async throws {
+        let logger = Logger(label: #function).withLogLevel(.trace)
+
+        // Make an initial connection with `cleanSession` to clear any existing session state
+        try await MQTTConnection.withConnection(
+            address: .hostname(Self.hostname),
+            identifier: "cancelActiveSubscriptionsWait",
+            logger: logger
+        ) { connection in
+            try await connection.ping()
+        }
+
+        let (stream, cont) = AsyncStream.makeStream(of: Void.self)
+        let session = MQTTSession(clientID: "cancelActiveSubscriptionsWait", logger: logger)
+        async let _ = session.subscribe(to: [.init(topicFilter: "test", qos: .atLeastOnce)]) { sub in
+            for try await _ in sub {
+                cont.yield()
+            }
+        }
+
+        // expect waitUntilNoActiveSubscriptions to throw error immediately as the connection is closed
+        await #expect(throws: MQTTError.connectionClosed) {
+            try await MQTTConnection.withConnection(
+                address: .hostname(Self.hostname),
+                session: session,
+                logger: logger
+            ) { connection, sessionPresent in
+                // make sure the subscriptions have been sent before sending a publish
+                try await Task.sleep(for: .milliseconds(50))
+                try await connection.publish(to: "test", payload: .init(), qos: .atLeastOnce)
+                await stream.first { _ in true }
+                connection.close()
+                await connection.waitOnClose()
+                try await connection.waitUntilNoActiveSubscriptions()
+            }
+        }
+
+        // expect waitUntilNoActiveSubscriptions to throw error when the connection is closed
+        await #expect(throws: MQTTError.serverClosedConnection) {
+            try await MQTTConnection.withConnection(
+                address: .hostname(Self.hostname),
+                session: session,
+                logger: logger
+            ) { connection, sessionPresent in
+                try await connection.publish(to: "test", payload: .init(), qos: .atLeastOnce)
+                await stream.first { _ in true }
+                try await withThrowingTaskGroup { group in
+                    group.addTask {
+                        try await Task.sleep(for: .milliseconds(50))
+                        connection.close()
+                    }
+                    try await connection.waitUntilNoActiveSubscriptions()
+                }
+            }
+        }
+
+        // expect waitUntilNoActiveSubscriptions to throw error as it has been cancelled
+        try await MQTTConnection.withConnection(
+            address: .hostname(Self.hostname),
+            session: session,
+            logger: logger
+        ) { connection, sessionPresent in
+            try await connection.publish(to: "test", payload: .init(), qos: .atLeastOnce)
+            await stream.first { _ in true }
+            let (stream2, cont2) = AsyncStream.makeStream(of: Void.self)
+            await withThrowingTaskGroup { group in
+                group.addTask {
+                    cont2.yield()
+                    await #expect(throws: CancellationError.self) {
+                        try await connection.waitUntilNoActiveSubscriptions()
+                    }
+                }
+                await stream2.first { _ in true }
+                group.cancelAll()
+            }
         }
     }
 
