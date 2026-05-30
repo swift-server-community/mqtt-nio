@@ -102,8 +102,8 @@ public final actor MQTTConnection: Sendable {
         }
     }
 
-    @discardableResult package func closeAndCleanup() async -> MQTTSessionStorage {
-        self.close()
+    @discardableResult package func closeAndCleanup(sendDisconnect: Bool = true) async -> MQTTSessionStorage {
+        self.close(sendDisconnect: sendDisconnect)
         let sessionStorage = self.channelHandler.session
         do {
             try await self.channel.closeFuture.get()
@@ -316,8 +316,14 @@ public final actor MQTTConnection: Sendable {
             } else {
                 true
             }
-        let sessionPresent = try await connection.sendConnect(clientID: _session.clientID, cleanSession: cleanSession)
-        return (connection, sessionPresent)
+        do {
+            let sessionPresent = try await connection.sendConnect(clientID: _session.clientID, cleanSession: cleanSession)
+            return (connection, sessionPresent)
+        } catch {
+            // if connect fails then close the connection
+            await connection.closeAndCleanup(sendDisconnect: false)
+            throw error
+        }
     }
 
     func waitOnInitialized() async throws {
@@ -431,14 +437,16 @@ public final actor MQTTConnection: Sendable {
     }
 
     /// Close connection
-    public nonisolated func close() {
+    public nonisolated func close(sendDisconnect: Bool = true) {
         guard self.isClosed.compareExchange(expected: false, desired: true, successOrdering: .relaxed, failureOrdering: .relaxed).exchanged
         else {
             return
         }
         self.channel.eventLoop.execute {
             self.assumeIsolated {
-                try? $0.sendDisconnect()
+                if sendDisconnect {
+                    try? $0.sendDisconnect()
+                }
                 $0.channel.close(mode: .output, promise: nil)
             }
         }

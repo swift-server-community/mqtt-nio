@@ -43,6 +43,24 @@ struct IntegrationTests {
         }
     }
 
+    @Test("Close On Failed Connect Send")
+    func closeOnFailedConnectSend() async throws {
+        await withThrowingTaskGroup { group in
+            group.addTask {
+                try await MQTTConnection.withConnection(
+                    address: .hostname(Self.hostname),
+                    identifier: "closeOnFailedConnectPacketSend",
+                    logger: Logger(label: #function).withLogLevel(.trace)
+                ) { connection in
+                }
+            }
+            group.cancelAll()
+            await #expect(throws: MQTTError.cancelledTask) {
+                try await group.next()
+            }
+        }
+    }
+
     @Test("Keep Alive Ping")
     func keepAlivePing() async throws {
         try await MQTTConnection.withConnection(
