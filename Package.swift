@@ -63,6 +63,7 @@ let package = Package(
             name: "IntegrationTests",
             dependencies: [
                 .target(name: "MQTTNIO"),
+                .product(name: "InMemoryLogging", package: "swift-log"),
                 .product(name: "NIOFoundationCompat", package: "swift-nio"),
             ],
             swiftSettings: defaultSwiftSettings
