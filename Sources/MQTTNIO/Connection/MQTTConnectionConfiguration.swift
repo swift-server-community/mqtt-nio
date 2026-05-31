@@ -54,7 +54,7 @@ public struct MQTTConnectionConfiguration: Sendable {
                 topicName: String,
                 payload: ByteBuffer,
                 qos: MQTTQoS,
-                retain: Bool = true
+                retain: Bool = false
             ) {
                 self.topicName = topicName
                 self.payload = payload
@@ -73,7 +73,7 @@ public struct MQTTConnectionConfiguration: Sendable {
                 topicName: String,
                 payload: ByteBuffer,
                 qos: MQTTQoS,
-                retain: Bool = true,
+                retain: Bool = false,
                 properties: MQTTProperties = []
             ) {
                 self.topicName = topicName
@@ -85,7 +85,7 @@ public struct MQTTConnectionConfiguration: Sendable {
         }
         /// MQTT Version 3.1.1
         /// Parameters:
-        ///   - will: Will message published when client disconnects
+        ///   - will: Will message published when client disconnects without sending a DISCONNECT packet
         case v3_1_1(
             will: WillMessageV311? = nil
         )
@@ -93,7 +93,7 @@ public struct MQTTConnectionConfiguration: Sendable {
         /// Parameters:
         ///   - connectProperties: Properties sent with CONNECT packet
         ///   - disconnectProperties: Properties sent with DISCONNECT packet
-        ///   - will: Will message sent when client disconnects
+        ///   - will: Will message sent when client disconnects without sending a DISCONNECT packet
         ///   - authWorkflow: Authentication workflow
         case v5_0(
             connectProperties: MQTTProperties = .init(),

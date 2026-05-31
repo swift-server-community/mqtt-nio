@@ -31,15 +31,35 @@ struct IntegrationTests {
     func connectWithWill() async throws {
         try await MQTTConnection.withConnection(
             address: .hostname(Self.hostname),
-            configuration: .init(
-                versionConfiguration: .v3_1_1(
-                    will: .init(topicName: "MyWillTopic", payload: ByteBufferAllocator().buffer(string: "Test payload"), qos: .atLeastOnce)
-                )
-            ),
-            identifier: "connectWithWill",
+            identifier: "willSubscription",
             logger: Logger(label: #function).withLogLevel(.trace)
         ) { connection in
-            try await connection.ping()
+            try await withThrowingTaskGroup { group in
+                group.addTask {
+                    try await connection.subscribe(to: [.init(topicFilter: "MyWillTopic", qos: .atLeastOnce)]) { sub in
+                        var iterator = sub.makeAsyncIterator()
+                        _ = try #require(try await iterator.next())
+                    }
+                }
+                try? await MQTTConnection.withConnection(
+                    address: .hostname(Self.hostname),
+                    configuration: .init(
+                        versionConfiguration: .v3_1_1(
+                            will: .init(
+                                topicName: "MyWillTopic",
+                                payload: ByteBuffer(string: "Test payload"),
+                                qos: .atLeastOnce
+                            )
+                        )
+                    ),
+                    identifier: "connectWithWill",
+                    logger: Logger(label: #function).withLogLevel(.trace)
+                ) { connection in
+                    // force connection to close
+                    _ = try await connection.sendPacket(MQTTForceDisconnectMessage()) { _ in true }
+                }
+                try await group.waitForAll()
+            }
         }
     }
 
