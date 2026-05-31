@@ -6,7 +6,7 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 
-/// MQTTClient errors
+/// MQTTNIO errors
 @nonexhaustive
 public enum MQTTError: Error, Sendable {
     /// Value returned in connection error

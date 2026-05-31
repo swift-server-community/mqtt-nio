@@ -44,9 +44,18 @@ public struct MQTTConnectionConfiguration: Sendable {
 
     /// Connection configuration for specific MQTT version.
     public enum VersionConfiguration: Sendable {
+        /// MQTT Version 3.1.1
+        /// Parameters:
+        ///   - will: Will message published when client disconnects
         case v3_1_1(
             will: (topicName: String, payload: ByteBuffer, qos: MQTTQoS, retain: Bool)? = nil
         )
+        /// MQTT Version 5.0
+        /// Parameters:
+        ///   - connectProperties: Properties sent with CONNECT packet
+        ///   - disconnectProperties: Properties sent with DISCONNECT packet
+        ///   - will: Will message sent when client disconnects
+        ///   - authWorkflow: Authentication workflow
         case v5_0(
             connectProperties: MQTTProperties = .init(),
             disconnectProperties: MQTTProperties = .init(),
