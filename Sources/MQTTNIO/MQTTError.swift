@@ -35,7 +35,7 @@ public enum MQTTError: Error, Sendable {
     case reasonError(MQTTReasonCode)
     /// client is closed
     case connectionClosed
-    /// the server disconnected
+    /// the server disconnected with a DISCONNECT packet
     case serverDisconnection(MQTTAckV5)
     /// the server closed the connection. If this happens during a publish and you
     /// are using sessions the publish will finish sending on re-connection.
