@@ -6,7 +6,7 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 
-/// A MQTT broker address to connect to.
+/// A MQTT server address to connect to.
 public struct MQTTServerAddress: Sendable, Equatable, Hashable {
     enum _Internal: Equatable, Hashable {
         case hostname(_ host: String, port: Int)

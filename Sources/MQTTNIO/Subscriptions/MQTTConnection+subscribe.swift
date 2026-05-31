@@ -46,7 +46,7 @@ extension MQTTConnection {
     ) async throws -> (UInt32, MQTTSubscription) {
         let (stream, streamContinuation) = MQTTSubscription.makeStream()
         if Task.isCancelled {
-            throw MQTTError.cancelledTask
+            throw MQTTError.cancelled
         }
         let packet = MQTTSubscribePacket(subscriptions: subscriptions, properties: properties, packetId: self.updatePacketId())
         let subscriptionID: UInt32 = try await withCheckedThrowingContinuation { continuation in

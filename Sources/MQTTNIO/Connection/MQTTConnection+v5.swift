@@ -64,17 +64,17 @@ extension MQTTConnection {
             properties.addOrReplace(.authenticationMethod(authWorkflow.methodName))
             let authPacket = MQTTAuthPacket(reason: .reAuthenticate, properties: properties)
             // Send AUTH
-            let reAuthResponse = try await self.connection.sendMessage(authPacket) { message in
+            let reAuthResponse = try await self.connection.sendPacket(authPacket) { message in
                 guard message.type == .AUTH else { return false }
                 return true
             }
-            guard let authResponse = reAuthResponse as? MQTTAuthPacket else { throw MQTTError.unexpectedMessage }
+            guard let authResponse = reAuthResponse as? MQTTAuthPacket else { throw MQTTError.unexpectedPacket }
             if authResponse.reason == .success {
                 return MQTTAuthV5(reason: authResponse.reason, properties: authResponse.properties)
             }
             // Process AUTH response
             guard let auth = try await self.connection.processAuth(authResponse, authWorkflow: authWorkflow) as? MQTTAuthPacket else {
-                throw MQTTError.unexpectedMessage
+                throw MQTTError.unexpectedPacket
             }
             return MQTTAuthV5(reason: auth.reason, properties: auth.properties)
         }

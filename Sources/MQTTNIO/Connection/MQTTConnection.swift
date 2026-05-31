@@ -214,7 +214,7 @@ public final actor MQTTConnection: Sendable {
     /// If you initialize the client with the ``MQTTConnectionConfiguration/pingConfiguration`` to ``MQTTConnectionConfiguration/PingConfiguration/disable``
     /// then these are disabled and it is up to you to send the `PINGREQ` messages yourself.
     public func ping() async throws {
-        _ = try await self.sendMessage(MQTTPingreqPacket()) { message in
+        _ = try await self.sendPacket(MQTTPingreqPacket()) { message in
             guard message.type == .PINGRESP else { return false }
             return true
         }
@@ -432,7 +432,7 @@ public final actor MQTTConnection: Sendable {
                 case .v5_0(_, let disconnectProperties, _, _):
                     MQTTDisconnectPacket(properties: disconnectProperties)
                 }
-            try self.sendMessageNoWait(disconnectPacket)
+            try self.sendPacketNoWait(disconnectPacket)
         }
     }
 
@@ -744,7 +744,7 @@ public final actor MQTTConnection: Sendable {
         packet: MQTTConnectPacket,
         authWorkflow: (any MQTTAuthenticator)?
     ) async throws -> MQTTConnAckPacket {
-        let message = try await self.sendMessage(packet) { message -> Bool in
+        let message = try await self.sendPacket(packet) { message -> Bool in
             guard message.type == .CONNACK || message.type == .AUTH else { throw MQTTError.failedToConnect }
             return true
         }
@@ -764,28 +764,28 @@ public final actor MQTTConnection: Sendable {
             guard let authWorkflow else { throw MQTTError.authWorkflowRequired }
             let result = try await self.processAuth(auth, authWorkflow: authWorkflow)
             // once auth workflow is finished we should receive a connack
-            guard let connAckPacket = result as? MQTTConnAckPacket else { throw MQTTError.unexpectedMessage }
+            guard let connAckPacket = result as? MQTTConnAckPacket else { throw MQTTError.unexpectedPacket }
             return connAckPacket
         default:
-            throw MQTTError.unexpectedMessage
+            throw MQTTError.unexpectedPacket
         }
     }
 
-    func sendMessageNoWait(_ message: any MQTTPacket) throws {
-        try self.channelHandler.sendMessageNoWait(message)
+    func sendPacketNoWait(_ packet: any MQTTPacket) throws {
+        try self.channelHandler.sendPacketNoWait(packet)
     }
 
-    func sendMessage(
+    func sendPacket(
         _ message: any MQTTPacket,
         checkInbound: @escaping (any MQTTPacket) throws -> Bool
     ) async throws -> any MQTTPacket {
         let requestID = Self.requestIDGenerator.next()
         return try await withTaskCancellationHandler {
             if Task.isCancelled {
-                throw MQTTError.cancelledTask
+                throw MQTTError.cancelled
             }
             return try await withCheckedThrowingContinuation { continuation in
-                self.channelHandler.sendMessage(message, promise: .swift(continuation), requestID: requestID, checkInbound: checkInbound)
+                self.channelHandler.sendPacket(message, promise: .swift(continuation), requestID: requestID, checkInbound: checkInbound)
             }
         } onCancel: {
             self.cancel(requestID: requestID)
@@ -885,7 +885,7 @@ public final actor MQTTConnection: Sendable {
         authResponse.properties.append(.authenticationMethod(authWorkflow.methodName))
         let responsePacket = MQTTAuthPacket(reason: authResponse.reason, properties: authResponse.properties)
         // Send response
-        let result = try await self.sendMessage(responsePacket) { message -> Bool in
+        let result = try await self.sendPacket(responsePacket) { message -> Bool in
             guard message.type == .CONNACK || message.type == .AUTH else { throw MQTTError.failedToConnect }
             return true
         }
@@ -902,7 +902,7 @@ public final actor MQTTConnection: Sendable {
                 throw MQTTError.badResponse
             }
         default:
-            throw MQTTError.unexpectedMessage
+            throw MQTTError.unexpectedPacket
         }
     }
 
@@ -937,23 +937,23 @@ public final actor MQTTConnection: Sendable {
 
         if packet.publish.qos == .atMostOnce {
             // don't send a packet id if QOS is at most once. (MQTT-2.3.1-5)
-            try self.sendMessageNoWait(packet)
+            try self.sendPacketNoWait(packet)
             return nil
         }
 
         self.channelHandler.session.inflight.add(packet: packet)
         let ackPacket: any MQTTPacket
         do {
-            ackPacket = try await self.sendMessage(packet) { message in
+            ackPacket = try await self.sendPacket(packet) { message in
                 guard message.packetId == packet.packetId else { return false }
                 self.channelHandler.session.inflight.remove(id: packet.packetId)
                 if packet.publish.qos == .atLeastOnce {
                     guard message.type == .PUBACK else {
-                        throw MQTTError.unexpectedMessage
+                        throw MQTTError.unexpectedPacket
                     }
                 } else if packet.publish.qos == .exactlyOnce {
                     guard message.type == .PUBREC else {
-                        throw MQTTError.unexpectedMessage
+                        throw MQTTError.unexpectedPacket
                     }
                 }
                 if let pubAckPacket = message as? MQTTPubAckPacket {
@@ -983,12 +983,12 @@ public final actor MQTTConnection: Sendable {
 
     func pubRel(packet: MQTTPubAckPacket) async throws -> any MQTTPacket {
         self.channelHandler.session.inflight.add(packet: packet)
-        return try await self.sendMessage(packet) { message in
+        return try await self.sendPacket(packet) { message in
             guard message.packetId == packet.packetId else { return false }
             guard message.type != .PUBREC else { return false }
             self.channelHandler.session.inflight.remove(id: packet.packetId)
             guard message.type == .PUBCOMP else {
-                throw MQTTError.unexpectedMessage
+                throw MQTTError.unexpectedPacket
             }
             if let pubAckPacket = message as? MQTTPubAckPacket {
                 if pubAckPacket.reason.rawValue > 0x7F {
