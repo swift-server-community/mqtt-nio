@@ -57,9 +57,8 @@ extension MQTTConnectionTests {
                         do {
                             _ = try await connection.sendConnect(clientID: sessionStorage.clientID, cleanSession: sessionStorage.clientID.isEmpty)
                         } catch {
-                            let sessionStorage = await connection.closeAndCleanup()
+                            let sessionStorage = await connection.closeAndCleanup(sendDisconnect: false)
                             return (sessionStorage, .failure(error))
-
                         }
                         // stick this in an unstructured task to avoid cancellation on iterating the subscribe
                         // request queue. TODO: use `withTaskCancellationShield` when Swift 6.4 comes out
