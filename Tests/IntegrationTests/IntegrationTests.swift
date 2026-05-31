@@ -7,6 +7,7 @@
 //
 
 import Foundation
+import InMemoryLogging
 import Logging
 import NIOCore
 import NIOFoundationCompat
@@ -63,6 +64,28 @@ struct IntegrationTests {
                 try await group.waitForAll()
             }
         }
+    }
+
+    @Test("Close On Failed Connect Send")
+    func closeOnFailedConnectSend() async throws {
+        let inMemoryLogHandler = InMemoryLogHandler()
+        let logger = Logger(label: #function) { _ in inMemoryLogHandler }.withLogLevel(.trace)
+        await withThrowingTaskGroup { group in
+            group.addTask {
+                try await MQTTConnection.withConnection(
+                    address: .hostname(Self.hostname),
+                    identifier: "closeOnFailedConnectPacketSend",
+                    logger: logger
+                ) { connection in
+                }
+            }
+            group.cancelAll()
+            await #expect(throws: MQTTError.cancelled) {
+                try await group.next()
+            }
+        }
+        // check logger has "Channel became inactive." text
+        #expect(inMemoryLogHandler.entries.first { $0.message.description.hasSuffix("Channel became inactive.") } != nil)
     }
 
     @Test("Keep Alive Ping")
