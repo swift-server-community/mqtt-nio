@@ -43,12 +43,10 @@ struct IntegrationV5Tests {
             address: .hostname(Self.hostname),
             configuration: .init(
                 versionConfiguration: .v5_0(
-                    will: (
+                    will: .init(
                         topicName: "MyWillTopic",
                         payload: ByteBufferAllocator().buffer(string: "Test payload"),
-                        qos: .atLeastOnce,
-                        retain: false,
-                        properties: .init()
+                        qos: .atLeastOnce
                     )
                 )
             ),

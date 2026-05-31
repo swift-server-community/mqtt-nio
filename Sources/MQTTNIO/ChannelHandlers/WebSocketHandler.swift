@@ -101,7 +101,7 @@ final class WebSocketHandler: ChannelDuplexHandler {
     }
 
     /// Close websocket connection
-    public func close(context: ChannelHandlerContext, code: WebSocketErrorCode = .goingAway, promise: EventLoopPromise<Void>?) {
+    func close(context: ChannelHandlerContext, code: WebSocketErrorCode = .goingAway, promise: EventLoopPromise<Void>?) {
         guard self.isClosed == false else {
             promise?.succeed(())
             return

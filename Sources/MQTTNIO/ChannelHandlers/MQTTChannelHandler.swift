@@ -150,8 +150,8 @@ final class MQTTChannelHandler: ChannelDuplexHandler {
                     self.failTasksAndCloseSubscriptions(with: error)
                     context.fireErrorCaught(error)
                     context.close(promise: nil)
-                    if case MQTTError.unexpectedMessage = error {
-                        self.logger.error("Unexpected MQTT Message", metadata: ["mqtt_message": .string("\(message)")])
+                    if case MQTTError.unexpectedPacket = error {
+                        self.logger.error("Unexpected MQTT Packet", metadata: ["mqtt_message": .string("\(message)")])
                         return
                     }
                 }
@@ -165,7 +165,7 @@ final class MQTTChannelHandler: ChannelDuplexHandler {
     }
 
     @usableFromInline
-    func cancel(requestID: Int, error: any Error = MQTTError.cancelledTask) {
+    func cancel(requestID: Int, error: any Error = MQTTError.cancelled) {
         self.eventLoop.assertInEventLoop()
         switch self.stateMachine.cancel(requestID: requestID) {
         case .failTask(let cancelledTask):
@@ -214,7 +214,7 @@ final class MQTTChannelHandler: ChannelDuplexHandler {
                     throw DuplicatePublishError()
                 }
                 // if we receive anything but a PUBREL then throw unexpected message
-                guard newMessage.type == .PUBREL else { throw MQTTError.unexpectedMessage }
+                guard newMessage.type == .PUBREL else { throw MQTTError.unexpectedPacket }
                 // now we have received the PUBREL we can process the published message. PUBCOMP is sent by `respondToPubrel`
                 return true
             }
@@ -298,7 +298,7 @@ final class MQTTChannelHandler: ChannelDuplexHandler {
             }
             self.sendMessage(packet, requestID: requestID) { message in
                 guard message.packetId == packet.packetId else { return false }
-                guard message.type == .SUBACK else { throw MQTTError.unexpectedMessage }
+                guard message.type == .SUBACK else { throw MQTTError.unexpectedPacket }
                 return true
             }.assumeIsolated().whenComplete { result in
                 switch result {
@@ -331,7 +331,7 @@ final class MQTTChannelHandler: ChannelDuplexHandler {
             }
             self.sendMessage(packet, requestID: requestID) { message in
                 guard message.packetId == packet.packetId else { return false }
-                guard message.type == .UNSUBACK else { throw MQTTError.unexpectedMessage }
+                guard message.type == .UNSUBACK else { throw MQTTError.unexpectedPacket }
                 return true
             }.assumeIsolated().whenComplete { result in
                 switch result {
@@ -348,12 +348,12 @@ final class MQTTChannelHandler: ChannelDuplexHandler {
 
     // MARK: - Sending Messages
 
-    func sendMessageNoWait(_ message: any MQTTPacket) throws {
+    func sendPacketNoWait(_ packet: any MQTTPacket) throws {
         self.eventLoop.assertInEventLoop()
         switch self.stateMachine.sendPacket(nil) {
         case .sendPacket(let context):
             var sendError: (any Error)?
-            context.channel.writeAndFlush(message).assumeIsolated().whenFailure { error in
+            context.channel.writeAndFlush(packet).assumeIsolated().whenFailure { error in
                 sendError = error
             }
             if let sendError { throw sendError }
@@ -362,7 +362,7 @@ final class MQTTChannelHandler: ChannelDuplexHandler {
         }
     }
 
-    func sendMessage(
+    func sendPacket(
         _ message: any MQTTPacket,
         promise: MQTTPromise<any MQTTPacket>,
         requestID: Int,
@@ -394,7 +394,7 @@ final class MQTTChannelHandler: ChannelDuplexHandler {
         checkInbound: @escaping (any MQTTPacket) throws -> Bool
     ) -> EventLoopFuture<any MQTTPacket> {
         let promise = self.eventLoop.makePromise(of: (any MQTTPacket).self)
-        self.sendMessage(message, promise: .nio(promise), requestID: requestID, checkInbound: checkInbound)
+        self.sendPacket(message, promise: .nio(promise), requestID: requestID, checkInbound: checkInbound)
         return promise.futureResult
     }
 

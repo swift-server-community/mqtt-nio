@@ -44,13 +44,61 @@ public struct MQTTConnectionConfiguration: Sendable {
 
     /// Connection configuration for specific MQTT version.
     public enum VersionConfiguration: Sendable {
+        public struct WillMessageV311: Sendable {
+            let topicName: String
+            let payload: ByteBuffer
+            let qos: MQTTQoS
+            let retain: Bool
+
+            public init(
+                topicName: String,
+                payload: ByteBuffer,
+                qos: MQTTQoS,
+                retain: Bool = false
+            ) {
+                self.topicName = topicName
+                self.payload = payload
+                self.qos = qos
+                self.retain = retain
+            }
+        }
+        public struct WillMessageV5: Sendable {
+            let topicName: String
+            let payload: ByteBuffer
+            let qos: MQTTQoS
+            let retain: Bool
+            let properties: MQTTProperties
+
+            public init(
+                topicName: String,
+                payload: ByteBuffer,
+                qos: MQTTQoS,
+                retain: Bool = false,
+                properties: MQTTProperties = []
+            ) {
+                self.topicName = topicName
+                self.payload = payload
+                self.qos = qos
+                self.retain = retain
+                self.properties = properties
+            }
+        }
+        /// MQTT Version 3.1.1
+        /// Parameters:
+        ///   - will: Will message published when client disconnects without sending a DISCONNECT packet
         case v3_1_1(
-            will: (topicName: String, payload: ByteBuffer, qos: MQTTQoS, retain: Bool)? = nil
+            will: WillMessageV311? = nil
         )
+        /// MQTT Version 5.0
+        /// Parameters:
+        ///   - connectProperties: Properties sent with CONNECT packet
+        ///   - disconnectProperties: Properties sent with DISCONNECT packet
+        ///   - will: Will message sent when client disconnects without sending a DISCONNECT packet
+        ///   - authWorkflow: Authentication workflow
         case v5_0(
             connectProperties: MQTTProperties = .init(),
             disconnectProperties: MQTTProperties = .init(),
-            will: (topicName: String, payload: ByteBuffer, qos: MQTTQoS, retain: Bool, properties: MQTTProperties)? = nil,
+            will: WillMessageV5? = nil,
             authWorkflow: (any MQTTAuthenticator)? = nil
         )
 
