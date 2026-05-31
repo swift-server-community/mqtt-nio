@@ -33,7 +33,7 @@ struct IntegrationTests {
             address: .hostname(Self.hostname),
             configuration: .init(
                 versionConfiguration: .v3_1_1(
-                    will: (topicName: "MyWillTopic", payload: ByteBufferAllocator().buffer(string: "Test payload"), qos: .atLeastOnce, retain: false)
+                    will: .init(topicName: "MyWillTopic", payload: ByteBufferAllocator().buffer(string: "Test payload"), qos: .atLeastOnce)
                 )
             ),
             identifier: "connectWithWill",
@@ -248,7 +248,7 @@ struct IntegrationTests {
                 identifier: "serverDisconnect",
                 logger: Logger(label: #function).withLogLevel(.trace)
             ) { connection in
-                try await connection.sendMessage(MQTTForceDisconnectMessage()) { _ in true }
+                try await connection.sendPacket(MQTTForceDisconnectMessage()) { _ in true }
             }
         }
     }
@@ -604,7 +604,7 @@ struct IntegrationTests {
         ) { connection in
             await withThrowingTaskGroup { group in
                 group.addTask {
-                    await #expect(throws: MQTTError.cancelledTask) {
+                    await #expect(throws: MQTTError.cancelled) {
                         try await connection.subscribe(to: [.init(topicFilter: "cancellation", qos: .exactlyOnce)]) { subscription in
                             for try await _ in subscription {
                                 Issue.record("Should not receive messages")
@@ -627,7 +627,7 @@ struct IntegrationTests {
             await withThrowingTaskGroup(of: Void.self) { group in
                 group.cancelAll()
                 group.addTask {
-                    await #expect(throws: MQTTError.cancelledTask) {
+                    await #expect(throws: MQTTError.cancelled) {
                         try await connection.subscribe(to: [.init(topicFilter: "alreadyCancelled", qos: .exactlyOnce)]) { subscription in
                             for try await _ in subscription {
                                 Issue.record("Should not receive messages")
@@ -1022,7 +1022,7 @@ struct IntegrationTests {
                 if clientClose {
                     connection.close()
                 } else {
-                    _ = try? await connection.sendMessage(MQTTForceDisconnectMessage()) { _ in true }
+                    _ = try? await connection.sendPacket(MQTTForceDisconnectMessage()) { _ in true }
                 }
 
                 await #expect(throws: MQTTError.self) {

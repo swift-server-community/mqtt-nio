@@ -201,7 +201,7 @@ extension MQTTChannelHandler {
                     return .closeConnection(MQTTError.serverDisconnection(ack))
                 case .CONNECT, .SUBSCRIBE, .UNSUBSCRIBE, .PINGREQ:
                     self = .initialized(state)
-                    return .closeConnection(MQTTError.unexpectedMessage)
+                    return .closeConnection(MQTTError.unexpectedPacket)
                 }
             case .closed:
                 preconditionFailure("Cannot receive packet when closed")

@@ -453,7 +453,7 @@ struct MQTTConnectionTests {
         try await withTestMQTTServer(logger: Logger(label: #function).withLogLevel(.trace)) { connection in
             await withThrowingTaskGroup { group in
                 group.addTask {
-                    await #expect(throws: MQTTError.cancelledTask) {
+                    await #expect(throws: MQTTError.cancelled) {
                         try await connection.publish(to: "foo", payload: ByteBuffer(), qos: .exactlyOnce)
                     }
                 }

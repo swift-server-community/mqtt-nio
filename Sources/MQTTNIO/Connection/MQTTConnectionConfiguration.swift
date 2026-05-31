@@ -44,11 +44,50 @@ public struct MQTTConnectionConfiguration: Sendable {
 
     /// Connection configuration for specific MQTT version.
     public enum VersionConfiguration: Sendable {
+        public struct WillMessageV311: Sendable {
+            let topicName: String
+            let payload: ByteBuffer
+            let qos: MQTTQoS
+            let retain: Bool
+
+            public init(
+                topicName: String,
+                payload: ByteBuffer,
+                qos: MQTTQoS,
+                retain: Bool = true
+            ) {
+                self.topicName = topicName
+                self.payload = payload
+                self.qos = qos
+                self.retain = retain
+            }
+        }
+        public struct WillMessageV5: Sendable {
+            let topicName: String
+            let payload: ByteBuffer
+            let qos: MQTTQoS
+            let retain: Bool
+            let properties: MQTTProperties
+
+            public init(
+                topicName: String,
+                payload: ByteBuffer,
+                qos: MQTTQoS,
+                retain: Bool = true,
+                properties: MQTTProperties = []
+            ) {
+                self.topicName = topicName
+                self.payload = payload
+                self.qos = qos
+                self.retain = retain
+                self.properties = properties
+            }
+        }
         /// MQTT Version 3.1.1
         /// Parameters:
         ///   - will: Will message published when client disconnects
         case v3_1_1(
-            will: (topicName: String, payload: ByteBuffer, qos: MQTTQoS, retain: Bool)? = nil
+            will: WillMessageV311? = nil
         )
         /// MQTT Version 5.0
         /// Parameters:
@@ -59,7 +98,7 @@ public struct MQTTConnectionConfiguration: Sendable {
         case v5_0(
             connectProperties: MQTTProperties = .init(),
             disconnectProperties: MQTTProperties = .init(),
-            will: (topicName: String, payload: ByteBuffer, qos: MQTTQoS, retain: Bool, properties: MQTTProperties)? = nil,
+            will: WillMessageV5? = nil,
             authWorkflow: (any MQTTAuthenticator)? = nil
         )
 

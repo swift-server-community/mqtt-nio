@@ -38,7 +38,7 @@ extension MQTTSession {
     ) throws -> (UInt32, MQTTSubscription) {
         let (stream, streamContinuation) = MQTTSubscription.makeStream()
         if Task.isCancelled {
-            throw MQTTError.cancelledTask
+            throw MQTTError.cancelled
         }
         let subscriptionID = MQTTSubscriptions.getSubscriptionID()
         let subscription = QueuedSubscription(

@@ -27,7 +27,7 @@ public enum MQTTError: Error, Sendable {
         case unrecognizedReturnValue = 0xFF
     }
 
-    /// We received an unexpected message while connecting
+    /// We received an unexpected packet while connecting
     case failedToConnect
     /// We received an unsuccessful connection return value
     case connectionError(ConnectionReturnValue)
@@ -37,19 +37,17 @@ public enum MQTTError: Error, Sendable {
     case connectionClosed
     /// the server disconnected
     case serverDisconnection(MQTTAckV5)
-    /// the server closed the connection. If this happens during a publish you can resend
-    /// the publish packet by reconnecting to server with `cleanSession` set to false.
+    /// the server closed the connection. If this happens during a publish and you
+    /// are using sessions the publish will finish sending on re-connection.
     case serverClosedConnection
-    /// received unexpected message from broker
-    case unexpectedMessage
-    /// Decode of MQTT message failed
+    /// received unexpected packet from server
+    case unexpectedPacket
+    /// Decode of MQTT packet failed
     case decodeError
-    /// Upgrade to websocker failed
+    /// Upgrade to websocket failed
     case websocketUpgradeFailed
     /// client timed out while waiting for response from server
     case timeout
-    /// Internal error, used to get the client to retry sending
-    case retrySend
     /// You have provided the wrong TLS configuration for the EventLoopGroup you provided
     case wrongTLSConfig
     /// Packet received contained invalid entries
@@ -60,15 +58,16 @@ public enum MQTTError: Error, Sendable {
     case authWorkflowRequired
     /// MQTT version mismatch
     case versionMismatch(expected: MQTTConnectionConfiguration.Version, actual: MQTTConnectionConfiguration.Version)
-    /// The Task was cancelled
-    case cancelledTask
+    /// Sending a packet was cancelled
+    case cancelled
     /// The provided topic filter is invalid
     case invalidTopicFilter(String)
     /// The packet size is greater than Maximum Packet Size for this Server.
     case packetTooLarge
     /// Another ``MQTTConnection`` is already connected with this ``MQTTSession``.
     case alreadyConnectedWithSession
-    /// The subscriptions are closed because the MQTT Server does not have a session matching the provided Client Identifier.
+    /// The subscription was closed because the MQTT Server does not have a session matching the
+    /// provided Client Identifier.
     case noSessionPresent
 }
 
