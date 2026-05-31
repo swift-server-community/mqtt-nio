@@ -78,7 +78,7 @@ struct IntegrationTests {
                 }
             }
             group.cancelAll()
-            await #expect(throws: MQTTError.cancelledTask) {
+            await #expect(throws: MQTTError.cancelled) {
                 try await group.next()
             }
         }
