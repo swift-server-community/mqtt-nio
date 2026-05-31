@@ -41,19 +41,40 @@ struct IntegrationV5Tests {
     func connectWithWill() async throws {
         try await MQTTConnection.withConnection(
             address: .hostname(Self.hostname),
-            configuration: .init(
-                versionConfiguration: .v5_0(
-                    will: .init(
-                        topicName: "MyWillTopic",
-                        payload: ByteBufferAllocator().buffer(string: "Test payload"),
-                        qos: .atLeastOnce
-                    )
-                )
-            ),
-            identifier: "connectWithWillV5",
+            configuration: .init(versionConfiguration: .v5_0()),
+            identifier: "willSubscriptionV5",
             logger: Logger(label: #function).withLogLevel(.trace)
         ) { connection in
-            try await connection.ping()
+            try await withThrowingTaskGroup { group in
+                group.addTask {
+                    // Subscribe to "MyWillTopicV5"
+                    try await connection.subscribe(to: [.init(topicFilter: "MyWillTopicV5", qos: .atLeastOnce)]) { sub in
+                        var iterator = sub.makeAsyncIterator()
+                        let message = try #require(try await iterator.next())
+                        #expect(message.payload == ByteBuffer(string: "{\"Test\": \"payload\"}"))
+                        #expect(message.properties.contains(.contentType("application/json")))
+                    }
+                }
+                try? await MQTTConnection.withConnection(
+                    address: .hostname(Self.hostname),
+                    configuration: .init(
+                        versionConfiguration: .v5_0(
+                            will: .init(
+                                topicName: "MyWillTopicV5",
+                                payload: ByteBuffer(string: "{\"Test\": \"payload\"}"),
+                                qos: .atLeastOnce,
+                                properties: [.contentType("application/json")]
+                            )
+                        )
+                    ),
+                    identifier: "connectWithWillV5",
+                    logger: Logger(label: #function).withLogLevel(.trace)
+                ) { connection in
+                    // force connection to close
+                    _ = try await connection.sendPacket(MQTTForceDisconnectMessage()) { _ in true }
+                }
+                try await group.waitForAll()
+            }
         }
     }
 
