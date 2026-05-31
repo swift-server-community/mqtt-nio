@@ -36,9 +36,11 @@ struct IntegrationTests {
         ) { connection in
             try await withThrowingTaskGroup { group in
                 group.addTask {
+                    // Subscribe to "MyWillTopic"
                     try await connection.subscribe(to: [.init(topicFilter: "MyWillTopic", qos: .atLeastOnce)]) { sub in
                         var iterator = sub.makeAsyncIterator()
-                        _ = try #require(try await iterator.next())
+                        let message = try #require(try await iterator.next())
+                        #expect(message.payload == ByteBuffer(string: "Test payload"))
                     }
                 }
                 try? await MQTTConnection.withConnection(
@@ -1217,19 +1219,20 @@ struct IntegrationTests {
         .dropLast(3)
         .joined(separator: "/")
 
-    struct MQTTForceDisconnectMessage: MQTTPacket {
-        var type: MQTTPacketType { .PUBLISH }
-        var description: String { "FORCEDISCONNECT" }
+}
 
-        func write(version: MQTTConnectionConfiguration.Version, to byteBuffer: inout ByteBuffer) throws {
-            // writing publish header with no content will cause a disconnect from the server
-            byteBuffer.writeInteger(UInt8(0x30))
-            byteBuffer.writeInteger(UInt8(0x0))
-        }
+struct MQTTForceDisconnectMessage: MQTTPacket {
+    var type: MQTTPacketType { .PUBLISH }
+    var description: String { "FORCEDISCONNECT" }
 
-        static func read(version: MQTTConnectionConfiguration.Version, from packet: MQTTIncomingPacket) throws -> Self {
-            throw InternalError.notImplemented
-        }
+    func write(version: MQTTConnectionConfiguration.Version, to byteBuffer: inout ByteBuffer) throws {
+        // writing publish header with no content will cause a disconnect from the server
+        byteBuffer.writeInteger(UInt8(0x30))
+        byteBuffer.writeInteger(UInt8(0x0))
+    }
+
+    static func read(version: MQTTConnectionConfiguration.Version, from packet: MQTTIncomingPacket) throws -> Self {
+        throw InternalError.notImplemented
     }
 }
 
