@@ -437,7 +437,12 @@ public final actor MQTTConnection: Sendable {
     }
 
     /// Close connection
-    public nonisolated func close(sendDisconnect: Bool = true) {
+    public nonisolated func close() {
+        self.close(sendDisconnect: true)
+    }
+
+    /// Close connection
+    nonisolated func close(sendDisconnect: Bool = true) {
         guard self.isClosed.compareExchange(expected: false, desired: true, successOrdering: .relaxed, failureOrdering: .relaxed).exchanged
         else {
             return
