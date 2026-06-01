@@ -79,6 +79,8 @@ final class WebSocketInitialRequestHandler: ChannelInboundHandler, RemovableChan
     }
 
     func channelInactive(context: ChannelHandlerContext) {
+        // If channel is closed while this ChannelHandler is still active then we should
+        // fail the upgrade
         self.upgradePromise.fail(ChannelError.ioOnClosedChannel)
     }
 }
