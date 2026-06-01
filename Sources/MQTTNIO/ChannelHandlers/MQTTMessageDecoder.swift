@@ -1,38 +1,33 @@
-//===----------------------------------------------------------------------===//
 //
 // This source file is part of the MQTTNIO project
+// Copyright (c) 2020-2026 the MQTTNIO authors
 //
-// Copyright (c) 2020-2021 Adam Fowler
-// Licensed under Apache License v2.0
-//
-// See LICENSE.txt for license information
-//
+// See LICENSE for license information
 // SPDX-License-Identifier: Apache-2.0
 //
-//===----------------------------------------------------------------------===//
 
 import Logging
-import NIO
+import NIOCore
 
 /// Decode ByteBuffers into MQTT Messages
 struct ByteToMQTTMessageDecoder: NIOSingleStepByteToMessageDecoder {
-    mutating func decodeLast(buffer: inout ByteBuffer, seenEOF: Bool) throws -> MQTTPacket? {
+    mutating func decodeLast(buffer: inout ByteBuffer, seenEOF: Bool) throws -> (any MQTTPacket)? {
         try self.decode(buffer: &buffer)
     }
 
     typealias InboundOut = MQTTPacket
 
-    let version: MQTTClient.Version
+    let version: MQTTConnectionConfiguration.Version
 
-    init(version: MQTTClient.Version) {
+    init(version: MQTTConnectionConfiguration.Version) {
         self.version = version
     }
 
-    mutating func decode(buffer: inout ByteBuffer) throws -> MQTTPacket? {
+    mutating func decode(buffer: inout ByteBuffer) throws -> (any MQTTPacket)? {
         let origBuffer = buffer
         do {
             let packet = try MQTTIncomingPacket.read(from: &buffer)
-            let message: MQTTPacket
+            let message: any MQTTPacket
             switch packet.type {
             case .PUBLISH:
                 message = try MQTTPublishPacket.read(version: self.version, from: packet)

@@ -1,24 +1,19 @@
-//===----------------------------------------------------------------------===//
 //
 // This source file is part of the MQTTNIO project
+// Copyright (c) 2020-2026 the MQTTNIO authors
 //
-// Copyright (c) 2020-2021 Adam Fowler
-// Licensed under Apache License v2.0
-//
-// See LICENSE.txt for license information
-//
+// See LICENSE for license information
 // SPDX-License-Identifier: Apache-2.0
 //
-//===----------------------------------------------------------------------===//
 
 /// MQTT v5 Connack
-public struct MQTTConnackV5: Sendable {
+struct MQTTConnackV5: Sendable {
     /// is using session state from previous session
-    public let sessionPresent: Bool
+    public var sessionPresent: Bool
     /// connect reason code
-    public let reason: MQTTReasonCode
+    public var reason: MQTTReasonCode
     /// properties
-    public let properties: MQTTProperties
+    public var properties: MQTTProperties
 }
 
 /// MQTT v5 ACK information. Returned with PUBACK, PUBREL
@@ -47,19 +42,19 @@ public struct MQTTSubscribeInfoV5: Sendable {
     }
 
     /// Topic filter to subscribe to.
-    public let topicFilter: String
+    public var topicFilter: String
 
     /// Quality of Service for subscription.
-    public let qos: MQTTQoS
+    public var qos: MQTTQoS
 
     /// Don't forward message published by this client
-    public let noLocal: Bool
+    public var noLocal: Bool
 
     /// Keep retain flag message was published with
-    public let retainAsPublished: Bool
+    public var retainAsPublished: Bool
 
     /// Retain handing
-    public let retainHandling: RetainHandling
+    public var retainHandling: RetainHandling
 
     public init(
         topicFilter: String,
@@ -79,11 +74,11 @@ public struct MQTTSubscribeInfoV5: Sendable {
 /// MQTT v5 Sub ACK packet
 ///
 /// Contains data returned in subscribe/unsubscribe ack packets
-public struct MQTTSubackV5: Sendable {
+struct MQTTSubackV5: Sendable {
     /// MQTT v5 subscription reason code
-    public let reasons: [MQTTReasonCode]
+    public var reasons: [MQTTReasonCode]
     /// MQTT v5 properties
-    public let properties: MQTTProperties
+    public var properties: MQTTProperties
 
     init(reasons: [MQTTReasonCode], properties: MQTTProperties = .init()) {
         self.reasons = reasons
@@ -98,9 +93,9 @@ public struct MQTTSubackV5: Sendable {
 /// authentication
 public struct MQTTAuthV5: Sendable {
     /// MQTT v5 authentication reason code
-    public let reason: MQTTReasonCode
+    public var reason: MQTTReasonCode
     /// MQTT v5 properties
-    public let properties: MQTTProperties
+    public var properties: MQTTProperties
 
     init(reason: MQTTReasonCode, properties: MQTTProperties) {
         self.reason = reason

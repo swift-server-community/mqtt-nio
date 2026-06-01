@@ -1,0 +1,299 @@
+//
+// This source file is part of the MQTTNIO project
+// Copyright (c) 2020-2026 the MQTTNIO authors
+//
+// See LICENSE for license information
+// SPDX-License-Identifier: Apache-2.0
+//
+
+public import HTTPTypes
+public import NIOCore
+
+#if os(macOS) || os(Linux) || os(Android)
+public import NIOSSL
+#endif
+
+/// A configuration object that defines how to connect to a MQTT server.
+///
+/// `MQTTConnectionConfiguration` allows you to customize various aspects of the connection,
+/// including authentication credentials, timeouts, and TLS security settings.
+///
+/// Example usage:
+/// ```swift
+/// // Basic configuration
+/// let config = MQTTConnectionConfiguration()
+///
+/// // Configuration with authentication
+/// let authConfig = MQTTConnectionConfiguration(
+///     userName: "user",
+///     password: "password"
+/// )
+///
+/// // Configuration with TLS
+/// let tlsConfig = TLSConfiguration.makeClientConfiguration()
+/// let tlsConfig = MQTTConnectionConfiguration(
+///     tls: .enable(.niossl(tlsConfig), tlsServerName: "mqtt.example.com")
+/// )
+/// ```
+public struct MQTTConnectionConfiguration: Sendable {
+    /// Version of MQTT server to connect to.
+    public enum Version: Sendable {
+        case v3_1_1
+        case v5_0
+    }
+
+    /// Connection configuration for specific MQTT version.
+    public enum VersionConfiguration: Sendable {
+        /// Configuration for v3.1.1 will message
+        public struct WillMessageV311: Sendable {
+            let topicName: String
+            let payload: ByteBuffer
+            let qos: MQTTQoS
+            let retain: Bool
+
+            public init(
+                topicName: String,
+                payload: ByteBuffer,
+                qos: MQTTQoS,
+                retain: Bool = false
+            ) {
+                self.topicName = topicName
+                self.payload = payload
+                self.qos = qos
+                self.retain = retain
+            }
+        }
+        /// Configuration for v5.0 will message
+        public struct WillMessageV5: Sendable {
+            let topicName: String
+            let payload: ByteBuffer
+            let qos: MQTTQoS
+            let retain: Bool
+            let properties: MQTTProperties
+
+            public init(
+                topicName: String,
+                payload: ByteBuffer,
+                qos: MQTTQoS,
+                retain: Bool = false,
+                properties: MQTTProperties = []
+            ) {
+                self.topicName = topicName
+                self.payload = payload
+                self.qos = qos
+                self.retain = retain
+                self.properties = properties
+            }
+        }
+        /// MQTT Version 3.1.1
+        /// Parameters:
+        ///   - will: Will message published when client disconnects without sending a DISCONNECT packet
+        case v3_1_1(
+            will: WillMessageV311? = nil
+        )
+        /// MQTT Version 5.0
+        /// Parameters:
+        ///   - connectProperties: Properties sent with CONNECT packet
+        ///   - disconnectProperties: Properties sent with DISCONNECT packet
+        ///   - will: Will message sent when client disconnects without sending a DISCONNECT packet with reason
+        ///         code 0x0 (normal disconnection).
+        ///   - authWorkflow: Authentication workflow
+        case v5_0(
+            connectProperties: MQTTProperties = .init(),
+            disconnectProperties: MQTTProperties = .init(),
+            will: WillMessageV5? = nil,
+            authWorkflow: (any MQTTAuthenticator)? = nil
+        )
+
+        var version: Version {
+            switch self {
+            case .v3_1_1: .v3_1_1
+            case .v5_0: .v5_0
+            }
+        }
+    }
+
+    /// Configuration for TLS (Transport Layer Security) encryption.
+    ///
+    /// This structure allows you to enable or disable encrypted connections to the MQTT server.
+    /// When enabled, it requires a ``MQTTConnectionConfiguration/TLS/Configuration``
+    /// and optionally a server name for SNI (Server Name Indication).
+    public struct TLS: Sendable {
+        /// Enum for different TLS Configuration types.
+        ///
+        /// The TLS Configuration type to use is defined by the `EventLoopGroup` the client is using.
+        /// If you don't provide an `EventLoopGroup` then the `EventLoopGroup` created will be defined by this variable.
+        /// It is recommended on iOS that you use NIO Transport Services.
+        public enum Configuration: Sendable {
+            /// NIOSSL TLS configuration.
+            #if os(macOS) || os(Linux) || os(Android)
+            case niossl(TLSConfiguration)
+            #endif
+            #if canImport(Network)
+            /// NIO Transport Services TLS configuration.
+            case ts(TSTLSConfiguration)
+            #endif
+        }
+        enum Base {
+            case disable
+            case enable(Configuration, tlsServerName: String?)
+        }
+        let base: Base
+
+        /// Disables TLS for the connection.
+        ///
+        /// Use this option when connecting to an MQTT server that doesn't require encryption.
+        public static var disable: Self { .init(base: .disable) }
+
+        /// Enables TLS for the connection.
+        ///
+        /// - Parameters:
+        ///   - configuration: The TLS configuration used to establish the secure connection
+        ///   - tlsServerName: Optional server name for SNI (Server Name Indication)
+        /// - Returns: A configured TLS instance
+        public static func enable(_ configuration: Configuration, tlsServerName: String?) -> Self {
+            .init(base: .enable(configuration, tlsServerName: tlsServerName))
+        }
+    }
+
+    /// Authentication credentials for accessing an MQTT server.
+    ///
+    /// Use this structure to provide user ID and password credentials
+    /// when the server requires authentication for access.
+    public struct Authentication: Sendable {
+        /// The user identifier used to authenticate against a secured MQTT server.
+        public var userName: String
+        /// The password used to authenticate against a secured MQTT server.
+        public var password: String?
+
+        /// Creates a new authentication configuration.
+        ///
+        /// - Parameters:
+        ///   - userName: The user identifier used to authenticate against a secured MQTT server.
+        ///   - password: The password used to authenticate against a secured MQTT server.
+        public init(userName: String, password: String?) {
+            self.userName = userName
+            self.password = password
+        }
+    }
+
+    /// Configuration for WebSocket connection.
+    public struct WebSocketConfiguration: Sendable {
+        /// Creates a WebSocket configuration.
+        ///
+        /// - Parameters:
+        ///   - urlPath: WebSocket URL, defaults to "/mqtt".
+        ///   - maxFrameSize: Max frame size WebSocket client will allow.
+        ///   - initialRequestHeaders: Additional headers to add to initial HTTP request.
+        public init(
+            urlPath: String = "/mqtt",
+            maxFrameSize: Int = 1 << 14,
+            initialRequestHeaders: HTTPFields = [:]
+        ) {
+            self.urlPath = urlPath
+            self.maxFrameSize = maxFrameSize
+            self.initialRequestHeaders = initialRequestHeaders
+        }
+
+        /// WebSocket URL, defaults to "/mqtt".
+        public var urlPath: String
+        /// Max frame size WebSocket client will allow.
+        public var maxFrameSize: Int
+        /// Additional headers to add to initial HTTP request.
+        public var initialRequestHeaders: HTTPFields
+    }
+
+    /// Configuration for sending `PINGREQ` messages.
+    public struct PingConfiguration: Sendable {
+        enum Base {
+            case useServerKeepAlive
+            case pingInterval(Duration)
+            case disable
+        }
+        let base: Base
+
+        /// Use the server's keep alive interval to determine when to send `PINGREQ` messages.
+        public static var useServerKeepAlive: Self { .init(base: .useServerKeepAlive) }
+
+        /// Override calculated interval between each `PINGREQ` message.
+        /// - Parameter interval: The interval at which to send `PINGREQ` messages.
+        public static func pingInterval(_ interval: Duration) -> Self {
+            .init(base: .pingInterval(interval))
+        }
+
+        /// Disable the automatic sending of `PINGREQ` messages.
+        public static var disable: Self { .init(base: .disable) }
+    }
+
+    /// Connection configuration for the version of MQTT server to connect to.
+    public var versionConfiguration: VersionConfiguration
+    /// MQTT keep alive period.
+    public var keepAliveInterval: Duration
+    /// Configuration for sending `PINGREQ` messages.
+    public var pingConfiguration: PingConfiguration
+    /// Timeout for connecting to server.
+    public var connectTimeout: Duration
+    /// Timeout for server response.
+    public var timeout: Duration?
+    /// Optional authentication credentials for accessing the MQTT server.
+    ///
+    /// Set this property when connecting to a server that requires authentication.
+    public var authentication: Authentication?
+    /// TLS configuration for the connection.
+    ///
+    /// Use `.disable` for unencrypted connections or `.enable(...)` for secure connections.
+    public var tls: TLS
+    /// WebSocket configuration.
+    public var webSocketConfiguration: WebSocketConfiguration?
+
+    /// Creates a new MQTT connection configuration.
+    ///
+    /// - Parameters:
+    ///   - versionConfiguration: Connection configuration for the version of MQTT server to connect to.
+    ///   - keepAliveInterval: MQTT keep alive period.
+    ///   - pingConfiguration: Configuration for sending `PINGREQ` messages.
+    ///   - connectTimeout: Timeout for connecting to server.
+    ///   - timeout: Timeout for server ACK responses.
+    ///   - authentication: Optional credentials for accessing the MQTT server. Set to `nil` for unauthenticated access.
+    ///   - tls: TLS configuration for secure connections. Defaults to `.disable` for unencrypted connections.
+    ///   - webSocketConfiguration: Configuration to set if using a WebSocket connection.
+    public init(
+        versionConfiguration: VersionConfiguration = .v3_1_1(),
+        keepAliveInterval: Duration = .seconds(90),
+        pingConfiguration: PingConfiguration = .useServerKeepAlive,
+        connectTimeout: Duration = .seconds(10),
+        timeout: Duration? = nil,
+        authentication: Authentication? = nil,
+        tls: TLS = .disable,
+        webSocketConfiguration: WebSocketConfiguration? = nil
+    ) {
+        self.versionConfiguration = versionConfiguration
+        self.keepAliveInterval = keepAliveInterval
+        self.pingConfiguration = pingConfiguration
+        self.connectTimeout = connectTimeout
+        self.timeout = timeout
+        self.authentication = authentication
+        self.tls = tls
+        self.webSocketConfiguration = webSocketConfiguration
+    }
+
+    /// Whether is using WebSockets for connection.
+    public var useWebSockets: Bool {
+        self.webSocketConfiguration != nil
+    }
+
+    /// URL Path for WebSocket. Defaults to "/mqtt".
+    public var webSocketURLPath: String? {
+        self.webSocketConfiguration?.urlPath
+    }
+
+    /// Maximum frame size for a WebSocket connection.
+    public var webSocketMaxFrameSize: Int {
+        self.webSocketConfiguration?.maxFrameSize ?? 1 << 14
+    }
+
+    /// Version of MQTT server client is connecting to.
+    public var version: Version {
+        self.versionConfiguration.version
+    }
+}

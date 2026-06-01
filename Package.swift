@@ -1,35 +1,72 @@
-// swift-tools-version:5.7
+// swift-tools-version:6.2.3
 
 import PackageDescription
 
+let defaultSwiftSettings: [SwiftSetting] =
+    [
+        // https://github.com/swiftlang/swift-evolution/blob/main/proposals/0335-existential-any.md
+        .enableUpcomingFeature("ExistentialAny"),
+
+        // https://github.com/swiftlang/swift-evolution/blob/main/proposals/0409-access-level-on-imports.md
+        .enableUpcomingFeature("InternalImportsByDefault"),
+
+        // https://github.com/swiftlang/swift-evolution/blob/main/proposals/0444-member-import-visibility.md
+        .enableUpcomingFeature("MemberImportVisibility"),
+
+        // https://github.com/swiftlang/swift-evolution/blob/main/proposals/0470-isolated-conformances.md
+        .enableUpcomingFeature("InferIsolatedConformances"),
+
+        // https://github.com/swiftlang/swift-evolution/blob/main/proposals/0461-async-function-isolation.md
+        .enableUpcomingFeature("NonisolatedNonsendingByDefault"),
+
+        // https://github.com/swiftlang/swift-evolution/blob/main/proposals/0481-weak-let.md
+        .enableUpcomingFeature("ImmutableWeakCaptures"),
+    ]
+
 let package = Package(
     name: "mqtt-nio",
-    platforms: [.macOS(.v10_14), .iOS(.v12), .tvOS(.v12), .watchOS(.v6)],
+    platforms: [.macOS(.v15), .iOS(.v18), .tvOS(.v18), .watchOS(.v11)],
     products: [
         .library(name: "MQTTNIO", targets: ["MQTTNIO"])
     ],
     dependencies: [
-        .package(url: "https://github.com/apple/swift-atomics.git", from: "1.0.0"),
-        .package(url: "https://github.com/apple/swift-log.git", from: "1.0.0"),
-        .package(url: "https://github.com/apple/swift-nio.git", from: "2.80.0"),
-        .package(url: "https://github.com/apple/swift-nio-ssl.git", from: "2.14.0"),
-        .package(url: "https://github.com/apple/swift-nio-transport-services.git", from: "1.20.0"),
-        .package(url: "https://github.com/apple/swift-docc-plugin", from: "1.0.0"),
+        .package(url: "https://github.com/apple/swift-log.git", from: "1.13.1"),
+        .package(url: "https://github.com/apple/swift-nio.git", from: "2.100.0"),
+        .package(url: "https://github.com/apple/swift-nio-ssl.git", from: "2.36.0"),
+        .package(url: "https://github.com/apple/swift-nio-transport-services.git", from: "1.26.0"),
+        .package(url: "https://github.com/apple/swift-http-types.git", from: "1.0.0"),
+        .package(url: "https://github.com/apple/swift-nio-extras.git", from: "1.22.0"),
     ],
     targets: [
         .target(
             name: "MQTTNIO",
             dependencies: [
-                .product(name: "Atomics", package: "swift-atomics"),
                 .product(name: "Logging", package: "swift-log"),
                 .product(name: "NIO", package: "swift-nio"),
-                .product(name: "NIOConcurrencyHelpers", package: "swift-nio"),
                 .product(name: "NIOHTTP1", package: "swift-nio"),
                 .product(name: "NIOWebSocket", package: "swift-nio"),
                 .product(name: "NIOSSL", package: "swift-nio-ssl", condition: .when(platforms: [.linux, .macOS, .android])),
                 .product(name: "NIOTransportServices", package: "swift-nio-transport-services"),
-            ]
+                .product(name: "HTTPTypes", package: "swift-http-types"),
+                .product(name: "NIOHTTPTypesHTTP1", package: "swift-nio-extras"),
+            ],
+            swiftSettings: defaultSwiftSettings
         ),
-        .testTarget(name: "MQTTNIOTests", dependencies: ["MQTTNIO"]),
+        .testTarget(
+            name: "MQTTNIOTests",
+            dependencies: [
+                .target(name: "MQTTNIO")
+            ],
+            swiftSettings: defaultSwiftSettings
+        ),
+        .testTarget(
+            name: "IntegrationTests",
+            dependencies: [
+                .target(name: "MQTTNIO"),
+                .product(name: "InMemoryLogging", package: "swift-log"),
+                .product(name: "NIOFoundationCompat", package: "swift-nio"),
+            ],
+            swiftSettings: defaultSwiftSettings
+        ),
     ]
 )

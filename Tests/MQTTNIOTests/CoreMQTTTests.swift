@@ -1,23 +1,20 @@
-//===----------------------------------------------------------------------===//
 //
 // This source file is part of the MQTTNIO project
+// Copyright (c) 2020-2026 the MQTTNIO authors
 //
-// Copyright (c) 2020-2021 Adam Fowler
-// Licensed under Apache License v2.0
-//
-// See LICENSE.txt for license information
-//
+// See LICENSE for license information
 // SPDX-License-Identifier: Apache-2.0
 //
-//===----------------------------------------------------------------------===//
 
-import NIO
-import XCTest
+import NIOCore
+import Testing
 
 @testable import MQTTNIO
 
-final class CoreMQTTTests: XCTestCase {
-    func testConnect() throws {
+@Suite("Core MQTT Tests")
+struct CoreMQTTTests {
+    @Test("Connect Packet")
+    func connect() throws {
         let publish = MQTTPublishInfo(
             qos: .atMostOnce,
             retain: false,
@@ -37,10 +34,11 @@ final class CoreMQTTTests: XCTestCase {
             will: publish
         )
         try connectPacket.write(version: .v3_1_1, to: &byteBuffer)
-        XCTAssertEqual(byteBuffer.readableBytes, 45)
+        #expect(byteBuffer.readableBytes == 45)
     }
 
-    func testPublish() throws {
+    @Test("Publish Packet")
+    func publish() throws {
         let publish = MQTTPublishInfo(
             qos: .atMostOnce,
             retain: false,
@@ -54,11 +52,12 @@ final class CoreMQTTTests: XCTestCase {
         try publishPacket.write(version: .v3_1_1, to: &byteBuffer)
         let packet = try MQTTIncomingPacket.read(from: &byteBuffer)
         let publish2 = try MQTTPublishPacket.read(version: .v3_1_1, from: packet)
-        XCTAssertEqual(publish.topicName, publish2.publish.topicName)
-        XCTAssertEqual(publish.payload, publish2.publish.payload)
+        #expect(publish.topicName == publish2.publish.topicName)
+        #expect(publish.payload == publish2.publish.payload)
     }
 
-    func testSubscribe() throws {
+    @Test("Subscribe Packet")
+    func subscribe() throws {
         let subscriptions: [MQTTSubscribeInfoV5] = [
             .init(topicFilter: "topic/cars", qos: .atLeastOnce),
             .init(topicFilter: "topic/buses", qos: .atLeastOnce),
@@ -67,6 +66,57 @@ final class CoreMQTTTests: XCTestCase {
         let subscribePacket = MQTTSubscribePacket(subscriptions: subscriptions, properties: nil, packetId: 456)
         try subscribePacket.write(version: .v3_1_1, to: &byteBuffer)
         let packet = try MQTTIncomingPacket.read(from: &byteBuffer)
-        XCTAssertEqual(packet.remainingData.readableBytes, 29)
+        #expect(packet.remainingData.readableBytes == 29)
+    }
+
+    @Test(
+        "TopicFilter",
+        arguments: [
+            "home/+/temperature",
+            "home/garden/#",
+            "office/+/humidity",
+            "#",
+            "office/room1#",
+            "sport/+",
+            "sport+",
+            "+/+",
+            "+",
+            "/+",
+        ]
+    )
+    func topicFilter(topicFilter: String) {
+        #expect(throws: Never.self) { try TopicFilter(topicFilter) }
+    }
+
+    @Test("Invalid TopicFilter", arguments: ["home/#/temperature", "sport/tennis/#/ranking", "#/office"])
+    func invalidTopicFilter(topicFilter: String) {
+        #expect(throws: MQTTError.invalidTopicFilter(topicFilter)) { try TopicFilter(topicFilter) }
+    }
+
+    @Test("Dictionary+topicName")
+    func dictionaryTopicName() throws {
+        let subscriptionMap = [
+            try TopicFilter("home/+/temperature"): "Subscription1",
+            try TopicFilter("home/garden/#"): "Subscription2",
+            try TopicFilter("office/+/humidity"): "Subscription3",
+            try TopicFilter("#"): "Subscription4",
+            try TopicFilter("office/room1#"): "Subscription5",
+            try TopicFilter("sport/+"): "Subscription7",
+            try TopicFilter("sport+"): "Subscription8",
+            try TopicFilter("+/+"): "Subscription9",
+            try TopicFilter("+"): "Subscription10",
+            try TopicFilter("/+"): "Subscription11",
+        ]
+        #expect(subscriptionMap[topicName: "home/livingroom/temperature"].count == 2)
+        #expect(subscriptionMap[topicName: "home/garden/humidity"].count == 2)
+        #expect(subscriptionMap[topicName: "office/room1/humidity"].count == 2)
+        #expect(subscriptionMap[topicName: "home/garden"].count == 3)
+        #expect(subscriptionMap[topicName: "home/garden/temperature/soil"].count == 2)
+        #expect(subscriptionMap[topicName: "office/room1"].count == 2)
+        #expect(subscriptionMap[topicName: "sport/tennis/player1/ranking"].count == 1)
+        #expect(subscriptionMap[topicName: "sport/tennis"].count == 3)
+        #expect(subscriptionMap[topicName: "sport"].count == 2)
+        #expect(subscriptionMap[topicName: "sport/"].count == 3)
+        #expect(subscriptionMap[topicName: "/finance"].count == 3)
     }
 }

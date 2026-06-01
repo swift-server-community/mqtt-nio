@@ -1,20 +1,15 @@
-//===----------------------------------------------------------------------===//
 //
 // This source file is part of the MQTTNIO project
+// Copyright (c) 2020-2026 the MQTTNIO authors
 //
-// Copyright (c) 2020-2021 Adam Fowler
-// Licensed under Apache License v2.0
-//
-// See LICENSE.txt for license information
-//
+// See LICENSE for license information
 // SPDX-License-Identifier: Apache-2.0
 //
-//===----------------------------------------------------------------------===//
 
-import NIOCore
+public import NIOCore
 
 /// MQTT v5.0 properties. A property consists of a identifier and a value
-public struct MQTTProperties: Sendable {
+public struct MQTTProperties: Sendable, Equatable {
     /// MQTT Property
     public enum Property: Equatable, Sendable {
         /// Payload format: 0 = bytes, 1 = UTF8 string (available for PUBLISH)
@@ -27,9 +22,10 @@ public struct MQTTProperties: Sendable {
         case responseTopic(String)
         /// Correlation data used to id a request/response in request/response interactions (available for PUBLISH)
         case correlationData(ByteBuffer)
-        /// Subscription identifier set in SUBSCRIBE packet and included in related PUBLISH packet
+        /// Subscription identifier set in SUBSCRIBE packet and included in related PUBLISH packet. Subscription
+        /// identifiers can have a value from 1 to 268435455(0xfffffff)
         /// (available for PUBLISH, SUBSCRIBE)
-        case subscriptionIdentifier(UInt)
+        case subscriptionIdentifier(UInt32)
         /// Interval before session expires (available for CONNECT, CONNACK, DISCONNECT)
         case sessionExpiryInterval(UInt32)
         /// Client identifier assigned to client if they didn't provide one (available for CONNACK)
@@ -86,6 +82,16 @@ public struct MQTTProperties: Sendable {
     }
 
     public mutating func append(_ property: Property) {
+        self.properties.append(property)
+    }
+
+    public mutating func addOrReplace(_ property: Property) {
+        for index in self.properties.indices {
+            if self.properties[index].id == property.id {
+                self.properties[index] = property
+                return
+            }
+        }
         self.properties.append(property)
     }
 
@@ -227,7 +233,7 @@ extension MQTTProperties.Property {
         case .contentType(let value): return .string(value)
         case .responseTopic(let value): return .string(value)
         case .correlationData(let value): return .binaryData(value)
-        case .subscriptionIdentifier(let value): return .variableLengthInteger(value)
+        case .subscriptionIdentifier(let value): return .variableLengthInteger(numericCast(value))
         case .sessionExpiryInterval(let value): return .fourByteInteger(value)
         case .assignedClientIdentifier(let value): return .string(value)
         case .serverKeepAlive(let value): return .twoByteInteger(value)
@@ -310,7 +316,8 @@ extension MQTTProperties.Property {
             return .correlationData(buffer)
         case .subscriptionIdentifier:
             let value = try MQTTSerializer.readVariableLengthInteger(from: &byteBuffer)
-            return .subscriptionIdentifier(UInt(value))
+            guard (1..<0xfffffff).contains(value) else { throw MQTTError.badResponse }
+            return .subscriptionIdentifier(UInt32(value))
         case .sessionExpiryInterval:
             guard let value: UInt32 = byteBuffer.readInteger() else { throw MQTTError.badResponse }
             return .sessionExpiryInterval(value)

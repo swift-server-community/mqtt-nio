@@ -1,0 +1,704 @@
+//
+// This source file is part of the MQTTNIO project
+// Copyright (c) 2020-2026 the MQTTNIO authors
+//
+// See LICENSE for license information
+// SPDX-License-Identifier: Apache-2.0
+//
+
+import Logging
+import NIOCore
+import NIOEmbedded
+import NIOHTTP1
+import Testing
+
+@testable import MQTTNIO
+
+@Suite("MQTTConnection Tests")
+struct MQTTConnectionTests {
+    @Test
+    func testConnectDisconnect() async throws {
+        try await withTestMQTTServer(logger: Logger(label: #function).withLogLevel(.trace)) { _ in
+        } server: { _ in
+        }
+    }
+
+    @Test
+    func testPublishQoS0ClientToServer() async throws {
+        try await withTestMQTTServer(logger: Logger(label: #function).withLogLevel(.trace)) { connection in
+            try await connection.publish(to: "testTopic", payload: ByteBuffer(string: "TestPayload"), qos: .atMostOnce, retain: false)
+        } server: { channel in
+            let packet = try await channel.waitForOutboundPacket()
+            let publishPacket = try MQTTPublishPacket.read(version: .v3_1_1, from: packet)
+            #expect(publishPacket.packetId == 0)
+            #expect(publishPacket.publish.topicName == "testTopic")
+            #expect(publishPacket.publish.retain == false)
+            #expect(publishPacket.publish.payload == ByteBuffer(string: "TestPayload"))
+        }
+    }
+
+    @Test
+    func testPublishQoS1ClientToServer() async throws {
+        try await withTestMQTTServer(logger: Logger(label: #function).withLogLevel(.trace)) { connection in
+            try await connection.publish(to: "testTopic", payload: ByteBuffer(string: "TestPayload"), qos: .atLeastOnce, retain: false)
+        } server: { channel in
+            let packet = try await channel.waitForOutboundPacket()
+            let publishPacket = try MQTTPublishPacket.read(version: .v3_1_1, from: packet)
+            #expect(publishPacket.packetId != 0)
+            #expect(publishPacket.publish.topicName == "testTopic")
+            #expect(publishPacket.publish.retain == false)
+            #expect(publishPacket.publish.payload == ByteBuffer(string: "TestPayload"))
+            let ack = MQTTPubAckPacket(type: .PUBACK, packetId: publishPacket.packetId)
+            try await channel.writeInboundPacket(ack, version: .v3_1_1)
+        }
+    }
+
+    @Test
+    func testPublishQoS2ClientToServer() async throws {
+        try await withTestMQTTServer(logger: Logger(label: #function).withLogLevel(.trace)) { connection in
+            try await connection.publish(to: "testTopic", payload: ByteBuffer(string: "TestPayload"), qos: .exactlyOnce, retain: false)
+        } server: { channel in
+            // receive PUBLISH
+            var packet = try await channel.waitForOutboundPacket()
+            let publishPacket = try MQTTPublishPacket.read(version: .v3_1_1, from: packet)
+            #expect(publishPacket.packetId != 0)
+            #expect(publishPacket.publish.topicName == "testTopic")
+            #expect(publishPacket.publish.retain == false)
+            #expect(publishPacket.publish.payload == ByteBuffer(string: "TestPayload"))
+            // send PUBREC
+            let pubRec = MQTTPubAckPacket(type: .PUBREC, packetId: publishPacket.packetId)
+            try await channel.writeInboundPacket(pubRec, version: .v3_1_1)
+            // read PUBREL
+            packet = try await channel.waitForOutboundPacket()
+            let pubRelPacket = try MQTTPubAckPacket.read(version: .v3_1_1, from: packet)
+            #expect(pubRelPacket.type == .PUBREL)
+            #expect(pubRelPacket.packetId == publishPacket.packetId)
+            // send PUBCOMP
+            let pubComp = MQTTPubAckPacket(type: .PUBCOMP, packetId: publishPacket.packetId)
+            try await channel.writeInboundPacket(pubComp, version: .v3_1_1)
+        }
+    }
+
+    @Test
+    func testSubscribeAndPublishQoS0() async throws {
+        try await withTestSubscription(
+            subscribeInfos: [.init(topicFilter: "testTopic", qos: .atMostOnce)],
+            logger: Logger(label: #function).withLogLevel(.trace)
+        ) { sub in
+            var iterator = sub.makeAsyncIterator()
+            let event = try #require(try await iterator.next())
+            #expect(event.payload == ByteBuffer(string: "TestPayload"))
+        } server: { channel in
+            // send PUBLISH
+            let publish = MQTTPublishPacket(
+                publish: .init(
+                    qos: .atMostOnce,
+                    retain: false,
+                    topicName: "testTopic",
+                    payload: ByteBuffer(string: "TestPayload"),
+                    properties: .init()
+                ),
+                packetId: 0
+            )
+            try await channel.writeInboundPacket(publish, version: .v3_1_1)
+        }
+    }
+
+    @Test
+    func testSubscribeAndPublishQoS1() async throws {
+        try await withTestSubscription(
+            subscribeInfos: [.init(topicFilter: "testTopic", qos: .atLeastOnce)],
+            logger: Logger(label: #function).withLogLevel(.trace)
+        ) { sub in
+            var iterator = sub.makeAsyncIterator()
+            let event = try #require(try await iterator.next())
+            #expect(event.payload == ByteBuffer(string: "TestPayload"))
+        } server: { channel in
+            // send PUBLISH
+            let publish = MQTTPublishPacket(
+                publish: .init(
+                    qos: .atLeastOnce,
+                    retain: false,
+                    topicName: "testTopic",
+                    payload: ByteBuffer(string: "TestPayload"),
+                    properties: .init()
+                ),
+                packetId: 32768
+            )
+            try await channel.writeInboundPacket(publish, version: .v3_1_1)
+            // read PUBACK
+            let packet = try await channel.waitForOutboundPacket()
+            let pubAck = try MQTTPubAckPacket.read(version: .v3_1_1, from: packet)
+            #expect(pubAck.type == .PUBACK)
+            #expect(pubAck.packetId == publish.packetId)
+        }
+    }
+
+    @Test
+    func testSubscribeAndPublishQoS2() async throws {
+        try await withTestSubscription(
+            subscribeInfos: [.init(topicFilter: "testTopic", qos: .exactlyOnce)],
+            logger: Logger(label: #function).withLogLevel(.trace)
+        ) { sub in
+            var iterator = sub.makeAsyncIterator()
+            let event = try #require(try await iterator.next())
+            #expect(event.payload == ByteBuffer(string: "TestPayload"))
+        } server: { channel in
+            // send PUBLISH
+            let publish = MQTTPublishPacket(
+                publish: .init(
+                    qos: .exactlyOnce,
+                    retain: false,
+                    topicName: "testTopic",
+                    payload: ByteBuffer(string: "TestPayload"),
+                    properties: .init()
+                ),
+                packetId: 32768
+            )
+            try await channel.writeInboundPacket(publish, version: .v3_1_1)
+            // read PUBREC
+            var packet = try await channel.waitForOutboundPacket()
+            let pubAck = try MQTTPubAckPacket.read(version: .v3_1_1, from: packet)
+            #expect(pubAck.type == .PUBREC)
+            #expect(pubAck.packetId == publish.packetId)
+            // write PUBREL
+            let pubRel = MQTTPubAckPacket(type: .PUBREL, packetId: pubAck.packetId)
+            try await channel.writeInboundPacket(pubRel, version: .v3_1_1)
+            // read PUBCOMP
+            packet = try await channel.waitForOutboundPacket()
+            let pubComp = try MQTTPubAckPacket.read(version: .v3_1_1, from: packet)
+            #expect(pubComp.type == .PUBCOMP)
+            #expect(pubComp.packetId == publish.packetId)
+        }
+    }
+
+    @Test
+    func testSubscribeAndDuplicatePublishQoS2() async throws {
+        try await withTestSubscription(
+            subscribeInfos: [.init(topicFilter: "testTopic", qos: .exactlyOnce)],
+            logger: Logger(label: #function).withLogLevel(.trace)
+        ) { sub in
+            var iterator = sub.makeAsyncIterator()
+            let event = try #require(try await iterator.next())
+            #expect(event.payload == ByteBuffer(string: "TestPayload"))
+        } server: { channel in
+            // send PUBLISH
+            let publish = MQTTPublishPacket(
+                publish: .init(
+                    qos: .exactlyOnce,
+                    retain: false,
+                    topicName: "testTopic",
+                    payload: ByteBuffer(string: "TestPayload"),
+                    properties: .init()
+                ),
+                packetId: 32768
+            )
+            try await channel.writeInboundPacket(publish, version: .v3_1_1)
+            // read PUBREC (We're going to ignore this)
+            var packet = try await channel.waitForOutboundPacket()
+            let pubAck = try MQTTPubAckPacket.read(version: .v3_1_1, from: packet)
+            #expect(pubAck.type == .PUBREC)
+            #expect(pubAck.packetId == publish.packetId)
+            // send PUBLISH again, as we never got a PUBREC
+            let publishDuplicate = MQTTPublishPacket(
+                publish: .init(
+                    qos: .exactlyOnce,
+                    retain: false,
+                    dup: true,
+                    topicName: "testTopic",
+                    payload: ByteBuffer(string: "TestPayload"),
+                    properties: .init()
+                ),
+                packetId: 32768
+            )
+            try await channel.writeInboundPacket(publishDuplicate, version: .v3_1_1)
+            // read PUBREC
+            packet = try await channel.waitForOutboundPacket()
+            let pubAck2 = try MQTTPubAckPacket.read(version: .v3_1_1, from: packet)
+            #expect(pubAck2.type == .PUBREC)
+            #expect(pubAck2.packetId == publish.packetId)
+            // write PUBREL
+            let pubRel = MQTTPubAckPacket(type: .PUBREL, packetId: pubAck.packetId)
+            try await channel.writeInboundPacket(pubRel, version: .v3_1_1)
+            // read PUBCOMP
+            packet = try await channel.waitForOutboundPacket()
+            let pubComp = try MQTTPubAckPacket.read(version: .v3_1_1, from: packet)
+            #expect(pubComp.type == .PUBCOMP)
+            #expect(pubComp.packetId == publish.packetId)
+        }
+    }
+
+    @Test
+    func testTopicFilter() async throws {
+        try await withTestSubscription(
+            subscribeInfos: [.init(topicFilter: "testTopic/+", qos: .atMostOnce)],
+            logger: Logger(label: #function).withLogLevel(.trace)
+        ) { sub in
+            var iterator = sub.makeAsyncIterator()
+            let event = try #require(try await iterator.next())
+            #expect(event.payload == ByteBuffer(string: "TestPayload2"))
+            #expect(event.topicName == "testTopic/that")
+        } server: { channel in
+            // send PUBLISH (This should be ignore as the topic name isn't covered by the subcribe topic filter)
+            let publish = MQTTPublishPacket(
+                publish: .init(
+                    qos: .atMostOnce,
+                    retain: false,
+                    topicName: "testTopic2/this",
+                    payload: ByteBuffer(string: "TestPayload1"),
+                    properties: .init()
+                ),
+                packetId: 32768
+            )
+            try await channel.writeInboundPacket(publish, version: .v3_1_1)
+            // send PUBLISH
+            let publish2 = MQTTPublishPacket(
+                publish: .init(
+                    qos: .atMostOnce,
+                    retain: false,
+                    topicName: "testTopic/that",
+                    payload: ByteBuffer(string: "TestPayload2"),
+                    properties: .init()
+                ),
+                packetId: 32769
+            )
+            try await channel.writeInboundPacket(publish2, version: .v3_1_1)
+        }
+    }
+
+    @Test
+    func testSubscriptionIdFilter() async throws {
+        try await withTestV5Subscription(
+            subscribeInfos: [.init(topicFilter: "testTopic/+", qos: .atMostOnce)],
+            logger: Logger(label: #function).withLogLevel(.trace)
+        ) { sub in
+            var iterator = sub.makeAsyncIterator()
+            let event = try #require(try await iterator.next())
+            #expect(event.payload == ByteBuffer(string: "TestPayload2"))
+            #expect(event.topicName == "testTopic/that")
+        } server: { channel, subscriptionID in
+            // send PUBLISH (This should be ignore as subscription id is wrong)
+            let publish = MQTTPublishPacket(
+                publish: .init(
+                    qos: .atMostOnce,
+                    retain: false,
+                    topicName: "testTopic/this",
+                    payload: ByteBuffer(string: "TestPayload1"),
+                    properties: [.subscriptionIdentifier(subscriptionID + 1)]
+                ),
+                packetId: 32768
+            )
+            try await channel.writeInboundPacket(publish, version: .v5_0)
+            // send PUBLISH
+            let publish2 = MQTTPublishPacket(
+                publish: .init(
+                    qos: .atMostOnce,
+                    retain: false,
+                    topicName: "testTopic/that",
+                    payload: ByteBuffer(string: "TestPayload2"),
+                    properties: [.subscriptionIdentifier(subscriptionID)]
+                ),
+                packetId: 32769
+            )
+            try await channel.writeInboundPacket(publish2, version: .v5_0)
+        }
+    }
+
+    @Test("Multiple Subscription Identifiers")
+    func multipleSubscriptionIDs() async throws {
+        let subscribeInfos: [MQTTSubscribeInfo] = [
+            .init(topicFilter: "test/topic/#", qos: .atMostOnce),
+            .init(topicFilter: "test/#", qos: .atMostOnce),
+            .init(topicFilter: "test/topic", qos: .atMostOnce),
+        ]
+
+        try await withTestMQTTServer(
+            configuration: .init(versionConfiguration: .v5_0()),
+            logger: Logger(label: #function).withLogLevel(.trace)
+        ) { connection in
+            try await withThrowingTaskGroup { group in
+                for subscribeInfo in subscribeInfos {
+                    group.addTask {
+                        try await connection.subscribe(to: [subscribeInfo]) { subscription in
+                            var iterator = subscription.makeAsyncIterator()
+                            _ = try #require(try await iterator.next())
+                        }
+                    }
+                }
+                try await group.waitForAll()
+            }
+        } server: { channel in
+            var subscriptionIds: [UInt32] = []
+            for _ in subscribeInfos {
+                // receive SUBSCRIBE
+                let packet = try await channel.waitForOutboundPacket()
+                let subscribePacket = try MQTTSubscribePacket.read(version: .v5_0, from: packet)
+                // collect Subscription Identifier
+                let properties = try #require(subscribePacket.properties)
+                let subscriptionId: UInt32 = try #require(
+                    {
+                        for property in properties {
+                            if case .subscriptionIdentifier(let id) = property {
+                                return id
+                            }
+                        }
+                        return nil
+                    }()
+                )
+                subscriptionIds.append(subscriptionId)
+                // send SUBACK
+                let suback = MQTTSubAckPacket(type: .SUBACK, packetId: subscribePacket.packetId, reasons: [.success])
+                try await channel.writeInboundPacket(suback, version: .v5_0)
+            }
+            try #require(subscriptionIds.count == subscribeInfos.count)
+
+            // send PUBLISH
+            let publish = MQTTPublishPacket(
+                publish: .init(
+                    qos: .atMostOnce,
+                    retain: false,
+                    topicName: "wrongTopic/usesSubIDs",
+                    payload: ByteBuffer(string: "TestPayload2"),
+                    // Multiple Subscription Identifiers will be included if the publication is the result of a match to more than one subscription
+                    properties: .init(subscriptionIds.map { .subscriptionIdentifier($0) })
+                ),
+                packetId: 32769
+            )
+            try await channel.writeInboundPacket(publish, version: .v5_0)
+
+            for _ in subscribeInfos {
+                // receive UNSUBSCRIBE
+                let packet = try await channel.waitForOutboundPacket()
+                let unsubscribePacket = try MQTTUnsubscribePacket.read(version: .v5_0, from: packet)
+                // send SUBACK
+                let unsuback = MQTTSubAckPacket(type: .UNSUBACK, packetId: unsubscribePacket.packetId, reasons: [.success])
+                try await channel.writeInboundPacket(unsuback, version: .v5_0)
+            }
+        }
+    }
+
+    @Test
+    func testAuthWorkflow() async throws {
+        let channel = NIOAsyncTestingChannel()
+        let connection = try await MQTTConnection.setupChannelAndConnect(
+            channel,
+            configuration: .init(versionConfiguration: .v5_0(authWorkflow: SimpleAuthWorkflow())),
+            session: MQTTSessionStorage(clientID: "", logger: Logger(label: #function).withLogLevel(.trace)),
+            logger: Logger(label: #function).withLogLevel(.trace)
+        )
+        return try await withThrowingTaskGroup { group in
+            group.addTask {
+                defer { connection.close() }
+                _ = try await connection.sendConnect(clientID: "", cleanSession: true)
+            }
+            group.addTask {
+                // wait for connect
+                var packet = try await channel.waitForOutboundPacket()
+                let connect = try MQTTConnectPacket.read(version: .v5_0, from: packet)
+                #expect(connect.properties.contains(.authenticationMethod("Simple")))
+                // send auth
+                let auth = MQTTAuthPacket(reason: .continueAuthentication, properties: [.authenticationData(.init(string: "User"))])
+                try await channel.writeInboundPacket(auth, version: .v5_0)
+                // wait for auth
+                packet = try await channel.waitForOutboundPacket()
+                let authResponsePacket = try MQTTAuthPacket.read(version: .v5_0, from: packet)
+                #expect(authResponsePacket.reason == .continueAuthentication)
+                #expect(authResponsePacket.properties.contains(.authenticationMethod("Simple")))
+                #expect(authResponsePacket.properties.contains(.authenticationData(ByteBuffer(string: "Password"))))
+                // send connack
+                let connack = MQTTConnAckPacket(returnCode: 0, acknowledgeFlags: 1, properties: .init())
+                try await channel.writeInboundPacket(connack, version: .v5_0)
+
+                // wait for disconnect
+                let disconnectPacket = try await channel.waitForOutboundPacket()
+                #expect(disconnectPacket.type == .DISCONNECT)
+                #expect(disconnectPacket.packetId == 0)
+            }
+            try await group.waitForAll()
+        }
+    }
+
+    @Test
+    func testReAuthenticate() async throws {
+        try await withTestMQTTServer(
+            configuration: .init(versionConfiguration: .v5_0(authWorkflow: SimpleAuthWorkflow())),
+            logger: Logger(label: #function).withLogLevel(.trace)
+        ) { connection in
+            _ = try await connection.v5.auth(properties: [])
+        } server: { channel in
+            // wait for auth
+            var packet = try await channel.waitForOutboundPacket()
+            let initialAuth = try MQTTAuthPacket.read(version: .v5_0, from: packet)
+            #expect(initialAuth.reason == .reAuthenticate)
+            #expect(initialAuth.properties.contains(.authenticationMethod("Simple")))
+            // send auth
+            let auth = MQTTAuthPacket(reason: .continueAuthentication, properties: [.authenticationData(.init(string: "User"))])
+            try await channel.writeInboundPacket(auth, version: .v5_0)
+            // wait for auth
+            packet = try await channel.waitForOutboundPacket()
+            let authResponsePacket = try MQTTAuthPacket.read(version: .v5_0, from: packet)
+            #expect(packet.type == .AUTH)
+            #expect(authResponsePacket.reason == .continueAuthentication)
+            #expect(authResponsePacket.properties.contains(.authenticationMethod("Simple")))
+            #expect(authResponsePacket.properties.contains(.authenticationData(ByteBuffer(string: "Password"))))
+            // send final auth
+            let finalAuth = MQTTAuthPacket(reason: .success, properties: [])
+            try await channel.writeInboundPacket(finalAuth, version: .v5_0)
+        }
+    }
+
+    @Test("Cancellation")
+    func cancellation() async throws {
+        let (stream, cont) = AsyncStream.makeStream(of: Void.self)
+        try await withTestMQTTServer(logger: Logger(label: #function).withLogLevel(.trace)) { connection in
+            await withThrowingTaskGroup { group in
+                group.addTask {
+                    await #expect(throws: MQTTError.cancelled) {
+                        try await connection.publish(to: "foo", payload: ByteBuffer(), qos: .exactlyOnce)
+                    }
+                }
+                await stream.first { _ in true }
+                group.cancelAll()
+            }
+        } server: { channel in
+            _ = try await channel.waitForOutboundWrite(as: ByteBuffer.self)
+            cont.yield()
+        }
+    }
+
+    @Test("Inflight")
+    func inflight() async throws {
+        let logger = Logger(label: #function).withLogLevel(.trace)
+        let session = MQTTSession(clientID: "inflight", logger: logger)
+
+        // This stream is used to pass the PUBLISH packet ID from the first server to the second
+        let (publishPacketIDStream, publishPacketIDCont) = AsyncStream.makeStream(of: UInt16.self)
+
+        // This stream is used to make the connection wait to close until the server has finished processing
+        let (stream, cont) = AsyncStream.makeStream(of: Void.self)
+
+        try await withTestMQTTServer(session: session, logger: logger) { connection in
+            async let _ = connection.publish(to: "testTopic", payload: ByteBuffer(string: "TestPayload"), qos: .exactlyOnce)
+            await stream.first { _ in true }
+            connection.close()
+        } server: { channel in
+            // Receive PUBLISH
+            var packet = try await channel.waitForOutboundPacket()
+            let publishPacket = try MQTTPublishPacket.read(version: .v3_1_1, from: packet)
+            #expect(publishPacket.packetId != 0)
+            #expect(publishPacket.publish.topicName == "testTopic")
+            #expect(publishPacket.publish.retain == false)
+            #expect(publishPacket.publish.payload == ByteBuffer(string: "TestPayload"))
+
+            // Send PUBLISH packet ID to second server
+            publishPacketIDCont.yield(publishPacket.packetId)
+
+            // Send PUBREC
+            let pubRec = MQTTPubAckPacket(type: .PUBREC, packetId: publishPacket.packetId)
+            try await channel.writeInboundPacket(pubRec, version: .v3_1_1)
+
+            // Read PUBREL
+            packet = try await channel.waitForOutboundPacket()
+            let pubRelPacket = try MQTTPubAckPacket.read(version: .v3_1_1, from: packet)
+            #expect(pubRelPacket.type == .PUBREL)
+            #expect(pubRelPacket.packetId == publishPacket.packetId)
+
+            // Should send PUBCOMP, but let's close the connection
+            cont.yield()
+        }
+
+        #expect(try session.storage.borrow { $0.inflight.packets.count > 0 })
+
+        try await withTestMQTTServer(session: session, logger: logger) { _ in
+            await stream.first { _ in true }
+        } server: { channel in
+            // Read PUBREL
+            let packet = try await channel.waitForOutboundPacket()
+            let pubRelPacket = try MQTTPubAckPacket.read(version: .v3_1_1, from: packet)
+            #expect(pubRelPacket.type == .PUBREL)
+
+            // Get PUBLISH packet ID from first server
+            let publishPacketID = try #require(await publishPacketIDStream.first { pubRelPacket.packetId == $0 })
+
+            // Send PUBCOMP
+            let pubComp = MQTTPubAckPacket(type: .PUBCOMP, packetId: publishPacketID)
+            try await channel.writeInboundPacket(pubComp, version: .v3_1_1)
+
+            // We finished processing, let the connection close
+            cont.yield()
+        }
+
+        #expect(try session.storage.borrow { $0.inflight.packets.count == 0 })
+    }
+
+    @Test("Maximum Packet Size", arguments: MQTTQoS.allCases)
+    func maximumPacketSize(qos: MQTTQoS) async throws {
+        let logger = Logger(label: #function).withLogLevel(.trace)
+
+        try await withTestMQTTServer(
+            configuration: .init(versionConfiguration: .v5_0()),
+            logger: logger,
+            connackProperties: [.maximumPacketSize(50)]
+        ) { connection in
+            await #expect(throws: MQTTError.packetTooLarge) {
+                try await connection.publish(to: "foo", payload: ByteBuffer(repeating: 0xFF, count: 100), qos: qos)
+            }
+        } server: { _ in
+        }
+    }
+
+    @Test("WebSocket Initial Request")
+    func webSocketInitialRequest() async throws {
+        let el = EmbeddedEventLoop()
+        defer { #expect(throws: Never.self) { try el.syncShutdownGracefully() } }
+        let promise = el.makePromise(of: Void.self)
+        let initialRequestHandler = WebSocketInitialRequestHandler(
+            host: "test.mosquitto.org",
+            urlPath: "/mqtt",
+            additionalHeaders: ["Test": "Value"],
+            upgradePromise: promise
+        )
+        let channel = EmbeddedChannel(handler: initialRequestHandler, loop: el)
+        try await channel.connect(to: SocketAddress(ipAddress: "127.0.0.1", port: 0)).get()
+        let requestHead = try channel.readOutbound(as: HTTPClientRequestPart.self)
+        let requestEnd = try channel.readOutbound(as: HTTPClientRequestPart.self)
+        switch requestHead {
+        case .head(let head):
+            #expect(head.uri == "/mqtt")
+            #expect(head.headers["host"].first == "test.mosquitto.org")
+            #expect(head.headers["Sec-WebSocket-Protocol"].first == "mqtt")
+            #expect(head.headers["Test"].first == "Value")
+        default:
+            Issue.record("Unexpected request head: \(String(describing: requestHead))")
+        }
+        switch requestEnd {
+        case .end(nil):
+            break
+        default:
+            Issue.record("Unexpected request end: \(String(describing: requestEnd))")
+        }
+        _ = try channel.finish()
+        // if the channel is made inactive while the WebSocketInitialRequestHandler is in the
+        // pipeline it should pass an error to the upgrade promise
+        await #expect(throws: ChannelError.ioOnClosedChannel) {
+            try await promise.futureResult.get()
+        }
+    }
+
+    @Test("Subscription with Session")
+    func subscriptionWithSession() async throws {
+        let logger = Logger(label: #function).withLogLevel(.trace)
+        let session = MQTTSession(clientID: "subscriptionWithSession", logger: logger)
+
+        try await withTestSessionSubscription(
+            to: [.init(topicFilter: "testTopic", qos: .atLeastOnce)],
+            session: session,
+            logger: logger
+        ) { subscription in
+            var iterator = subscription.makeAsyncIterator()
+            let event = try #require(try await iterator.next())
+            #expect(event.payload == ByteBuffer(string: "TestPayload"))
+        } client: { _ in
+        } server: { channel in
+            // Send PUBLISH
+            let publish = MQTTPublishPacket(
+                publish: .init(
+                    qos: .atLeastOnce,
+                    retain: false,
+                    topicName: "testTopic",
+                    payload: ByteBuffer(string: "TestPayload"),
+                    properties: .init()
+                ),
+                packetId: 32768
+            )
+            try await channel.writeInboundPacket(publish, version: .v3_1_1)
+            // Read PUBACK
+            let publishPacket = try await channel.waitForOutboundPacket()
+            let pubAck = try MQTTPubAckPacket.read(version: .v3_1_1, from: publishPacket)
+            #expect(pubAck.type == .PUBACK)
+            #expect(pubAck.packetId == publish.packetId)
+        }
+    }
+
+    @Test("Wait Until No Active Subscriptions")
+    func waitUntilNoActiveSubscriptions() async throws {
+        let logger = Logger(label: #function).withLogLevel(.trace)
+        let session = MQTTSession(clientID: "waitUntilNoActiveSubscriptions", logger: logger)
+
+        let subscribeInfos: [[MQTTSubscribeInfoV5]] = [
+            [.init(topicFilter: "testTopic1", qos: .atMostOnce)],
+            [.init(topicFilter: "testTopic2", qos: .atMostOnce)],
+            [.init(topicFilter: "testTopic3", qos: .atMostOnce)],
+        ]
+
+        try await withTestSessionSubscriptions(
+            to: subscribeInfos,
+            session: session,
+            logger: logger
+        ) { subscription in
+            var iterator = subscription.makeAsyncIterator()
+            let event = try #require(try await iterator.next())
+            #expect(event.payload == ByteBuffer(string: "TestPayload"))
+        } client: { connection in
+            try await connection.waitUntilNoActiveSubscriptions()
+        } server: { channel in
+            for subscribeInfo in subscribeInfos {
+                // Send PUBLISH
+                let publish = MQTTPublishPacket(
+                    publish: .init(
+                        qos: .atMostOnce,
+                        retain: false,
+                        topicName: subscribeInfo.first!.topicFilter,
+                        payload: ByteBuffer(string: "TestPayload"),
+                        properties: .init()
+                    ),
+                    packetId: 32768
+                )
+                try await channel.writeInboundPacket(publish, version: .v3_1_1)
+            }
+        }
+    }
+
+    @Test("Wait with No Active Subscriptions")
+    func waitWithNoActiveSubscriptions() async throws {
+        try await withTestMQTTServer(logger: Logger(label: #function).withLogLevel(.trace)) { connection in
+            // Should return immediately as there are no active subscriptions
+            try await connection.waitUntilNoActiveSubscriptions()
+        } server: { _ in
+        }
+    }
+}
+
+struct SimpleAuthWorkflow: MQTTAuthenticator {
+    var methodName: String { "Simple" }
+    func authenticate(_ auth: MQTTAuthV5) async throws -> MQTTAuthV5 {
+        switch auth.reason {
+        case .continueAuthentication, .reAuthenticate:
+            let authenticationData: ByteBuffer? = {
+                for property in auth.properties {
+                    if case .authenticationData(let data) = property {
+                        return data
+                    }
+                }
+                return nil
+            }()
+            #expect(authenticationData == ByteBuffer(string: "User"))
+            return MQTTAuthV5(reason: .continueAuthentication, properties: [.authenticationData(ByteBuffer(string: "Password"))])
+        default:
+            preconditionFailure("Shouldn't get here as a successful auth will have already been processed")
+        }
+    }
+}
+
+extension NIOAsyncTestingChannel {
+    func waitForOutboundPacket() async throws -> MQTTIncomingPacket {
+        var buffer = try await self.waitForOutboundWrite(as: ByteBuffer.self)
+        return try MQTTIncomingPacket.read(from: &buffer)
+    }
+
+    func writeInboundPacket(_ packet: some MQTTPacket, version: MQTTConnectionConfiguration.Version) async throws {
+        var buffer = ByteBuffer()
+        try packet.write(version: version, to: &buffer)
+        try await self.writeInbound(buffer)
+    }
+}

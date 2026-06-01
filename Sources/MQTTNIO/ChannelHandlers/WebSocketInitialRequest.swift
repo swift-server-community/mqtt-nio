@@ -1,17 +1,12 @@
-//===----------------------------------------------------------------------===//
 //
 // This source file is part of the MQTTNIO project
+// Copyright (c) 2020-2026 the MQTTNIO authors
 //
-// Copyright (c) 2020-2021 Adam Fowler
-// Licensed under Apache License v2.0
-//
-// See LICENSE.txt for license information
-//
+// See LICENSE for license information
 // SPDX-License-Identifier: Apache-2.0
 //
-//===----------------------------------------------------------------------===//
 
-import NIO
+import NIOCore
 import NIOHTTP1
 
 // The HTTP handler to be used to initiate the request.
@@ -33,7 +28,18 @@ final class WebSocketInitialRequestHandler: ChannelInboundHandler, RemovableChan
         self.upgradePromise = upgradePromise
     }
 
-    public func channelActive(context: ChannelHandlerContext) {
+    func handlerAdded(context: ChannelHandlerContext) {
+        if context.channel.isActive {
+            sendInitialRequest(context: context)
+        }
+    }
+
+    func channelActive(context: ChannelHandlerContext) {
+        sendInitialRequest(context: context)
+        context.fireChannelActive()
+    }
+
+    func sendInitialRequest(context: ChannelHandlerContext) {
         // We are connected. It's time to send the message to the server to initialize the upgrade dance.
         var headers = HTTPHeaders()
         headers.add(name: "Content-Length", value: "0")
@@ -49,11 +55,10 @@ final class WebSocketInitialRequestHandler: ChannelInboundHandler, RemovableChan
         )
 
         context.write(self.wrapOutboundOut(.head(requestHead)), promise: nil)
-        context.write(self.wrapOutboundOut(.body(.byteBuffer(ByteBuffer()))), promise: nil)
         context.writeAndFlush(self.wrapOutboundOut(.end(nil)), promise: nil)
     }
 
-    public func channelRead(context: ChannelHandlerContext, data: NIOAny) {
+    func channelRead(context: ChannelHandlerContext, data: NIOAny) {
         let clientResponse = self.unwrapInboundIn(data)
 
         switch clientResponse {
@@ -66,10 +71,16 @@ final class WebSocketInitialRequestHandler: ChannelInboundHandler, RemovableChan
         }
     }
 
-    public func errorCaught(context: ChannelHandlerContext, error: Error) {
+    func errorCaught(context: ChannelHandlerContext, error: any Error) {
         self.upgradePromise.fail(error)
         // As we are not really interested getting notified on success or failure
         // we just pass nil as promise to reduce allocations.
         context.close(promise: nil)
+    }
+
+    func channelInactive(context: ChannelHandlerContext) {
+        // If channel is closed while this ChannelHandler is still active then we should
+        // fail the upgrade
+        self.upgradePromise.fail(ChannelError.ioOnClosedChannel)
     }
 }

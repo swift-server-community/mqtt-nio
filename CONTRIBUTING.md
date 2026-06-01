@@ -2,7 +2,7 @@
 
 ## Legal
 By submitting a pull request, you represent that you have the right to license your contribution to the community, and agree by submitting the patch
-that your contributions are licensed under the Apache 2.0 license (see [LICENSE](LICENSE.txt)).
+that your contributions are licensed under the Apache 2.0 license (see [LICENSE](LICENSE)).
 
 ## Contributor Conduct
 All contributors are expected to adhere to the project's [Code of Conduct](CODE_OF_CONDUCT.md).
@@ -24,15 +24,15 @@ Please ensure to include the following in your Pull Request
 
 Please keep your PRs to a minimal number of changes. If a PR is large try to split it up into smaller PRs. Don't move code around unnecessarily it makes comparing old with new very hard.
 
-The main development branch of the repository is  `main`.
+The main development branch of the repository is `main`.
 
 ### Testing
 
 The project tests expect a local version of mosquitto to be running using the config that is in this project. You can start a local mosquitto MQTT server by running the script `scripts/mosquitto.sh`. You can test the Linux version using Docker. There is a docker-compose file in the root of this project. Run Linux tests as follows
-```
+```sh
 docker-compose run test
 ```
 
 ### Formatting
 
-We use Nick Lockwood's SwiftFormat for formatting code. PRs will not be accepted if they haven't be formatted. The current version of SwiftFormat we are using is v0.52.10.
+We use `swift-format` for formatting code. PRs will not be accepted if they haven't be formatted.

@@ -1,20 +1,15 @@
-//===----------------------------------------------------------------------===//
 //
 // This source file is part of the MQTTNIO project
+// Copyright (c) 2020-2026 the MQTTNIO authors
 //
-// Copyright (c) 2020-2021 Adam Fowler
-// Licensed under Apache License v2.0
-//
-// See LICENSE.txt for license information
-//
+// See LICENSE for license information
 // SPDX-License-Identifier: Apache-2.0
 //
-//===----------------------------------------------------------------------===//
 
-import NIOCore
+public import NIOCore
 
 /// Indicates the level of assurance for delivery of a packet.
-public enum MQTTQoS: UInt8, Sendable {
+public enum MQTTQoS: UInt8, Sendable, CaseIterable {
     /// fire and forget
     case atMostOnce = 0
     /// wait for PUBACK, if you don't receive it after a period of time retry sending
@@ -45,22 +40,22 @@ public enum MQTTPacketType: UInt8, Sendable {
 /// MQTT PUBLISH packet parameters.
 public struct MQTTPublishInfo: Sendable {
     /// Quality of Service for message.
-    public let qos: MQTTQoS
+    public var qos: MQTTQoS
 
     /// Whether this is a retained message.
-    public let retain: Bool
+    public var retain: Bool
 
     /// Whether this is a duplicate publish message.
-    public let dup: Bool
+    public var dup: Bool
 
     /// Topic name on which the message is published.
-    public let topicName: String
+    public var topicName: String
 
     /// MQTT v5 properties
-    public let properties: MQTTProperties
+    public var properties: MQTTProperties
 
     /// Message payload.
-    public let payload: ByteBuffer
+    public var payload: ByteBuffer
 
     public init(
         qos: MQTTQoS,
@@ -84,10 +79,10 @@ public struct MQTTPublishInfo: Sendable {
 /// MQTT SUBSCRIBE packet parameters.
 public struct MQTTSubscribeInfo: Sendable {
     /// Topic filter to subscribe to.
-    public let topicFilter: String
+    public var topicFilter: String
 
     /// Quality of Service for subscription.
-    public let qos: MQTTQoS
+    public var qos: MQTTQoS
 
     public init(topicFilter: String, qos: MQTTQoS) {
         self.qos = qos
@@ -98,7 +93,7 @@ public struct MQTTSubscribeInfo: Sendable {
 /// MQTT Sub ACK
 ///
 /// Contains data returned in subscribe ack packets
-public struct MQTTSuback: Sendable {
+struct MQTTSuback: Sendable {
     public enum ReturnCode: UInt8, Sendable {
         case grantedQoS0 = 0
         case grantedQoS1 = 1
