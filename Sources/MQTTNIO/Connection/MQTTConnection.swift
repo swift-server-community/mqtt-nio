@@ -228,18 +228,16 @@ public final actor MQTTConnection: Sendable {
     ///
     /// - Throws: If connection is closed while waiting it will throw the error that caused the connection to close
     public func waitUntilNoActiveSubscriptions() async throws {
+        if self.channelHandler.session.subscriptions.subscriptionIDMap.isEmpty {
+            self.logger.trace("No active subscriptions to wait for")
+            return
+        }
+        if self.channelHandler.stateMachine.isClosed() {
+            throw MQTTError.connectionClosed
+        }
         let id = Self.requestIDGenerator.next()
         try await withTaskCancellationHandler {
             try await withCheckedThrowingContinuation { continuation in
-                if self.channelHandler.session.subscriptions.subscriptionIDMap.isEmpty {
-                    self.logger.trace("No active subscriptions to wait for")
-                    continuation.resume()
-                    return
-                }
-                if self.channelHandler.stateMachine.isClosed() {
-                    continuation.resume(throwing: MQTTError.connectionClosed)
-                    return
-                }
                 self.logger.trace("Waiting for \(self.channelHandler.session.subscriptions.subscriptionIDMap.count) active subscriptions to complete")
                 self.channelHandler.session.subscriptions.addWaitForEmptySubscriptions(id: id, continuation: continuation)
             }
