@@ -55,7 +55,6 @@ final class WebSocketInitialRequestHandler: ChannelInboundHandler, RemovableChan
         )
 
         context.write(self.wrapOutboundOut(.head(requestHead)), promise: nil)
-        context.write(self.wrapOutboundOut(.body(.byteBuffer(ByteBuffer()))), promise: nil)
         context.writeAndFlush(self.wrapOutboundOut(.end(nil)), promise: nil)
     }
 
@@ -77,5 +76,11 @@ final class WebSocketInitialRequestHandler: ChannelInboundHandler, RemovableChan
         // As we are not really interested getting notified on success or failure
         // we just pass nil as promise to reduce allocations.
         context.close(promise: nil)
+    }
+
+    func channelInactive(context: ChannelHandlerContext) {
+        // If channel is closed while this ChannelHandler is still active then we should
+        // fail the upgrade
+        self.upgradePromise.fail(ChannelError.ioOnClosedChannel)
     }
 }
