@@ -77,4 +77,8 @@ final class WebSocketInitialRequestHandler: ChannelInboundHandler, RemovableChan
         // we just pass nil as promise to reduce allocations.
         context.close(promise: nil)
     }
+
+    func channelInactive(context: ChannelHandlerContext) {
+        self.upgradePromise.fail(ChannelError.ioOnClosedChannel)
+    }
 }
