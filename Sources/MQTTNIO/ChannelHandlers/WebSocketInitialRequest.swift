@@ -55,7 +55,6 @@ final class WebSocketInitialRequestHandler: ChannelInboundHandler, RemovableChan
         )
 
         context.write(self.wrapOutboundOut(.head(requestHead)), promise: nil)
-        context.write(self.wrapOutboundOut(.body(.byteBuffer(ByteBuffer()))), promise: nil)
         context.writeAndFlush(self.wrapOutboundOut(.end(nil)), promise: nil)
     }
 
