@@ -44,6 +44,7 @@ public struct MQTTConnectionConfiguration: Sendable {
 
     /// Connection configuration for specific MQTT version.
     public enum VersionConfiguration: Sendable {
+        /// Configuration for v3.1.1 will message
         public struct WillMessageV311: Sendable {
             let topicName: String
             let payload: ByteBuffer
@@ -62,6 +63,7 @@ public struct MQTTConnectionConfiguration: Sendable {
                 self.retain = retain
             }
         }
+        /// Configuration for v5.0 will message
         public struct WillMessageV5: Sendable {
             let topicName: String
             let payload: ByteBuffer
@@ -93,7 +95,8 @@ public struct MQTTConnectionConfiguration: Sendable {
         /// Parameters:
         ///   - connectProperties: Properties sent with CONNECT packet
         ///   - disconnectProperties: Properties sent with DISCONNECT packet
-        ///   - will: Will message sent when client disconnects without sending a DISCONNECT packet
+        ///   - will: Will message sent when client disconnects without sending a DISCONNECT packet with reason
+        ///         code 0x0 (normal disconnection).
         ///   - authWorkflow: Authentication workflow
         case v5_0(
             connectProperties: MQTTProperties = .init(),
