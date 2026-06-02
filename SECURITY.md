@@ -6,7 +6,7 @@ Currently we support versions 2.x.x and later of MQTTNIO. These will receive sec
 
 ## Reporting a Vulnerability
 
-If you believe you have found a security vulnerability in Hummingbird or any of its related repositories please do not post this in a public forum, do not create a GitHub Issue. Instead you should submit a security advisory via [GitHub](https://github.com/swift-server-community/mqtt-nio/security/advisories/new) with details of the issue.
+If you believe you have found a security vulnerability in MQTTNIO please do not post this in a public forum, do not create a GitHub Issue. Instead you should submit a security advisory via [GitHub](https://github.com/swift-server-community/mqtt-nio/security/advisories/new) with details of the issue.
 
 #### What happens next?
 
