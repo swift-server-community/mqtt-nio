@@ -10,7 +10,7 @@ jobs:
       image: swift:latest
     steps:
     - name: Checkout
-      uses: actions/checkout@v6
+      uses: actions/checkout@v6.0.2
       with:
         fetch-depth: 0
     # https://github.com/actions/checkout/issues/766
