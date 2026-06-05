@@ -101,7 +101,7 @@ jobs:
       env:
         MOSQUITTO_SERVER: mosquitto
       run: |
-        swift test --enable-code-coverage --no-parallel
+        swift test --enable-code-coverage
     - name: Upload coverage data
       uses: vapor/swift-codecov-action@v0.3
       with:
