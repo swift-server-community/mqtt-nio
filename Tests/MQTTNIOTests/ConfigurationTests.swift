@@ -42,10 +42,13 @@ struct ConfigurationTests {
                     "tls.serverName": "example.com",
                     "webSocket.urlPath": "/test",
                     "webSocket.maxFrameSize": 21,
-                    "webSocket.initialRequestHeaders": .init(.stringArray([
-                        "X-Custom-Header: CustomValue",
-                        "X-Another-Header: AnotherValue",
-                    ]), isSecret: false),
+                    "webSocket.initialRequestHeaders": .init(
+                        .stringArray([
+                            "X-Custom-Header: CustomValue",
+                            "X-Another-Header: AnotherValue",
+                        ]),
+                        isSecret: false
+                    ),
                 ]
             )
         )
