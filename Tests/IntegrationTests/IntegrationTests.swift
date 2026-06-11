@@ -6,6 +6,7 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 
+import Configuration
 import Foundation
 import InMemoryLogging
 import Logging
@@ -104,7 +105,7 @@ struct IntegrationTests {
     func connectWithUsernameAndPassword() async throws {
         try await MQTTConnection.withConnection(
             address: .hostname(Self.hostname, port: 1884),
-            configuration: .init(authentication: .init(userName: "mqttnio", password: "mqttnio-password")),
+            configuration: .init(userName: "mqttnio", password: "mqttnio-password"),
             identifier: "connectWithUsernameAndPassword",
             logger: Logger(label: #function).withLogLevel(.trace)
         ) { connection in
@@ -117,7 +118,7 @@ struct IntegrationTests {
         await #expect(throws: MQTTError.connectionError(.notAuthorized)) {
             try await MQTTConnection.withConnection(
                 address: .hostname(Self.hostname, port: 1884),
-                configuration: .init(authentication: .init(userName: "wrong", password: "wrong")),
+                configuration: .init(userName: "wrong", password: "wrong"),
                 identifier: "connectWithWrongUsernameAndPassword",
                 logger: Logger(label: #function).withLogLevel(.trace)
             ) { connection in
@@ -206,6 +207,30 @@ struct IntegrationTests {
                     )
                 ),
                 identifier: "tlsConnectFromP12",
+                eventLoop: Self.eventLoopGroupSingleton.any(),
+                logger: Logger(label: #function).withLogLevel(.trace)
+            ) { connection in
+                try await connection.ping()
+            }
+        }
+
+        @Test("Connect with NIOTransportServices from ConfigReader")
+        func tlsConnectWithConfigReader() async throws {
+            let configReader = ConfigReader(
+                provider: InMemoryProvider(
+                    values: [
+                        "tls.config": "niots",
+                        "tls.trustRoots": .init(stringLiteral: "\(Self.rootPath)/mosquitto/certs/ca.der"),
+                        "tls.privateKey": .init(stringLiteral: "\(Self.rootPath)/mosquitto/certs/client.p12"),
+                        "tls.privateKeyPassword": "MQTTNIOClientCertPassword",
+                        "tls.serverName": "soto.codes",
+                    ]
+                )
+            )
+            try await MQTTConnection.withConnection(
+                address: .hostname(Self.hostname, port: 8883),
+                configuration: .init(config: configReader),
+                identifier: "tlsConnectWithConfigReader",
                 eventLoop: Self.eventLoopGroupSingleton.any(),
                 logger: Logger(label: #function).withLogLevel(.trace)
             ) { connection in
