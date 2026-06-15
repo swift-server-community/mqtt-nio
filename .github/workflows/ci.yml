@@ -40,7 +40,7 @@ jobs:
     - name: SPM tests
       run: swift test --enable-code-coverage
     - name: Upload coverage data
-      uses: vapor/swift-codecov-action@v0.3.4
+      uses: vapor/swift-codecov-action@v0.3.5
       with:
         codecov_token: ${{ secrets.CODECOV_TOKEN }}
 
@@ -103,7 +103,7 @@ jobs:
       run: |
         swift test --enable-code-coverage
     - name: Upload coverage data
-      uses: vapor/swift-codecov-action@v0.3.4
+      uses: vapor/swift-codecov-action@v0.3.5
       with:
         codecov_token: ${{ secrets.CODECOV_TOKEN }}
   
