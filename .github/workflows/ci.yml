@@ -32,7 +32,7 @@ jobs:
       with:
         xcode-version: latest-stable
     - name: Checkout
-      uses: actions/checkout@v6.0.2
+      uses: actions/checkout@v6.0.3
     - name: Install and run Mosquitto
       run: |
         brew install mosquitto
@@ -40,7 +40,7 @@ jobs:
     - name: SPM tests
       run: swift test --enable-code-coverage
     - name: Upload coverage data
-      uses: vapor/swift-codecov-action@v0.3
+      uses: vapor/swift-codecov-action@v0.3.5
       with:
         codecov_token: ${{ secrets.CODECOV_TOKEN }}
 
@@ -54,7 +54,7 @@ jobs:
       with:
         xcode-version: latest-stable
     - name: Checkout
-      uses: actions/checkout@v6.0.2
+      uses: actions/checkout@v6.0.3
     - name: Xcodebuild
       run: |
         xcodebuild build -scheme mqtt-nio -destination 'platform=iOS Simulator,name=iPhone 17'
@@ -89,7 +89,7 @@ jobs:
     - name: Install curl
       run: apt-get update -yq && apt-get install -y curl
     - name: Checkout
-      uses: actions/checkout@v6.0.2
+      uses: actions/checkout@v6.0.3
     - name: Restart Mosquitto
       # The mosquitto service container is started *before* mqtt-nio is checked
       # out. Restarting the container after the checkout step is needed for the
@@ -103,7 +103,7 @@ jobs:
       run: |
         swift test --enable-code-coverage
     - name: Upload coverage data
-      uses: vapor/swift-codecov-action@v0.3
+      uses: vapor/swift-codecov-action@v0.3.5
       with:
         codecov_token: ${{ secrets.CODECOV_TOKEN }}
   
@@ -115,9 +115,9 @@ jobs:
       fail-fast: false
     steps:
       - name: "Checkout"
-        uses: actions/checkout@v6.0.2
+        uses: actions/checkout@v6.0.3
       - name: "Build for Android"
-        uses: skiptools/swift-android-action@v2.9.4
+        uses: skiptools/swift-android-action@v2.9.5
         with:
           build-tests: true
           run-tests: false
