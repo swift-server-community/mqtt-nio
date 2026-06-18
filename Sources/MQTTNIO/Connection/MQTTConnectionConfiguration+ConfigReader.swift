@@ -48,11 +48,12 @@ extension MQTTConnectionConfiguration {
     ///
     /// - Parameter config: The config reader to read configuration values from.
     public init(config: ConfigReader) {
+        let willConfig = config.scoped(to: "will")
         switch config.string(forKey: "version") {
         case "v5_0", "v5", "5_0", "5", "v5.0", "5.0":
-            self.versionConfiguration = .v5_0(will: try? .init(config: config))
+            self.versionConfiguration = .v5_0(will: try? .init(config: willConfig))
         case .none, .some:
-            self.versionConfiguration = .v3_1_1(will: try? .init(config: config))
+            self.versionConfiguration = .v3_1_1(will: try? .init(config: willConfig))
         }
         self.keepAliveInterval = config.int(forKey: "keepAliveInterval", as: Duration.self, default: .seconds(90))
         self.pingConfiguration = .init(config: config)
@@ -60,8 +61,8 @@ extension MQTTConnectionConfiguration {
         self.timeout = config.int(forKey: "timeout", as: Duration.self)
         self.userName = config.string(forKey: "userName")
         self.password = config.string(forKey: "password", isSecret: true)
-        self.tls = (try? .init(config: config)) ?? .disable
-        self.webSocketConfiguration = .init(config: config)
+        self.tls = (try? .init(config: config.scoped(to: "tls"))) ?? .disable
+        self.webSocketConfiguration = .init(config: config.scoped(to: "webSocket"))
     }
 }
 
@@ -74,19 +75,18 @@ extension MQTTConnectionConfiguration.VersionConfiguration.WillMessageV311 {
     /// Creates a new Will Message for MQTT v3.1.1 using values from the provided reader.
     ///
     /// ## Configuration keys
-    /// - `will.topicName` (string): Topic Name of the Will Message.
-    /// - `will.payload` (bytes): Payload of the Will Message.
-    /// - `will.qos` (int): QoS level of the Will Message.
-    /// - `will.retain` (bool, optional, default: `false`): Specifies if the Will Message is to be retained when it is published.
+    /// - `topicName` (string): Topic Name of the Will Message.
+    /// - `payload` (bytes): Payload of the Will Message.
+    /// - `qos` (int): QoS level of the Will Message.
+    /// - `retain` (bool, optional, default: `false`): Specifies if the Will Message is to be retained when it is published.
     ///
     /// - Parameter config: The config reader to read configuration values from.
     init(config: ConfigReader) throws {
-        let willConfig = config.scoped(to: "will")
         self.init(
-            topicName: try willConfig.requiredString(forKey: "topicName"),
-            payload: .init(bytes: try willConfig.requiredBytes(forKey: "payload")),
-            qos: try willConfig.requiredInt(forKey: "qos", as: MQTTQoS.self),
-            retain: willConfig.bool(forKey: "retain", default: false)
+            topicName: try config.requiredString(forKey: "topicName"),
+            payload: .init(bytes: try config.requiredBytes(forKey: "payload")),
+            qos: try config.requiredInt(forKey: "qos", as: MQTTQoS.self),
+            retain: config.bool(forKey: "retain", default: false)
         )
     }
 }
@@ -95,19 +95,18 @@ extension MQTTConnectionConfiguration.VersionConfiguration.WillMessageV5 {
     /// Creates a new Will Message for MQTT v5.0 using values from the provided reader.
     ///
     /// ## Configuration keys
-    /// - `will.topicName` (string): Topic Name of the Will Message.
-    /// - `will.payload` (bytes): Payload of the Will Message.
-    /// - `will.qos` (int): QoS level of the Will Message.
-    /// - `will.retain` (bool, optional, default: `false`): Specifies if the Will Message is to be retained when it is published.
+    /// - `topicName` (string): Topic Name of the Will Message.
+    /// - `payload` (bytes): Payload of the Will Message.
+    /// - `qos` (int): QoS level of the Will Message.
+    /// - `retain` (bool, optional, default: `false`): Specifies if the Will Message is to be retained when it is published.
     ///
     /// - Parameter config: The config reader to read configuration values from.
     init(config: ConfigReader) throws {
-        let willConfig = config.scoped(to: "will")
         self.init(
-            topicName: try willConfig.requiredString(forKey: "topicName"),
-            payload: .init(bytes: try willConfig.requiredBytes(forKey: "payload")),
-            qos: try willConfig.requiredInt(forKey: "qos", as: MQTTQoS.self),
-            retain: willConfig.bool(forKey: "retain", default: false)
+            topicName: try config.requiredString(forKey: "topicName"),
+            payload: .init(bytes: try config.requiredBytes(forKey: "payload")),
+            qos: try config.requiredInt(forKey: "qos", as: MQTTQoS.self),
+            retain: config.bool(forKey: "retain", default: false)
         )
     }
 }
@@ -144,25 +143,24 @@ extension MQTTConnectionConfiguration.TLS {
     /// Creates a new TLS configuration using values from the provided reader.
     ///
     /// ## Configuration keys
-    /// - `tls.config` (string, optional): Whether to use `NIOSSL` or `NIOTransportServices`.
-    /// - `tls.certificateChain` (string): TLS certificate chain in PEM format. Only applicable for `NIOSSL`.
-    /// - `tls.privateKey` (string): TLS private key, in PEM format for NIOSSL, or as a file path to a `.p12` file for NIOTransportServices.
-    /// - `tls.privateKeyPassword` (string): Password for the TLS private key. Only applicable for NIOTransportServices.
-    /// - `tls.trustRoots` (string, optional): TLS trust roots, in PEM format for NIOSSL, or as a file path to a `.der` file for NIOTransportServices.
-    /// - `tls.serverName` (string, optional): Optional server name for SNI (Server Name Indication).
+    /// - `config` (string, optional): Whether to use `NIOSSL` or `NIOTransportServices`.
+    /// - `certificateChain` (string): TLS certificate chain in PEM format. Only applicable for `NIOSSL`.
+    /// - `privateKey` (string): TLS private key, in PEM format for NIOSSL, or as a file path to a `.p12` file for NIOTransportServices.
+    /// - `privateKeyPassword` (string): Password for the TLS private key. Only applicable for NIOTransportServices.
+    /// - `trustRoots` (string, optional): TLS trust roots, in PEM format for NIOSSL, or as a file path to a `.der` file for NIOTransportServices.
+    /// - `serverName` (string, optional): Optional server name for SNI (Server Name Indication).
     ///
     /// - Parameter config: The config reader to read configuration values from.
     ///
     /// - Throws: ``MQTTConnectionConfiguration/TLS/TLSConfigError/incompatibleConfiguration`` if the configuration is not valid or not supported.
     init(config: ConfigReader) throws {
-        let tlsConfig = config.scoped(to: "tls")
-        let privateKey = try tlsConfig.requiredString(forKey: "privateKey")
-        let trustRoots = tlsConfig.string(forKey: "trustRoots")
-        let tlsServerName = tlsConfig.string(forKey: "serverName")
-        switch tlsConfig.string(forKey: "config")?.lowercased() {
+        let privateKey = try config.requiredString(forKey: "privateKey")
+        let trustRoots = config.string(forKey: "trustRoots")
+        let tlsServerName = config.string(forKey: "serverName")
+        switch config.string(forKey: "config")?.lowercased() {
         #if os(macOS) || os(Linux) || os(Android)
         case "niossl":
-            let certificateChainPEM = try tlsConfig.requiredString(forKey: "certificateChain")
+            let certificateChainPEM = try config.requiredString(forKey: "certificateChain")
             let certificateChain = try NIOSSLCertificate.fromPEMBytes([UInt8](certificateChainPEM.utf8))
             let privateKey = try NIOSSLPrivateKey(bytes: [UInt8](privateKey.utf8), format: .pem)
             let trustRoots = try trustRoots.map { try NIOSSLCertificate.fromPEMBytes([UInt8]($0.utf8)) }
@@ -177,7 +175,7 @@ extension MQTTConnectionConfiguration.TLS {
         case "ts", "niots", "niotransportservices":
             let privateKeyConfig = try TSTLSConfiguration.Identity.p12(
                 filename: privateKey,
-                password: tlsConfig.requiredString(forKey: "privateKeyPassword", isSecret: true)
+                password: config.requiredString(forKey: "privateKeyPassword", isSecret: true)
             )
             guard let trustRoots else { throw TLSConfigError.incompatibleConfiguration }
             let trustRootsConfig = try TSTLSConfiguration.Certificates.der(trustRoots)
@@ -219,17 +217,16 @@ extension MQTTConnectionConfiguration.WebSocketConfiguration {
     /// Creates a new WebSocket configuration using values from the provided reader.
     ///
     /// ## Configuration keys
-    /// - `webSocket.urlPath` (string, optional): The URL path to use when establishing the WebSocket connection.
-    /// - `webSocket.maxFrameSize` (int, optional): The maximum frame size for the WebSocket connection.
-    /// - `webSocket.initialRequestHeaders` (string array, optional): Initial HTTP headers to include in the WebSocket handshake request.
+    /// - `urlPath` (string, optional): The URL path to use when establishing the WebSocket connection.
+    /// - `maxFrameSize` (int, optional): The maximum frame size for the WebSocket connection.
+    /// - `initialRequestHeaders` (string array, optional): Initial HTTP headers to include in the WebSocket handshake request.
     ///
     /// - Parameter config: The config reader to read configuration values from.
     init?(config: ConfigReader) {
-        let webSocketConfig = config.scoped(to: "webSocket")
-        let urlPath = webSocketConfig.string(forKey: "urlPath")
-        let maxFrameSize = webSocketConfig.int(forKey: "maxFrameSize")
+        let urlPath = config.string(forKey: "urlPath")
+        let maxFrameSize = config.int(forKey: "maxFrameSize")
         let initialRequestHeaders: HTTPFields?
-        if let initialRequestHeadersArray = webSocketConfig.stringArray(forKey: "initialRequestHeaders", as: ConfigHTTPField.self) {
+        if let initialRequestHeadersArray = config.stringArray(forKey: "initialRequestHeaders", as: ConfigHTTPField.self) {
             var headers = HTTPFields()
             for header in initialRequestHeadersArray {
                 headers.append(.init(name: header.name, value: header.value))

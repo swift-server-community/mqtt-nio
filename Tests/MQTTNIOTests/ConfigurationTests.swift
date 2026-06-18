@@ -99,10 +99,10 @@ struct ConfigurationTests {
         let configReader = ConfigReader(
             provider: InMemoryProvider(
                 values: [
-                    "will.topicName": "test/topic",
-                    "will.payload": .init(.bytes([0x48, 0x65, 0x6C, 0x6C, 0x6F, 0x2C, 0x20, 0x57, 0x6F, 0x72, 0x6C, 0x64, 0x21]), isSecret: false),
-                    "will.qos": 2,
-                    "will.retain": true,
+                    "topicName": "test/topic",
+                    "payload": .init(.bytes([0x48, 0x65, 0x6C, 0x6C, 0x6F, 0x2C, 0x20, 0x57, 0x6F, 0x72, 0x6C, 0x64, 0x21]), isSecret: false),
+                    "qos": 2,
+                    "retain": true,
                 ]
             )
         )
@@ -154,11 +154,11 @@ struct ConfigurationTests {
         let configReader = ConfigReader(
             providers: [
                 InMemoryProvider(values: [
-                    "tls.config": "niossl",
-                    "tls.certificateChain": .init(stringLiteral: serverCertificateData),
-                    "tls.privateKey": .init(stringLiteral: serverPrivateKeyData),
-                    "tls.trustRoots": .init(stringLiteral: caCertificateData),
-                    "tls.serverName": "example.com",
+                    "config": "niossl",
+                    "certificateChain": .init(stringLiteral: serverCertificateData),
+                    "privateKey": .init(stringLiteral: serverPrivateKeyData),
+                    "trustRoots": .init(stringLiteral: caCertificateData),
+                    "serverName": "example.com",
                 ])
             ]
         )
