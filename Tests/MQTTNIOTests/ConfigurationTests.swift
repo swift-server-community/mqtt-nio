@@ -35,7 +35,6 @@ struct ConfigurationTests {
                     "timeout": 20,
                     "userName": "mqtt_user",
                     "password": .init(.string("mqtt_password"), isSecret: true),
-                    "tls.config": "niossl",
                     "tls.certificateChain": .init(stringLiteral: serverCertificateData),
                     "tls.privateKey": .init(stringLiteral: serverPrivateKeyData),
                     "tls.trustRoots": .init(stringLiteral: caCertificateData),
@@ -154,7 +153,6 @@ struct ConfigurationTests {
         let configReader = ConfigReader(
             providers: [
                 InMemoryProvider(values: [
-                    "config": "niossl",
                     "certificateChain": .init(stringLiteral: serverCertificateData),
                     "privateKey": .init(stringLiteral: serverPrivateKeyData),
                     "trustRoots": .init(stringLiteral: caCertificateData),

@@ -35,12 +35,17 @@ extension MQTTConnectionConfiguration {
     /// - `timeout` (int, optional): Timeout for server ACK responses.
     /// - `userName` (string, optional): The user identifier used to authenticate against a secured MQTT server.
     /// - `password` (string, optional): The password used to authenticate against a secured MQTT server.
-    /// - `tls.config` (string, optional): Whether to use `NIOSSL` or `NIOTransportServices`.
+    /// ### TLS configuration keys
+    /// - `tls.serverName` (string, optional): Optional server name for SNI (Server Name Indication). Valid for both `NIOSSL` and `NIOTransportServices`.
+    /// ### NIOTransportServices specific configuration keys (takes precedence over NIOSSL if available)
+    /// - `tls.niots.privateKey` (string): TLS private key as a file path to a `.p12` file for NIOTransportServices.
+    /// - `tls.niots.privateKeyPassword` (string): Password for the TLS private key. Only applicable for NIOTransportServices.
+    /// - `tls.niots.trustRoots` (string, optional): TLS trust roots as a file path to a `.der` file for NIOTransportServices.
+    /// ### NIOSSL specific configuration keys (used as fallback)
     /// - `tls.certificateChain` (string): TLS certificate chain in PEM format. Only applicable for `NIOSSL`.
-    /// - `tls.privateKey` (string): TLS private key, in PEM format for NIOSSL, or as a file path to a `.p12` file for NIOTransportServices.
-    /// - `tls.privateKeyPassword` (string): Password for the TLS private key. Only applicable for NIOTransportServices.
-    /// - `tls.trustRoots` (string, optional): TLS trust roots, in PEM format for NIOSSL, or as a file path to a `.der` file for NIOTransportServices.
-    /// - `tls.serverName` (string, optional): Optional server name for SNI (Server Name Indication).
+    /// - `tls.privateKey` (string): TLS private key, in PEM format for NIOSSL.
+    /// - `tls.trustRoots` (string, optional): TLS trust roots, in PEM format for NIOSSL.
+    /// ### WebSocket specific configuration keys
     /// - `webSocket.urlPath` (string, optional): The URL path to use when establishing the WebSocket connection.
     /// - `webSocket.maxFrameSize` (int, optional): The maximum frame size for the WebSocket connection.
     /// - `webSocket.initialRequestHeaders` (string array, optional): Initial HTTP headers to include in the WebSocket handshake request.
@@ -135,56 +140,69 @@ extension MQTTConnectionConfiguration.PingConfiguration {
     }
 }
 
-extension MQTTConnectionConfiguration.TLS {
-    enum TLSConfigError: Error {
-        case incompatibleConfiguration
-    }
-
-    /// Creates a new TLS configuration using values from the provided reader.
+#if canImport(Network)
+extension TSTLSConfiguration {
+    /// Creates a new TLS configuration for NIO Transport Services using values from the provided reader.
     ///
     /// ## Configuration keys
-    /// - `config` (string, optional): Whether to use `NIOSSL` or `NIOTransportServices`.
-    /// - `certificateChain` (string): TLS certificate chain in PEM format. Only applicable for `NIOSSL`.
-    /// - `privateKey` (string): TLS private key, in PEM format for NIOSSL, or as a file path to a `.p12` file for NIOTransportServices.
-    /// - `privateKeyPassword` (string): Password for the TLS private key. Only applicable for NIOTransportServices.
-    /// - `trustRoots` (string, optional): TLS trust roots, in PEM format for NIOSSL, or as a file path to a `.der` file for NIOTransportServices.
-    /// - `serverName` (string, optional): Optional server name for SNI (Server Name Indication).
+    /// - `privateKey` (string): TLS private key, as a file path to a `.p12` file.
+    /// - `privateKeyPassword` (string): Password for the TLS private key.
+    /// - `trustRoots` (string): TLS trust roots, as a file path to a `.der` file.
     ///
     /// - Parameter config: The config reader to read configuration values from.
-    ///
-    /// - Throws: ``MQTTConnectionConfiguration/TLS/TLSConfigError/incompatibleConfiguration`` if the configuration is not valid or not supported.
     init(config: ConfigReader) throws {
-        let privateKey = try config.requiredString(forKey: "privateKey")
-        let trustRoots = config.string(forKey: "trustRoots")
-        let tlsServerName = config.string(forKey: "serverName")
-        switch config.string(forKey: "config")?.lowercased() {
-        #if os(macOS) || os(Linux) || os(Android)
-        case "niossl":
-            let certificateChainPEM = try config.requiredString(forKey: "certificateChain")
-            let certificateChain = try NIOSSLCertificate.fromPEMBytes([UInt8](certificateChainPEM.utf8))
-            let privateKey = try NIOSSLPrivateKey(bytes: [UInt8](privateKey.utf8), format: .pem)
-            let trustRoots = try trustRoots.map { try NIOSSLCertificate.fromPEMBytes([UInt8]($0.utf8)) }
-            var tlsConfiguration = TLSConfiguration.makeServerConfiguration(
-                certificateChain: certificateChain.map { .certificate($0) },
-                privateKey: .privateKey(privateKey)
-            )
-            tlsConfiguration.trustRoots = trustRoots.map { .certificates($0) }
-            self.base = .enable(.niossl(tlsConfiguration), tlsServerName: tlsServerName)
-        #endif
-        #if canImport(Network)
-        case "ts", "niots", "niotransportservices":
-            let privateKeyConfig = try TSTLSConfiguration.Identity.p12(
-                filename: privateKey,
+        try self.init(
+            trustRoots: .der(config.requiredString(forKey: "trustRoots")),
+            clientIdentity: .p12(
+                filename: config.requiredString(forKey: "privateKey"),
                 password: config.requiredString(forKey: "privateKeyPassword", isSecret: true)
             )
-            guard let trustRoots else { throw TLSConfigError.incompatibleConfiguration }
-            let trustRootsConfig = try TSTLSConfiguration.Certificates.der(trustRoots)
-            let tlsConfiguration = TSTLSConfiguration(trustRoots: trustRootsConfig, clientIdentity: privateKeyConfig)
-            self.base = .enable(.ts(tlsConfiguration), tlsServerName: tlsServerName)
-        #endif
-        default:
-            throw TLSConfigError.incompatibleConfiguration
+        )
+    }
+}
+#endif
+
+extension MQTTConnectionConfiguration.TLS {
+    /// Creates a new TLS configuration using values from the provided reader.
+    ///
+    /// If the `niots` scoped configuration is present, and NIOTransportServices is available, it will be used as it takes precedence over the `NIOSSL` configuration.
+    /// Otherwise, the `NIOSSL` configuration will be used.
+    ///
+    /// ## Configuration keys
+    /// - `serverName` (string, optional): Optional server name for SNI (Server Name Indication). Valid for both `NIOSSL` and `NIOTransportServices`.
+    /// ### NIOTransportServices specific configuration keys
+    /// - `niots.privateKey` (string): TLS private key as a file path to a `.p12` file for NIOTransportServices.
+    /// - `niots.privateKeyPassword` (string): Password for the TLS private key. Only applicable for NIOTransportServices.
+    /// - `niots.trustRoots` (string, optional): TLS trust roots as a file path to a `.der` file for NIOTransportServices.
+    /// ### NIOSSL specific configuration keys (used as fallback)
+    /// - `certificateChain` (string): TLS certificate chain in PEM format. Only applicable for `NIOSSL`.
+    /// - `privateKey` (string): TLS private key, in PEM format for NIOSSL.
+    /// - `trustRoots` (string, optional): TLS trust roots, in PEM format for NIOSSL.
+    ///
+    /// - Parameter config: The config reader to read configuration values from.
+    init(config: ConfigReader) throws {
+        let tlsServerName = config.string(forKey: "serverName")
+        #if canImport(Network)
+        let nioTSConfigReader = config.scoped(to: "niots")
+        if let tsTLSConfiguration = try? TSTLSConfiguration(config: nioTSConfigReader) {
+            self.base = .enable(.ts(tsTLSConfiguration), tlsServerName: tlsServerName ?? nioTSConfigReader.string(forKey: "serverName"))
+            return
         }
+        #endif
+        #if os(macOS) || os(Linux) || os(Android)
+        let privateKey = try config.requiredString(forKey: "privateKey")
+        let trustRoots = config.string(forKey: "trustRoots")
+        let certificateChainPEM = try config.requiredString(forKey: "certificateChain")
+        let certificateChain = try NIOSSLCertificate.fromPEMBytes([UInt8](certificateChainPEM.utf8))
+        let nioSSLPrivateKey = try NIOSSLPrivateKey(bytes: [UInt8](privateKey.utf8), format: .pem)
+        let nioSSLTrustRoots = try trustRoots.map { try NIOSSLCertificate.fromPEMBytes([UInt8]($0.utf8)) }
+        var tlsConfiguration = TLSConfiguration.makeServerConfiguration(
+            certificateChain: certificateChain.map { .certificate($0) },
+            privateKey: .privateKey(nioSSLPrivateKey)
+        )
+        tlsConfiguration.trustRoots = nioSSLTrustRoots.map { .certificates($0) }
+        self.base = .enable(.niossl(tlsConfiguration), tlsServerName: tlsServerName)
+        #endif
     }
 }
 

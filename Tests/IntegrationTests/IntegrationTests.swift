@@ -219,11 +219,10 @@ struct IntegrationTests {
             let configReader = ConfigReader(
                 provider: InMemoryProvider(
                     values: [
-                        "tls.config": "niots",
-                        "tls.trustRoots": .init(stringLiteral: "\(Self.rootPath)/mosquitto/certs/ca.der"),
-                        "tls.privateKey": .init(stringLiteral: "\(Self.rootPath)/mosquitto/certs/client.p12"),
-                        "tls.privateKeyPassword": "MQTTNIOClientCertPassword",
-                        "tls.serverName": "soto.codes",
+                        "tls.niots.trustRoots": .init(stringLiteral: "\(Self.rootPath)/mosquitto/certs/ca.der"),
+                        "tls.niots.privateKey": .init(stringLiteral: "\(Self.rootPath)/mosquitto/certs/client.p12"),
+                        "tls.niots.privateKeyPassword": "MQTTNIOClientCertPassword",
+                        "tls.niots.serverName": "soto.codes",
                     ]
                 )
             )
