@@ -196,7 +196,8 @@ extension MQTTConnectionConfiguration.TLS {
             self.base = .enable(.ts(tsTLSConfiguration), tlsServerName: tlsServerName ?? nioTSConfigReader.string(forKey: "serverName"))
             return
         }
-        #elseif os(macOS) || os(Linux) || os(Android)
+        #endif
+        #if os(macOS) || os(Linux) || os(Android)
         let privateKey = try config.requiredString(forKey: "privateKey")
         let trustRoots = config.string(forKey: "trustRoots")
         let certificateChainPEM = try config.requiredString(forKey: "certificateChain")
