@@ -38,6 +38,7 @@ extension MQTTConnectionConfiguration {
     /// ### TLS configuration keys
     /// - `tls.serverName` (string, optional): Optional server name for SNI (Server Name Indication). Valid for both `NIOSSL` and `NIOTransportServices`.
     /// ### NIOTransportServices specific configuration keys (takes precedence over NIOSSL if available)
+    /// - `tls.niots.serverName` (string, optional): Name alias for `tls.serverName`. If both `tls.serverName` and `tls.niots.serverName` are provided, the value from `tls.serverName` will be used.
     /// - `tls.niots.privateKey` (string): TLS private key as a file path to a `.p12` file for NIOTransportServices.
     /// - `tls.niots.privateKeyPassword` (string): Password for the TLS private key. Only applicable for NIOTransportServices.
     /// - `tls.niots.trustRoots` (string, optional): TLS trust roots as a file path to a `.der` file for NIOTransportServices.
@@ -163,6 +164,10 @@ extension TSTLSConfiguration {
 #endif
 
 extension MQTTConnectionConfiguration.TLS {
+    private enum _TLSConfigError: Error {
+        case missingConfiguration
+    }
+
     /// Creates a new TLS configuration using values from the provided reader.
     ///
     /// If the `niots` scoped configuration is present, and NIOTransportServices is available, it will be used as it takes precedence over the `NIOSSL` configuration.
@@ -171,6 +176,7 @@ extension MQTTConnectionConfiguration.TLS {
     /// ## Configuration keys
     /// - `serverName` (string, optional): Optional server name for SNI (Server Name Indication). Valid for both `NIOSSL` and `NIOTransportServices`.
     /// ### NIOTransportServices specific configuration keys
+    /// - `niots.serverName` (string, optional): Name alias for `serverName`. If both `serverName` and `niots.serverName` are provided, the value from `serverName` will be used.
     /// - `niots.privateKey` (string): TLS private key as a file path to a `.p12` file for NIOTransportServices.
     /// - `niots.privateKeyPassword` (string): Password for the TLS private key. Only applicable for NIOTransportServices.
     /// - `niots.trustRoots` (string, optional): TLS trust roots as a file path to a `.der` file for NIOTransportServices.
@@ -180,6 +186,8 @@ extension MQTTConnectionConfiguration.TLS {
     /// - `trustRoots` (string, optional): TLS trust roots, in PEM format for NIOSSL.
     ///
     /// - Parameter config: The config reader to read configuration values from.
+    ///
+    /// - Throws: An internal error type if no compatible TLS configuration is found in the provided reader.
     init(config: ConfigReader) throws {
         let tlsServerName = config.string(forKey: "serverName")
         #if canImport(Network)
@@ -188,8 +196,7 @@ extension MQTTConnectionConfiguration.TLS {
             self.base = .enable(.ts(tsTLSConfiguration), tlsServerName: tlsServerName ?? nioTSConfigReader.string(forKey: "serverName"))
             return
         }
-        #endif
-        #if os(macOS) || os(Linux) || os(Android)
+        #elseif os(macOS) || os(Linux) || os(Android)
         let privateKey = try config.requiredString(forKey: "privateKey")
         let trustRoots = config.string(forKey: "trustRoots")
         let certificateChainPEM = try config.requiredString(forKey: "certificateChain")
@@ -203,6 +210,7 @@ extension MQTTConnectionConfiguration.TLS {
         tlsConfiguration.trustRoots = nioSSLTrustRoots.map { .certificates($0) }
         self.base = .enable(.niossl(tlsConfiguration), tlsServerName: tlsServerName)
         #endif
+        throw _TLSConfigError.missingConfiguration
     }
 }
 
