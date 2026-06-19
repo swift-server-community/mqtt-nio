@@ -210,8 +210,10 @@ extension MQTTConnectionConfiguration.TLS {
         )
         tlsConfiguration.trustRoots = nioSSLTrustRoots.map { .certificates($0) }
         self.base = .enable(.niossl(tlsConfiguration), tlsServerName: tlsServerName)
-        #endif
+        return
+        #else
         throw _TLSConfigError.missingConfiguration
+        #endif
     }
 }
 
