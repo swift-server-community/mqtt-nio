@@ -72,19 +72,20 @@ struct ConfigurationTests {
         #expect(config.userName == "mqtt_user")
         #expect(config.password == "mqtt_password")
         let serverTLSConfiguration = try getServerTLSConfiguration()
-        guard case .enable(let tlsConfig, let tlsServerName) = config.tls.base,
+        guard case .webSocket(let webSocketConfiguration, let tls) = config.transport.base,
+            case .enable(let tlsConfig, let tlsServerName) = tls.base,
             case .niossl(let tlsConfiguration) = tlsConfig,
             tlsServerName == "example.com"
         else {
-            Issue.record("Expected TLS to be enabled with NIOSSL configuration")
+            Issue.record("Expected transport to be WebSocket with TLS enabled with NIOSSL configuration")
             return
         }
         #expect(tlsConfiguration.certificateChain == serverTLSConfiguration.certificateChain)
         #expect(tlsConfiguration.privateKey == serverTLSConfiguration.privateKey)
         #expect(tlsConfiguration.trustRoots == serverTLSConfiguration.trustRoots)
-        #expect(config.webSocketConfiguration?.urlPath == "/test")
-        #expect(config.webSocketConfiguration?.maxFrameSize == 21)
-        #expect(config.webSocketConfiguration?.initialRequestHeaders.count == 2)
+        #expect(webSocketConfiguration.urlPath == "/test")
+        #expect(webSocketConfiguration.maxFrameSize == 21)
+        #expect(webSocketConfiguration.initialRequestHeaders.count == 2)
     }
 
     @Test("MQTTQoS+ExpressibleByConfigInt", arguments: MQTTQoS.allCases)
@@ -161,7 +162,7 @@ struct ConfigurationTests {
             ]
         )
 
-        let tls = try MQTTConnectionConfiguration.TLS(config: configReader)
+        let tls = try MQTTConnectionConfiguration.Transport.TLS(config: configReader)
         let serverTLSConfiguration = try getServerTLSConfiguration()
         guard case .enable(let config, let tlsServerName) = tls.base,
             case .niossl(let tlsConfiguration) = config,

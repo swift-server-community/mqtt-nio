@@ -131,7 +131,7 @@ struct IntegrationTests {
     func webSocketConnect() async throws {
         try await MQTTConnection.withConnection(
             address: .hostname(Self.hostname, port: 8080),
-            configuration: .init(webSocketConfiguration: .init()),
+            configuration: .init(transport: .webSocket(.init())),
             identifier: "webSocketConnect",
             logger: Logger(label: #function).withLogLevel(.trace)
         ) { connection in
@@ -161,7 +161,7 @@ struct IntegrationTests {
         func tlsConnect() async throws {
             try await MQTTConnection.withConnection(
                 address: .hostname(Self.hostname, port: 8883),
-                configuration: .init(tls: .enable(self.getTLSConfiguration(), tlsServerName: "soto.codes")),
+                configuration: .init(transport: .tcp(tls: .enable(self.getTLSConfiguration(), tlsServerName: "soto.codes"))),
                 identifier: "tlsConnect",
                 eventLoop: Self.eventLoopGroupSingleton.any(),
                 logger: Logger(label: #function).withLogLevel(.trace)
@@ -176,8 +176,7 @@ struct IntegrationTests {
                 address: .hostname(Self.hostname, port: 8081),
                 configuration: .init(
                     timeout: .seconds(5),
-                    tls: .enable(self.getTLSConfiguration(), tlsServerName: "soto.codes"),
-                    webSocketConfiguration: .init()
+                    transport: .webSocket(.init(), tls: .enable(self.getTLSConfiguration(), tlsServerName: "soto.codes"))
                 ),
                 identifier: "webSocketAndTLSConnect",
                 eventLoop: Self.eventLoopGroupSingleton.any(),
@@ -193,17 +192,19 @@ struct IntegrationTests {
             try await MQTTConnection.withConnection(
                 address: .hostname(Self.hostname, port: 8883),
                 configuration: .init(
-                    tls: .enable(
-                        .ts(
-                            .init(
-                                trustRoots: .der(Self.rootPath + "/mosquitto/certs/ca.der"),
-                                clientIdentity: .p12(
-                                    filename: Self.rootPath + "/mosquitto/certs/client.p12",
-                                    password: "MQTTNIOClientCertPassword"
+                    transport: .tcp(
+                        tls: .enable(
+                            .ts(
+                                .init(
+                                    trustRoots: .der(Self.rootPath + "/mosquitto/certs/ca.der"),
+                                    clientIdentity: .p12(
+                                        filename: Self.rootPath + "/mosquitto/certs/client.p12",
+                                        password: "MQTTNIOClientCertPassword"
+                                    )
                                 )
-                            )
-                        ),
-                        tlsServerName: "soto.codes"
+                            ),
+                            tlsServerName: "soto.codes"
+                        )
                     )
                 ),
                 identifier: "tlsConnectFromP12",
@@ -241,7 +242,7 @@ struct IntegrationTests {
         func getTLSConfiguration(
             withTrustRoots: Bool = true,
             withClientKey: Bool = true
-        ) throws -> MQTTConnectionConfiguration.TLS.Configuration {
+        ) throws -> MQTTConnectionConfiguration.Transport.TLS.Configuration {
             #if os(Linux) || os(Android)
             let rootCertificate = try NIOSSLCertificate.fromPEMFile(Self.rootPath + "/mosquitto/certs/ca.pem")
             let certificate = try NIOSSLCertificate.fromPEMFile(Self.rootPath + "/mosquitto/certs/client.pem")
@@ -330,7 +331,7 @@ struct IntegrationTests {
 
         try await MQTTConnection.withConnection(
             address: .hostname(Self.hostname, port: 8080),
-            configuration: .init(webSocketConfiguration: .init()),
+            configuration: .init(transport: .webSocket(.init())),
             identifier: "publishRetain",
             logger: Logger(label: #function).withLogLevel(.trace)
         ) { connection in
@@ -368,7 +369,7 @@ struct IntegrationTests {
             group.addTask {
                 try await MQTTConnection.withConnection(
                     address: .hostname(Self.hostname, port: 8080),
-                    configuration: .init(webSocketConfiguration: .init()),
+                    configuration: .init(transport: .webSocket(.init())),
                     identifier: "publishToClient_subscriber",
                     logger: Logger(label: #function).withLogLevel(.trace)
                 ) { connection in
@@ -400,7 +401,7 @@ struct IntegrationTests {
             group.addTask {
                 try await MQTTConnection.withConnection(
                     address: .hostname(Self.hostname, port: 8080),
-                    configuration: .init(webSocketConfiguration: .init()),
+                    configuration: .init(transport: .webSocket(.init())),
                     identifier: "publishToClient_publisher",
                     logger: Logger(label: #function).withLogLevel(.trace)
                 ) { connection in
