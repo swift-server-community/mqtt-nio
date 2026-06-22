@@ -192,8 +192,8 @@ struct ConfigurationTests {
         )
         let initialRequestHeaders = configReader.stringArray(forKey: "initialRequestHeaders", as: ConfigHTTPField.self)
         #expect(initialRequestHeaders?.count == 2)
-        #expect(initialRequestHeaders?[0].name == HTTPField.Name("X-Custom-Header"))
-        #expect(initialRequestHeaders?[0].value == "CustomValue")
+        #expect(initialRequestHeaders?[0].field.name == HTTPField.Name("X-Custom-Header"))
+        #expect(initialRequestHeaders?[0].field.value == "CustomValue")
     }
 
     let caCertificateData =
