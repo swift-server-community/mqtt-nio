@@ -479,7 +479,7 @@ public final actor MQTTConnection: Sendable {
                 .channelInitializer { channel in
                     do {
                         // are we using websockets
-                        if let webSocketConfiguration = configuration.webSocketConfiguration {
+                        if case .webSocket(let webSocketConfiguration, _) = configuration.transport.base {
                             // prepare for websockets and on upgrade add handlers
                             let promise = eventLoop.makePromise(of: Void.self)
                             promise.futureResult.map { _ in channel }
@@ -619,7 +619,7 @@ public final actor MQTTConnection: Sendable {
         logger: Logger
     ) throws -> NIOClientTCPBootstrap {
         var serverName: String {
-            if case .enable(_, let sniServerName) = configuration.tls.base, let sniServerName {
+            if case .enable(_, let sniServerName) = configuration.tls, let sniServerName {
                 sniServerName
             } else {
                 host
@@ -632,7 +632,7 @@ public final actor MQTTConnection: Sendable {
         if let tsBootstrap = NIOTSConnectionBootstrap(validatingGroup: eventLoopGroup) {
             // create NIOClientTCPBootstrap with NIOTS TLS provider
             let options: NWProtocolTLS.Options
-            if case .enable(let tlsConfigType, _) = configuration.tls.base {
+            if case .enable(let tlsConfigType, _) = configuration.tls {
                 switch tlsConfigType {
                 case .ts(let tsConfig):
                     options = try tsConfig.getNWProtocolTLSOptions(logger: logger)
@@ -647,7 +647,7 @@ public final actor MQTTConnection: Sendable {
             sec_protocol_options_set_tls_server_name(options.securityProtocolOptions, serverName)
             let tlsProvider = NIOTSClientTLSProvider(tlsOptions: options)
             bootstrap = NIOClientTCPBootstrap(tsBootstrap, tls: tlsProvider)
-            if case .enable = configuration.tls.base {
+            if case .enable = configuration.tls {
                 return bootstrap.enableTLS()
             }
             return bootstrap
@@ -656,7 +656,7 @@ public final actor MQTTConnection: Sendable {
 
         #if os(macOS) || os(Linux) || os(Android)
         if let clientBootstrap = ClientBootstrap(validatingGroup: eventLoopGroup) {
-            if case .enable(let tlsConfig, _) = configuration.tls.base {
+            if case .enable(let tlsConfig, _) = configuration.tls {
                 let tlsConfiguration: TLSConfiguration
                 switch tlsConfig {
                 case .niossl(let config):
@@ -683,15 +683,15 @@ public final actor MQTTConnection: Sendable {
         _ channel: any Channel,
         address: MQTTServerAddress,
         configuration: MQTTConnectionConfiguration,
-        webSocketConfiguration: MQTTConnectionConfiguration.WebSocketConfiguration,
+        webSocketConfiguration: MQTTConnectionConfiguration.Transport.WebSocketConfiguration,
         upgradePromise promise: EventLoopPromise<Void>,
         afterHandlerAdded: @Sendable @escaping () throws -> Void
     ) -> EventLoopFuture<Void> {
         var hostHeader: String {
-            if case .enable(_, let sniServerName) = configuration.tls.base, let sniServerName {
+            if case .enable(_, let sniServerName) = configuration.tls, let sniServerName {
                 return sniServerName
             }
-            switch (configuration.tls.base, address.value) {
+            switch (configuration.tls, address.value) {
             case (.enable, .hostname(let host, let port)) where port != 443:
                 return "\(host):\(port)"
             case (.disable, .hostname(let host, let port)) where port != 80:

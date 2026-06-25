@@ -113,73 +113,100 @@ public struct MQTTConnectionConfiguration: Sendable {
         }
     }
 
-    /// Configuration for TLS (Transport Layer Security) encryption.
-    ///
-    /// This structure allows you to enable or disable encrypted connections to the MQTT server.
-    /// When enabled, it requires a ``MQTTConnectionConfiguration/TLS/Configuration``
-    /// and optionally a server name for SNI (Server Name Indication).
-    public struct TLS: Sendable {
-        /// Enum for different TLS Configuration types.
-        ///
-        /// The TLS Configuration type to use is defined by the `EventLoopGroup` the client is using.
-        /// If you don't provide an `EventLoopGroup` then the `EventLoopGroup` created will be defined by this variable.
-        /// It is recommended on iOS that you use NIO Transport Services.
-        public enum Configuration: Sendable {
-            /// NIOSSL TLS configuration.
-            #if os(macOS) || os(Linux) || os(Android)
-            case niossl(TLSConfiguration)
-            #endif
-            #if canImport(Network)
-            /// NIO Transport Services TLS configuration.
-            case ts(TSTLSConfiguration)
-            #endif
-        }
+    /// Transport protocol to use for the connection and its associated configuration.
+    public struct Transport: Sendable {
         enum Base {
-            case disable
-            case enable(Configuration, tlsServerName: String?)
+            case tcp(tls: TLS)
+            case webSocket(WebSocketConfiguration, tls: TLS)
         }
         let base: Base
 
-        /// Disables TLS for the connection.
+        /// Creates a TCP connection, optionally with TLS.
         ///
-        /// Use this option when connecting to an MQTT server that doesn't require encryption.
-        public static var disable: Self { .init(base: .disable) }
-
-        /// Enables TLS for the connection.
-        ///
-        /// - Parameters:
-        ///   - configuration: The TLS configuration used to establish the secure connection
-        ///   - tlsServerName: Optional server name for SNI (Server Name Indication)
-        /// - Returns: A configured TLS instance
-        public static func enable(_ configuration: Configuration, tlsServerName: String?) -> Self {
-            .init(base: .enable(configuration, tlsServerName: tlsServerName))
-        }
-    }
-
-    /// Configuration for WebSocket connection.
-    public struct WebSocketConfiguration: Sendable {
-        /// Creates a WebSocket configuration.
-        ///
-        /// - Parameters:
-        ///   - urlPath: WebSocket URL, defaults to "/mqtt".
-        ///   - maxFrameSize: Max frame size WebSocket client will allow.
-        ///   - initialRequestHeaders: Additional headers to add to initial HTTP request.
-        public init(
-            urlPath: String = "/mqtt",
-            maxFrameSize: Int = 1 << 14,
-            initialRequestHeaders: HTTPFields = [:]
-        ) {
-            self.urlPath = urlPath
-            self.maxFrameSize = maxFrameSize
-            self.initialRequestHeaders = initialRequestHeaders
+        /// - Parameter tls: TLS configuration for the connection. Defaults to `.disable`.
+        /// - Returns: Configuration for a TCP connection with the specified TLS settings.
+        public static func tcp(tls: TLS = .disable) -> Self {
+            .init(base: .tcp(tls: tls))
         }
 
-        /// WebSocket URL, defaults to "/mqtt".
-        public var urlPath: String
-        /// Max frame size WebSocket client will allow.
-        public var maxFrameSize: Int
-        /// Additional headers to add to initial HTTP request.
-        public var initialRequestHeaders: HTTPFields
+        /// Creates a WebSocket connection with the specified configuration and TLS settings.
+        ///
+        /// - Parameters:
+        ///   - configuration: Configuration for the WebSocket connection, including URL path, max frame size, and initial request headers.
+        ///   - tls: TLS configuration for the connection. Defaults to `.disable`.
+        /// - Returns: Configuration for a WebSocket connection with the specified settings.
+        public static func webSocket(_ configuration: WebSocketConfiguration, tls: TLS = .disable) -> Self {
+            .init(base: .webSocket(configuration, tls: tls))
+        }
+
+        /// Configuration for TLS (Transport Layer Security) encryption.
+        ///
+        /// This structure allows you to enable or disable encrypted connections to the MQTT server.
+        /// When enabled, it requires a ``MQTTConnectionConfiguration/Transport/TLS/Configuration``
+        /// and optionally a server name for SNI (Server Name Indication).
+        public struct TLS: Sendable {
+            /// Enum for different TLS Configuration types.
+            ///
+            /// The TLS Configuration type to use is defined by the `EventLoopGroup` the client is using.
+            /// If you don't provide an `EventLoopGroup` then the `EventLoopGroup` created will be defined by this variable.
+            /// It is recommended on iOS that you use NIO Transport Services.
+            public enum Configuration: Sendable {
+                /// NIOSSL TLS configuration.
+                #if os(macOS) || os(Linux) || os(Android)
+                case niossl(TLSConfiguration)
+                #endif
+                #if canImport(Network)
+                /// NIO Transport Services TLS configuration.
+                case ts(TSTLSConfiguration)
+                #endif
+            }
+            enum Base {
+                case disable
+                case enable(Configuration, tlsServerName: String?)
+            }
+            let base: Base
+
+            /// Disables TLS for the connection.
+            ///
+            /// Use this option when connecting to an MQTT server that doesn't require encryption.
+            public static var disable: Self { .init(base: .disable) }
+
+            /// Enables TLS for the connection.
+            ///
+            /// - Parameters:
+            ///   - configuration: The TLS configuration used to establish the secure connection
+            ///   - tlsServerName: Optional server name for SNI (Server Name Indication)
+            /// - Returns: A configured TLS instance
+            public static func enable(_ configuration: Configuration, tlsServerName: String?) -> Self {
+                .init(base: .enable(configuration, tlsServerName: tlsServerName))
+            }
+        }
+
+        /// Configuration for WebSocket connection.
+        public struct WebSocketConfiguration: Sendable {
+            /// Creates a WebSocket configuration.
+            ///
+            /// - Parameters:
+            ///   - urlPath: WebSocket URL, defaults to `"/mqtt"`.
+            ///   - maxFrameSize: Max frame size WebSocket client will allow.
+            ///   - initialRequestHeaders: Additional headers to add to initial HTTP request.
+            public init(
+                urlPath: String = "/mqtt",
+                maxFrameSize: Int = 1 << 14,
+                initialRequestHeaders: HTTPFields = [:]
+            ) {
+                self.urlPath = urlPath
+                self.maxFrameSize = maxFrameSize
+                self.initialRequestHeaders = initialRequestHeaders
+            }
+
+            /// WebSocket URL, defaults to `"/mqtt"`.
+            public var urlPath: String
+            /// Max frame size WebSocket client will allow.
+            public var maxFrameSize: Int
+            /// Additional headers to add to initial HTTP request.
+            public var initialRequestHeaders: HTTPFields
+        }
     }
 
     /// Configuration for sending `PINGREQ` messages.
@@ -221,12 +248,8 @@ public struct MQTTConnectionConfiguration: Sendable {
     /// > Note: When using MQTT v3.1.1, if you provide a Password you must also provide a User Name.
     /// MQTT v5.0 allows the sending of a Password with no User Name.
     public var password: String?
-    /// TLS configuration for the connection.
-    ///
-    /// Use `.disable` for unencrypted connections or `.enable(...)` for secure connections.
-    public var tls: TLS
-    /// WebSocket configuration.
-    public var webSocketConfiguration: WebSocketConfiguration?
+    /// Transport to use for the connection and its associated configuration.
+    public var transport: Transport
 
     /// Creates a new MQTT connection configuration.
     ///
@@ -238,8 +261,7 @@ public struct MQTTConnectionConfiguration: Sendable {
     ///   - timeout: Timeout for server ACK responses.
     ///   - userName: The user identifier used to authenticate against a secured MQTT server.
     ///   - password: The password used to authenticate against a secured MQTT server.
-    ///   - tls: TLS configuration for secure connections. Defaults to `.disable` for unencrypted connections.
-    ///   - webSocketConfiguration: Configuration to set if using a WebSocket connection.
+    ///   - transport: Transport to use for the connection and its associated configuration.
     public init(
         versionConfiguration: VersionConfiguration = .v3_1_1(),
         keepAliveInterval: Duration = .seconds(90),
@@ -248,8 +270,7 @@ public struct MQTTConnectionConfiguration: Sendable {
         timeout: Duration? = nil,
         userName: String? = nil,
         password: String? = nil,
-        tls: TLS = .disable,
-        webSocketConfiguration: WebSocketConfiguration? = nil
+        transport: Transport = .tcp()
     ) {
         self.versionConfiguration = versionConfiguration
         self.keepAliveInterval = keepAliveInterval
@@ -258,23 +279,39 @@ public struct MQTTConnectionConfiguration: Sendable {
         self.timeout = timeout
         self.userName = userName
         self.password = password
-        self.tls = tls
-        self.webSocketConfiguration = webSocketConfiguration
+        self.transport = transport
+    }
+
+    var tls: Transport.TLS.Base {
+        switch self.transport.base {
+        case .tcp(let tls):
+            tls.base
+        case .webSocket(_, let tls):
+            tls.base
+        }
     }
 
     /// Whether is using WebSockets for connection.
-    public var useWebSockets: Bool {
-        self.webSocketConfiguration != nil
+    var useWebSockets: Bool {
+        if case .webSocket = self.transport.base { true } else { false }
     }
 
     /// URL Path for WebSocket. Defaults to "/mqtt".
-    public var webSocketURLPath: String? {
-        self.webSocketConfiguration?.urlPath
+    var webSocketURLPath: String? {
+        if case .webSocket(let configuration, _) = self.transport.base {
+            configuration.urlPath
+        } else {
+            nil
+        }
     }
 
     /// Maximum frame size for a WebSocket connection.
-    public var webSocketMaxFrameSize: Int {
-        self.webSocketConfiguration?.maxFrameSize ?? 1 << 14
+    var webSocketMaxFrameSize: Int {
+        if case .webSocket(let configuration, _) = self.transport.base {
+            configuration.maxFrameSize
+        } else {
+            1 << 14
+        }
     }
 
     /// Version of MQTT server client is connecting to.

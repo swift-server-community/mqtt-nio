@@ -31,7 +31,7 @@ let requestURI = "/mqtt?\(signedURL.query!)"
 
 try await MQTTConnection.withConnection(
     address: .hostname(host),
-    configuration: .init(tls: .enable(...), webSocketConfiguration: .init(urlPath: requestURI)),
+    configuration: .init(transport: .webSocket(.init(urlPath: requestURI), tls: .enable(...))),
     identifier: "My AWS Client",
     logger: Logger(...)
 ) { connection in

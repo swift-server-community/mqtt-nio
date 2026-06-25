@@ -67,8 +67,13 @@ extension MQTTConnectionConfiguration {
         self.timeout = config.int(forKey: "timeout", as: Duration.self)
         self.userName = config.string(forKey: "userName")
         self.password = config.string(forKey: "password", isSecret: true)
-        self.tls = (try? .init(config: config.scoped(to: "tls"))) ?? .disable
-        self.webSocketConfiguration = .init(config: config.scoped(to: "webSocket"))
+        let tls: Transport.TLS = (try? .init(config: config.scoped(to: "tls"))) ?? .disable
+        self.transport =
+            if let webSocketConfiguration = Transport.WebSocketConfiguration(config: config.scoped(to: "webSocket")) {
+                .webSocket(webSocketConfiguration, tls: tls)
+            } else {
+                .tcp(tls: tls)
+            }
     }
 }
 
@@ -163,7 +168,7 @@ extension TSTLSConfiguration {
 }
 #endif
 
-extension MQTTConnectionConfiguration.TLS {
+extension MQTTConnectionConfiguration.Transport.TLS {
     private enum _TLSConfigError: Error {
         case missingConfiguration
     }
@@ -240,7 +245,7 @@ struct ConfigHTTPField: ExpressibleByConfigString {
     var description: String { "\(field.name):\(field.value)" }
 }
 
-extension MQTTConnectionConfiguration.WebSocketConfiguration {
+extension MQTTConnectionConfiguration.Transport.WebSocketConfiguration {
     /// Creates a new WebSocket configuration using values from the provided reader.
     ///
     /// ## Configuration keys

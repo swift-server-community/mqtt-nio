@@ -1,6 +1,6 @@
 # Connections
 
-Support for TLS, WebSockets, and Unix Domain Sockets.
+Support for different transport protocols, socket types, and encrypted connections.
 
 ## Overview
 
@@ -22,7 +22,7 @@ try await MQTTConnection.withConnection(
 
 If you establish a MQTT v5.0 connection (see <doc:mqttnio-v5>), you can define ``MQTTProperties`` to be sent with the `CONNECT` and `DISCONNECT` packets in the ``MQTTConnectionConfiguration/versionConfiguration``.
 
-You can wait for the connection to be closed, either by the client (by returning from the closure, calling ``MQTTConnection/close()`` or throwing an error) or by the server, with the ``MQTTConnection/waitForClose()`` method.
+You can wait for the connection to be closed, either by the client (by returning from the closure, calling ``MQTTConnection/close()`` or throwing an error) or by the server, with the ``MQTTConnection/waitOnClose()`` method.
 
 The available variants of `withConnection` are:
 - ``MQTTConnection/withConnection(address:configuration:identifier:eventLoop:logger:operation:)-(_,_,_,_,_,(MQTTConnection)->Value)``
@@ -30,18 +30,37 @@ The available variants of `withConnection` are:
 - ``MQTTConnection/withConnection(address:configuration:session:eventLoop:logger:operation:)-(_,_,_,_,_,(MQTTConnection,Bool)->Value)``
     - Connect to the MQTT server using the provided session; see <doc:mqttnio-sessions> for more details. The closure also receives a `Bool` indicating whether the server had a previous session for the provided session client ID and whether that session has been resumed.
 
-With the method `withConnection`, you can open various types of connections to MQTT brokers:
+With the method `withConnection`, you can open various types of connections to MQTT brokers by configuring the following options:
 
-- POSIX sockets, the default type of connection
+- <doc:mqttnio-connections#Transport-protocol> to use, such as TCP (default) or WebSockets
 - Unencrypted (by default) or encrypted connections via <doc:mqttnio-connections#TLS>
-- <doc:mqttnio-connections#WebSockets> connections
 - Connections using Apple's `Network.framework` for iOS via <doc:mqttnio-connections#NIO-Transport-Services>
-- <doc:mqttnio-connections#Unix-Domain-Sockets> connections
+- POSIX sockets or <doc:mqttnio-connections#Unix-Domain-Sockets>
+
+### Transport protocol
+
+MQTT NIO supports different transport protocols for connecting to the MQTT broker, such as:
+
+- TCP sockets (by default)
+- WebSockets connections (see ``MQTTConnectionConfiguration/Transport/WebSocketConfiguration``)
+
+The transport protocol can be configured through the ``MQTTConnectionConfiguration/transport`` property.
+
+```swift
+try await MQTTConnection.withConnection(
+    address: .hostname("test.mosquitto.org", port: 8080),
+    configuration: .init(transport: .webSocket(.init(...))),
+    identifier: "My WebSocket Client",
+    logger: Logger(...)
+) { connection in
+    // Connected to the broker via WebSockets
+}
+```
 
 ### TLS
 
 MQTT NIO supports TLS connections.
-You can enable this through the ``MQTTConnectionConfiguration/TLS`` provided at initialization.
+You can enable this through the ``MQTTConnectionConfiguration/Transport/TLS`` provided at initialization.
 For example, to connect to the mosquitto test server `test.mosquitto.org` on port 8884 you need to provide their root certificate and your own certificate.
 They provide details on the website [https://test.mosquitto.org/](https://test.mosquitto.org/) on how to generate these.
 
@@ -57,7 +76,7 @@ let tlsConfiguration: TLSConfiguration? = TLSConfiguration.forClient(
 
 try await MQTTConnection.withConnection(
     address: .hostname("test.mosquitto.org", port: 8884),
-    configuration: .init(tls: .enable(.niossl(tlsConfiguration))),
+    configuration: .init(transport: .tcp(tls: .enable(.niossl(tlsConfiguration)))),
     identifier: "My SSL Client",
     logger: Logger(...)
 ) { connection in
@@ -65,19 +84,14 @@ try await MQTTConnection.withConnection(
 }
 ```
 
-### WebSockets
-
-MQTT also supports WebSocket connections.
-Provide a ``MQTTConnectionConfiguration/WebSocketConfiguration`` when connecting to enable this.
-
 ### NIO Transport Services
 
 On macOS and iOS you can use the `NIOTransportServices` library and Apple's `Network.framework` for communication with the MQTT broker.
-You have to provide the correct `eventLoopGroup` and ``MQTTConnectionConfiguration/TLS/Configuration`` to choose between `NIOTransportServices` and `NIOSSL`.
+You have to provide the correct `eventLoopGroup` and ``MQTTConnectionConfiguration/Transport/TLS/Configuration`` to choose between `NIOTransportServices` and `NIOSSL`.
 
-Provide a `MultiThreadedEventLoopGroup` and a ``MQTTConnectionConfiguration/TLS/Configuration/niossl(_:)-enum.case`` and the client will use `NIOSSL`.
-Provide a `NIOTSEventLoopGroup` or ``MQTTConnectionConfiguration/TLS/Configuration/ts(_:)-enum.case`` and the client will use `NIOTransportServices`.
-If you provide a `MultiThreadedEventLoopGroup` and a ``MQTTConnectionConfiguration/TLS/Configuration/ts(_:)-enum.case`` then the client will throw an error.
+Provide a `MultiThreadedEventLoopGroup` and a ``MQTTConnectionConfiguration/Transport/TLS/Configuration/niossl(_:)-enum.case`` and the client will use `NIOSSL`.
+Provide a `NIOTSEventLoopGroup` or ``MQTTConnectionConfiguration/Transport/TLS/Configuration/ts(_:)-enum.case`` and the client will use `NIOTransportServices`.
+If you provide a `MultiThreadedEventLoopGroup` and a ``MQTTConnectionConfiguration/Transport/TLS/Configuration/ts(_:)-enum.case`` then the client will throw an error.
 
 If you are running on iOS you should always choose `NIOTransportServices`.
 
