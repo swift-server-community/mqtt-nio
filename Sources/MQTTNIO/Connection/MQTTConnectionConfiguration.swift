@@ -292,12 +292,12 @@ public struct MQTTConnectionConfiguration: Sendable {
     }
 
     /// Whether is using WebSockets for connection.
-    public var useWebSockets: Bool {
+    var useWebSockets: Bool {
         if case .webSocket = self.transport.base { true } else { false }
     }
 
     /// URL Path for WebSocket. Defaults to "/mqtt".
-    public var webSocketURLPath: String? {
+    var webSocketURLPath: String? {
         if case .webSocket(let configuration, _) = self.transport.base {
             configuration.urlPath
         } else {
@@ -306,7 +306,7 @@ public struct MQTTConnectionConfiguration: Sendable {
     }
 
     /// Maximum frame size for a WebSocket connection.
-    public var webSocketMaxFrameSize: Int {
+    var webSocketMaxFrameSize: Int {
         if case .webSocket(let configuration, _) = self.transport.base {
             configuration.maxFrameSize
         } else {
