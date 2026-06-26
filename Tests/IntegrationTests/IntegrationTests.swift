@@ -13,6 +13,7 @@ import Logging
 import NIOCore
 import NIOFoundationCompat
 import NIOPosix
+import NIOQUIC
 import Synchronization
 import Testing
 
@@ -133,6 +134,24 @@ struct IntegrationTests {
             address: .hostname(Self.hostname, port: 8080),
             configuration: .init(transport: .webSocket(.init())),
             identifier: "webSocketConnect",
+            logger: Logger(label: #function).withLogLevel(.trace)
+        ) { connection in
+            try await connection.ping()
+        }
+    }
+
+    @available(iOS 26, macOS 26, tvOS 26, watchOS 26, visionOS 26, *)
+    @Test("Connect with QUIC", .disabled(if: ProcessInfo.processInfo.environment["CI"] != nil))
+    func quicConnect() async throws {
+        try await MQTTConnection.withConnection(
+            address: .hostname("broker.emqx.io", port: 14567),
+            configuration: .init(
+                transport: .quic(
+                    .x509Certificates(trustRootsFilePath: TLS.rootPath + "/EMQX/broker.emqx.io-ca.crt"),
+                    serverName: "broker.emqx.io"
+                )
+            ),
+            identifier: "quicConnect",
             logger: Logger(label: #function).withLogLevel(.trace)
         ) { connection in
             try await connection.ping()
