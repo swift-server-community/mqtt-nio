@@ -21,8 +21,6 @@ extension MQTTConnection {
         eventLoop: any EventLoop,
         logger: Logger
     ) async throws -> MQTTConnection {
-        //eventLoop.assertInEventLoop()
-
         guard case .quic(let verificationConfiguration, let serverName) = configuration.transport.base else {
             fatalError("Invalid configuration for QUIC connection")  // TODO: handle gracefully
         }
