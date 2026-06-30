@@ -8,6 +8,7 @@
 
 public import HTTPTypes
 public import NIOCore
+public import NIOQUIC
 
 #if os(macOS) || os(Linux) || os(Android)
 public import NIOSSL
@@ -118,6 +119,7 @@ public struct MQTTConnectionConfiguration: Sendable {
         enum Base {
             case tcp(tls: TLS)
             case webSocket(WebSocketConfiguration, tls: TLS)
+            case quic(VerificationConfiguration, serverName: String)
         }
         let base: Base
 
@@ -137,6 +139,11 @@ public struct MQTTConnectionConfiguration: Sendable {
         /// - Returns: Configuration for a WebSocket connection with the specified settings.
         public static func webSocket(_ configuration: WebSocketConfiguration, tls: TLS = .disable) -> Self {
             .init(base: .webSocket(configuration, tls: tls))
+        }
+
+        @available(iOS 26, macOS 26, tvOS 26, watchOS 26, visionOS 26, *)
+        public static func quic(_ verificationConfiguration: VerificationConfiguration, serverName: String) -> Self {
+            .init(base: .quic(verificationConfiguration, serverName: serverName))
         }
 
         /// Configuration for TLS (Transport Layer Security) encryption.
@@ -288,6 +295,9 @@ public struct MQTTConnectionConfiguration: Sendable {
             tls.base
         case .webSocket(_, let tls):
             tls.base
+        case .quic:
+            // TODO: handle gracefully
+            preconditionFailure("QUIC transport doesn't use the Transport.TLS.Base object")
         }
     }
 

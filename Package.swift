@@ -1,4 +1,4 @@
-// swift-tools-version:6.2.3
+// swift-tools-version:6.3
 
 import PackageDescription
 
@@ -30,13 +30,14 @@ let package = Package(
         .library(name: "MQTTNIO", targets: ["MQTTNIO"])
     ],
     dependencies: [
-        .package(url: "https://github.com/apple/swift-log.git", from: "1.13.1"),
+        .package(url: "https://github.com/apple/swift-log.git", from: "1.13.1", traits: [.defaults]),
         .package(url: "https://github.com/apple/swift-nio.git", from: "2.100.0"),
         .package(url: "https://github.com/apple/swift-nio-ssl.git", from: "2.36.0"),
         .package(url: "https://github.com/apple/swift-nio-transport-services.git", from: "1.26.0"),
         .package(url: "https://github.com/apple/swift-http-types.git", from: "1.0.0"),
         .package(url: "https://github.com/apple/swift-nio-extras.git", from: "1.22.0"),
         .package(url: "https://github.com/apple/swift-configuration.git", from: "1.1.0"),
+        .package(url: "https://github.com/apple/swift-nio-quic.git", branch: "main"),
     ],
     targets: [
         .target(
@@ -51,6 +52,7 @@ let package = Package(
                 .product(name: "HTTPTypes", package: "swift-http-types"),
                 .product(name: "NIOHTTPTypesHTTP1", package: "swift-nio-extras"),
                 .product(name: "Configuration", package: "swift-configuration"),
+                .product(name: "NIOQUIC", package: "swift-nio-quic"),
             ],
             swiftSettings: defaultSwiftSettings
         ),

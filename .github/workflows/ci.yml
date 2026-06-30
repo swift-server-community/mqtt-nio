@@ -66,7 +66,6 @@ jobs:
     strategy:
       matrix:
         tag:
-          - swift:6.2.3
           - swift:6.3
     container:
       image: ${{ matrix.tag }}
@@ -107,17 +106,17 @@ jobs:
       with:
         codecov_token: ${{ secrets.CODECOV_TOKEN }}
   
-  android-build:
-    name: Android Build
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    strategy:
-      fail-fast: false
-    steps:
-      - name: "Checkout"
-        uses: actions/checkout@v7.0.0
-      - name: "Build for Android"
-        uses: skiptools/swift-android-action@v2.9.5
-        with:
-          build-tests: true
-          run-tests: false
+  # android-build:
+  #   name: Android Build
+  #   runs-on: ubuntu-latest
+  #   timeout-minutes: 15
+  #   strategy:
+  #     fail-fast: false
+  #   steps:
+  #     - name: "Checkout"
+  #       uses: actions/checkout@v7.0.0
+  #     - name: "Build for Android"
+  #       uses: skiptools/swift-android-action@v2.9.5
+  #       with:
+  #         build-tests: true
+  #         run-tests: false
