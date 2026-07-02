@@ -37,7 +37,7 @@ let package = Package(
         .package(url: "https://github.com/apple/swift-http-types.git", from: "1.0.0"),
         .package(url: "https://github.com/apple/swift-nio-extras.git", from: "1.22.0"),
         .package(url: "https://github.com/apple/swift-configuration.git", from: "1.1.0"),
-        .package(url: "https://github.com/apple/swift-nio-quic.git", branch: "main"),
+        .package(url: "https://github.com/apple/swift-nio-quic.git", .upToNextMinor(from: "0.1.0")),
     ],
     targets: [
         .target(
