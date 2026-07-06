@@ -141,14 +141,16 @@ struct IntegrationTests {
     }
 
     @available(iOS 26, macOS 26, tvOS 26, watchOS 26, visionOS 26, *)
-    @Test("Connect with QUIC", .disabled(if: ProcessInfo.processInfo.environment["CI"] != nil))
+    @Test("Connect with QUIC")
     func quicConnect() async throws {
+        let emqxHost = ProcessInfo.processInfo.environment["EMQX_SERVER"] ?? "localhost"
+
         try await MQTTConnection.withConnection(
-            address: .hostname("broker.emqx.io", port: 14567),
+            address: .hostname(emqxHost, port: 14567),
             configuration: .init(
                 transport: .quic(
-                    .x509Certificates(trustRootsFilePath: TLS.rootPath + "/EMQX/broker.emqx.io-ca.crt"),
-                    serverName: "broker.emqx.io"
+                    .x509Certificates(trustRootsFilePath: TLS.rootPath + "/EMQX/certs/ca.pem"),
+                    serverName: "soto.codes"
                 )
             ),
             identifier: "quicConnect",

@@ -84,22 +84,34 @@ jobs:
           - ${{ github.workspace }}/mosquitto/config:/mosquitto/config
           - ${{ github.workspace }}/mosquitto/certs:/mosquitto/certs
           - ${{ github.workspace }}/mosquitto/socket:/mosquitto/socket
+      emqx:
+        image: emqx/emqx:latest
+        options: --name emqx
+        ports:
+          - 14567:14567/udp
+        volumes:
+          - ${{ github.workspace }}/EMQX/certs:/opt/emqx/etc/certs
+        env:
+          EMQX_NODE__COOKIE: "mqtt-nio-ci-cookie"
+          EMQX_LISTENERS__QUIC__DEFAULT__ENABLED: "true"
+          EMQX_LISTENERS__QUIC__DEFAULT__BIND: "0.0.0.0:14567"
     steps:
     - name: Install curl
       run: apt-get update -yq && apt-get install -y curl
     - name: Checkout
       uses: actions/checkout@v7.0.0
-    - name: Restart Mosquitto
+    - name: Restart Mosquitto and EMQX
       # The mosquitto service container is started *before* mqtt-nio is checked
       # out. Restarting the container after the checkout step is needed for the
       # container to see volumes populated from the checked out workspace.
       uses: docker://docker
       with:
-        args: docker restart mosquitto
+        args: docker restart mosquitto emqx
     - name: Test
       env:
         MOSQUITTO_SERVER: mosquitto
-        SWIFT_CERTIFICATES_ALLOW_SWIFT_CRYPTO_BETA: 1
+        EMQX_SERVER: emqx
+        SWIFT_CERTIFICATES_ALLOW_SWIFT_CRYPTO_BETA: 1 # TODO: Remove everywhere once swift-crypto is no longer in beta
       run: |
         swift test --enable-code-coverage
     - name: Upload coverage data
