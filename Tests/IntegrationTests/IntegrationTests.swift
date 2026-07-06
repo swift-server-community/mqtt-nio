@@ -149,7 +149,7 @@ struct IntegrationTests {
             address: .hostname(emqxHost, port: 14567),
             configuration: .init(
                 transport: .quic(
-                    .x509Certificates(trustRootsFilePath: TLS.rootPath + "/EMQX/certs/ca.pem"),
+                    .init(verificationConfiguration: .x509Certificates(trustRootsFilePath: TLS.rootPath + "/EMQX/certs/ca.pem")),
                     serverName: "soto.codes"
                 )
             ),

@@ -119,7 +119,7 @@ public struct MQTTConnectionConfiguration: Sendable {
         enum Base {
             case tcp(tls: TLS)
             case webSocket(WebSocketConfiguration, tls: TLS)
-            case quic(VerificationConfiguration, serverName: String)
+            case quic(QUICConfiguration, serverName: String)
         }
         let base: Base
 
@@ -142,8 +142,8 @@ public struct MQTTConnectionConfiguration: Sendable {
         }
 
         @available(iOS 26, macOS 26, tvOS 26, watchOS 26, visionOS 26, *)
-        public static func quic(_ verificationConfiguration: VerificationConfiguration, serverName: String) -> Self {
-            .init(base: .quic(verificationConfiguration, serverName: serverName))
+        public static func quic(_ configuration: QUICConfiguration, serverName: String) -> Self {
+            .init(base: .quic(configuration, serverName: serverName))
         }
 
         /// Configuration for TLS (Transport Layer Security) encryption.
@@ -213,6 +213,19 @@ public struct MQTTConnectionConfiguration: Sendable {
             public var maxFrameSize: Int
             /// Additional headers to add to initial HTTP request.
             public var initialRequestHeaders: HTTPFields
+        }
+
+        public struct QUICConfiguration: Sendable {
+            public var verificationConfiguration: VerificationConfiguration
+            public var keyExchangeGroup: KeyExchangeGroup
+
+            public init(
+                verificationConfiguration: VerificationConfiguration,
+                keyExchangeGroup: KeyExchangeGroup = .x25519
+            ) {
+                self.verificationConfiguration = verificationConfiguration
+                self.keyExchangeGroup = keyExchangeGroup
+            }
         }
     }
 

@@ -21,7 +21,7 @@ extension MQTTConnection {
         eventLoop: any EventLoop,
         logger: Logger
     ) async throws -> MQTTConnection {
-        guard case .quic(let verificationConfiguration, let serverName) = configuration.transport.base else {
+        guard case .quic(let quicConfiguration, let serverName) = configuration.transport.base else {
             fatalError("Invalid configuration for QUIC connection")  // TODO: handle gracefully
         }
 
@@ -30,7 +30,8 @@ extension MQTTConnection {
         @Sendable func _channelInitializer(_ channel: any Channel) -> EventLoopFuture<(any Channel, QUICHandler.ConnectionMultiplexer<Never>)> {
             channel.eventLoop.makeCompletedFuture {
                 let quicConfiguration = QUICConfiguration.client(
-                    verificationConfiguration: verificationConfiguration,
+                    verificationConfiguration: quicConfiguration.verificationConfiguration,
+                    keyExchangeGroup: quicConfiguration.keyExchangeGroup,
                     applicationProtocols: ["mqtt"]
                 )
                 let (quicHandler, connectionMultiplexer) = try QUICHandler.makeHandlerAndConnectionMultiplexer(
