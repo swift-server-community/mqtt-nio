@@ -154,9 +154,30 @@ struct IntegrationTests {
                 )
             ),
             identifier: "quicConnect",
-            logger: Logger(label: #function).withLogLevel(.trace)
+            logger: Logger(label: #function).withLogLevel(.debug)
         ) { connection in
             try await connection.ping()
+
+            try await withThrowingTaskGroup { group in
+                let (stream, continuation) = AsyncStream.makeStream(of: Void.self)
+
+                group.addTask {
+                    try await connection.subscribe(to: [.init(topicFilter: "test/quic", qos: .exactlyOnce)]) { subscription in
+                        continuation.yield()
+                        for try await message in subscription {
+                            #expect(String(buffer: message.payload) == "Hello, MQTT over QUIC!")
+                            break
+                        }
+                    }
+                }
+
+                group.addTask {
+                    await stream.first { _ in true }
+                    try await connection.publish(to: "test/quic", payload: ByteBuffer(string: "Hello, MQTT over QUIC!"), qos: .atLeastOnce)
+                }
+
+                try await group.waitForAll()
+            }
         }
     }
 
