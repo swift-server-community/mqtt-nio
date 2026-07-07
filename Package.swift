@@ -29,8 +29,15 @@ let package = Package(
     products: [
         .library(name: "MQTTNIO", targets: ["MQTTNIO"])
     ],
+    traits: [
+        .trait(
+            name: "QUIC",
+            description: "Enables support for QUIC transport"
+        ),
+        .default(enabledTraits: []),
+    ],
     dependencies: [
-        .package(url: "https://github.com/apple/swift-log.git", from: "1.13.1", traits: [.defaults]),
+        .package(url: "https://github.com/apple/swift-log.git", from: "1.13.1"),
         .package(url: "https://github.com/apple/swift-nio.git", from: "2.100.0"),
         .package(url: "https://github.com/apple/swift-nio-ssl.git", from: "2.36.0"),
         .package(url: "https://github.com/apple/swift-nio-transport-services.git", from: "1.26.0"),
@@ -52,7 +59,7 @@ let package = Package(
                 .product(name: "HTTPTypes", package: "swift-http-types"),
                 .product(name: "NIOHTTPTypesHTTP1", package: "swift-nio-extras"),
                 .product(name: "Configuration", package: "swift-configuration"),
-                .product(name: "NIOQUIC", package: "swift-nio-quic"),
+                .product(name: "NIOQUIC", package: "swift-nio-quic", condition: .when(traits: ["QUIC"])),
             ],
             swiftSettings: defaultSwiftSettings
         ),

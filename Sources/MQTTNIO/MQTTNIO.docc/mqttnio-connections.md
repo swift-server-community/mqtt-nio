@@ -32,7 +32,7 @@ The available variants of `withConnection` are:
 
 With the method `withConnection`, you can open various types of connections to MQTT brokers by configuring the following options:
 
-- <doc:mqttnio-connections#Transport-protocol> to use, such as TCP (default) or WebSockets
+- <doc:mqttnio-connections#Transport-protocol> to use, such as TCP (default), WebSockets or QUIC
 - Unencrypted (by default) or encrypted connections via <doc:mqttnio-connections#TLS>
 - Connections using Apple's `Network.framework` for iOS via <doc:mqttnio-connections#NIO-Transport-Services>
 - POSIX sockets or <doc:mqttnio-connections#Unix-Domain-Sockets>
@@ -43,6 +43,7 @@ MQTT NIO supports different transport protocols for connecting to the MQTT broke
 
 - TCP sockets (by default)
 - WebSockets connections (see ``MQTTConnectionConfiguration/Transport/WebSocketConfiguration``)
+- QUIC connections (see ``MQTTConnectionConfiguration/Transport/QUICConfiguration``)
 
 The transport protocol can be configured through the ``MQTTConnectionConfiguration/transport`` property.
 

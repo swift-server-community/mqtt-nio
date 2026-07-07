@@ -38,7 +38,7 @@ jobs:
         brew install mosquitto
         mosquitto -d -c mosquitto/config/mosquitto.conf
     - name: SPM tests
-      run: SWIFT_CERTIFICATES_ALLOW_SWIFT_CRYPTO_BETA=1 swift test --enable-code-coverage
+      run: swift test --enable-code-coverage
     - name: Upload coverage data
       uses: vapor/swift-codecov-action@v0.3.5
       with:
@@ -57,7 +57,7 @@ jobs:
       uses: actions/checkout@v7.0.0
     - name: Xcodebuild
       run: |
-        SWIFT_CERTIFICATES_ALLOW_SWIFT_CRYPTO_BETA=1 xcodebuild build -scheme mqtt-nio -destination 'platform=iOS Simulator,name=iPhone 17'
+        xcodebuild build -scheme mqtt-nio -destination 'platform=iOS Simulator,name=iPhone 17'
 
   linux-unit:
     name: Linux Unit Tests
@@ -113,23 +113,23 @@ jobs:
         EMQX_SERVER: emqx
         SWIFT_CERTIFICATES_ALLOW_SWIFT_CRYPTO_BETA: 1 # TODO: Remove everywhere once swift-crypto is no longer in beta
       run: |
-        swift test --enable-code-coverage
+        swift test --enable-code-coverage --traits QUIC
     - name: Upload coverage data
       uses: vapor/swift-codecov-action@v0.3.5
       with:
         codecov_token: ${{ secrets.CODECOV_TOKEN }}
   
-  # android-build:
-  #   name: Android Build
-  #   runs-on: ubuntu-latest
-  #   timeout-minutes: 15
-  #   strategy:
-  #     fail-fast: false
-  #   steps:
-  #     - name: "Checkout"
-  #       uses: actions/checkout@v7.0.0
-  #     - name: "Build for Android"
-  #       uses: skiptools/swift-android-action@v2.9.5
-  #       with:
-  #         build-tests: true
-  #         run-tests: false
+  android-build:
+    name: Android Build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+    steps:
+      - name: "Checkout"
+        uses: actions/checkout@v7.0.0
+      - name: "Build for Android"
+        uses: skiptools/swift-android-action@v2.9.5
+        with:
+          build-tests: true
+          run-tests: false

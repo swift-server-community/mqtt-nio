@@ -300,6 +300,7 @@ public final actor MQTTConnection: Sendable {
                     }
                 }
             connection = try await future.get()
+        #if QUIC
         case .quic:
             guard #available(iOS 26, macOS 26, tvOS 26, watchOS 26, visionOS 26, *) else {
                 // TODO: handle gracefully
@@ -312,6 +313,7 @@ public final actor MQTTConnection: Sendable {
                 eventLoop: eventLoop,
                 logger: logger
             )
+        #endif
         }
         try await connection.waitOnInitialized()
 

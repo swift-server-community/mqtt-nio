@@ -6,6 +6,8 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 
+#if QUIC
+
 import Logging
 import NIOCore
 import NIOPosix
@@ -87,3 +89,5 @@ extension MQTTConnection {
         }
     }
 }
+
+#endif

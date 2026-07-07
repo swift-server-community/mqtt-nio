@@ -13,7 +13,6 @@ import Logging
 import NIOCore
 import NIOFoundationCompat
 import NIOPosix
-import NIOQUIC
 import Synchronization
 import Testing
 
@@ -24,6 +23,10 @@ import NIOTransportServices
 #endif
 #if os(macOS) || os(Linux) || os(Android)
 import NIOSSL
+#endif
+
+#if QUIC
+import NIOQUIC
 #endif
 
 @Suite("Integration Tests")
@@ -140,6 +143,7 @@ struct IntegrationTests {
         }
     }
 
+    #if QUIC
     @available(iOS 26, macOS 26, tvOS 26, watchOS 26, visionOS 26, *)
     @Test("Connect with QUIC")
     func quicConnect() async throws {
@@ -180,6 +184,7 @@ struct IntegrationTests {
             }
         }
     }
+    #endif
 
     @Suite(.serialized)
     struct TLS {
