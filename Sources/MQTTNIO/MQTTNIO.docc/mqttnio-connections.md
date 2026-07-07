@@ -43,7 +43,7 @@ MQTT NIO supports different transport protocols for connecting to the MQTT broke
 
 - TCP sockets (by default)
 - WebSockets connections (see ``MQTTConnectionConfiguration/Transport/WebSocketConfiguration``)
-- QUIC connections (see ``MQTTConnectionConfiguration/Transport/QUICConfiguration``)
+- QUIC connections (see ``MQTTConnectionConfiguration/Transport/QUICConfiguration``). To use QUIC, you need to enable the `"QUIC"` package trait in your `Package.swift` file. QUIC is available on any Apple OS v26 and Linux.
 
 The transport protocol can be configured through the ``MQTTConnectionConfiguration/transport`` property.
 
