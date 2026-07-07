@@ -66,7 +66,10 @@ extension MQTTConnection {
         logger.info("Client created QUIC connection")
 
         return try await connection.createBidirectionalStream { streamInitializer in
-            streamInitializer.channel.eventLoop.makeCompletedFuture {
+            streamInitializer.channel.closeFuture.whenComplete { _ in
+                channel.close(promise: nil)
+            }
+            return streamInitializer.channel.eventLoop.makeCompletedFuture {
                 let handler = try self._setupChannel(
                     streamInitializer.channel,
                     configuration: configuration,
