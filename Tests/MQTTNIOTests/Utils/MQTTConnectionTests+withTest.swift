@@ -114,8 +114,6 @@ extension MQTTConnectionTests {
     ///
     /// - Parameters:
     ///   - subscribeInfos: An array of ``MQTTSubscribeInfo`` to subscribe to for this subscription.
-    ///   - cleanSession: Whether to use a clean session for the connection.
-    ///   - identifier: The client identifier to use for the connection. If not provided, a random UUID string will be used.
     ///   - logger: The logger to use for the test MQTT server. Defaults to the current task-local logger.
     ///   - clientOperation: An async operation to perform for the subscription opened via the connection.
     ///         The opened subscription will be passed as a parameter to this operation.
@@ -123,8 +121,6 @@ extension MQTTConnectionTests {
     ///         The test MQTT server channel will be passed as a parameter to this operation.
     func withTestSubscription(
         subscribeInfos: [MQTTSubscribeInfo],
-        cleanSession: Bool = true,
-        identifier: String = UUID().uuidString,
         logger: Logger = Logger.current,
         client clientOperation: @Sendable @escaping (MQTTSubscription) async throws -> Void,
         server serverOperation: @Sendable @escaping (NIOAsyncTestingChannel) async throws -> Void,
@@ -172,8 +168,6 @@ extension MQTTConnectionTests {
     ///
     /// - Parameters:
     ///   - subscribeInfos: An array of ``MQTTSubscribeInfoV5`` to subscribe to for this subscription.
-    ///   - cleanSession: Whether to use a clean session for the connection.
-    ///   - identifier: The client identifier to use for the connection. If not provided, a random UUID string will be used.
     ///   - logger: The logger to use for the test MQTT server. Defaults to the current task-local logger.
     ///   - clientOperation: An async operation to perform for the subscription opened via the connection.
     ///         The opened subscription will be passed as a parameter to this operation.
@@ -182,8 +176,6 @@ extension MQTTConnectionTests {
     ///         The subscription identifier will also be passed as a parameter.
     func withTestV5Subscription(
         subscribeInfos: [MQTTSubscribeInfoV5],
-        cleanSession: Bool = true,
-        identifier: String = UUID().uuidString,
         logger: Logger = Logger.current,
         client clientOperation: @Sendable @escaping (MQTTSubscription) async throws -> Void,
         server serverOperation: @Sendable @escaping (NIOAsyncTestingChannel, UInt32) async throws -> Void,
@@ -246,7 +238,6 @@ extension MQTTConnectionTests {
     /// - Parameters:
     ///   - subscribeInfos: An array of arrays of ``MQTTSubscribeInfoV5`` to subscribe to.
     ///         Each inner array represents a separate subscription.
-    ///   - session: The ``MQTTSession`` to use for opening the subscriptions.
     ///   - logger: The logger to use for the test MQTT server. Defaults to the current task-local logger.
     ///   - subscribeOperation: An async operation to perform for each subscription opened via the session.
     ///         The opened subscription will be passed as a parameter to this operation.
@@ -256,12 +247,12 @@ extension MQTTConnectionTests {
     ///         The test MQTT server channel will be passed as a parameter to this operation.
     func withTestSessionSubscriptions(
         to subscribeInfos: [[MQTTSubscribeInfoV5]],
-        session: MQTTSession,
         logger: Logger = Logger.current,
         subscribe subscribeOperation: @Sendable @escaping (MQTTSubscription) async throws -> Void,
         client clientOperation: @Sendable @escaping (MQTTConnection) async throws -> Void,
         server serverOperation: @Sendable @escaping (NIOAsyncTestingChannel) async throws -> Void
     ) async throws {
+        let session = MQTTSession(clientID: UUID().uuidString, logger: logger)
         let (stream, cont) = AsyncStream.makeStream(of: Void.self)
         try await withTestMQTTServer(session: session, logger: logger) { connection in
             try await withThrowingTaskGroup { group in
@@ -314,7 +305,6 @@ extension MQTTConnectionTests {
     ///
     /// - Parameters:
     ///   - subscribeInfos: An array of ``MQTTSubscribeInfoV5`` to subscribe to for this subscription.
-    ///   - session: The ``MQTTSession`` to use for opening the subscription.
     ///   - logger: The logger to use for the test MQTT server. Defaults to the current task-local logger.
     ///   - subscribeOperation: An async operation to perform for the subscription opened via the session.
     ///         The opened subscription will be passed as a parameter to this operation.
@@ -324,7 +314,6 @@ extension MQTTConnectionTests {
     ///         The test MQTT server channel will be passed as a parameter to this operation.
     func withTestSessionSubscription(
         to subscribeInfos: [MQTTSubscribeInfoV5],
-        session: MQTTSession,
         logger: Logger = Logger.current,
         subscribe subscribeOperation: @Sendable @escaping (MQTTSubscription) async throws -> Void,
         client clientOperation: @Sendable @escaping (MQTTConnection) async throws -> Void,
@@ -332,7 +321,6 @@ extension MQTTConnectionTests {
     ) async throws {
         try await withTestSessionSubscriptions(
             to: [subscribeInfos],
-            session: session,
             logger: logger,
             subscribe: subscribeOperation,
             client: clientOperation,

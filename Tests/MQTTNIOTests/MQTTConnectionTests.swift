@@ -589,12 +589,7 @@ struct MQTTConnectionTests {
     @Test("Subscription with Session")
     func subscriptionWithSession() async throws {
         try await withLogger(Logger(label: #function).withLogLevel(.trace)) { _ in
-            let session = MQTTSession(clientID: "subscriptionWithSession")
-
-            try await withTestSessionSubscription(
-                to: [.init(topicFilter: "testTopic", qos: .atLeastOnce)],
-                session: session
-            ) { subscription in
+            try await withTestSessionSubscription(to: [.init(topicFilter: "testTopic", qos: .atLeastOnce)]) { subscription in
                 var iterator = subscription.makeAsyncIterator()
                 let event = try #require(try await iterator.next())
                 #expect(event.payload == ByteBuffer(string: "TestPayload"))
@@ -623,49 +618,46 @@ struct MQTTConnectionTests {
 
     @Test("Wait Until No Active Subscriptions")
     func waitUntilNoActiveSubscriptions() async throws {
-        let logger = Logger(label: #function).withLogLevel(.trace)
-        let session = MQTTSession(clientID: "waitUntilNoActiveSubscriptions", logger: logger)
-
         let subscribeInfos: [[MQTTSubscribeInfoV5]] = [
             [.init(topicFilter: "testTopic1", qos: .atMostOnce)],
             [.init(topicFilter: "testTopic2", qos: .atMostOnce)],
             [.init(topicFilter: "testTopic3", qos: .atMostOnce)],
         ]
 
-        try await withTestSessionSubscriptions(
-            to: subscribeInfos,
-            session: session,
-            logger: logger
-        ) { subscription in
-            var iterator = subscription.makeAsyncIterator()
-            let event = try #require(try await iterator.next())
-            #expect(event.payload == ByteBuffer(string: "TestPayload"))
-        } client: { connection in
-            try await connection.waitUntilNoActiveSubscriptions()
-        } server: { channel in
-            for subscribeInfo in subscribeInfos {
-                // Send PUBLISH
-                let publish = MQTTPublishPacket(
-                    publish: .init(
-                        qos: .atMostOnce,
-                        retain: false,
-                        topicName: subscribeInfo.first!.topicFilter,
-                        payload: ByteBuffer(string: "TestPayload"),
-                        properties: .init()
-                    ),
-                    packetId: 32768
-                )
-                try await channel.writeInboundPacket(publish, version: .v3_1_1)
+        try await withLogger(Logger(label: #function).withLogLevel(.trace)) { _ in
+            try await withTestSessionSubscriptions(to: subscribeInfos) { subscription in
+                var iterator = subscription.makeAsyncIterator()
+                let event = try #require(try await iterator.next())
+                #expect(event.payload == ByteBuffer(string: "TestPayload"))
+            } client: { connection in
+                try await connection.waitUntilNoActiveSubscriptions()
+            } server: { channel in
+                for subscribeInfo in subscribeInfos {
+                    // Send PUBLISH
+                    let publish = MQTTPublishPacket(
+                        publish: .init(
+                            qos: .atMostOnce,
+                            retain: false,
+                            topicName: subscribeInfo.first!.topicFilter,
+                            payload: ByteBuffer(string: "TestPayload"),
+                            properties: .init()
+                        ),
+                        packetId: 32768
+                    )
+                    try await channel.writeInboundPacket(publish, version: .v3_1_1)
+                }
             }
         }
     }
 
     @Test("Wait with No Active Subscriptions")
     func waitWithNoActiveSubscriptions() async throws {
-        try await withTestMQTTServer(logger: Logger(label: #function).withLogLevel(.trace)) { connection in
-            // Should return immediately as there are no active subscriptions
-            try await connection.waitUntilNoActiveSubscriptions()
-        } server: { _ in
+        try await withLogger(Logger(label: #function).withLogLevel(.trace)) { _ in
+            try await withTestMQTTServer { connection in
+                // Should return immediately as there are no active subscriptions
+                try await connection.waitUntilNoActiveSubscriptions()
+            } server: { _ in
+            }
         }
     }
 }
