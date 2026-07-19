@@ -23,7 +23,7 @@ extension MQTTConnectionTests {
     /// - Parameters:
     ///   - configuration: The configuration to use for the MQTT connection.
     ///   - session: The MQTT session to use for the connection.
-    ///   - logger: The logger to use for logging MQTT events.
+    ///   - logger: The logger to use for logging MQTT events. Defaults to the current task-local logger.
     ///   - connackProperties: The properties to include in the CONNACK packet.
     ///   - clientOperation: An async operation to perform for the client side of the test.
     ///         The ``MQTTConnection`` will be passed as a parameter to this operation.
@@ -31,8 +31,8 @@ extension MQTTConnectionTests {
     ///         The test MQTT server channel will be passed as a parameter to this operation.
     func withTestMQTTServer(
         configuration: MQTTConnectionConfiguration = .init(),
-        session: MQTTSession = MQTTSession(clientID: "", logger: Logger(label: "test_session")),
-        logger: Logger,
+        session: MQTTSession = MQTTSession(clientID: ""),
+        logger: Logger = Logger.current,
         connackProperties: MQTTProperties = .init(),
         client clientOperation: @Sendable @escaping (MQTTConnection) async throws -> Void,
         server serverOperation: @Sendable @escaping (NIOAsyncTestingChannel) async throws -> Void,
@@ -116,7 +116,7 @@ extension MQTTConnectionTests {
     ///   - subscribeInfos: An array of ``MQTTSubscribeInfo`` to subscribe to for this subscription.
     ///   - cleanSession: Whether to use a clean session for the connection.
     ///   - identifier: The client identifier to use for the connection. If not provided, a random UUID string will be used.
-    ///   - logger: The logger to use for the test MQTT server.
+    ///   - logger: The logger to use for the test MQTT server. Defaults to the current task-local logger.
     ///   - clientOperation: An async operation to perform for the subscription opened via the connection.
     ///         The opened subscription will be passed as a parameter to this operation.
     ///   - serverOperation: An async operation to perform for the subscription on the server side.
@@ -125,7 +125,7 @@ extension MQTTConnectionTests {
         subscribeInfos: [MQTTSubscribeInfo],
         cleanSession: Bool = true,
         identifier: String = UUID().uuidString,
-        logger: Logger,
+        logger: Logger = Logger.current,
         client clientOperation: @Sendable @escaping (MQTTSubscription) async throws -> Void,
         server serverOperation: @Sendable @escaping (NIOAsyncTestingChannel) async throws -> Void,
     ) async throws {
@@ -174,7 +174,7 @@ extension MQTTConnectionTests {
     ///   - subscribeInfos: An array of ``MQTTSubscribeInfoV5`` to subscribe to for this subscription.
     ///   - cleanSession: Whether to use a clean session for the connection.
     ///   - identifier: The client identifier to use for the connection. If not provided, a random UUID string will be used.
-    ///   - logger: The logger to use for the test MQTT server.
+    ///   - logger: The logger to use for the test MQTT server. Defaults to the current task-local logger.
     ///   - clientOperation: An async operation to perform for the subscription opened via the connection.
     ///         The opened subscription will be passed as a parameter to this operation.
     ///   - serverOperation: An async operation to perform for the subscription on the server side.
@@ -184,7 +184,7 @@ extension MQTTConnectionTests {
         subscribeInfos: [MQTTSubscribeInfoV5],
         cleanSession: Bool = true,
         identifier: String = UUID().uuidString,
-        logger: Logger,
+        logger: Logger = Logger.current,
         client clientOperation: @Sendable @escaping (MQTTSubscription) async throws -> Void,
         server serverOperation: @Sendable @escaping (NIOAsyncTestingChannel, UInt32) async throws -> Void,
     ) async throws {
@@ -247,7 +247,7 @@ extension MQTTConnectionTests {
     ///   - subscribeInfos: An array of arrays of ``MQTTSubscribeInfoV5`` to subscribe to.
     ///         Each inner array represents a separate subscription.
     ///   - session: The ``MQTTSession`` to use for opening the subscriptions.
-    ///   - logger: The logger to use for the test MQTT server.
+    ///   - logger: The logger to use for the test MQTT server. Defaults to the current task-local logger.
     ///   - subscribeOperation: An async operation to perform for each subscription opened via the session.
     ///         The opened subscription will be passed as a parameter to this operation.
     ///   - clientOperation: An async operation to perform for the client side of the test.
@@ -257,7 +257,7 @@ extension MQTTConnectionTests {
     func withTestSessionSubscriptions(
         to subscribeInfos: [[MQTTSubscribeInfoV5]],
         session: MQTTSession,
-        logger: Logger,
+        logger: Logger = Logger.current,
         subscribe subscribeOperation: @Sendable @escaping (MQTTSubscription) async throws -> Void,
         client clientOperation: @Sendable @escaping (MQTTConnection) async throws -> Void,
         server serverOperation: @Sendable @escaping (NIOAsyncTestingChannel) async throws -> Void
@@ -315,7 +315,7 @@ extension MQTTConnectionTests {
     /// - Parameters:
     ///   - subscribeInfos: An array of ``MQTTSubscribeInfoV5`` to subscribe to for this subscription.
     ///   - session: The ``MQTTSession`` to use for opening the subscription.
-    ///   - logger: The logger to use for the test MQTT server.
+    ///   - logger: The logger to use for the test MQTT server. Defaults to the current task-local logger.
     ///   - subscribeOperation: An async operation to perform for the subscription opened via the session.
     ///         The opened subscription will be passed as a parameter to this operation.
     ///   - clientOperation: An async operation to perform for the client side of the test.
@@ -325,7 +325,7 @@ extension MQTTConnectionTests {
     func withTestSessionSubscription(
         to subscribeInfos: [MQTTSubscribeInfoV5],
         session: MQTTSession,
-        logger: Logger,
+        logger: Logger = Logger.current,
         subscribe subscribeOperation: @Sendable @escaping (MQTTSubscription) async throws -> Void,
         client clientOperation: @Sendable @escaping (MQTTConnection) async throws -> Void,
         server serverOperation: @Sendable @escaping (NIOAsyncTestingChannel) async throws -> Void

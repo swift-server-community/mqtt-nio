@@ -91,13 +91,14 @@ struct IntegrationTests {
 
     @Test("Keep Alive Ping")
     func keepAlivePing() async throws {
-        try await MQTTConnection.withConnection(
-            address: .hostname(Self.hostname),
-            configuration: .init(pingConfiguration: .pingInterval(.seconds(2))),
-            identifier: "keepAlivePing",
-            logger: Logger(label: #function).withLogLevel(.trace)
-        ) { connection in
-            try await Task.sleep(for: .seconds(5))
+        try await withLogger(Logger(label: #function).withLogLevel(.trace)) { _ in
+            try await MQTTConnection.withConnection(
+                address: .hostname(Self.hostname),
+                configuration: .init(pingConfiguration: .pingInterval(.seconds(2))),
+                identifier: "keepAlivePing"
+            ) { connection in
+                try await Task.sleep(for: .seconds(5))
+            }
         }
     }
 
