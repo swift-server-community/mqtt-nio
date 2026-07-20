@@ -12,8 +12,7 @@ You can also provide a v5 authentication workflow as an ``MQTTAuthenticator``.
 try await MQTTConnection.withConnection(
     address: .hostname(host),
     configuration: .init(versionConfiguration: .v5_0()),
-    identifier: "My V5 Client",
-    logger: Logger(...)
+    identifier: "My V5 Client"
 ) { connection in
     // You are now connected to the MQTT v5 broker
 }
