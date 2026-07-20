@@ -545,7 +545,7 @@ public final actor MQTTConnection: Sendable {
         _ channel: any Channel,
         configuration: MQTTConnectionConfiguration = .init(),
         session: MQTTSessionStorage,
-        logger: Logger
+        logger: Logger = Logger.current
     ) async throws -> MQTTConnection {
         if !channel.eventLoop.inEventLoop {
             return try await channel.eventLoop.flatSubmit {
