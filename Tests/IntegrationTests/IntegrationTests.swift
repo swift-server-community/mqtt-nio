@@ -25,7 +25,7 @@ import NIOTransportServices
 import NIOSSL
 #endif
 
-@Suite("Integration Tests", .defaultLogger)
+@Suite("Integration Tests", .defaultLogger(logLevel: .trace))
 struct IntegrationTests {
     static let hostname = ProcessInfo.processInfo.environment["MOSQUITTO_SERVER"] ?? "localhost"
 

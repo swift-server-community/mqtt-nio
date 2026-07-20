@@ -14,7 +14,7 @@ import Testing
 
 @testable import MQTTNIO
 
-@Suite("MQTTConnection Tests", .defaultLogger)
+@Suite("MQTTConnection Tests", .defaultLogger(logLevel: .trace))
 struct MQTTConnectionTests {
     @Test
     func testConnectDisconnect() async throws {

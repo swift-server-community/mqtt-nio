@@ -7,6 +7,7 @@
 //
 
 import Foundation
+import Logging
 import NIOCore
 import NIOFoundationCompat
 import Testing
@@ -20,7 +21,7 @@ import NIOTransportServices
 import NIOSSL
 #endif
 
-@Suite("Integration v5 protocol Tests", .defaultLogger)
+@Suite("Integration v5 protocol Tests", .defaultLogger(logLevel: .trace))
 struct IntegrationV5Tests {
     static let hostname = ProcessInfo.processInfo.environment["MOSQUITTO_SERVER"] ?? "localhost"
 

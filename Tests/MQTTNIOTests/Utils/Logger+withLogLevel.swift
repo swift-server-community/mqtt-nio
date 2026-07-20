@@ -18,6 +18,8 @@ extension Logger {
 }
 
 struct DefaultLoggerTrait: TestTrait, SuiteTrait, TestScoping {
+    let logLevel: Logger.Level
+
     var isRecursive: Bool { true }
 
     func provideScope(
@@ -25,7 +27,7 @@ struct DefaultLoggerTrait: TestTrait, SuiteTrait, TestScoping {
         testCase: Test.Case?,
         performing function: @concurrent @Sendable () async throws -> Void
     ) async throws {
-        try await withLogger(Logger(label: test.displayName ?? test.name).withLogLevel(.trace)) { _ in
+        try await withLogger(Logger(label: test.displayName ?? test.name).withLogLevel(logLevel)) { _ in
             try await function()
         }
     }
@@ -34,6 +36,6 @@ struct DefaultLoggerTrait: TestTrait, SuiteTrait, TestScoping {
 extension Trait where Self == DefaultLoggerTrait {
     /// A trait that provides a default task-local `Logger` for all tests and suites.
     ///
-    /// The logger is configured with a log level of `trace` and a label that corresponds to the test display name.
-    static var defaultLogger: Self { Self() }
+    /// The logger is configured with the provided log level and a label that corresponds to the test display name.
+    static func defaultLogger(logLevel: Logger.Level) -> Self { Self(logLevel: logLevel) }
 }
