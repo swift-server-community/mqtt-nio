@@ -31,8 +31,8 @@ public final class MQTTSession: Sendable {
     ///
     /// - Parameters:
     ///   - clientID: Client identifier to use for this session. This must be unique.
-    ///   - logger: Logger to use for this session.
-    public init(clientID: String, logger: Logger) {
+    ///   - logger: Logger to use for this session. Defaults to the current task-local logger.
+    public init(clientID: String, logger: Logger = Logger.current) {
         (self.subscriptionsQueue, self.subscriptionsQueueContinuation) = AsyncStream.makeStream()
         self.logger = logger
         self.storage = .init(.init(clientID: clientID, logger: logger))

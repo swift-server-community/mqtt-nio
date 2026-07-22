@@ -21,7 +21,7 @@ import NIOTransportServices
 import NIOSSL
 #endif
 
-@Suite("Integration v5 protocol Tests")
+@Suite("Integration v5 protocol Tests", .defaultLogger(logLevel: .trace))
 struct IntegrationV5Tests {
     static let hostname = ProcessInfo.processInfo.environment["MOSQUITTO_SERVER"] ?? "localhost"
 
@@ -30,8 +30,7 @@ struct IntegrationV5Tests {
         try await MQTTConnection.withConnection(
             address: .hostname(Self.hostname),
             configuration: .init(versionConfiguration: .v5_0()),
-            identifier: "connectV5",
-            logger: Logger(label: #function).withLogLevel(.trace)
+            identifier: "connectV5"
         ) { connection in
             try await connection.ping()
         }
@@ -42,8 +41,7 @@ struct IntegrationV5Tests {
         try await MQTTConnection.withConnection(
             address: .hostname(Self.hostname),
             configuration: .init(versionConfiguration: .v5_0()),
-            identifier: "willSubscriptionV5",
-            logger: Logger(label: #function).withLogLevel(.trace)
+            identifier: "willSubscriptionV5"
         ) { connection in
             try await withThrowingTaskGroup { group in
                 group.addTask {
@@ -67,8 +65,7 @@ struct IntegrationV5Tests {
                             )
                         )
                     ),
-                    identifier: "connectWithWillV5",
-                    logger: Logger(label: #function).withLogLevel(.trace)
+                    identifier: "connectWithWillV5"
                 ) { connection in
                     // force connection to close
                     _ = try await connection.sendPacket(MQTTForceDisconnectMessage()) { _ in true }
@@ -90,8 +87,7 @@ struct IntegrationV5Tests {
         try await MQTTConnection.withConnection(
             address: .hostname(Self.hostname),
             configuration: .init(versionConfiguration: .v5_0(connectProperties: .init([property]))),
-            identifier: "connectWithPropertyV5_\(property)",
-            logger: Logger(label: #function).withLogLevel(.trace)
+            identifier: "connectWithPropertyV5_\(property)"
         ) { connection in
             try await connection.ping()
         }
@@ -99,12 +95,11 @@ struct IntegrationV5Tests {
 
     @Test("Connect with No Identifier")
     func connectWithNoIdentifier() async throws {
-        let session = MQTTSession(clientID: "", logger: Logger(label: #function).withLogLevel(.trace))
+        let session = MQTTSession(clientID: "")
         try await MQTTConnection.withConnection(
             address: .hostname(Self.hostname),
             configuration: .init(versionConfiguration: .v5_0()),
-            session: session,
-            logger: Logger(label: #function).withLogLevel(.trace)
+            session: session
         ) { connection, sessionPresent in
         }
         #expect(try !session.storage.borrow { $0.clientID }.isEmpty)
@@ -115,8 +110,7 @@ struct IntegrationV5Tests {
         try await MQTTConnection.withConnection(
             address: .hostname(Self.hostname),
             configuration: .init(versionConfiguration: .v5_0()),
-            identifier: "publishV5QoS\(qos.rawValue)WithProperty\(String(describing: property))",
-            logger: Logger(label: #function).withLogLevel(.trace)
+            identifier: "publishV5QoS\(qos.rawValue)WithProperty\(String(describing: property))"
         ) { connection in
             let properties: MQTTProperties = if let property { .init([property]) } else { .init() }
             _ = try await connection.v5.publish(
@@ -136,8 +130,7 @@ struct IntegrationV5Tests {
         try await MQTTConnection.withConnection(
             address: .hostname(Self.hostname),
             configuration: .init(versionConfiguration: .v5_0()),
-            identifier: "subscribeFlagsV5",
-            logger: Logger(label: #function).withLogLevel(.trace)
+            identifier: "subscribeFlagsV5"
         ) { connection in
             try await withThrowingTaskGroup { group in
                 group.addTask {
@@ -185,8 +178,7 @@ struct IntegrationV5Tests {
         try await MQTTConnection.withConnection(
             address: .hostname(Self.hostname),
             configuration: .init(versionConfiguration: .v5_0()),
-            identifier: "contentTypeV5",
-            logger: Logger(label: #function).withLogLevel(.trace)
+            identifier: "contentTypeV5"
         ) { connection in
             try await withThrowingTaskGroup { group in
                 group.addTask {
@@ -225,8 +217,7 @@ struct IntegrationV5Tests {
         try await MQTTConnection.withConnection(
             address: .hostname(Self.hostname),
             configuration: .init(versionConfiguration: .v5_0()),
-            identifier: "userPropertyV5",
-            logger: Logger(label: #function).withLogLevel(.trace)
+            identifier: "userPropertyV5"
         ) { connection in
             try await withThrowingTaskGroup { group in
                 group.addTask {
@@ -259,7 +250,7 @@ struct IntegrationV5Tests {
 
     @Test("Session Expiry Interval")
     func sessionExpiryInterval() async throws {
-        let session = MQTTSession(clientID: "sessionExpiryIntervalV5", logger: Logger(label: #function).withLogLevel(.trace))
+        let session = MQTTSession(clientID: "sessionExpiryIntervalV5")
         try await MQTTConnection.withConnection(
             address: .hostname(Self.hostname),
             configuration: .init(
@@ -268,8 +259,7 @@ struct IntegrationV5Tests {
                     disconnectProperties: [.sessionExpiryInterval(0)]
                 )
             ),
-            session: session,
-            logger: Logger(label: #function).withLogLevel(.trace)
+            session: session
         ) { connection, sessionPresent in
             // First connection with this session, `sessionPresent` should be false
             #expect(sessionPresent == false)
@@ -293,8 +283,7 @@ struct IntegrationV5Tests {
                             disconnectProperties: [.sessionExpiryInterval(3600)]
                         )
                     ),
-                    session: session,
-                    logger: Logger(label: #function).withLogLevel(.trace)
+                    session: session
                 ) { connection, sessionPresent in
                     // We used the same session in the previous connection,
                     // but the Session Expiry Interval was set to 0
@@ -311,8 +300,7 @@ struct IntegrationV5Tests {
                             disconnectProperties: [.sessionExpiryInterval(4)]
                         )
                     ),
-                    session: session,
-                    logger: Logger(label: #function).withLogLevel(.trace)
+                    session: session
                 ) { connection, sessionPresent in
                     // We used the same session in the previous connection,
                     // and the Session Expiry Interval was long enough for the session to still be valid
@@ -326,8 +314,7 @@ struct IntegrationV5Tests {
                 try await MQTTConnection.withConnection(
                     address: .hostname(Self.hostname),
                     configuration: .init(versionConfiguration: .v5_0()),
-                    session: session,
-                    logger: Logger(label: #function).withLogLevel(.trace)
+                    session: session
                 ) { connection, sessionPresent in
                     // We used the same session in the previous connection,
                     // but the session should have expired by now
@@ -346,8 +333,7 @@ struct IntegrationV5Tests {
             try await MQTTConnection.withConnection(
                 address: .hostname(Self.hostname),
                 configuration: .init(versionConfiguration: .v5_0(connectProperties: [.authenticationMethod("test")])),
-                identifier: "badAuthenticationMethodV5",
-                logger: Logger(label: #function).withLogLevel(.trace)
+                identifier: "badAuthenticationMethodV5"
             ) { _ in }
         }
     }
@@ -357,8 +343,7 @@ struct IntegrationV5Tests {
         try await MQTTConnection.withConnection(
             address: .hostname(Self.hostname),
             configuration: .init(versionConfiguration: .v5_0()),
-            identifier: "invalidTopicNameV5",
-            logger: Logger(label: #function).withLogLevel(.trace)
+            identifier: "invalidTopicNameV5"
         ) { connection in
             _ = await #expect(throws: MQTTPacketError.invalidTopicName) {
                 try await connection.v5.publish(
@@ -376,8 +361,7 @@ struct IntegrationV5Tests {
         try await MQTTConnection.withConnection(
             address: .hostname(Self.hostname),
             configuration: .init(versionConfiguration: .v5_0()),
-            identifier: "badPublishV5",
-            logger: Logger(label: #function).withLogLevel(.trace)
+            identifier: "badPublishV5"
         ) { connection in
             let error = await #expect(throws: MQTTError.self) {
                 try await connection.v5.publish(
@@ -402,8 +386,7 @@ struct IntegrationV5Tests {
         try await MQTTConnection.withConnection(
             address: .hostname(Self.hostname),
             configuration: .init(versionConfiguration: .v5_0()),
-            identifier: "outOfRangeTopicAliasV5",
-            logger: Logger(label: #function).withLogLevel(.trace)
+            identifier: "outOfRangeTopicAliasV5"
         ) { connection in
             _ = await #expect(throws: MQTTPacketError.topicAliasOutOfRange) {
                 try await connection.v5.publish(
@@ -421,8 +404,7 @@ struct IntegrationV5Tests {
         try await MQTTConnection.withConnection(
             address: .hostname(Self.hostname),
             configuration: .init(versionConfiguration: .v5_0()),
-            identifier: "publishWithSubscriptionIDV5",
-            logger: Logger(label: #function).withLogLevel(.trace)
+            identifier: "publishWithSubscriptionIDV5"
         ) { connection in
             _ = await #expect(throws: MQTTPacketError.publishIncludesSubscription) {
                 try await connection.v5.publish(
@@ -440,8 +422,7 @@ struct IntegrationV5Tests {
         try await MQTTConnection.withConnection(
             address: .hostname(Self.hostname),
             configuration: .init(versionConfiguration: .v5_0()),
-            identifier: "reAuthV5",
-            logger: Logger(label: #function).withLogLevel(.trace)
+            identifier: "reAuthV5"
         ) { connection in
             struct EmptyAuthenticator: MQTTAuthenticator {
                 var methodName: String { "Empty" }
@@ -469,8 +450,7 @@ struct IntegrationV5Tests {
         try await MQTTConnection.withConnection(
             address: .hostname("broker.hivemq.com"),
             configuration: .init(versionConfiguration: .v5_0()),
-            identifier: "subscribeAllV5",
-            logger: Logger(label: #function).withLogLevel(.trace)
+            identifier: "subscribeAllV5"
         ) { connection in
             try await connection.v5.subscribe(to: [.init(topicFilter: "test/#", qos: .exactlyOnce)]) { _ in
                 try await Task.sleep(for: .seconds(5))
@@ -483,8 +463,7 @@ struct IntegrationV5Tests {
         try await MQTTConnection.withConnection(
             address: .hostname(Self.hostname),
             configuration: .init(versionConfiguration: .v5_0()),
-            identifier: "multiLevelWildcardV5",
-            logger: Logger(label: #function).withLogLevel(.trace)
+            identifier: "multiLevelWildcardV5"
         ) { connection in
             try await withThrowingTaskGroup { group in
                 group.addTask {
@@ -534,8 +513,7 @@ struct IntegrationV5Tests {
         try await MQTTConnection.withConnection(
             address: .hostname(Self.hostname),
             configuration: .init(versionConfiguration: .v5_0()),
-            identifier: "singleLevelWildcardV5",
-            logger: Logger(label: #function).withLogLevel(.trace)
+            identifier: "singleLevelWildcardV5"
         ) { connection in
             try await withThrowingTaskGroup { group in
                 group.addTask {
@@ -587,8 +565,7 @@ struct IntegrationV5Tests {
         try await MQTTConnection.withConnection(
             address: .hostname(Self.hostname),
             configuration: .init(versionConfiguration: .v5_0()),
-            identifier: "overlappingSubscriptionsV5",
-            logger: Logger(label: #function).withLogLevel(.trace)
+            identifier: "overlappingSubscriptionsV5"
         ) { connection in
             try await withThrowingTaskGroup { group in
                 group.addTask {
@@ -630,8 +607,7 @@ struct IntegrationV5Tests {
         try await MQTTConnection.withConnection(
             address: .hostname(Self.hostname),
             configuration: .init(versionConfiguration: .v5_0()),
-            identifier: "maximumPacketSizeV5QoS\(qos.rawValue)",
-            logger: Logger(label: #function).withLogLevel(.trace)
+            identifier: "maximumPacketSizeV5QoS\(qos.rawValue)"
         ) { connection in
             let largePayload = ByteBufferAllocator().buffer(repeating: 0xFF, count: 150_000)
             await #expect(throws: MQTTError.packetTooLarge) {

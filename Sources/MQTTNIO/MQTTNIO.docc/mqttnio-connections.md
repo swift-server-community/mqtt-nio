@@ -12,17 +12,51 @@ When the closure returns, the connection will be closed.
 ```swift
 try await MQTTConnection.withConnection(
     address: .hostname("mqtt.eclipse.org"),
-    identifier: "My Client",
-    logger: Logger(...)
+    identifier: "My Client"
 ) { connection in
     // You are now connected to the MQTT broker
     // The connection will be active only inside this closure
 }
 ```
 
+You can wait for the connection to be closed, either by the client (by returning from the closure, calling ``MQTTConnection/close()`` or throwing an error) or by the server, with the ``MQTTConnection/waitOnClose()`` method.
+
+### MQTT v5.0
+
 If you establish a MQTT v5.0 connection (see <doc:mqttnio-v5>), you can define ``MQTTProperties`` to be sent with the `CONNECT` and `DISCONNECT` packets in the ``MQTTConnectionConfiguration/versionConfiguration``.
 
-You can wait for the connection to be closed, either by the client (by returning from the closure, calling ``MQTTConnection/close()`` or throwing an error) or by the server, with the ``MQTTConnection/waitOnClose()`` method.
+### Logging
+
+By default, `withConnection` uses the current task-local logger ([`Logger.current`](https://swiftpackageindex.com/apple/swift-log/documentation/logging/logger/current)), which by default is a `Logger` with an empty label and a log level of `.info`.
+
+You can set a custom logger for the connection by passing it via a parameter to the `withConnection` method, or you can wrap the connection creation code within a `withLogger` closure, which will set a task-local logger.
+
+```swift
+// Your custom logger
+var myLogger = Logger(label: "com.example.mqtt")
+myLogger.logLevel = .trace
+
+// Either pass the logger to the `withConnection` method
+try await MQTTConnection.withConnection(
+    address: .hostname("mqtt.eclipse.org"),
+    identifier: "My Client",
+    logger: myLogger
+) { connection in
+    // Connection events will be logged with `myLogger`
+}
+
+// Or wrap the connection creation code within a `withLogger` closure
+try await withLogger(myLogger) { _ in
+    try await MQTTConnection.withConnection(
+        address: .hostname("mqtt.eclipse.org"),
+        identifier: "My Client"
+    ) { connection in
+        // Connection events will be logged with `myLogger`
+    }
+}
+```
+
+### Different types of connections
 
 The available variants of `withConnection` are:
 - ``MQTTConnection/withConnection(address:configuration:identifier:eventLoop:logger:operation:)-(_,_,_,_,_,(MQTTConnection)->Value)``
@@ -51,8 +85,7 @@ The transport protocol can be configured through the ``MQTTConnectionConfigurati
 try await MQTTConnection.withConnection(
     address: .hostname("test.mosquitto.org", port: 8080),
     configuration: .init(transport: .webSocket(.init(...))),
-    identifier: "My WebSocket Client",
-    logger: Logger(...)
+    identifier: "My WebSocket Client"
 ) { connection in
     // Connected to the broker via WebSockets
 }
@@ -78,8 +111,7 @@ let tlsConfiguration: TLSConfiguration? = TLSConfiguration.forClient(
 try await MQTTConnection.withConnection(
     address: .hostname("test.mosquitto.org", port: 8884),
     configuration: .init(transport: .tcp(tls: .enable(.niossl(tlsConfiguration)))),
-    identifier: "My SSL Client",
-    logger: Logger(...)
+    identifier: "My SSL Client"
 ) { connection in
     // Connected to the broker with an encrypted connection
 }
@@ -103,8 +135,7 @@ MQTT NIO can connect to a local MQTT broker via a Unix Domain Socket.
 ```swift
 try await MQTTConnection.withConnection(
     address: .unixDomainSocket(path: "/path/to/broker.socket"),
-    identifier: "My UDS Client",
-    logger: Logger(...)
+    identifier: "My UDS Client"
 ) { connection in
     // Connected to the broker via a Unix Domain Socket
 }
