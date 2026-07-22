@@ -25,7 +25,7 @@ import NIOTransportServices
 import NIOSSL
 #endif
 
-@Suite("Integration Tests")
+@Suite("Integration Tests", .defaultLogger(logLevel: .trace))
 struct IntegrationTests {
     static let hostname = ProcessInfo.processInfo.environment["MOSQUITTO_SERVER"] ?? "localhost"
 
@@ -33,8 +33,7 @@ struct IntegrationTests {
     func connectWithWill() async throws {
         try await MQTTConnection.withConnection(
             address: .hostname(Self.hostname),
-            identifier: "willSubscription",
-            logger: Logger(label: #function).withLogLevel(.trace)
+            identifier: "willSubscription"
         ) { connection in
             try await withThrowingTaskGroup { group in
                 group.addTask {
@@ -56,8 +55,7 @@ struct IntegrationTests {
                             )
                         )
                     ),
-                    identifier: "connectWithWill",
-                    logger: Logger(label: #function).withLogLevel(.trace)
+                    identifier: "connectWithWill"
                 ) { connection in
                     // force connection to close
                     _ = try await connection.sendPacket(MQTTForceDisconnectMessage()) { _ in true }
@@ -94,8 +92,7 @@ struct IntegrationTests {
         try await MQTTConnection.withConnection(
             address: .hostname(Self.hostname),
             configuration: .init(pingConfiguration: .pingInterval(.seconds(2))),
-            identifier: "keepAlivePing",
-            logger: Logger(label: #function).withLogLevel(.trace)
+            identifier: "keepAlivePing"
         ) { connection in
             try await Task.sleep(for: .seconds(5))
         }
@@ -106,8 +103,7 @@ struct IntegrationTests {
         try await MQTTConnection.withConnection(
             address: .hostname(Self.hostname, port: 1884),
             configuration: .init(userName: "mqttnio", password: "mqttnio-password"),
-            identifier: "connectWithUsernameAndPassword",
-            logger: Logger(label: #function).withLogLevel(.trace)
+            identifier: "connectWithUsernameAndPassword"
         ) { connection in
             try await connection.ping()
         }
@@ -119,8 +115,7 @@ struct IntegrationTests {
             try await MQTTConnection.withConnection(
                 address: .hostname(Self.hostname, port: 1884),
                 configuration: .init(userName: "wrong", password: "wrong"),
-                identifier: "connectWithWrongUsernameAndPassword",
-                logger: Logger(label: #function).withLogLevel(.trace)
+                identifier: "connectWithWrongUsernameAndPassword"
             ) { connection in
                 try await connection.ping()
             }
@@ -132,8 +127,7 @@ struct IntegrationTests {
         try await MQTTConnection.withConnection(
             address: .hostname(Self.hostname, port: 8080),
             configuration: .init(transport: .webSocket(.init())),
-            identifier: "webSocketConnect",
-            logger: Logger(label: #function).withLogLevel(.trace)
+            identifier: "webSocketConnect"
         ) { connection in
             try await connection.ping()
         }
@@ -163,8 +157,7 @@ struct IntegrationTests {
                 address: .hostname(Self.hostname, port: 8883),
                 configuration: .init(transport: .tcp(tls: .enable(self.getTLSConfiguration(), tlsServerName: "soto.codes"))),
                 identifier: "tlsConnect",
-                eventLoop: Self.eventLoopGroupSingleton.any(),
-                logger: Logger(label: #function).withLogLevel(.trace)
+                eventLoop: Self.eventLoopGroupSingleton.any()
             ) { connection in
                 try await connection.ping()
             }
@@ -179,8 +172,7 @@ struct IntegrationTests {
                     transport: .webSocket(.init(), tls: .enable(self.getTLSConfiguration(), tlsServerName: "soto.codes"))
                 ),
                 identifier: "webSocketAndTLSConnect",
-                eventLoop: Self.eventLoopGroupSingleton.any(),
-                logger: Logger(label: #function).withLogLevel(.trace)
+                eventLoop: Self.eventLoopGroupSingleton.any()
             ) { connection in
                 try await connection.ping()
             }
@@ -208,8 +200,7 @@ struct IntegrationTests {
                     )
                 ),
                 identifier: "tlsConnectFromP12",
-                eventLoop: Self.eventLoopGroupSingleton.any(),
-                logger: Logger(label: #function).withLogLevel(.trace)
+                eventLoop: Self.eventLoopGroupSingleton.any()
             ) { connection in
                 try await connection.ping()
             }
@@ -231,8 +222,7 @@ struct IntegrationTests {
                 address: .hostname(Self.hostname, port: 8883),
                 configuration: .init(config: configReader),
                 identifier: "tlsConnectWithConfigReader",
-                eventLoop: Self.eventLoopGroupSingleton.any(),
-                logger: Logger(label: #function).withLogLevel(.trace)
+                eventLoop: Self.eventLoopGroupSingleton.any()
             ) { connection in
                 try await connection.ping()
             }
@@ -277,8 +267,7 @@ struct IntegrationTests {
     func unixDomainSocketConnect() async throws {
         try await MQTTConnection.withConnection(
             address: .unixDomainSocket(path: Self.rootPath + "/mosquitto/socket/mosquitto.sock"),
-            identifier: "unixDomainSocketConnect",
-            logger: Logger(label: #function).withLogLevel(.trace)
+            identifier: "unixDomainSocketConnect"
         ) { connection in
             try await connection.ping()
         }
@@ -288,8 +277,7 @@ struct IntegrationTests {
     func publish(qos: MQTTQoS) async throws {
         try await MQTTConnection.withConnection(
             address: .hostname(Self.hostname),
-            identifier: "publishQoS\(qos.rawValue)",
-            logger: Logger(label: #function).withLogLevel(.trace)
+            identifier: "publishQoS\(qos.rawValue)"
         ) { connection in
             try await connection.publish(
                 to: "testMQTTPublishQoS",
@@ -303,8 +291,7 @@ struct IntegrationTests {
     func sendPingreq() async throws {
         try await MQTTConnection.withConnection(
             address: .hostname(Self.hostname),
-            identifier: "sendPingreq",
-            logger: Logger(label: #function).withLogLevel(.trace)
+            identifier: "sendPingreq"
         ) { connection in
             try await connection.ping()
         }
@@ -315,8 +302,7 @@ struct IntegrationTests {
         await #expect(throws: MQTTError.serverClosedConnection) {
             try await MQTTConnection.withConnection(
                 address: .hostname(Self.hostname),
-                identifier: "serverDisconnect",
-                logger: Logger(label: #function).withLogLevel(.trace)
+                identifier: "serverDisconnect"
             ) { connection in
                 try await connection.sendPacket(MQTTForceDisconnectMessage()) { _ in true }
             }
@@ -332,8 +318,7 @@ struct IntegrationTests {
         try await MQTTConnection.withConnection(
             address: .hostname(Self.hostname, port: 8080),
             configuration: .init(transport: .webSocket(.init())),
-            identifier: "publishRetain",
-            logger: Logger(label: #function).withLogLevel(.trace)
+            identifier: "publishRetain"
         ) { connection in
             try await withThrowingTaskGroup { group in
                 group.addTask {
@@ -370,8 +355,7 @@ struct IntegrationTests {
                 try await MQTTConnection.withConnection(
                     address: .hostname(Self.hostname, port: 8080),
                     configuration: .init(transport: .webSocket(.init())),
-                    identifier: "publishToClient_subscriber",
-                    logger: Logger(label: #function).withLogLevel(.trace)
+                    identifier: "publishToClient_subscriber"
                 ) { connection in
                     try await connection.subscribe(
                         to: [
@@ -402,8 +386,7 @@ struct IntegrationTests {
                 try await MQTTConnection.withConnection(
                     address: .hostname(Self.hostname, port: 8080),
                     configuration: .init(transport: .webSocket(.init())),
-                    identifier: "publishToClient_publisher",
-                    logger: Logger(label: #function).withLogLevel(.trace)
+                    identifier: "publishToClient_publisher"
                 ) { connection in
                     try await Task.sleep(for: .seconds(1))
                     try await connection.publish(to: "testAtLeastOnce", payload: payload, qos: .atLeastOnce)
@@ -425,8 +408,7 @@ struct IntegrationTests {
             group.addTask {
                 try await MQTTConnection.withConnection(
                     address: .hostname(Self.hostname),
-                    identifier: "publishLargePayloadToClient_subscriber",
-                    logger: Logger(label: #function).withLogLevel(.trace)
+                    identifier: "publishLargePayloadToClient_subscriber"
                 ) { connection in
                     try await connection.subscribe(to: [.init(topicFilter: "testLargeAtLeastOnce", qos: .atLeastOnce)]) { subscription in
                         try await confirmation("publishLargePayloadToClient") { receivedMessage in
@@ -445,8 +427,7 @@ struct IntegrationTests {
             group.addTask {
                 try await MQTTConnection.withConnection(
                     address: .hostname(Self.hostname),
-                    identifier: "publishLargePayloadToClient_publisher",
-                    logger: Logger(label: #function).withLogLevel(.trace)
+                    identifier: "publishLargePayloadToClient_publisher"
                 ) { connection in
                     try await Task.sleep(for: .seconds(1))
                     try await connection.publish(to: "testLargeAtLeastOnce", payload: payload, qos: .atLeastOnce)
@@ -463,20 +444,18 @@ struct IntegrationTests {
         // `sessionPresent` should be false as this is the first connection with this client identifier
         try await MQTTConnection.withConnection(
             address: .hostname(Self.hostname),
-            identifier: "sessionPresent",
-            logger: Logger(label: #function).withLogLevel(.trace)
+            identifier: "sessionPresent"
         ) { connection in
             try await connection.ping()
         }
 
-        let session = MQTTSession(clientID: "sessionPresent", logger: Logger(label: #function).withLogLevel(.trace))
+        let session = MQTTSession(clientID: "sessionPresent")
 
         // Second connection with a `MQTTSession` with same client identifier (and `cleanSession` automatically set to false)
         // `sessionPresent` should be false as previous connection was with `cleanSession` true
         try await MQTTConnection.withConnection(
             address: .hostname(Self.hostname),
-            session: session,
-            logger: Logger(label: #function).withLogLevel(.trace)
+            session: session
         ) { connection, sessionPresent in
             #expect(sessionPresent == false)
             try await connection.ping()
@@ -486,8 +465,7 @@ struct IntegrationTests {
         // `sessionPresent` should be true
         try await MQTTConnection.withConnection(
             address: .hostname(Self.hostname),
-            session: session,
-            logger: Logger(label: #function).withLogLevel(.trace)
+            session: session
         ) { connection, sessionPresent in
             #expect(sessionPresent == true)
             try await connection.ping()
@@ -498,8 +476,7 @@ struct IntegrationTests {
     func subscribeAll() async throws {
         try await MQTTConnection.withConnection(
             address: .hostname("broker.hivemq.com"),
-            identifier: "subscribeAll",
-            logger: Logger(label: #function).withLogLevel(.trace)
+            identifier: "subscribeAll"
         ) { connection in
             try await connection.subscribe(to: [.init(topicFilter: "test/#", qos: .exactlyOnce)]) { subscription in
                 try await Task.sleep(for: .seconds(5))
@@ -512,8 +489,7 @@ struct IntegrationTests {
     func rawIPConnect() async throws {
         try await MQTTConnection.withConnection(
             address: .hostname("127.0.0.1"),
-            identifier: "rawIPConnect",
-            logger: Logger(label: #function).withLogLevel(.trace)
+            identifier: "rawIPConnect"
         ) { connection in
             try await connection.ping()
         }
@@ -524,8 +500,7 @@ struct IntegrationTests {
     func packetID() async throws {
         try await MQTTConnection.withConnection(
             address: .hostname(Self.hostname),
-            identifier: "packetID",
-            logger: Logger(label: #function).withLogLevel(.trace)
+            identifier: "packetID"
         ) { connection in
             let initial = await connection.globalPacketId.load(ordering: .relaxed)
             try await connection.publish(
@@ -549,8 +524,7 @@ struct IntegrationTests {
     func multiLevelWildcard() async throws {
         try await MQTTConnection.withConnection(
             address: .hostname(Self.hostname),
-            identifier: "multiLevelWildcard",
-            logger: Logger(label: #function).withLogLevel(.trace)
+            identifier: "multiLevelWildcard"
         ) { connection in
             try await withThrowingTaskGroup { group in
                 group.addTask {
@@ -589,8 +563,7 @@ struct IntegrationTests {
     func singleLevelWildcard() async throws {
         try await MQTTConnection.withConnection(
             address: .hostname(Self.hostname),
-            identifier: "singleLevelWildcard",
-            logger: Logger(label: #function).withLogLevel(.trace)
+            identifier: "singleLevelWildcard"
         ) { connection in
             try await withThrowingTaskGroup { group in
                 group.addTask {
@@ -632,8 +605,7 @@ struct IntegrationTests {
     func overlappingSubscriptions() async throws {
         try await MQTTConnection.withConnection(
             address: .hostname(Self.hostname),
-            identifier: "overlappingSubscriptions",
-            logger: Logger(label: #function).withLogLevel(.trace)
+            identifier: "overlappingSubscriptions"
         ) { connection in
             try await withThrowingTaskGroup { group in
                 group.addTask {
@@ -669,8 +641,7 @@ struct IntegrationTests {
     func cancellation() async throws {
         try await MQTTConnection.withConnection(
             address: .hostname(Self.hostname),
-            identifier: "cancellation",
-            logger: Logger(label: #function).withLogLevel(.trace)
+            identifier: "cancellation"
         ) { connection in
             await withThrowingTaskGroup { group in
                 group.addTask {
@@ -691,8 +662,7 @@ struct IntegrationTests {
     func alreadyCancelled() async throws {
         try await MQTTConnection.withConnection(
             address: .hostname(Self.hostname),
-            identifier: "alreadyCancelled",
-            logger: Logger(label: #function).withLogLevel(.trace)
+            identifier: "alreadyCancelled"
         ) { connection in
             await withThrowingTaskGroup(of: Void.self) { group in
                 group.cancelAll()
@@ -715,8 +685,7 @@ struct IntegrationTests {
             group.addTask {
                 try await MQTTConnection.withConnection(
                     address: .hostname(Self.hostname),
-                    identifier: "inflight_subscriber",
-                    logger: Logger(label: #function).withLogLevel(.trace)
+                    identifier: "inflight_subscriber"
                 ) { connection in
                     try await connection.subscribe(to: [.init(topicFilter: "testInflight", qos: .exactlyOnce)]) { subscription in
                         for try await message in subscription {
@@ -729,12 +698,11 @@ struct IntegrationTests {
 
             group.addTask {
                 try await Task.sleep(for: .milliseconds(500))
-                let session = MQTTSession(clientID: "inflight_publisher", logger: Logger(label: #function).withLogLevel(.trace))
+                let session = MQTTSession(clientID: "inflight_publisher")
 
                 try await MQTTConnection.withConnection(
                     address: .hostname(Self.hostname),
-                    session: session,
-                    logger: Logger(label: #function).withLogLevel(.trace)
+                    session: session
                 ) { connection, sessionPresent in
                     async let _ = connection.publish(to: "testInflight", payload: ByteBuffer(string: "test"), qos: .exactlyOnce)
                     connection.close()
@@ -744,8 +712,7 @@ struct IntegrationTests {
 
                 try await MQTTConnection.withConnection(
                     address: .hostname(Self.hostname),
-                    session: session,
-                    logger: Logger(label: #function).withLogLevel(.trace)
+                    session: session
                 ) { connection, sessionPresent in
                     try await connection.ping()
                 }
@@ -759,15 +726,14 @@ struct IntegrationTests {
 
     @Test("Multiple Connections with Same Session")
     func multipleConnectionsWithSameSession() async throws {
-        let session = MQTTSession(clientID: "multipleConnectionsWithSameSession", logger: Logger(label: #function).withLogLevel(.trace))
+        let session = MQTTSession(clientID: "multipleConnectionsWithSameSession")
 
         await #expect(throws: MQTTError.alreadyConnectedWithSession) {
             try await withThrowingTaskGroup { group in
                 group.addTask {
                     try await MQTTConnection.withConnection(
                         address: .hostname(Self.hostname),
-                        session: session,
-                        logger: Logger(label: #function).withLogLevel(.trace)
+                        session: session
                     ) { connection, sessionPresent in
                         try await connection.subscribe(to: [.init(topicFilter: "multipleConnWithSession1", qos: .atMostOnce)]) { subscription in
                             for try await _ in subscription {}
@@ -778,8 +744,7 @@ struct IntegrationTests {
                 group.addTask {
                     try await MQTTConnection.withConnection(
                         address: .hostname(Self.hostname),
-                        session: session,
-                        logger: Logger(label: #function).withLogLevel(.trace)
+                        session: session
                     ) { connection, sessionPresent in
                         try await connection.subscribe(to: [.init(topicFilter: "multipleConnWithSession2", qos: .atMostOnce)]) { subscription in
                             for try await _ in subscription {}
@@ -797,13 +762,12 @@ struct IntegrationTests {
         // Make an initial connection with `cleanSession` to clear any existing session state
         try await MQTTConnection.withConnection(
             address: .hostname(Self.hostname),
-            identifier: "subscribeWithSessionBeforeConnection",
-            logger: Logger(label: #function).withLogLevel(.trace)
+            identifier: "subscribeWithSessionBeforeConnection"
         ) { connection in
             try await connection.ping()
         }
 
-        let session = MQTTSession(clientID: "subscribeWithSessionBeforeConnection", logger: Logger(label: #function).withLogLevel(.trace))
+        let session = MQTTSession(clientID: "subscribeWithSessionBeforeConnection")
 
         await withThrowingTaskGroup { group in
             group.addTask {
@@ -817,8 +781,7 @@ struct IntegrationTests {
             group.addTask {
                 try await MQTTConnection.withConnection(
                     address: .hostname(Self.hostname),
-                    session: session,
-                    logger: Logger(label: #function).withLogLevel(.trace)
+                    session: session
                 ) { connection, sessionPresent in
                     // Wait for the subscription to be established before publishing
                     try await Task.sleep(for: .milliseconds(100))
@@ -829,8 +792,7 @@ struct IntegrationTests {
 
                 try await MQTTConnection.withConnection(
                     address: .hostname(Self.hostname),
-                    session: session,
-                    logger: Logger(label: #function).withLogLevel(.trace)
+                    session: session
                 ) { connection, sessionPresent in
                     #expect(sessionPresent)
                     try await connection.publish(to: "subscribeWithSessionBeforeConnection", payload: ByteBuffer(string: "test2"), qos: .atLeastOnce)
@@ -841,18 +803,15 @@ struct IntegrationTests {
 
     @Test("Subscribe with Session after Connection")
     func subscribeWithSessionAfterConnection() async throws {
-        let logger = Logger(label: #function).withLogLevel(.trace)
-
         // Make an initial connection with `cleanSession` to clear any existing session state
         try await MQTTConnection.withConnection(
             address: .hostname(Self.hostname),
-            identifier: "subscribeWithSessionAfterConnection",
-            logger: logger
+            identifier: "subscribeWithSessionAfterConnection"
         ) { connection in
             try await connection.ping()
         }
 
-        let session = MQTTSession(clientID: "subscribeWithSessionAfterConnection", logger: logger)
+        let session = MQTTSession(clientID: "subscribeWithSessionAfterConnection")
 
         let (stream, continuation) = AsyncStream<Void>.makeStream()
 
@@ -871,8 +830,7 @@ struct IntegrationTests {
             group.addTask {
                 try await MQTTConnection.withConnection(
                     address: .hostname(Self.hostname),
-                    session: session,
-                    logger: logger
+                    session: session
                 ) { connection, sessionPresent in
                     #expect(!sessionPresent)
 
@@ -886,8 +844,7 @@ struct IntegrationTests {
 
                 try await MQTTConnection.withConnection(
                     address: .hostname(Self.hostname),
-                    session: session,
-                    logger: logger
+                    session: session
                 ) { connection, sessionPresent in
                     #expect(sessionPresent)
                     try await connection.publish(to: "subscribeWithSessionAfterConnection", payload: ByteBuffer(string: "test2"), qos: .atLeastOnce)
@@ -901,13 +858,12 @@ struct IntegrationTests {
         // Make an initial connection with `cleanSession` to clear any existing session state
         try await MQTTConnection.withConnection(
             address: .hostname(Self.hostname),
-            identifier: "closeSubscriptionsNoSessionPresent",
-            logger: Logger(label: #function).withLogLevel(.trace)
+            identifier: "closeSubscriptionsNoSessionPresent"
         ) { connection in
             try await connection.ping()
         }
 
-        let session = MQTTSession(clientID: "closeSubscriptionsNoSessionPresent", logger: Logger(label: #function).withLogLevel(.trace))
+        let session = MQTTSession(clientID: "closeSubscriptionsNoSessionPresent")
 
         await withThrowingTaskGroup { group in
             group.addTask {
@@ -921,8 +877,7 @@ struct IntegrationTests {
             group.addTask {
                 try await MQTTConnection.withConnection(
                     address: .hostname(Self.hostname),
-                    session: session,
-                    logger: Logger(label: #function).withLogLevel(.trace)
+                    session: session
                 ) { connection, sessionPresent in
                     // Wait for the subscription to be established before publishing
                     try await Task.sleep(for: .milliseconds(100))
@@ -935,16 +890,14 @@ struct IntegrationTests {
                 // Make a connection with `cleanSession` to clear existing session state
                 try await MQTTConnection.withConnection(
                     address: .hostname(Self.hostname),
-                    identifier: "closeSubscriptionsNoSessionPresent",
-                    logger: Logger(label: #function).withLogLevel(.trace)
+                    identifier: "closeSubscriptionsNoSessionPresent"
                 ) { connection in
                     try await connection.ping()
                 }
 
                 try await MQTTConnection.withConnection(
                     address: .hostname(Self.hostname),
-                    session: session,
-                    logger: Logger(label: #function).withLogLevel(.trace)
+                    session: session
                 ) { connection, sessionPresent in
                     // The previous connection was with `cleanSession` true,
                     // so even though this connection is with the same session,
@@ -961,15 +914,12 @@ struct IntegrationTests {
         // Make an initial connection with `cleanSession` to clear any existing session state
         try await MQTTConnection.withConnection(
             address: .hostname(Self.hostname),
-            identifier: "closeSubscriptions",
-            logger: Logger(label: #function).withLogLevel(.trace)
+            identifier: "closeSubscriptions"
         ) { connection in
             try await connection.ping()
         }
 
-        let logger = Logger(label: #function).withLogLevel(.trace)
-
-        let session = MQTTSession(clientID: "closeSubscriptions", logger: logger)
+        let session = MQTTSession(clientID: "closeSubscriptions")
 
         await withThrowingTaskGroup { group in
             let (stream, continuation) = AsyncStream<Void>.makeStream()
@@ -986,8 +936,7 @@ struct IntegrationTests {
             group.addTask {
                 try await MQTTConnection.withConnection(
                     address: .hostname(Self.hostname),
-                    session: session,
-                    logger: logger
+                    session: session
                 ) { connection, sessionPresent in
                     try await withThrowingTaskGroup { group in
                         group.addTask {
@@ -1013,18 +962,15 @@ struct IntegrationTests {
 
     @Test("Failed Subscription on Session")
     func failedSubscriptionOnSession() async throws {
-        let logger = Logger(label: #function).withLogLevel(.trace)
-
         // Make an initial connection with `cleanSession` to clear any existing session state
         try await MQTTConnection.withConnection(
             address: .hostname(Self.hostname),
-            identifier: "failedSubscriptionOnSession",
-            logger: logger
+            identifier: "failedSubscriptionOnSession"
         ) { connection in
             try await connection.ping()
         }
 
-        let session = MQTTSession(clientID: "failedSubscriptionOnSession", logger: logger)
+        let session = MQTTSession(clientID: "failedSubscriptionOnSession")
 
         await withThrowingTaskGroup { group in
             group.addTask {
@@ -1039,8 +985,7 @@ struct IntegrationTests {
             group.addTask {
                 try await MQTTConnection.withConnection(
                     address: .hostname(Self.hostname),
-                    session: session,
-                    logger: logger
+                    session: session
                 ) { connection, sessionPresent in
                     #expect(!sessionPresent)
                     try await connection.ping()
@@ -1051,24 +996,21 @@ struct IntegrationTests {
 
     @Test("Connection Subscription Cleanup", arguments: [true, false])
     func connectionSubscriptionCleanup(clientClose: Bool) async throws {
-        let logger = Logger(label: #function).withLogLevel(.trace)
         let identifier = "connectionSubscriptionCleanup_" + (clientClose ? "clientClose" : "forceDisconnect")
 
         // Make an initial connection with `cleanSession` to clear any existing session state
         try await MQTTConnection.withConnection(
             address: .hostname(Self.hostname),
-            identifier: identifier,
-            logger: logger
+            identifier: identifier
         ) { connection in
             try await connection.ping()
         }
 
-        let session = MQTTSession(clientID: identifier, logger: logger)
+        let session = MQTTSession(clientID: identifier)
 
         try await MQTTConnection.withConnection(
             address: .hostname(Self.hostname),
-            session: session,
-            logger: logger
+            session: session
         ) { connection, sessionPresent in
             #expect(!sessionPresent)
 
@@ -1105,18 +1047,15 @@ struct IntegrationTests {
 
     @Test("Wait Until No Active Subscriptions")
     func waitUntilNoActiveSubscriptions() async throws {
-        let logger = Logger(label: "Integration.\(#function)").withLogLevel(.trace)
-
         // Make an initial connection with `cleanSession` to clear any existing session state
         try await MQTTConnection.withConnection(
             address: .hostname(Self.hostname),
-            identifier: "waitUntilNoActiveSubscriptions",
-            logger: logger
+            identifier: "waitUntilNoActiveSubscriptions"
         ) { connection in
             try await connection.ping()
         }
 
-        let session = MQTTSession(clientID: "waitUntilNoActiveSubscriptions", logger: logger)
+        let session = MQTTSession(clientID: "waitUntilNoActiveSubscriptions")
 
         try await withThrowingTaskGroup { group in
             let (connectionStream, connectionContinuation) = AsyncStream.makeStream(of: Void.self)
@@ -1135,8 +1074,7 @@ struct IntegrationTests {
             group.addTask {
                 try await MQTTConnection.withConnection(
                     address: .hostname(Self.hostname),
-                    session: session,
-                    logger: logger
+                    session: session
                 ) { connection, sessionPresent in
                     #expect(!sessionPresent)
 
@@ -1185,19 +1123,16 @@ struct IntegrationTests {
 
     @Test("Cancel Active Subscriptions Wait On Close")
     func cancelActiveSubscriptionsWait() async throws {
-        let logger = Logger(label: #function).withLogLevel(.trace)
-
         // Make an initial connection with `cleanSession` to clear any existing session state
         try await MQTTConnection.withConnection(
             address: .hostname(Self.hostname),
-            identifier: "cancelActiveSubscriptionsWait",
-            logger: logger
+            identifier: "cancelActiveSubscriptionsWait"
         ) { connection in
             try await connection.ping()
         }
 
         let (stream, cont) = AsyncStream.makeStream(of: Void.self)
-        let session = MQTTSession(clientID: "cancelActiveSubscriptionsWait", logger: logger)
+        let session = MQTTSession(clientID: "cancelActiveSubscriptionsWait")
         async let _ = session.subscribe(to: [.init(topicFilter: "test", qos: .atLeastOnce)]) { sub in
             for try await _ in sub {
                 cont.yield()
@@ -1208,8 +1143,7 @@ struct IntegrationTests {
         await #expect(throws: MQTTError.connectionClosed) {
             try await MQTTConnection.withConnection(
                 address: .hostname(Self.hostname),
-                session: session,
-                logger: logger
+                session: session
             ) { connection, sessionPresent in
                 // make sure the subscriptions have been sent before sending a publish
                 try await Task.sleep(for: .milliseconds(50))
@@ -1225,8 +1159,7 @@ struct IntegrationTests {
         await #expect(throws: MQTTError.serverClosedConnection) {
             try await MQTTConnection.withConnection(
                 address: .hostname(Self.hostname),
-                session: session,
-                logger: logger
+                session: session
             ) { connection, sessionPresent in
                 try await connection.publish(to: "test", payload: .init(), qos: .atLeastOnce)
                 await stream.first { _ in true }
@@ -1243,8 +1176,7 @@ struct IntegrationTests {
         // expect waitUntilNoActiveSubscriptions to throw error as it has been cancelled
         try await MQTTConnection.withConnection(
             address: .hostname(Self.hostname),
-            session: session,
-            logger: logger
+            session: session
         ) { connection, sessionPresent in
             try await connection.publish(to: "test", payload: .init(), qos: .atLeastOnce)
             await stream.first { _ in true }

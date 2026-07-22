@@ -12,12 +12,11 @@ Create an ``MQTTSession`` with a client ID and pass it to the ``MQTTConnection/w
 You can check if the server has an existing session for the client ID by checking the optional `Bool` parameter passed to the closure.
 
 ```swift
-let session = MQTTSession(clientID: "My Client", logger: Logger(...))
+let session = MQTTSession(clientID: "My Client")
 
 try await MQTTConnection.withConnection(
     address: .hostname("localhost"),
-    session: session,
-    logger: Logger(...)
+    session: session
 ) { connection, sessionPresent in
     if sessionPresent {
         print("The server has an existing session for this client ID")
@@ -29,11 +28,13 @@ try await MQTTConnection.withConnection(
 
 Upon connection, if there are pending QoS 2 acknowledgements that need to be sent to the broker, they will be sent automatically by MQTTNIO.
 
+### Session Subscriptions
+
 You can also open subscriptions via ``MQTTSession/subscribe(to:subscribeProperties:unsubscribeProperties:process:)``, which will keep the subscription active across multiple connections as long as the session is not expired on the server.
 When there's an active connection that uses the session, the subscription will receive messages as normal.
 
 ```swift
-let session = MQTTSession(clientID: "My Client", logger: Logger(...))
+let session = MQTTSession(clientID: "My Client")
 
 await withThrowingTaskGroup { group in
     group.addTask {
@@ -49,8 +50,7 @@ await withThrowingTaskGroup { group in
     group.addTask {
         try await MQTTConnection.withConnection(
             address: .hostname("localhost"),
-            session: session,
-            logger: Logger(...)
+            session: session
         ) { connection, _ in
             // The subscription will receive messages as normal while this connection is active.
             // When this connection is closed, the subscription will remain active
@@ -60,10 +60,44 @@ await withThrowingTaskGroup { group in
 }
 ```
 
+#### Logging
+
+To set a custom logger for the session and the connections, you can pass it via a parameter to the ``MQTTSession/init(clientID:logger:)`` and ``MQTTConnection/withConnection(address:configuration:session:eventLoop:logger:operation:)-(_,_,_,_,_,(MQTTConnection,Bool)->Value)`` methods, or you can wrap the session and connection creation code within a `withLogger` closure, which will set a task-local logger.
+
+```swift
+var myLogger = Logger(label: "com.example.mqtt")
+myLogger.logLevel = .trace
+
+try await withLogger(myLogger) { _ in
+    let session = MQTTSession(clientID: "My Client")
+
+    await withThrowingTaskGroup { group in
+        group.addTask {
+            try await session.subscribe(...) { subscription in
+                for try await message in subscription {
+                    // Incoming messages will be logged with `myLogger`
+                }
+            }
+        }
+
+        group.addTask {
+            try await MQTTConnection.withConnection(
+                address: .hostname("localhost"),
+                session: session
+            ) {
+                // Connection events will be logged with `myLogger`
+            }
+        }
+    }
+}
+```
+
+#### Waiting for Active Subscriptions to Finish
+
 You can use the ``MQTTConnection/waitUntilNoActiveSubscriptions()`` method to wait until there are no active subscriptions opened either on the current connection or on the session the connection is using.
 
 ```swift
-let session = MQTTSession(clientID: "My Client", logger: Logger(...))
+let session = MQTTSession(clientID: "My Client")
 
 await withThrowingTaskGroup { group in
     group.addTask {
@@ -79,8 +113,7 @@ await withThrowingTaskGroup { group in
     group.addTask {
         try await MQTTConnection.withConnection(
             address: .hostname("localhost"),
-            session: session,
-            logger: Logger(...)
+            session: session
         ) { connection, _ in
             await connection.waitUntilNoActiveSubscriptions()
             // This will wait until there are no active subscriptions on the connection or the session.

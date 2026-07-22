@@ -72,7 +72,7 @@ public final actor MQTTConnection: Sendable {
     ///   - configuration: Configuration of the MQTT connection.
     ///   - identifier: Client identifier for the server. This must be unique.
     ///   - eventLoop: EventLoop to run the connection on.
-    ///   - logger: Logger to use for the connection.
+    ///   - logger: Logger to use for the connection. Defaults to the current task-local logger.
     ///   - operation: Closure handling the MQTT connection.
     ///     The closure receives the ``MQTTConnection``
     /// - Returns: Value returned from the operation closure.
@@ -81,7 +81,7 @@ public final actor MQTTConnection: Sendable {
         configuration: MQTTConnectionConfiguration = .init(),
         identifier: String = "",
         eventLoop: any EventLoop = MultiThreadedEventLoopGroup.singleton.any(),
-        logger: Logger,
+        logger: Logger = Logger.current,
         operation: (MQTTConnection) async throws -> Value
     ) async throws -> Value {
         let (connection, _) = try await self.connect(
@@ -134,7 +134,7 @@ public final actor MQTTConnection: Sendable {
     ///   - configuration: Configuration of the MQTT connection.
     ///   - session: The ``MQTTSession`` to use for the connection.
     ///   - eventLoop: EventLoop to run the connection on.
-    ///   - logger: Logger to use for the connection.
+    ///   - logger: Logger to use for the connection. Defaults to the current task-local logger.
     ///   - operation: Closure handling the MQTT connection.
     ///     The closure receives the ``MQTTConnection`` and a `Bool` indicating if there was a previous session present.
     /// - Returns: Value returned from the operation closure.
@@ -143,7 +143,7 @@ public final actor MQTTConnection: Sendable {
         configuration: MQTTConnectionConfiguration = .init(),
         session: MQTTSession,
         eventLoop: any EventLoop = MultiThreadedEventLoopGroup.singleton.any(),
-        logger: Logger,
+        logger: Logger = Logger.current,
         operation: (MQTTConnection, Bool) async throws -> Value
     ) async throws -> Value {
         do {
@@ -545,7 +545,7 @@ public final actor MQTTConnection: Sendable {
         _ channel: any Channel,
         configuration: MQTTConnectionConfiguration = .init(),
         session: MQTTSessionStorage,
-        logger: Logger
+        logger: Logger = Logger.current
     ) async throws -> MQTTConnection {
         if !channel.eventLoop.inEventLoop {
             return try await channel.eventLoop.flatSubmit {
