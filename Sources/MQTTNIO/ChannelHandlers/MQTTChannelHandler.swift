@@ -169,7 +169,7 @@ final class MQTTChannelHandler: ChannelDuplexHandler {
         self.eventLoop.assertInEventLoop()
         switch self.stateMachine.cancel(requestID: requestID) {
         case .failTask(let cancelledTask):
-            cancelledTask.promise.fail(error)
+            cancelledTask.fail(error)
         case .doNothing:
             break
         }
@@ -370,11 +370,15 @@ final class MQTTChannelHandler: ChannelDuplexHandler {
     ) {
         self.eventLoop.assertInEventLoop()
 
+        let channelHandler = NIOLoopBound(self, eventLoop: self.eventLoop)
         let task = MQTTTask(
             promise: promise,
             requestID: requestID,
             on: self.eventLoop,
             timeout: self.configuration.timeout,
+            onTimeout: {
+                channelHandler.value.cancel(requestID: requestID, error: MQTTError.timeout)
+            },
             checkInbound: checkInbound
         )
 

@@ -48,6 +48,7 @@ final class MQTTTask {
         requestID: Int,
         on eventLoop: any EventLoop,
         timeout: TimeAmount?,
+        onTimeout: @escaping @Sendable () -> Void,
         checkInbound: @escaping (any MQTTPacket) throws -> Bool
     ) {
         self.promise = promise
@@ -55,7 +56,7 @@ final class MQTTTask {
         self.requestID = requestID
         if let timeout {
             self.timeoutTask = eventLoop.scheduleTask(in: timeout) {
-                promise.fail(MQTTError.timeout)
+                onTimeout()
             }
         } else {
             self.timeoutTask = nil

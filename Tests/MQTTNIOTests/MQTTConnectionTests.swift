@@ -53,6 +53,25 @@ struct MQTTConnectionTests {
         }
     }
 
+    @Test("A timed-out publish is removed before the connection closes")
+    func publishTimeoutThenConnectionClose() async {
+        await #expect(throws: MQTTError.timeout) {
+            try await withTestMQTTServer(
+                configuration: .init(timeout: .milliseconds(10))
+            ) { connection in
+                try await connection.publish(
+                    to: "testTopic",
+                    payload: ByteBuffer(string: "TestPayload"),
+                    qos: .atLeastOnce,
+                    retain: false
+                )
+            } server: { channel in
+                _ = try await channel.waitForOutboundPacket()
+                await channel.testingEventLoop.advanceTime(by: .milliseconds(10))
+            }
+        }
+    }
+
     @Test
     func testPublishQoS2ClientToServer() async throws {
         try await withTestMQTTServer { connection in
