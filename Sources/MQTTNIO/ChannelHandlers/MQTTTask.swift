@@ -37,7 +37,7 @@ enum MQTTPromise<T: Sendable>: Sendable {
 }
 
 /// Class encapsulating a single task
-final class MQTTTask {
+struct MQTTTask {
     let promise: MQTTPromise<any MQTTPacket>
     let checkInbound: (any MQTTPacket) throws -> Bool
     let requestID: Int
