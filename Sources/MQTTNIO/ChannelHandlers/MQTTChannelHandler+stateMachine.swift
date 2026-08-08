@@ -78,7 +78,7 @@ extension MQTTChannelHandler {
                                 if self.tasks.isEmpty {
                                     .cancel
                                 } else {
-                                    if let earliestDeadline = self.tasks.map({ $0.deadline }).min() {
+                                    if let earliestDeadline = self.tasks.lazy.map({ $0.deadline }).min() {
                                         .reschedule(earliestDeadline)
                                     } else {
                                         .doNothing
