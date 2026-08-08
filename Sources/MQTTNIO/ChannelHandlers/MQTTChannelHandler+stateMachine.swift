@@ -259,11 +259,11 @@ extension MQTTChannelHandler {
             case .uninitialized:
                 preconditionFailure("Cannot cancel when uninitialized")
             case .initialized(let state):
-                if let timedOutTask = state.tasks.tasks.min(by: { $0.deadline < $1.deadline }), timedOutTask.deadline <= now {
+                if let timedOutTask = state.tasks.tasks.lazy.min(by: { $0.deadline < $1.deadline }), timedOutTask.deadline <= now {
                     self = .initialized(state)
                     return .cancelTask(requestID: timedOutTask.requestID)
                 }
-                if let earliestDeadline = state.tasks.tasks.map({ $0.deadline }).min() {
+                if let earliestDeadline = state.tasks.tasks.lazy.map({ $0.deadline }).min() {
                     self = .initialized(state)
                     return .reschedule(earliestDeadline)
                 }
@@ -313,7 +313,7 @@ extension MQTTChannelHandler {
                     if state.tasks.tasks.isEmpty {
                         .cancel
                     } else {
-                        if let earliestDeadline = state.tasks.tasks.map({ $0.deadline }).min() {
+                        if let earliestDeadline = state.tasks.tasks.lazy.map({ $0.deadline }).min() {
                             .reschedule(earliestDeadline)
                         } else {
                             .doNothing
