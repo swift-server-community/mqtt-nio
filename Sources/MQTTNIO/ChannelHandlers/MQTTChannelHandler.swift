@@ -23,8 +23,10 @@ final class MQTTChannelHandler: ChannelDuplexHandler {
         func handleScheduledCallback(eventLoop: some NIOCore.EventLoop) {
             let channelHandler = self.channelHandler.value
             switch channelHandler.stateMachine.hitDeadline(now: eventLoop.now) {
-            case .cancelTask(let requestID):
-                channelHandler.cancel(requestID: requestID, error: MQTTError.timeout)
+            case .cancelTasks(let requestIDs):
+                for requestID in requestIDs {
+                    channelHandler.cancel(requestID: requestID, error: MQTTError.timeout)
+                }
             case .reschedule(let deadline):
                 channelHandler.scheduleDeadlineCallback(deadline: deadline)
             case .clearCallback:

@@ -248,7 +248,7 @@ extension MQTTChannelHandler {
 
         @usableFromInline
         enum HitDeadlineAction {
-            case cancelTask(requestID: Int)
+            case cancelTasks(requestIDs: [Int])
             case reschedule(NIODeadline)
             case clearCallback
         }
@@ -259,9 +259,12 @@ extension MQTTChannelHandler {
             case .uninitialized:
                 preconditionFailure("Cannot cancel when uninitialized")
             case .initialized(let state):
-                if let timedOutTask = state.tasks.tasks.lazy.min(by: { $0.deadline < $1.deadline }), timedOutTask.deadline <= now {
+                let timedOutRequestIDs = state.tasks.tasks.lazy
+                    .filter { $0.deadline <= now }
+                    .map { $0.requestID }
+                if !timedOutRequestIDs.isEmpty {
                     self = .initialized(state)
-                    return .cancelTask(requestID: timedOutTask.requestID)
+                    return .cancelTasks(requestIDs: .init(timedOutRequestIDs))
                 }
                 if let earliestDeadline = state.tasks.tasks.lazy.map({ $0.deadline }).min() {
                     self = .initialized(state)

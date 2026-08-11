@@ -502,6 +502,34 @@ struct MQTTConnectionTests {
         }
     }
 
+    @Test("Single deadline callback cancels all timed-out Tasks")
+    func timeoutCancelsAllTimedOutRequests() async throws {
+        try await withTestMQTTServer(
+            configuration: .init(timeout: .milliseconds(20))
+        ) { connection in
+            try await withThrowingTaskGroup(of: Void.self) { group in
+                group.addTask {
+                    await #expect(throws: MQTTError.timeout) {
+                        try await connection.publish(to: "first", payload: .init(), qos: .atLeastOnce)
+                    }
+                }
+
+                group.addTask {
+                    await #expect(throws: MQTTError.timeout) {
+                        try await connection.publish(to: "second", payload: .init(), qos: .atLeastOnce)
+                    }
+                }
+
+                try await group.waitForAll()
+            }
+        } server: { channel in
+            _ = try await channel.waitForOutboundPacket()
+            _ = try await channel.waitForOutboundPacket()
+
+            await channel.testingEventLoop.advanceTime(by: .milliseconds(25))
+        }
+    }
+
     @Test("Inflight")
     func inflight() async throws {
         let session = MQTTSession(clientID: "inflight")
