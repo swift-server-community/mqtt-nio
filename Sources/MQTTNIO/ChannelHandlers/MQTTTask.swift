@@ -37,38 +37,21 @@ enum MQTTPromise<T: Sendable>: Sendable {
 }
 
 /// Class encapsulating a single task
-final class MQTTTask {
+struct MQTTTask {
     let promise: MQTTPromise<any MQTTPacket>
     let checkInbound: (any MQTTPacket) throws -> Bool
     let requestID: Int
-    let timeoutTask: Scheduled<Void>?
+    let deadline: NIODeadline
 
     init(
         promise: MQTTPromise<any MQTTPacket>,
         requestID: Int,
-        on eventLoop: any EventLoop,
-        timeout: TimeAmount?,
+        deadline: NIODeadline,
         checkInbound: @escaping (any MQTTPacket) throws -> Bool
     ) {
         self.promise = promise
         self.checkInbound = checkInbound
         self.requestID = requestID
-        if let timeout {
-            self.timeoutTask = eventLoop.scheduleTask(in: timeout) {
-                promise.fail(MQTTError.timeout)
-            }
-        } else {
-            self.timeoutTask = nil
-        }
-    }
-
-    func succeed(_ response: any MQTTPacket) {
-        self.timeoutTask?.cancel()
-        self.promise.succeed(response)
-    }
-
-    func fail(_ error: any Error) {
-        self.timeoutTask?.cancel()
-        self.promise.fail(error)
+        self.deadline = deadline
     }
 }

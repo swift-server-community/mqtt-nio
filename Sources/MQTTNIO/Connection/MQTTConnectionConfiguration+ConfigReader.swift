@@ -32,7 +32,7 @@ extension MQTTConnectionConfiguration {
     ///     If the value is an integer, that will be the amount of seconds passed to ``MQTTConnectionConfiguration/PingConfiguration/pingInterval(_:)``.
     ///     For any other value, or if there's no value, the ping configuration will be ``MQTTConnectionConfiguration/PingConfiguration/useServerKeepAlive``.
     /// - `connectTimeout` (int, optional, default: `10`): Timeout for connecting to server, in seconds.
-    /// - `timeout` (int, optional): Timeout for server ACK responses.
+    /// - `timeout` (int, optional, default: `30`): Timeout for server ACK responses.
     /// - `userName` (string, optional): The user identifier used to authenticate against a secured MQTT server.
     /// - `password` (string, optional): The password used to authenticate against a secured MQTT server.
     /// ### TLS configuration keys
@@ -64,7 +64,7 @@ extension MQTTConnectionConfiguration {
         self.keepAliveInterval = config.int(forKey: "keepAliveInterval", as: Duration.self, default: .seconds(90))
         self.pingConfiguration = .init(config: config)
         self.connectTimeout = config.int(forKey: "connectTimeout", as: Duration.self, default: .seconds(10))
-        self.timeout = config.int(forKey: "timeout", as: Duration.self)
+        self.timeout = config.int(forKey: "timeout", as: Duration.self, default: .seconds(30))
         self.userName = config.string(forKey: "userName")
         self.password = config.string(forKey: "password", isSecret: true)
         let tls: Transport.TLS = (try? .init(config: config.scoped(to: "tls"))) ?? .disable
