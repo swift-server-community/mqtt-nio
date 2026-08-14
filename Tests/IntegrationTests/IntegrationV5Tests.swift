@@ -630,7 +630,6 @@ struct IntegrationV5Tests {
     @Test
     func traceContextPropagation() async throws {
         let tracer = InMemoryTracer()
-        InstrumentationSystem.bootstrap(tracer)
         var config = MQTTConnectionConfiguration(versionConfiguration: .v5_0())
         config.tracing.tracer = tracer
 
@@ -648,7 +647,7 @@ struct IntegrationV5Tests {
                 try await withThrowingTaskGroup { group in
                     group.addTask {
                         try await Task.sleep(for: .seconds(1))
-                        try await withSpan("test)") { span in
+                        try await tracer.withSpan("test)") { span in
                             cont.yield(span.context.inMemorySpanContext?.traceID ?? "1")
                             _ = try await connection.v5.publish(
                                 to: "traceContextPropagation",
@@ -663,7 +662,7 @@ struct IntegrationV5Tests {
                             subscription in
                             for try await message in subscription {
                                 try await connection.withMessageSpan(message) { span in
-                                    _ = cont.yield(span.context.inMemorySpanContext?.traceID ?? "1")
+                                    _ = cont.yield(span.context.inMemorySpanContext?.traceID ?? "2")
                                 }
                                 return
                             }

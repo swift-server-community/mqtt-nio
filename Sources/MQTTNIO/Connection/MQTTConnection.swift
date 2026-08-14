@@ -230,7 +230,7 @@ public final actor MQTTConnection: Sendable {
             defer { span?.end() }
 
             if let span, !(span is NoOpTracer.Span) {
-                InstrumentationSystem.instrument.inject(span.context, into: &info, using: self.configuration.tracing.contextPropagator.injector)
+                self.tracer?.inject(span.context, into: &info, using: self.configuration.tracing.contextPropagator.injector)
                 span.updateAttributes { attributes in
                     self.applyCommonPublishAttributes(to: &attributes)
                     attributes[self.configuration.tracing.attributeNames.messagingDestinationName] = topicName

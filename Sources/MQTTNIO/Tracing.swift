@@ -91,7 +91,7 @@ extension MQTTConnection {
         _ operation: (any Span) async throws -> Value
     ) async throws -> Value {
         var serviceContext = ServiceContext.current ?? ServiceContext.topLevel
-        InstrumentationSystem.instrument.extract(publishInfo, into: &serviceContext, using: self.configuration.tracing.contextPropagator.extractor)
+        self.tracer?.extract(publishInfo, into: &serviceContext, using: self.configuration.tracing.contextPropagator.extractor)
         return try await Tracing.withSpan("SUBSCRIBE", context: serviceContext, ofKind: .client) { span in
             span.updateAttributes { attributes in
                 self.applyCommonSubscribeAttributes(to: &attributes)

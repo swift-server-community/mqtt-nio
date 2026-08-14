@@ -41,7 +41,7 @@ extension MQTTConnection {
             defer { span?.end() }
 
             if let span, !(span is NoOpTracer.Span) {
-                InstrumentationSystem.instrument.inject(
+                self.connection.tracer?.inject(
                     span.context,
                     into: &info,
                     using: self.connection.configuration.tracing.contextPropagator.injector
