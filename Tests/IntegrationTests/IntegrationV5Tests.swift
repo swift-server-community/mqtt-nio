@@ -14,6 +14,11 @@ import Testing
 
 @testable import MQTTNIO
 
+#if DistributedTracingSupport
+import InMemoryTracing
+import Tracing
+#endif
+
 #if canImport(Network)
 import NIOTransportServices
 #endif
@@ -619,4 +624,62 @@ struct IntegrationV5Tests {
             }
         }
     }
+
+    #if DistributedTracingSupport
+
+    @Test
+    func traceContextPropagation() async throws {
+        let tracer = InMemoryTracer()
+        InstrumentationSystem.bootstrap(tracer)
+        var config = MQTTConnectionConfiguration(versionConfiguration: .v5_0())
+        config.tracing.tracer = tracer
+
+        let (stream, cont) = AsyncStream.makeStream(of: String.self)
+        try await MQTTConnection.withConnection(
+            address: .hostname(Self.hostname),
+            configuration: config,
+            identifier: "traceContextPropagationPublish"
+        ) { connection in
+            try await MQTTConnection.withConnection(
+                address: .hostname(Self.hostname),
+                configuration: config,
+                identifier: "traceContextPropagationSubscribe"
+            ) { connection2 in
+                try await withThrowingTaskGroup { group in
+                    group.addTask {
+                        try await Task.sleep(for: .seconds(1))
+                        try await withSpan("test)") { span in
+                            cont.yield(span.context.inMemorySpanContext?.traceID ?? "1")
+                            _ = try await connection.v5.publish(
+                                to: "traceContextPropagation",
+                                payload: ByteBuffer(string: "test"),
+                                qos: .atLeastOnce
+                            )
+                        }
+                    }
+
+                    group.addTask {
+                        try await connection2.v5.subscribe(to: [.init(topicFilter: "traceContextPropagation", qos: .atLeastOnce)]) {
+                            subscription in
+                            for try await message in subscription {
+                                try await connection.withMessageSpan(message) { span in
+                                    _ = cont.yield(span.context.inMemorySpanContext?.traceID ?? "1")
+                                }
+                                return
+                            }
+                        }
+                    }
+                    var iterator = stream.makeAsyncIterator()
+                    let publishContext = await iterator.next()
+                    let subscribeContext = await iterator.next()
+                    // verify the context created by the publish
+                    #expect(publishContext == subscribeContext)
+
+                    try await group.waitForAll()
+                }
+            }
+        }
+    }
+
+    #endif
 }

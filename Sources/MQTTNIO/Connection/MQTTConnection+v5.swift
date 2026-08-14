@@ -8,6 +8,10 @@
 
 public import NIOCore
 
+#if DistributedTracingSupport
+import Tracing
+#endif
+
 extension MQTTConnection {
     /// Provides implementations of functions that expose MQTT Version 5.0 features.
     public struct V5: Sendable {
@@ -31,7 +35,24 @@ extension MQTTConnection {
             retain: Bool = false,
             properties: MQTTProperties = .init()
         ) async throws -> MQTTAckV5? {
-            let info = MQTTPublishInfo(qos: qos, retain: retain, dup: false, topicName: topicName, payload: payload, properties: properties)
+            var info = MQTTPublishInfo(qos: qos, retain: retain, dup: false, topicName: topicName, payload: payload, properties: properties)
+            #if DistributedTracingSupport
+            let span = self.connection.tracer?.startSpan("PUBLISH", ofKind: .producer)
+            defer { span?.end() }
+
+            if let span, !(span is NoOpTracer.Span) {
+                InstrumentationSystem.instrument.inject(
+                    span.context,
+                    into: &info,
+                    using: self.connection.configuration.tracing.contextPropagator.injector
+                )
+
+                span.updateAttributes { attributes in
+                    self.connection.applyCommonPublishAttributes(to: &attributes)
+                    attributes[self.connection.configuration.tracing.attributeNames.messagingDestinationName] = topicName
+                }
+            }
+            #endif
             let packetId = await self.connection.updatePacketId()
             let packet = MQTTPublishPacket(publish: info, packetId: packetId)
             return try await self.connection.publish(packet: packet)

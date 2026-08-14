@@ -14,6 +14,10 @@ public import NIOPosix
 import NIOWebSocket
 import Synchronization
 
+#if DistributedTracingSupport
+public import Tracing
+#endif
+
 #if canImport(FoundationEssentials)
 import FoundationEssentials
 #else
@@ -41,6 +45,14 @@ public final actor MQTTConnection: Sendable {
     let configuration: MQTTConnectionConfiguration
     let globalPacketId = Atomic<UInt16>(1)
     let isClosed: Atomic<Bool>
+    #if DistributedTracingSupport
+    @usableFromInline
+    let tracer: (any Tracer)?
+    @usableFromInline
+    let commonPublishSpanAttributes: SpanAttributes
+    @usableFromInline
+    let commonSubscribeSpanAttributes: SpanAttributes
+    #endif
 
     var connectionParameters = ConnectionParameters()
 
@@ -57,6 +69,15 @@ public final actor MQTTConnection: Sendable {
         self.channelHandler = channelHandler
         self.configuration = configuration
         self.logger = logger
+        #if DistributedTracingSupport
+        self.tracer = configuration.tracing.tracer
+        self.commonPublishSpanAttributes = Self.createCommonPublishSpanAttributes(address: address, configuration: configuration, channel: channel)
+        self.commonSubscribeSpanAttributes = Self.createCommonSubscribeSpanAttributes(
+            address: address,
+            configuration: configuration,
+            channel: channel
+        )
+        #endif
         self.isClosed = .init(false)
     }
 
@@ -202,10 +223,33 @@ public final actor MQTTConnection: Sendable {
         qos: MQTTQoS,
         retain: Bool = false,
     ) async throws {
+        #if DistributedTracingSupport
+        var info = MQTTPublishInfo(qos: qos, retain: retain, dup: false, topicName: topicName, payload: payload, properties: .init())
+        if self.configuration.version == .v5_0 {
+            let span = self.tracer?.startSpan("PUBLISH", ofKind: .producer)
+            defer { span?.end() }
+
+            if let span, !(span is NoOpTracer.Span) {
+                InstrumentationSystem.instrument.inject(span.context, into: &info, using: self.configuration.tracing.contextPropagator.injector)
+                span.updateAttributes { attributes in
+                    self.applyCommonPublishAttributes(to: &attributes)
+                    attributes[self.configuration.tracing.attributeNames.messagingDestinationName] = topicName
+                }
+            }
+            let packetId = self.updatePacketId()
+            let packet = MQTTPublishPacket(publish: info, packetId: packetId)
+            _ = try await self.publish(packet: packet)
+        } else {
+            let packetId = self.updatePacketId()
+            let packet = MQTTPublishPacket(publish: info, packetId: packetId)
+            _ = try await self.publish(packet: packet)
+        }
+        #else
         let info = MQTTPublishInfo(qos: qos, retain: retain, dup: false, topicName: topicName, payload: payload, properties: .init())
         let packetId = self.updatePacketId()
         let packet = MQTTPublishPacket(publish: info, packetId: packetId)
         _ = try await self.publish(packet: packet)
+        #endif
     }
 
     /// Ping the server to test if it is still alive and to tell it you are alive.
@@ -255,6 +299,71 @@ public final actor MQTTConnection: Sendable {
             }
         }
     }
+
+    #if DistributedTracingSupport
+    @usableFromInline
+    static func createCommonPublishSpanAttributes(
+        address: MQTTServerAddress?,
+        configuration: MQTTConnectionConfiguration,
+        channel: any Channel
+    ) -> SpanAttributes {
+        var commonAttributes: SpanAttributes = [
+            configuration.tracing.attributeNames.messagingSystemName: .string(configuration.tracing.attributeValues.messagingSystem),
+            configuration.tracing.attributeNames.messagingOperationName: "publish",
+        ]
+        if let remoteAddress = channel.remoteAddress {
+            commonAttributes[configuration.tracing.attributeNames.networkPeerAddress] = remoteAddress.ipAddress
+            commonAttributes[configuration.tracing.attributeNames.networkPeerPort] = remoteAddress.port
+        }
+        switch address?.value {
+        case let .hostname(host, port):
+            commonAttributes[configuration.tracing.attributeNames.serverAddress] = host
+            commonAttributes[configuration.tracing.attributeNames.serverPort] = (port == 6379 ? nil : port)
+        case let .unixDomainSocket(path):
+            commonAttributes[configuration.tracing.attributeNames.serverAddress] = path
+        case nil:
+            break
+        }
+        return commonAttributes
+    }
+
+    @usableFromInline
+    nonisolated func applyCommonPublishAttributes(to attributes: inout SpanAttributes) {
+        attributes.merge(self.commonPublishSpanAttributes)
+    }
+
+    @usableFromInline
+    static func createCommonSubscribeSpanAttributes(
+        address: MQTTServerAddress?,
+        configuration: MQTTConnectionConfiguration,
+        channel: any Channel
+    ) -> SpanAttributes {
+        var commonAttributes: SpanAttributes = [
+            configuration.tracing.attributeNames.messagingSystemName: .string(configuration.tracing.attributeValues.messagingSystem),
+            configuration.tracing.attributeNames.messagingOperationName: "subscribe",
+        ]
+        if let remoteAddress = channel.remoteAddress {
+            commonAttributes[configuration.tracing.attributeNames.networkPeerAddress] = remoteAddress.ipAddress
+            commonAttributes[configuration.tracing.attributeNames.networkPeerPort] = remoteAddress.port
+        }
+        switch address?.value {
+        case let .hostname(host, port):
+            commonAttributes[configuration.tracing.attributeNames.serverAddress] = host
+            commonAttributes[configuration.tracing.attributeNames.serverPort] = (port == 6379 ? nil : port)
+        case let .unixDomainSocket(path):
+            commonAttributes[configuration.tracing.attributeNames.serverAddress] = path
+        case nil:
+            break
+        }
+        return commonAttributes
+    }
+
+    @usableFromInline
+    nonisolated func applyCommonSubscribeAttributes(to attributes: inout SpanAttributes) {
+        attributes.merge(self.commonSubscribeSpanAttributes)
+    }
+
+    #endif
 
     /// Connect to MQTT server and return the connection and whether there was a previous session present.
     ///
