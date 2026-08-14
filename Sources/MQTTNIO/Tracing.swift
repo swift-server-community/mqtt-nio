@@ -88,7 +88,7 @@ public struct MQTTTracingConfiguration: Sendable {
 extension MQTTConnection {
     func withMessageSpan<Value>(
         _ publishInfo: MQTTPublishInfo,
-        _ operation: (any Span) async throws -> Value
+        _ operation: sending (any Span) async throws -> Value
     ) async throws -> Value {
         var serviceContext = ServiceContext.current ?? ServiceContext.topLevel
         self.tracer?.extract(publishInfo, into: &serviceContext, using: self.configuration.tracing.contextPropagator.extractor)
