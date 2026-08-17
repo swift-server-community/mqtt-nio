@@ -6,11 +6,13 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 
+import InMemoryTracing
 import Logging
 import NIOCore
 import NIOEmbedded
 import NIOHTTP1
 import Testing
+import Tracing
 
 @testable import MQTTNIO
 
@@ -713,6 +715,100 @@ struct MQTTConnectionTests {
         } server: { _ in
         }
     }
+
+    #if DistributedTracingSupport
+
+    struct Tracing {
+        @Test("Publish attributes")
+        func publishAttributes() async throws {
+            let tracer = InMemoryTracer()
+            var config = MQTTConnectionConfiguration(versionConfiguration: .v5_0())
+            config.tracing.tracer = tracer
+            try await withTestMQTTServer(configuration: config) { connection in
+                try await connection.publish(to: "testTopic", payload: ByteBuffer(string: "TestPayload"), qos: .atLeastOnce, retain: false)
+            } server: { channel in
+                let packet = try await channel.waitForOutboundPacket()
+                let publishPacket = try MQTTPublishPacket.read(version: .v5_0, from: packet)
+                #expect(publishPacket.packetId != 0)
+                let ack = MQTTPubAckPacket(type: .PUBACK, packetId: publishPacket.packetId)
+                try await channel.writeInboundPacket(ack, version: .v5_0)
+            }
+            #expect(tracer.finishedSpans.count == 1)
+            expectSpanAttributesEquals(
+                tracer.finishedSpans[0].attributes,
+                [
+                    "messaging.operation.name": "publish",
+                    "messaging.system": "mqtt",
+                    "messaging.destination.name": "testTopic",
+                    "server.address": .string("127.0.0.1"),
+                    "server.port": 1883,
+                    "network.peer.address": .string("127.0.0.1"),
+                    "network.peer.port": 1883,
+                ]
+            )
+        }
+
+        @Test("Publish error attributes")
+        func publishErrorAttributes() async throws {
+            let tracer = InMemoryTracer()
+            var config = MQTTConnectionConfiguration(versionConfiguration: .v5_0())
+            config.tracing.tracer = tracer
+            try await withTestMQTTServer(configuration: config) { connection in
+                try? await connection.publish(to: "testTopic", payload: ByteBuffer(string: "TestPayload"), qos: .atLeastOnce, retain: false)
+            } server: { channel in
+                let packet = try await channel.waitForOutboundPacket()
+                let publishPacket = try MQTTPublishPacket.read(version: .v5_0, from: packet)
+                #expect(publishPacket.packetId != 0)
+                let ack = MQTTPubAckPacket(type: .PUBREC, packetId: publishPacket.packetId)
+                try await channel.writeInboundPacket(ack, version: .v5_0)
+            }
+            #expect(tracer.finishedSpans.count == 1)
+            expectSpanAttributesEquals(
+                tracer.finishedSpans[0].attributes,
+                [
+                    "messaging.operation.name": "publish",
+                    "messaging.system": "mqtt",
+                    "messaging.destination.name": "testTopic",
+                    "server.address": .string("127.0.0.1"),
+                    "server.port": 1883,
+                    "network.peer.address": .string("127.0.0.1"),
+                    "network.peer.port": 1883,
+                ]
+            )
+        }
+
+        private func expectSpanAttributesEquals(
+            _ lhs: @autoclosure () -> SpanAttributes,
+            _ rhs: @autoclosure () -> [String: SpanAttribute],
+            fileID: String = #fileID,
+            filePath: String = #filePath,
+            line: Int = #line,
+            column: Int = #column
+        ) {
+            var rhs = rhs()
+
+            // swift-format-ignore: ReplaceForEachWithForLoop
+            lhs().forEach { key, attribute in
+                if let rhsValue = rhs.removeValue(forKey: key) {
+                    #expect(rhsValue == attribute, sourceLocation: .init(fileID: fileID, filePath: filePath, line: line, column: column))
+                } else {
+                    Issue.record(
+                        #"Did not specify expected value for "\#(key)", actual value is "\#(attribute)"."#,
+                        sourceLocation: .init(fileID: fileID, filePath: filePath, line: line, column: column)
+                    )
+                }
+            }
+
+            if !rhs.isEmpty {
+                Issue.record(
+                    #"Expected attributes "\#(rhs.keys)" are not present in actual attributes."#,
+                    sourceLocation: .init(fileID: fileID, filePath: filePath, line: line, column: column)
+                )
+            }
+        }
+    }
+
+    #endif  // DistributedTracingSupport
 }
 
 struct SimpleAuthWorkflow: MQTTAuthenticator {
