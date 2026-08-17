@@ -633,7 +633,6 @@ struct IntegrationV5Tests {
         var config = MQTTConnectionConfiguration(versionConfiguration: .v5_0())
         config.tracing.tracer = tracer
 
-        let (stream, cont) = AsyncStream.makeStream(of: String.self)
         try await MQTTConnection.withConnection(
             address: .hostname(Self.hostname),
             configuration: config,
@@ -644,39 +643,89 @@ struct IntegrationV5Tests {
                 configuration: config,
                 identifier: "traceContextPropagationSubscribe"
             ) { connection2 in
-                try await withThrowingTaskGroup { group in
+                try await withThrowingTaskGroup(of: String.self) { group in
                     group.addTask {
                         try await Task.sleep(for: .seconds(1))
-                        try await tracer.withSpan("test)") { span in
-                            cont.yield(span.context.inMemorySpanContext?.traceID ?? "1")
+                        return try await tracer.withSpan("test)") { span in
                             _ = try await connection.v5.publish(
                                 to: "traceContextPropagation",
                                 payload: ByteBuffer(string: "test"),
                                 qos: .atLeastOnce
                             )
+                            return span.context.inMemorySpanContext?.traceID ?? "Invalid publish trace id"
                         }
                     }
 
                     group.addTask {
                         try await connection2.v5.subscribe(to: [.init(topicFilter: "traceContextPropagation", qos: .atLeastOnce)]) {
                             subscription in
-                            for try await message in subscription {
-                                try await connection.withMessageSpan(message) { span in
-                                    _ = cont.yield(span.context.inMemorySpanContext?.traceID ?? "2")
+                            var subscriptionIterator = subscription.makeAsyncIterator()
+                            if let message = try await subscriptionIterator.next() {
+                                return try await connection.withMessageSpan(message) { span in
+                                    span?.context.inMemorySpanContext?.traceID ?? "No subscription trace id"
                                 }
-                                return
                             }
+                            return "No subscription"
                         }
                     }
-                    var iterator = stream.makeAsyncIterator()
-                    let publishContext = await iterator.next()
-                    let subscribeContext = await iterator.next()
+                    let publishContext = try await group.next()
+                    let subscribeContext = try await group.next()
                     // verify the context created by the publish
                     #expect(publishContext == subscribeContext)
-
-                    try await group.waitForAll()
                 }
             }
+        }
+
+        #expect(tracer.finishedSpans.count == 3)
+        let traceID = tracer.finishedSpans[0].traceID
+        #expect(tracer.finishedSpans[0].operationName == "PUBLISH")
+        #expect(tracer.finishedSpans[0].kind == .producer)
+        expectSpanAttributesIncludes(
+            tracer.finishedSpans[0].attributes,
+            [
+                "messaging.operation.name": "publish",
+                "messaging.system": "mqtt",
+                "messaging.destination.name": "traceContextPropagation",
+                "server.address": .string(Self.hostname),
+                "server.port": 1883,
+            ]
+        )
+        #expect(tracer.finishedSpans[2].traceID == traceID)
+        #expect(tracer.finishedSpans[2].kind == .consumer)
+        expectSpanAttributesIncludes(
+            tracer.finishedSpans[2].attributes,
+            [
+                "messaging.operation.name": "subscribe",
+                "messaging.system": "mqtt",
+                "messaging.destination.name": "traceContextPropagation",
+                "server.address": .string(Self.hostname),
+                "server.port": 1883,
+            ]
+        )
+    }
+
+    private func expectSpanAttributesIncludes(
+        _ lhs: @autoclosure () -> SpanAttributes,
+        _ rhs: @autoclosure () -> [String: SpanAttribute],
+        fileID: String = #fileID,
+        filePath: String = #filePath,
+        line: Int = #line,
+        column: Int = #column
+    ) {
+        var rhs = rhs()
+
+        // swift-format-ignore: ReplaceForEachWithForLoop
+        lhs().forEach { key, attribute in
+            if let rhsValue = rhs.removeValue(forKey: key) {
+                #expect(rhsValue == attribute, sourceLocation: .init(fileID: fileID, filePath: filePath, line: line, column: column))
+            }
+        }
+
+        if !rhs.isEmpty {
+            Issue.record(
+                #"Expected attributes "\#(rhs.keys)" are not present in actual attributes."#,
+                sourceLocation: .init(fileID: fileID, filePath: filePath, line: line, column: column)
+            )
         }
     }
 

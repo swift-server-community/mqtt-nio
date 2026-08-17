@@ -225,20 +225,19 @@ public final actor MQTTConnection: Sendable {
     ) async throws {
         #if DistributedTracingSupport
         var info = MQTTPublishInfo(qos: qos, retain: retain, dup: false, topicName: topicName, payload: payload, properties: .init())
-        if self.configuration.version == .v5_0 {
-            let span = self.tracer?.startSpan("PUBLISH", ofKind: .producer)
-            defer { span?.end() }
-
-            if let span, !(span is NoOpTracer.Span) {
-                self.tracer?.inject(span.context, into: &info, using: self.configuration.tracing.contextPropagator.injector)
-                span.updateAttributes { attributes in
-                    self.applyCommonPublishAttributes(to: &attributes)
-                    attributes[self.configuration.tracing.attributeNames.messagingDestinationName] = topicName
+        if self.configuration.version == .v5_0, let tracer = self.tracer {
+            try await withSpan("PUBLISH", ofKind: .producer) { span in
+                if !(span is NoOpTracer.Span) {
+                    tracer.inject(span.context, into: &info, using: self.configuration.tracing.contextPropagator.injector)
+                    span.updateAttributes { attributes in
+                        self.applyCommonPublishAttributes(to: &attributes)
+                        attributes[self.configuration.tracing.attributeNames.messagingDestinationName] = topicName
+                    }
                 }
+                let packetId = self.updatePacketId()
+                let packet = MQTTPublishPacket(publish: info, packetId: packetId)
+                _ = try await self.publish(packet: packet)
             }
-            let packetId = self.updatePacketId()
-            let packet = MQTTPublishPacket(publish: info, packetId: packetId)
-            _ = try await self.publish(packet: packet)
         } else {
             let packetId = self.updatePacketId()
             let packet = MQTTPublishPacket(publish: info, packetId: packetId)

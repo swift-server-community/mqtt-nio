@@ -86,18 +86,28 @@ public struct MQTTTracingConfiguration: Sendable {
 }
 
 extension MQTTConnection {
+    /// Start a new span with trace ID from publish info and end the span when the
+    /// operation completes.
+    ///
+    /// - Parameters:
+    ///   - publishInfo:
+    ///   - operation:
     func withMessageSpan<Value>(
         _ publishInfo: MQTTPublishInfo,
-        _ operation: sending (any Span) async throws -> Value
+        _ operation: sending ((any Span)?) async throws -> Value
     ) async throws -> Value {
-        var serviceContext = ServiceContext.current ?? ServiceContext.topLevel
-        self.tracer?.extract(publishInfo, into: &serviceContext, using: self.configuration.tracing.contextPropagator.extractor)
-        return try await Tracing.withSpan("SUBSCRIBE", context: serviceContext, ofKind: .client) { span in
-            span.updateAttributes { attributes in
-                self.applyCommonSubscribeAttributes(to: &attributes)
-                attributes[self.configuration.tracing.attributeNames.messagingDestinationName] = publishInfo.topicName
+        if let tracer = self.configuration.tracing.tracer {
+            var serviceContext = ServiceContext.current ?? ServiceContext.topLevel
+            tracer.extract(publishInfo, into: &serviceContext, using: self.configuration.tracing.contextPropagator.extractor)
+            return try await tracer.withSpan("SUBSCRIBE", context: serviceContext, ofKind: .consumer) { span in
+                span.updateAttributes { attributes in
+                    self.applyCommonSubscribeAttributes(to: &attributes)
+                    attributes[self.configuration.tracing.attributeNames.messagingDestinationName] = publishInfo.topicName
+                }
+                return try await operation(span)
             }
-            return try await operation(span)
+        } else {
+            return try await operation(nil)
         }
     }
 }
