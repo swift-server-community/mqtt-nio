@@ -735,6 +735,7 @@ struct MQTTConnectionTests {
             }
             #expect(tracer.finishedSpans.count == 1)
             #expect(tracer.finishedSpans[0].kind == .producer)
+            #expect(tracer.finishedSpans[0].operationName == "PUBLISH testTopic")
             expectSpanAttributesEquals(
                 tracer.finishedSpans[0].attributes,
                 [
@@ -842,6 +843,7 @@ struct MQTTConnectionTests {
                 try await channel.writeInboundPacket(unsuback, version: .v5_0)
             }
             #expect(tracer.finishedSpans.count == 1)
+            #expect(tracer.finishedSpans[0].operationName == "SUBSCRIBE subscribeAttributes")
             #expect(tracer.finishedSpans[0].kind == .consumer)
             expectSpanAttributesEquals(
                 tracer.finishedSpans[0].attributes,

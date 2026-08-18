@@ -226,7 +226,7 @@ public final actor MQTTConnection: Sendable {
         #if DistributedTracingSupport
         var info = MQTTPublishInfo(qos: qos, retain: retain, dup: false, topicName: topicName, payload: payload, properties: .init())
         if self.configuration.version == .v5_0, let tracer = self.tracer {
-            try await tracer.withSpan("PUBLISH", ofKind: .producer) { span in
+            try await tracer.withSpan("PUBLISH \(topicName)", ofKind: .producer) { span in
                 if !(span is NoOpTracer.Span) {
                     tracer.inject(span.context, into: &info, using: self.configuration.tracing.contextPropagator.injector)
                     span.updateAttributes { attributes in

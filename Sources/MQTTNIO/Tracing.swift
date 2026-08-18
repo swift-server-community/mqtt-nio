@@ -92,14 +92,14 @@ extension MQTTConnection {
     /// - Parameters:
     ///   - publishInfo:
     ///   - operation:
-    public func withMessageSpan<Value>(
+    public nonisolated func withMessageSpan<Value>(
         _ publishInfo: MQTTPublishInfo,
         _ operation: ((any Span)?) async throws -> Value
     ) async throws -> Value {
         if let tracer = self.configuration.tracing.tracer {
             var serviceContext = ServiceContext.current ?? ServiceContext.topLevel
             tracer.extract(publishInfo, into: &serviceContext, using: self.configuration.tracing.contextPropagator.extractor)
-            return try await tracer.withSpan("SUBSCRIBE", context: serviceContext, ofKind: .consumer) { span in
+            return try await tracer.withSpan("SUBSCRIBE \(publishInfo.topicName)", context: serviceContext, ofKind: .consumer) { span in
                 span.updateAttributes { attributes in
                     self.applyCommonSubscribeAttributes(to: &attributes)
                     attributes[self.configuration.tracing.attributeNames.messagingDestinationName] = publishInfo.topicName
