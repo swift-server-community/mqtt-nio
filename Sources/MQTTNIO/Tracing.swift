@@ -94,7 +94,7 @@ extension MQTTConnection {
     ///   - operation:
     public func withMessageSpan<Value>(
         _ publishInfo: MQTTPublishInfo,
-        _ operation: sending ((any Span)?) async throws -> Value
+        _ operation: ((any Span)?) async throws -> Value
     ) async throws -> Value {
         if let tracer = self.configuration.tracing.tracer {
             var serviceContext = ServiceContext.current ?? ServiceContext.topLevel
