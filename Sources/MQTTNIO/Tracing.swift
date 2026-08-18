@@ -92,7 +92,7 @@ extension MQTTConnection {
     /// - Parameters:
     ///   - publishInfo:
     ///   - operation:
-    func withMessageSpan<Value>(
+    public func withMessageSpan<Value>(
         _ publishInfo: MQTTPublishInfo,
         _ operation: sending ((any Span)?) async throws -> Value
     ) async throws -> Value {
