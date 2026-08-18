@@ -629,24 +629,27 @@ struct IntegrationV5Tests {
 
     @Test
     func traceContextPropagation() async throws {
-        let tracer = InMemoryTracer()
-        var config = MQTTConnectionConfiguration(versionConfiguration: .v5_0())
-        config.tracing.tracer = tracer
+        let tracer1 = InMemoryTracer()
+        var config1 = MQTTConnectionConfiguration(versionConfiguration: .v5_0())
+        config1.tracing.tracer = tracer1
+        let tracer2 = InMemoryTracer()
+        var config2 = MQTTConnectionConfiguration(versionConfiguration: .v5_0())
+        config2.tracing.tracer = tracer2
 
         try await MQTTConnection.withConnection(
             address: .hostname(Self.hostname),
-            configuration: config,
+            configuration: config1,
             identifier: "traceContextPropagationPublish"
         ) { connection in
             try await MQTTConnection.withConnection(
                 address: .hostname(Self.hostname),
-                configuration: config,
+                configuration: config2,
                 identifier: "traceContextPropagationSubscribe"
             ) { connection2 in
                 try await withThrowingTaskGroup(of: String.self) { group in
                     group.addTask {
                         try await Task.sleep(for: .seconds(1))
-                        return try await tracer.withSpan("test)") { span in
+                        return try await tracer1.withSpan("test)") { span in
                             _ = try await connection.v5.publish(
                                 to: "traceContextPropagation",
                                 payload: ByteBuffer(string: "test"),
@@ -661,7 +664,7 @@ struct IntegrationV5Tests {
                             subscription in
                             var subscriptionIterator = subscription.makeAsyncIterator()
                             if let message = try await subscriptionIterator.next() {
-                                return try await connection.withMessageSpan(message) { span in
+                                return try await connection2.withMessageSpan(message) { span in
                                     span?.context.inMemorySpanContext?.traceID ?? "No subscription trace id"
                                 }
                             }
@@ -676,12 +679,12 @@ struct IntegrationV5Tests {
             }
         }
 
-        #expect(tracer.finishedSpans.count == 3)
-        let traceID = tracer.finishedSpans[0].traceID
-        #expect(tracer.finishedSpans[0].operationName == "PUBLISH")
-        #expect(tracer.finishedSpans[0].kind == .producer)
+        #expect(tracer1.finishedSpans.count == 2)
+        let traceID = tracer1.finishedSpans[0].traceID
+        #expect(tracer1.finishedSpans[0].operationName == "PUBLISH traceContextPropagation")
+        #expect(tracer1.finishedSpans[0].kind == .producer)
         expectSpanAttributesIncludes(
-            tracer.finishedSpans[0].attributes,
+            tracer1.finishedSpans[0].attributes,
             [
                 "messaging.operation.name": "publish",
                 "messaging.system": "mqtt",
@@ -690,10 +693,11 @@ struct IntegrationV5Tests {
                 "server.port": 1883,
             ]
         )
-        #expect(tracer.finishedSpans[2].traceID == traceID)
-        #expect(tracer.finishedSpans[2].kind == .consumer)
+        #expect(tracer2.finishedSpans.count == 1)
+        #expect(tracer2.finishedSpans[0].traceID == traceID)
+        #expect(tracer2.finishedSpans[0].kind == .consumer)
         expectSpanAttributesIncludes(
-            tracer.finishedSpans[2].attributes,
+            tracer2.finishedSpans[0].attributes,
             [
                 "messaging.operation.name": "subscribe",
                 "messaging.system": "mqtt",

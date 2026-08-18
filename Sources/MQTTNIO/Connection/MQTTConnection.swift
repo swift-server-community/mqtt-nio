@@ -217,38 +217,14 @@ public final actor MQTTConnection: Sendable {
     ///     - payload: Message payload.
     ///     - qos: Quality of Service for message.
     ///     - retain: Whether this is a retained message.
+    @inlinable
     public func publish(
         to topicName: String,
         payload: ByteBuffer,
         qos: MQTTQoS,
         retain: Bool = false,
     ) async throws {
-        #if DistributedTracingSupport
-        var info = MQTTPublishInfo(qos: qos, retain: retain, dup: false, topicName: topicName, payload: payload, properties: .init())
-        if self.configuration.version == .v5_0, let tracer = self.tracer {
-            try await tracer.withSpan("PUBLISH \(topicName)", ofKind: .producer) { span in
-                if !(span is NoOpTracer.Span) {
-                    tracer.inject(span.context, into: &info, using: self.configuration.tracing.contextPropagator.injector)
-                    span.updateAttributes { attributes in
-                        self.applyCommonPublishAttributes(to: &attributes)
-                        attributes[self.configuration.tracing.attributeNames.messagingDestinationName] = topicName
-                    }
-                }
-                let packetId = self.updatePacketId()
-                let packet = MQTTPublishPacket(publish: info, packetId: packetId)
-                _ = try await self.publish(packet: packet)
-            }
-        } else {
-            let packetId = self.updatePacketId()
-            let packet = MQTTPublishPacket(publish: info, packetId: packetId)
-            _ = try await self.publish(packet: packet)
-        }
-        #else
-        let info = MQTTPublishInfo(qos: qos, retain: retain, dup: false, topicName: topicName, payload: payload, properties: .init())
-        let packetId = self.updatePacketId()
-        let packet = MQTTPublishPacket(publish: info, packetId: packetId)
-        _ = try await self.publish(packet: packet)
-        #endif
+        _ = try await _publish(to: topicName, payload: payload, qos: qos, retain: retain, properties: .init())
     }
 
     /// Ping the server to test if it is still alive and to tell it you are alive.
@@ -1010,6 +986,43 @@ public final actor MQTTConnection: Sendable {
         default:
             throw MQTTError.unexpectedPacket
         }
+    }
+
+    /// Publish message to topic
+    @usableFromInline
+    func _publish(
+        to topicName: String,
+        payload: ByteBuffer,
+        qos: MQTTQoS,
+        retain: Bool = false,
+        properties: MQTTProperties
+    ) async throws -> MQTTAckV5? {
+        #if DistributedTracingSupport
+        var info = MQTTPublishInfo(qos: qos, retain: retain, dup: false, topicName: topicName, payload: payload, properties: properties)
+        if self.configuration.version == .v5_0, let tracer = self.tracer {
+            return try await tracer.withSpan("PUBLISH \(topicName)", ofKind: .producer) { span in
+                if !(span is NoOpTracer.Span) {
+                    tracer.inject(span.context, into: &info, using: self.configuration.tracing.contextPropagator.injector)
+                    span.updateAttributes { attributes in
+                        self.applyCommonPublishAttributes(to: &attributes)
+                        attributes[self.configuration.tracing.attributeNames.messagingDestinationName] = topicName
+                    }
+                }
+                let packetId = self.updatePacketId()
+                let packet = MQTTPublishPacket(publish: info, packetId: packetId)
+                return try await self.publish(packet: packet)
+            }
+        } else {
+            let packetId = self.updatePacketId()
+            let packet = MQTTPublishPacket(publish: info, packetId: packetId)
+            return try await self.publish(packet: packet)
+        }
+        #else
+        let info = MQTTPublishInfo(qos: qos, retain: retain, dup: false, topicName: topicName, payload: payload, properties: properties)
+        let packetId = self.updatePacketId()
+        let packet = MQTTPublishPacket(publish: info, packetId: packetId)
+        return try await self.publish(packet: packet)
+        #endif
     }
 
     /// Publish message to topic

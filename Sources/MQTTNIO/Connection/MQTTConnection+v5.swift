@@ -28,6 +28,7 @@ extension MQTTConnection {
         ///     - properties: Properties to attach to publish message.
         ///
         /// - Returns: QoS1 and above return an `MQTTAckV5` which contains a `reason` and `properties`.
+        @inlinable
         public func publish(
             to topicName: String,
             payload: ByteBuffer,
@@ -35,27 +36,7 @@ extension MQTTConnection {
             retain: Bool = false,
             properties: MQTTProperties = .init()
         ) async throws -> MQTTAckV5? {
-            var info = MQTTPublishInfo(qos: qos, retain: retain, dup: false, topicName: topicName, payload: payload, properties: properties)
-            #if DistributedTracingSupport
-            let span = self.connection.tracer?.startSpan("PUBLISH", ofKind: .producer)
-            defer { span?.end() }
-
-            if let span, !(span is NoOpTracer.Span) {
-                self.connection.tracer?.inject(
-                    span.context,
-                    into: &info,
-                    using: self.connection.configuration.tracing.contextPropagator.injector
-                )
-
-                span.updateAttributes { attributes in
-                    self.connection.applyCommonPublishAttributes(to: &attributes)
-                    attributes[self.connection.configuration.tracing.attributeNames.messagingDestinationName] = topicName
-                }
-            }
-            #endif
-            let packetId = await self.connection.updatePacketId()
-            let packet = MQTTPublishPacket(publish: info, packetId: packetId)
-            return try await self.connection.publish(packet: packet)
+            try await self.connection._publish(to: topicName, payload: payload, qos: qos, retain: retain, properties: properties)
         }
 
         /// Re-authenticate with server.
