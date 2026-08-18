@@ -734,6 +734,7 @@ struct MQTTConnectionTests {
                 try await channel.writeInboundPacket(ack, version: .v5_0)
             }
             #expect(tracer.finishedSpans.count == 1)
+            #expect(tracer.finishedSpans[0].kind == .producer)
             expectSpanAttributesEquals(
                 tracer.finishedSpans[0].attributes,
                 [
@@ -763,12 +764,91 @@ struct MQTTConnectionTests {
                 try await channel.writeInboundPacket(ack, version: .v5_0)
             }
             #expect(tracer.finishedSpans.count == 1)
+            #expect(tracer.finishedSpans[0].kind == .producer)
+            #expect(tracer.finishedSpans[0].errors.count == 1)
+            #expect(tracer.finishedSpans[0].errors[0].error is MQTTError)
             expectSpanAttributesEquals(
                 tracer.finishedSpans[0].attributes,
                 [
                     "messaging.operation.name": "publish",
                     "messaging.system": "mqtt",
                     "messaging.destination.name": "testTopic",
+                    "server.address": .string("127.0.0.1"),
+                    "server.port": 1883,
+                    "network.peer.address": .string("127.0.0.1"),
+                    "network.peer.port": 1883,
+                ]
+            )
+        }
+
+        @Test("Subscribe attributes")
+        func subscribeAttributes() async throws {
+            let tracer = InMemoryTracer()
+            var config = MQTTConnectionConfiguration(versionConfiguration: .v5_0())
+            config.tracing.tracer = tracer
+            try await withTestMQTTServer(configuration: config) { connection in
+                try await connection.v5.subscribe(to: [.init(topicFilter: "subscribeAttributes", qos: .atMostOnce)]) { sub in
+                    var iterator = sub.makeAsyncIterator()
+                    let message = try #require(try await iterator.next())
+                    try await connection.withMessageSpan(message) { _ in
+                    }
+                }
+            } server: { channel in
+                // Receive SUBSCRIBE
+                var packet = try await channel.waitForOutboundPacket()
+                let subscribePacket = try MQTTSubscribePacket.read(version: .v5_0, from: packet)
+                let subscriptionID: UInt32 = try #require(
+                    {
+                        for property in subscribePacket.properties ?? .init() {
+                            if case .subscriptionIdentifier(let id) = property {
+                                return id
+                            }
+                        }
+                        return nil
+                    }()
+                )
+                // Send SUBACK
+                let suback = MQTTSubAckPacket(
+                    type: .SUBACK,
+                    packetId: subscribePacket.packetId,
+                    reasons: [.success],
+                    properties: .init()
+                )
+                try await channel.writeInboundPacket(suback, version: .v5_0)
+
+                // send PUBLISH
+                let publish2 = MQTTPublishPacket(
+                    publish: .init(
+                        qos: .atMostOnce,
+                        retain: false,
+                        topicName: "subscribeAttributes",
+                        payload: ByteBuffer(string: "TestPayload2"),
+                        properties: [.subscriptionIdentifier(subscriptionID)]
+                    ),
+                    packetId: 32769
+                )
+                try await channel.writeInboundPacket(publish2, version: .v5_0)
+
+                // Receive UNSUBSCRIBE
+                packet = try await channel.waitForOutboundPacket()
+                let unsubscribePacket = try MQTTUnsubscribePacket.read(version: .v5_0, from: packet)
+                // Send UNSUBACK
+                let unsuback = MQTTSubAckPacket(
+                    type: .UNSUBACK,
+                    packetId: unsubscribePacket.packetId,
+                    reasons: [.success],
+                    properties: .init()
+                )
+                try await channel.writeInboundPacket(unsuback, version: .v5_0)
+            }
+            #expect(tracer.finishedSpans.count == 1)
+            #expect(tracer.finishedSpans[0].kind == .consumer)
+            expectSpanAttributesEquals(
+                tracer.finishedSpans[0].attributes,
+                [
+                    "messaging.operation.name": "subscribe",
+                    "messaging.system": "mqtt",
+                    "messaging.destination.name": "subscribeAttributes",
                     "server.address": .string("127.0.0.1"),
                     "server.port": 1883,
                     "network.peer.address": .string("127.0.0.1"),

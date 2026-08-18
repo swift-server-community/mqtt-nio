@@ -450,7 +450,7 @@ struct IntegrationV5Tests {
         }
     }
 
-    @Test("Subscribe to All Topics", .disabled(if: ProcessInfo.processInfo.environment["CI"] != nil))
+    @Test("Subscribe to All Topics V5", .disabled(if: ProcessInfo.processInfo.environment["CI"] != nil))
     func subscribeAll() async throws {
         try await MQTTConnection.withConnection(
             address: .hostname("broker.hivemq.com"),
