@@ -30,8 +30,8 @@ let package = Package(
         .library(name: "MQTTNIO", targets: ["MQTTNIO"])
     ],
     traits: [
-        .trait(name: "DistributedTracingSupport"),
-        .default(enabledTraits: ["DistributedTracingSupport"]),
+        .trait(name: "DistributedTracing"),
+        .default(enabledTraits: ["DistributedTracing"]),
     ],
     dependencies: [
         .package(url: "https://github.com/apple/swift-distributed-tracing.git", from: "1.4.0"),
@@ -48,7 +48,7 @@ let package = Package(
             name: "MQTTNIO",
             dependencies: [
                 .product(name: "Logging", package: "swift-log"),
-                .product(name: "Tracing", package: "swift-distributed-tracing", condition: .when(traits: ["DistributedTracingSupport"])),
+                .product(name: "Tracing", package: "swift-distributed-tracing", condition: .when(traits: ["DistributedTracing"])),
                 .product(name: "NIO", package: "swift-nio"),
                 .product(name: "NIOHTTP1", package: "swift-nio"),
                 .product(name: "NIOWebSocket", package: "swift-nio"),
@@ -72,7 +72,7 @@ let package = Package(
             dependencies: [
                 .target(name: "MQTTNIO"),
                 .product(name: "InMemoryLogging", package: "swift-log"),
-                .product(name: "InMemoryTracing", package: "swift-distributed-tracing", condition: .when(traits: ["DistributedTracingSupport"])),
+                .product(name: "InMemoryTracing", package: "swift-distributed-tracing", condition: .when(traits: ["DistributedTracing"])),
                 .product(name: "NIOFoundationCompat", package: "swift-nio"),
             ],
             swiftSettings: defaultSwiftSettings

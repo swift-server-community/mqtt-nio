@@ -14,7 +14,7 @@ import Testing
 
 @testable import MQTTNIO
 
-#if DistributedTracingSupport
+#if DistributedTracing
 import InMemoryTracing
 import Tracing
 #endif
@@ -625,7 +625,7 @@ struct IntegrationV5Tests {
         }
     }
 
-    #if DistributedTracingSupport
+    #if DistributedTracing
 
     @Test
     func traceContextPropagation() async throws {

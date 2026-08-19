@@ -6,7 +6,7 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 
-#if DistributedTracingSupport
+#if DistributedTracing
 
 public import Tracing
 
@@ -68,13 +68,13 @@ public struct MQTTTracingConfiguration: Sendable {
     /// context and a link to the current span is stored.
     public var createChildConsumerSpans: Bool
 
-    /// The attribute names used in spans created by Valkey. Defaults to OpenTelemetry semantics.
+    /// The attribute names used in spans created by MQTTNIO. Defaults to OpenTelemetry semantics.
     public var attributeNames: AttributeNames = .init()
 
-    /// The static attribute values used in spans created by Valkey.
+    /// The static attribute values used in spans created by MQTTNIO.
     public var attributeValues: AttributeValues = .init()
 
-    /// Attribute names used in spans created by Valkey.
+    /// Attribute names used in spans created by MQTTNIO.
     public struct AttributeNames: Sendable {
         public var messagingOperationName: String = "messaging.operation.name"
         public var messagingSystemName: String = "messaging.system"
@@ -85,7 +85,7 @@ public struct MQTTTracingConfiguration: Sendable {
         public var serverPort: String = "server.port"
     }
 
-    /// Static attribute values used in spans created by Valkey.
+    /// Static attribute values used in spans created by MQTTNIO.
     public struct AttributeValues: Sendable {
         public var messagingSystem: String = "mqtt"
     }

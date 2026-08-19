@@ -9,7 +9,7 @@
 public import HTTPTypes
 public import NIOCore
 
-#if DistributedTracingSupport
+#if DistributedTracing
 import Tracing
 #endif
 
@@ -259,7 +259,7 @@ public struct MQTTConnectionConfiguration: Sendable {
     /// Transport to use for the connection and its associated configuration.
     public var transport: Transport
 
-    #if DistributedTracingSupport
+    #if DistributedTracing
     /// The distributed tracing configuration to use for this connection.
     /// Defaults to using the globally bootstrapped tracer with OpenTelemetry semantic conventions.
     public var tracing: MQTTTracingConfiguration = .init()
