@@ -113,8 +113,9 @@ extension MQTTConnection {
                 spanKind = .consumer
             } else {
                 spanContext = ServiceContext.current ?? ServiceContext.topLevel
-                linkContext = ServiceContext.topLevel
-                tracer.extract(publishInfo, into: &spanContext, using: self.configuration.tracing.contextPropagator.extractor)
+                var topLevel = ServiceContext.topLevel
+                tracer.extract(publishInfo, into: &topLevel, using: self.configuration.tracing.contextPropagator.extractor)
+                linkContext = topLevel
                 spanKind = .client
             }
             return try await tracer.withSpan("subscribe \(publishInfo.topicName)", context: spanContext, ofKind: spanKind) { span in
