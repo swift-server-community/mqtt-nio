@@ -14,7 +14,7 @@ public import NIOPosix
 import NIOWebSocket
 import Synchronization
 
-#if DistributedTracingSupport
+#if DistributedTracing
 public import Tracing
 #endif
 
@@ -45,7 +45,7 @@ public final actor MQTTConnection: Sendable {
     let configuration: MQTTConnectionConfiguration
     let globalPacketId = Atomic<UInt16>(1)
     let isClosed: Atomic<Bool>
-    #if DistributedTracingSupport
+    #if DistributedTracing
     @usableFromInline
     let tracer: (any Tracer)?
     @usableFromInline
@@ -69,7 +69,7 @@ public final actor MQTTConnection: Sendable {
         self.channelHandler = channelHandler
         self.configuration = configuration
         self.logger = logger
-        #if DistributedTracingSupport
+        #if DistributedTracing
         self.tracer = configuration.tracing.tracer
         self.commonPublishSpanAttributes = Self.createCommonPublishSpanAttributes(address: address, configuration: configuration, channel: channel)
         self.commonSubscribeSpanAttributes = Self.createCommonSubscribeSpanAttributes(
@@ -275,7 +275,7 @@ public final actor MQTTConnection: Sendable {
         }
     }
 
-    #if DistributedTracingSupport
+    #if DistributedTracing
     @usableFromInline
     static func createCommonPublishSpanAttributes(
         address: MQTTServerAddress?,
@@ -293,7 +293,7 @@ public final actor MQTTConnection: Sendable {
         switch address?.value {
         case let .hostname(host, port):
             commonAttributes[configuration.tracing.attributeNames.serverAddress] = host
-            commonAttributes[configuration.tracing.attributeNames.serverPort] = (port == 6379 ? nil : port)
+            commonAttributes[configuration.tracing.attributeNames.serverPort] = (port == 1883 ? nil : port)
         case let .unixDomainSocket(path):
             commonAttributes[configuration.tracing.attributeNames.serverAddress] = path
         case nil:
@@ -324,7 +324,7 @@ public final actor MQTTConnection: Sendable {
         switch address?.value {
         case let .hostname(host, port):
             commonAttributes[configuration.tracing.attributeNames.serverAddress] = host
-            commonAttributes[configuration.tracing.attributeNames.serverPort] = (port == 6379 ? nil : port)
+            commonAttributes[configuration.tracing.attributeNames.serverPort] = (port == 1883 ? nil : port)
         case let .unixDomainSocket(path):
             commonAttributes[configuration.tracing.attributeNames.serverAddress] = path
         case nil:
@@ -997,7 +997,7 @@ public final actor MQTTConnection: Sendable {
         retain: Bool = false,
         properties: MQTTProperties
     ) async throws -> MQTTAckV5? {
-        #if DistributedTracingSupport
+        #if DistributedTracing
         var info = MQTTPublishInfo(qos: qos, retain: retain, dup: false, topicName: topicName, payload: payload, properties: properties)
         if self.configuration.version == .v5_0, let tracer = self.tracer {
             return try await tracer.withSpan("publish \(topicName)", ofKind: .producer) { span in

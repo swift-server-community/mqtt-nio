@@ -6,7 +6,7 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 
-#if DistributedTracingSupport
+#if DistributedTracing
 
 public import Tracing
 
@@ -57,24 +57,24 @@ extension MQTTContextPropagator where Self == UserPropertiesPropagator {
 public struct MQTTTracingConfiguration: Sendable {
     /// The tracer to use, or `nil` to disable tracing.
     /// Defaults to the globally bootstrapped tracer.
-    public var tracer: (any Tracer)? = InstrumentationSystem.tracer
+    public var tracer: (any Tracer)?
 
     /// Tracing context propagator
-    public var contextPropagator: any MQTTContextPropagator = .userProperties
+    public var contextPropagator: any MQTTContextPropagator
 
     /// Controls how publish and subscribe spans are linked. By default the subscribe
     /// span is linked to the publish context and is a child of current span.
     /// If this is set to true the subscribe span is set to be a child of the publish
     /// context and a link to the current span is stored.
-    public var createChildConsumerSpans: Bool = false
+    public var createChildConsumerSpans: Bool
 
-    /// The attribute names used in spans created by Valkey. Defaults to OpenTelemetry semantics.
+    /// The attribute names used in spans created by MQTTNIO. Defaults to OpenTelemetry semantics.
     public var attributeNames: AttributeNames = .init()
 
-    /// The static attribute values used in spans created by Valkey.
+    /// The static attribute values used in spans created by MQTTNIO.
     public var attributeValues: AttributeValues = .init()
 
-    /// Attribute names used in spans created by Valkey.
+    /// Attribute names used in spans created by MQTTNIO.
     public struct AttributeNames: Sendable {
         public var messagingOperationName: String = "messaging.operation.name"
         public var messagingSystemName: String = "messaging.system"
@@ -85,9 +85,24 @@ public struct MQTTTracingConfiguration: Sendable {
         public var serverPort: String = "server.port"
     }
 
-    /// Static attribute values used in spans created by Valkey.
+    /// Static attribute values used in spans created by MQTTNIO.
     public struct AttributeValues: Sendable {
         public var messagingSystem: String = "mqtt"
+    }
+
+    /// Initialize a MQTTTracingConfiguration
+    /// - Parameters:
+    ///   - tracer: Tracer to use
+    ///   - contextPropagator: Defines how trace context is propagated
+    ///   - createChildConsumerSpans: Controls how publish and subscribe spans are linked
+    public init(
+        tracer: (any Tracer)? = InstrumentationSystem.tracer,
+        contextPropagator: any MQTTContextPropagator = .userProperties,
+        createChildConsumerSpans: Bool = false
+    ) {
+        self.tracer = tracer
+        self.contextPropagator = contextPropagator
+        self.createChildConsumerSpans = createChildConsumerSpans
     }
 }
 

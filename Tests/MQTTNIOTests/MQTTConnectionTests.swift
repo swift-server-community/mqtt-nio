@@ -716,7 +716,7 @@ struct MQTTConnectionTests {
         }
     }
 
-    #if DistributedTracingSupport
+    #if DistributedTracing
 
     struct Tracing {
         @Test("Publish attributes")
@@ -890,7 +890,7 @@ struct MQTTConnectionTests {
         }
     }
 
-    #endif  // DistributedTracingSupport
+    #endif  // DistributedTracing
 }
 
 struct SimpleAuthWorkflow: MQTTAuthenticator {

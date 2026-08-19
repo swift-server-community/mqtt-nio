@@ -8,10 +8,6 @@
 
 public import NIOCore
 
-#if DistributedTracingSupport
-import Tracing
-#endif
-
 extension MQTTConnection {
     /// Provides implementations of functions that expose MQTT Version 5.0 features.
     public struct V5: Sendable {
