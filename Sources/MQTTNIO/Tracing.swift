@@ -62,6 +62,12 @@ public struct MQTTTracingConfiguration: Sendable {
     /// Tracing context propagator
     public var contextPropagator: any MQTTContextPropagator = .userProperties
 
+    /// Controls how publish and subscribe spans are linked. By default the subscribe
+    /// span is linked to the publish context and is a child of current span.
+    /// If this is set to true the subscribe span is set to be a child of the publish
+    /// context and a link to the current span is stored.
+    public var createChildConsumerSpans: Bool = false
+
     /// The attribute names used in spans created by Valkey. Defaults to OpenTelemetry semantics.
     public var attributeNames: AttributeNames = .init()
 
@@ -97,12 +103,27 @@ extension MQTTConnection {
         _ operation: ((any Span)?) async throws -> Value
     ) async throws -> Value {
         if let tracer = self.configuration.tracing.tracer {
-            var serviceContext = ServiceContext.current ?? ServiceContext.topLevel
-            tracer.extract(publishInfo, into: &serviceContext, using: self.configuration.tracing.contextPropagator.extractor)
-            return try await tracer.withSpan("SUBSCRIBE \(publishInfo.topicName)", context: serviceContext, ofKind: .consumer) { span in
+            var spanContext: ServiceContext
+            var linkContext: ServiceContext?
+            let spanKind: SpanKind
+            if self.configuration.tracing.createChildConsumerSpans {
+                spanContext = ServiceContext.topLevel
+                tracer.extract(publishInfo, into: &spanContext, using: self.configuration.tracing.contextPropagator.extractor)
+                linkContext = ServiceContext.current
+                spanKind = .consumer
+            } else {
+                spanContext = ServiceContext.current ?? ServiceContext.topLevel
+                linkContext = ServiceContext.topLevel
+                tracer.extract(publishInfo, into: &spanContext, using: self.configuration.tracing.contextPropagator.extractor)
+                spanKind = .client
+            }
+            return try await tracer.withSpan("subscribe \(publishInfo.topicName)", context: spanContext, ofKind: spanKind) { span in
                 span.updateAttributes { attributes in
                     self.applyCommonSubscribeAttributes(to: &attributes)
                     attributes[self.configuration.tracing.attributeNames.messagingDestinationName] = publishInfo.topicName
+                }
+                if let linkContext {
+                    span.addLink(.init(context: linkContext, attributes: [:]))
                 }
                 return try await operation(span)
             }
