@@ -337,9 +337,7 @@ public final actor MQTTConnection: Sendable {
     nonisolated func applyCommonSubscribeAttributes(to attributes: inout SpanAttributes) {
         attributes.merge(self.commonSubscribeSpanAttributes)
     }
-
     #endif
-
     /// Connect to MQTT server and return the connection and whether there was a previous session present.
     ///
     /// - Parameters:
