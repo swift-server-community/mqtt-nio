@@ -3,16 +3,19 @@ version: "3.3"
 
 services:
   test:
-    image: swift:6.2.3
+    image: swift:6.3
     working_dir: /mqtt-nio
     volumes:
       - .:/mqtt-nio
       - mosquitto-socket:/mqtt-nio/mosquitto/socket
     depends_on:
       - mosquitto
+      - emqx
     environment:
       - MOSQUITTO_SERVER=mosquitto
+      - EMQX_SERVER=emqx
       - CI=true
+      - SWIFT_CERTIFICATES_ALLOW_SWIFT_CRYPTO_BETA=1 # TODO: Remove everywhere once swift-crypto is no longer in beta
     command: /bin/bash -xcl "swift test"
 
   mosquitto:
@@ -26,6 +29,17 @@ services:
       - "8883:8883"
       - "8080:8080"
       - "8081:8081"
+
+  emqx:
+    image: emqx/emqx:latest
+    volumes:
+      - ./EMQX/certs:/opt/emqx/etc/certs
+    environment:
+      - EMQX_NODE__COOKIE=mqtt-nio-local-cookie
+      - EMQX_LISTENERS__QUIC__DEFAULT__ENABLED=true
+      - EMQX_LISTENERS__QUIC__DEFAULT__BIND=0.0.0.0:14567
+    ports:
+      - "14567:14567/udp"
 
 volumes:
   mosquitto-socket:

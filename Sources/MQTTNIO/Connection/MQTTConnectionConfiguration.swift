@@ -13,6 +13,10 @@ public import NIOCore
 public import NIOSSL
 #endif
 
+#if QUIC
+public import NIOQUIC
+#endif
+
 /// A configuration object that defines how to connect to a MQTT server.
 ///
 /// `MQTTConnectionConfiguration` allows you to customize various aspects of the connection,
@@ -118,6 +122,9 @@ public struct MQTTConnectionConfiguration: Sendable {
         enum Base {
             case tcp(tls: TLS)
             case webSocket(WebSocketConfiguration, tls: TLS)
+            #if QUIC
+            case quic(QUICConfiguration, serverName: String)
+            #endif
         }
         let base: Base
 
@@ -138,6 +145,13 @@ public struct MQTTConnectionConfiguration: Sendable {
         public static func webSocket(_ configuration: WebSocketConfiguration, tls: TLS = .disable) -> Self {
             .init(base: .webSocket(configuration, tls: tls))
         }
+
+        #if QUIC
+        @available(iOS 26, macOS 26, tvOS 26, watchOS 26, visionOS 26, *)
+        public static func quic(_ configuration: QUICConfiguration, serverName: String) -> Self {
+            .init(base: .quic(configuration, serverName: serverName))
+        }
+        #endif
 
         /// Configuration for TLS (Transport Layer Security) encryption.
         ///
@@ -207,6 +221,22 @@ public struct MQTTConnectionConfiguration: Sendable {
             /// Additional headers to add to initial HTTP request.
             public var initialRequestHeaders: HTTPFields
         }
+
+        #if QUIC
+        /// Configuration for QUIC connection.
+        public struct QUICConfiguration: Sendable {
+            public var verificationConfiguration: VerificationConfiguration
+            public var keyExchangeGroup: KeyExchangeGroup
+
+            public init(
+                verificationConfiguration: VerificationConfiguration,
+                keyExchangeGroup: KeyExchangeGroup = .x25519
+            ) {
+                self.verificationConfiguration = verificationConfiguration
+                self.keyExchangeGroup = keyExchangeGroup
+            }
+        }
+        #endif
     }
 
     /// Configuration for sending `PINGREQ` messages.
@@ -292,6 +322,11 @@ public struct MQTTConnectionConfiguration: Sendable {
             tls.base
         case .webSocket(_, let tls):
             tls.base
+        #if QUIC
+        case .quic:
+            // TODO: handle gracefully
+            preconditionFailure("QUIC transport doesn't use the Transport.TLS.Base object")
+        #endif
         }
     }
 
