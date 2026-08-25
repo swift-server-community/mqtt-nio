@@ -6,6 +6,8 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 
+import NIOCore
+
 extension MQTTChannelHandler {
     @usableFromInline
     struct StateMachine<Context>: ~Copyable {
@@ -62,7 +64,7 @@ extension MQTTChannelHandler {
             }
 
             enum ProcessPacketAction {
-                case succeedTask(MQTTTask)
+                case succeedTask(MQTTTask, DeadlineCallbackAction)
                 case failTask(MQTTTask, any Error)
                 case unhandledTask
             }
@@ -72,7 +74,17 @@ extension MQTTChannelHandler {
                         // should this task respond to inbound packet
                         if try task.checkInbound(packet) {
                             self.remove(at: index)
-                            return .succeedTask(task)
+                            let deadlineCallback: DeadlineCallbackAction =
+                                if self.tasks.isEmpty {
+                                    .cancel
+                                } else {
+                                    if let earliestDeadline = self.tasks.lazy.map({ $0.deadline }).min() {
+                                        .reschedule(earliestDeadline)
+                                    } else {
+                                        .doNothing
+                                    }
+                                }
+                            return .succeedTask(task, deadlineCallback)
                         }
                     } catch {
                         self.remove(at: index)
@@ -141,12 +153,19 @@ extension MQTTChannelHandler {
         }
 
         @usableFromInline
+        enum DeadlineCallbackAction {
+            case cancel
+            case reschedule(NIODeadline)
+            case doNothing
+        }
+
+        @usableFromInline
         enum ReceivedPacketAction {
             /// .PUBLISH
             case respondAndReturn
             /// .CONNACK, .PUBACK, .PUBREC, .PUBCOMP, .SUBACK, .UNSUBACK, .PINGRESP, .AUTH
             /// .PUBREL
-            case succeedTask(MQTTTask)
+            case succeedTask(MQTTTask, DeadlineCallbackAction)
             /// checkInbound threw error
             case failTask(MQTTTask, any Error)
             /// process packets where no equivalent task was found
@@ -172,8 +191,8 @@ extension MQTTChannelHandler {
                         let action = state.tasks.processPacket(packet)
                         self = .initialized(state)
                         switch action {
-                        case .succeedTask(let task):
-                            return .succeedTask(task)
+                        case .succeedTask(let task, let deadlineCallback):
+                            return .succeedTask(task, deadlineCallback)
                         case .failTask(let task, let error):
                             return .failTask(task, error)
                         case .unhandledTask:
@@ -187,8 +206,8 @@ extension MQTTChannelHandler {
                     let action = state.tasks.processPacket(packet)
                     self = .initialized(state)
                     switch action {
-                    case .succeedTask(let task):
-                        return .succeedTask(task)
+                    case .succeedTask(let task, let deadlineCallback):
+                        return .succeedTask(task, deadlineCallback)
                     case .failTask(let task, let error):
                         return .failTask(task, error)
                     case .unhandledTask:
@@ -228,6 +247,38 @@ extension MQTTChannelHandler {
         }
 
         @usableFromInline
+        enum HitDeadlineAction {
+            case cancelTasks(requestIDs: [Int])
+            case reschedule(NIODeadline)
+            case clearCallback
+        }
+
+        @usableFromInline
+        mutating func hitDeadline(now: NIODeadline) -> HitDeadlineAction {
+            switch consume self.state {
+            case .uninitialized:
+                preconditionFailure("Cannot cancel when uninitialized")
+            case .initialized(let state):
+                let timedOutRequestIDs = state.tasks.tasks.lazy
+                    .filter { $0.deadline <= now }
+                    .map { $0.requestID }
+                if !timedOutRequestIDs.isEmpty {
+                    self = .initialized(state)
+                    return .cancelTasks(requestIDs: .init(timedOutRequestIDs))
+                }
+                if let earliestDeadline = state.tasks.tasks.lazy.map({ $0.deadline }).min() {
+                    self = .initialized(state)
+                    return .reschedule(earliestDeadline)
+                }
+                self = .initialized(state)
+                return .clearCallback
+            case .closed:
+                self = .closed
+                return .clearCallback
+            }
+        }
+
+        @usableFromInline
         enum SchedulePingReqAction {
             case schedule(Context)
             case doNothing
@@ -249,7 +300,7 @@ extension MQTTChannelHandler {
 
         @usableFromInline
         enum CancelAction {
-            case failTask(MQTTTask)
+            case failTask(MQTTTask, DeadlineCallbackAction)
             case doNothing
         }
 
@@ -261,9 +312,19 @@ extension MQTTChannelHandler {
                 preconditionFailure("Cannot cancel when uninitialized")
             case .initialized(var state):
                 let cancelledTask = state.cancel(requestID: requestID)
+                let deadlineCallbackAction: DeadlineCallbackAction =
+                    if state.tasks.tasks.isEmpty {
+                        .cancel
+                    } else {
+                        if let earliestDeadline = state.tasks.tasks.lazy.map({ $0.deadline }).min() {
+                            .reschedule(earliestDeadline)
+                        } else {
+                            .doNothing
+                        }
+                    }
                 self = .initialized(state)
                 if let cancelledTask {
-                    return .failTask(cancelledTask)
+                    return .failTask(cancelledTask, deadlineCallbackAction)
                 } else {
                     return .doNothing
                 }

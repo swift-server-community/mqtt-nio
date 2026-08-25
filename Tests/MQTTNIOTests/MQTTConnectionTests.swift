@@ -441,6 +441,95 @@ struct MQTTConnectionTests {
         }
     }
 
+    @Test("Timed-out Task is removed before closing Connection")
+    func timeoutClosingConnection() async throws {
+        try await withTestMQTTServer(
+            configuration: .init(timeout: .milliseconds(10))
+        ) { connection in
+            await #expect(throws: MQTTError.timeout) {
+                try await connection.publish(to: "foo", payload: .init(), qos: .atLeastOnce)
+            }
+        } server: { channel in
+            _ = try await channel.waitForOutboundPacket()
+            await channel.testingEventLoop.advanceTime(by: .milliseconds(20))
+        }
+    }
+
+    @Test("Timed-out Task does not fail other in-flight Tasks")
+    func timeoutOnlyCancelsTimedOutRequest() async throws {
+        let (stream, cont) = AsyncStream.makeStream(of: Void.self)
+
+        try await withTestMQTTServer(
+            configuration: .init(timeout: .milliseconds(50))
+        ) { connection in
+            try await withThrowingTaskGroup(of: Void.self) { group in
+                group.addTask {
+                    await #expect(throws: MQTTError.timeout) {
+                        try await connection.publish(to: "first", payload: .init(), qos: .atLeastOnce)
+                    }
+                }
+
+                await stream.first { _ in true }
+
+                group.addTask {
+                    await #expect(throws: Never.self) {
+                        try await connection.publish(to: "second", payload: .init(), qos: .atLeastOnce)
+                    }
+                }
+
+                try await group.waitForAll()
+            }
+        } server: { channel in
+            let firstOutbound = try await channel.waitForOutboundPacket()
+            let firstPublish = try MQTTPublishPacket.read(version: .v3_1_1, from: firstOutbound)
+
+            // first request has been waiting for 30ms before the second one is started
+            await channel.testingEventLoop.advanceTime(by: .milliseconds(30))
+
+            cont.yield()
+
+            let secondOutbound = try await channel.waitForOutboundPacket()
+            let secondPublish = try MQTTPublishPacket.read(version: .v3_1_1, from: secondOutbound)
+
+            // after another 30ms, first has waited 60ms total and should time out,
+            // while second has only waited 30ms and is still active
+            await channel.testingEventLoop.advanceTime(by: .milliseconds(30))
+
+            let pubAck = MQTTPubAckPacket(type: .PUBACK, packetId: secondPublish.packetId)
+            try await channel.writeInboundPacket(pubAck, version: .v3_1_1)
+
+            #expect(firstPublish.packetId != secondPublish.packetId)
+        }
+    }
+
+    @Test("Single deadline callback cancels all timed-out Tasks")
+    func timeoutCancelsAllTimedOutRequests() async throws {
+        try await withTestMQTTServer(
+            configuration: .init(timeout: .milliseconds(20))
+        ) { connection in
+            try await withThrowingTaskGroup(of: Void.self) { group in
+                group.addTask {
+                    await #expect(throws: MQTTError.timeout) {
+                        try await connection.publish(to: "first", payload: .init(), qos: .atLeastOnce)
+                    }
+                }
+
+                group.addTask {
+                    await #expect(throws: MQTTError.timeout) {
+                        try await connection.publish(to: "second", payload: .init(), qos: .atLeastOnce)
+                    }
+                }
+
+                try await group.waitForAll()
+            }
+        } server: { channel in
+            _ = try await channel.waitForOutboundPacket()
+            _ = try await channel.waitForOutboundPacket()
+
+            await channel.testingEventLoop.advanceTime(by: .milliseconds(25))
+        }
+    }
+
     @Test("Inflight")
     func inflight() async throws {
         let session = MQTTSession(clientID: "inflight")

@@ -32,7 +32,7 @@ jobs:
       with:
         xcode-version: latest-stable
     - name: Checkout
-      uses: actions/checkout@v7.0.0
+      uses: actions/checkout@v7.0.1
     - name: Install and run Mosquitto
       run: |
         brew install mosquitto
@@ -54,7 +54,7 @@ jobs:
       with:
         xcode-version: latest-stable
     - name: Checkout
-      uses: actions/checkout@v7.0.0
+      uses: actions/checkout@v7.0.1
     - name: Xcodebuild
       run: |
         xcodebuild build -scheme mqtt-nio -destination 'platform=iOS Simulator,name=iPhone 17'
@@ -99,7 +99,7 @@ jobs:
     - name: Install curl
       run: apt-get update -yq && apt-get install -y curl
     - name: Checkout
-      uses: actions/checkout@v7.0.0
+      uses: actions/checkout@v7.0.1
     - name: Restart Mosquitto and EMQX
       # The mosquitto service container is started *before* mqtt-nio is checked
       # out. Restarting the container after the checkout step is needed for the
@@ -127,9 +127,16 @@ jobs:
       fail-fast: false
     steps:
       - name: "Checkout"
-        uses: actions/checkout@v7.0.0
+        uses: actions/checkout@v7.0.1
       - name: "Build for Android"
         uses: skiptools/swift-android-action@v2.9.5
         with:
           build-tests: true
           run-tests: false
+
+  foundation-linking:
+    uses: vapor/ci/.github/workflows/check-foundation-linking.yml@main
+    permissions:
+      contents: read
+    with:
+      swift_image: swift:6.3-noble

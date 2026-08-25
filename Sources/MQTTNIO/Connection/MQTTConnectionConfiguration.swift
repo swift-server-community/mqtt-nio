@@ -268,9 +268,13 @@ public struct MQTTConnectionConfiguration: Sendable {
     /// Configuration for sending `PINGREQ` messages.
     public var pingConfiguration: PingConfiguration
     /// Timeout for connecting to server.
+    ///
+    /// Default value is 10 seconds.
     public var connectTimeout: Duration
     /// Timeout for server response.
-    public var timeout: Duration?
+    ///
+    /// Default value is 30 seconds.
+    public var timeout: Duration
     /// The user identifier used to authenticate against a secured MQTT server.
     public var userName: String?
     /// The password used to authenticate against a secured MQTT server.
@@ -287,8 +291,8 @@ public struct MQTTConnectionConfiguration: Sendable {
     ///   - versionConfiguration: Connection configuration for the version of MQTT server to connect to.
     ///   - keepAliveInterval: MQTT keep alive period.
     ///   - pingConfiguration: Configuration for sending `PINGREQ` messages.
-    ///   - connectTimeout: Timeout for connecting to server.
-    ///   - timeout: Timeout for server ACK responses.
+    ///   - connectTimeout: Timeout for connecting to server. Defaults to 10 seconds.
+    ///   - timeout: Timeout for server ACK responses. Defaults to 30 seconds.
     ///   - userName: The user identifier used to authenticate against a secured MQTT server.
     ///   - password: The password used to authenticate against a secured MQTT server.
     ///   - transport: Transport to use for the connection and its associated configuration.
@@ -297,7 +301,7 @@ public struct MQTTConnectionConfiguration: Sendable {
         keepAliveInterval: Duration = .seconds(90),
         pingConfiguration: PingConfiguration = .useServerKeepAlive,
         connectTimeout: Duration = .seconds(10),
-        timeout: Duration? = nil,
+        timeout: Duration = .seconds(30),
         userName: String? = nil,
         password: String? = nil,
         transport: Transport = .tcp()
