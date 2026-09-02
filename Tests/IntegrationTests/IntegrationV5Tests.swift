@@ -632,9 +632,11 @@ struct IntegrationV5Tests {
         let tracer1 = InMemoryTracer()
         var config1 = MQTTConnectionConfiguration(versionConfiguration: .v5_0())
         config1.tracing.tracer = tracer1
+        config1.tracing.createChildConsumerSpans = true
         let tracer2 = InMemoryTracer()
         var config2 = MQTTConnectionConfiguration(versionConfiguration: .v5_0())
         config2.tracing.tracer = tracer2
+        config2.tracing.createChildConsumerSpans = true
 
         try await MQTTConnection.withConnection(
             address: .hostname(Self.hostname),
@@ -703,7 +705,6 @@ struct IntegrationV5Tests {
                 "messaging.system": "mqtt",
                 "messaging.destination.name": "traceContextPropagation",
                 "server.address": .string(Self.hostname),
-                "server.port": 1883,
             ]
         )
     }

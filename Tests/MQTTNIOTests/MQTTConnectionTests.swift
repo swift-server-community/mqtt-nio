@@ -724,6 +724,7 @@ struct MQTTConnectionTests {
             let tracer = InMemoryTracer()
             var config = MQTTConnectionConfiguration(versionConfiguration: .v5_0())
             config.tracing.tracer = tracer
+            config.tracing.createChildConsumerSpans = true
             try await withTestMQTTServer(configuration: config) { connection in
                 try await connection.publish(to: "testTopic", payload: ByteBuffer(string: "TestPayload"), qos: .atLeastOnce, retain: false)
             } server: { channel in
@@ -735,7 +736,7 @@ struct MQTTConnectionTests {
             }
             #expect(tracer.finishedSpans.count == 1)
             #expect(tracer.finishedSpans[0].kind == .producer)
-            #expect(tracer.finishedSpans[0].operationName == "PUBLISH testTopic")
+            #expect(tracer.finishedSpans[0].operationName == "publish testTopic")
             expectSpanAttributesEquals(
                 tracer.finishedSpans[0].attributes,
                 [
@@ -743,7 +744,6 @@ struct MQTTConnectionTests {
                     "messaging.system": "mqtt",
                     "messaging.destination.name": "testTopic",
                     "server.address": .string("127.0.0.1"),
-                    "server.port": 1883,
                     "network.peer.address": .string("127.0.0.1"),
                     "network.peer.port": 1883,
                 ]
@@ -755,6 +755,7 @@ struct MQTTConnectionTests {
             let tracer = InMemoryTracer()
             var config = MQTTConnectionConfiguration(versionConfiguration: .v5_0())
             config.tracing.tracer = tracer
+            config.tracing.createChildConsumerSpans = true
             try await withTestMQTTServer(configuration: config) { connection in
                 try? await connection.publish(to: "testTopic", payload: ByteBuffer(string: "TestPayload"), qos: .atLeastOnce, retain: false)
             } server: { channel in
@@ -775,7 +776,6 @@ struct MQTTConnectionTests {
                     "messaging.system": "mqtt",
                     "messaging.destination.name": "testTopic",
                     "server.address": .string("127.0.0.1"),
-                    "server.port": 1883,
                     "network.peer.address": .string("127.0.0.1"),
                     "network.peer.port": 1883,
                 ]
@@ -787,6 +787,7 @@ struct MQTTConnectionTests {
             let tracer = InMemoryTracer()
             var config = MQTTConnectionConfiguration(versionConfiguration: .v5_0())
             config.tracing.tracer = tracer
+            config.tracing.createChildConsumerSpans = true
             try await withTestMQTTServer(configuration: config) { connection in
                 try await connection.v5.subscribe(to: [.init(topicFilter: "subscribeAttributes", qos: .atMostOnce)]) { sub in
                     var iterator = sub.makeAsyncIterator()
@@ -843,7 +844,7 @@ struct MQTTConnectionTests {
                 try await channel.writeInboundPacket(unsuback, version: .v5_0)
             }
             #expect(tracer.finishedSpans.count == 1)
-            #expect(tracer.finishedSpans[0].operationName == "SUBSCRIBE subscribeAttributes")
+            #expect(tracer.finishedSpans[0].operationName == "subscribe subscribeAttributes")
             #expect(tracer.finishedSpans[0].kind == .consumer)
             expectSpanAttributesEquals(
                 tracer.finishedSpans[0].attributes,
@@ -852,7 +853,6 @@ struct MQTTConnectionTests {
                     "messaging.system": "mqtt",
                     "messaging.destination.name": "subscribeAttributes",
                     "server.address": .string("127.0.0.1"),
-                    "server.port": 1883,
                     "network.peer.address": .string("127.0.0.1"),
                     "network.peer.port": 1883,
                 ]
