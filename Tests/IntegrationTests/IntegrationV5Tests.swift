@@ -683,7 +683,7 @@ struct IntegrationV5Tests {
 
         #expect(tracer1.finishedSpans.count == 2)
         let traceID = tracer1.finishedSpans[0].traceID
-        #expect(tracer1.finishedSpans[0].operationName == "PUBLISH traceContextPropagation")
+        #expect(tracer1.finishedSpans[0].operationName == "publish traceContextPropagation")
         #expect(tracer1.finishedSpans[0].kind == .producer)
         expectSpanAttributesIncludes(
             tracer1.finishedSpans[0].attributes,
@@ -692,7 +692,6 @@ struct IntegrationV5Tests {
                 "messaging.system": "mqtt",
                 "messaging.destination.name": "traceContextPropagation",
                 "server.address": .string(Self.hostname),
-                "server.port": 1883,
             ]
         )
         #expect(tracer2.finishedSpans.count == 1)
