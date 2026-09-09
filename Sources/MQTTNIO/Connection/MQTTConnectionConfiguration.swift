@@ -9,6 +9,10 @@
 public import HTTPTypes
 public import NIOCore
 
+#if DistributedTracing
+import Tracing
+#endif
+
 #if os(macOS) || os(Linux) || os(Android)
 public import NIOSSL
 #endif
@@ -254,6 +258,12 @@ public struct MQTTConnectionConfiguration: Sendable {
     public var password: String?
     /// Transport to use for the connection and its associated configuration.
     public var transport: Transport
+
+    #if DistributedTracing
+    /// The distributed tracing configuration to use for this connection.
+    /// Defaults to using the globally bootstrapped tracer with OpenTelemetry semantic conventions.
+    public var tracing: MQTTTracingConfiguration = .init()
+    #endif
 
     /// Creates a new MQTT connection configuration.
     ///
