@@ -632,11 +632,9 @@ struct IntegrationV5Tests {
         let tracer1 = InMemoryTracer()
         var config1 = MQTTConnectionConfiguration(versionConfiguration: .v5_0())
         config1.tracing.tracer = tracer1
-        config1.tracing.createChildConsumerSpans = true
         let tracer2 = InMemoryTracer()
         var config2 = MQTTConnectionConfiguration(versionConfiguration: .v5_0())
         config2.tracing.tracer = tracer2
-        config2.tracing.createChildConsumerSpans = true
 
         try await MQTTConnection.withConnection(
             address: .hostname(Self.hostname),
@@ -666,7 +664,7 @@ struct IntegrationV5Tests {
                             subscription in
                             var subscriptionIterator = subscription.makeAsyncIterator()
                             if let message = try await subscriptionIterator.next() {
-                                return try await connection2.withMessageSpan(message) { span in
+                                return try await connection2.withMessageSpan(message, createChildSpan: true) { span in
                                     span?.context.inMemorySpanContext?.traceID ?? "No subscription trace id"
                                 }
                             }

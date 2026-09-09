@@ -6,15 +6,18 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 
-import InMemoryTracing
 import Logging
 import NIOCore
 import NIOEmbedded
 import NIOHTTP1
 import Testing
-import Tracing
 
 @testable import MQTTNIO
+
+#if DistributedTracing
+import InMemoryTracing
+import Tracing
+#endif
 
 @Suite("MQTTConnection Tests", .defaultLogger(logLevel: .trace))
 struct MQTTConnectionTests {
@@ -724,7 +727,6 @@ struct MQTTConnectionTests {
             let tracer = InMemoryTracer()
             var config = MQTTConnectionConfiguration(versionConfiguration: .v5_0())
             config.tracing.tracer = tracer
-            config.tracing.createChildConsumerSpans = true
             try await withTestMQTTServer(configuration: config) { connection in
                 try await connection.publish(to: "testTopic", payload: ByteBuffer(string: "TestPayload"), qos: .atLeastOnce, retain: false)
             } server: { channel in
@@ -755,7 +757,6 @@ struct MQTTConnectionTests {
             let tracer = InMemoryTracer()
             var config = MQTTConnectionConfiguration(versionConfiguration: .v5_0())
             config.tracing.tracer = tracer
-            config.tracing.createChildConsumerSpans = true
             try await withTestMQTTServer(configuration: config) { connection in
                 try? await connection.publish(to: "testTopic", payload: ByteBuffer(string: "TestPayload"), qos: .atLeastOnce, retain: false)
             } server: { channel in
@@ -787,12 +788,11 @@ struct MQTTConnectionTests {
             let tracer = InMemoryTracer()
             var config = MQTTConnectionConfiguration(versionConfiguration: .v5_0())
             config.tracing.tracer = tracer
-            config.tracing.createChildConsumerSpans = true
             try await withTestMQTTServer(configuration: config) { connection in
                 try await connection.v5.subscribe(to: [.init(topicFilter: "subscribeAttributes", qos: .atMostOnce)]) { sub in
                     var iterator = sub.makeAsyncIterator()
                     let message = try #require(try await iterator.next())
-                    try await connection.withMessageSpan(message) { _ in
+                    try await connection.withMessageSpan(message, createChildSpan: true) { _ in
                     }
                 }
             } server: { channel in

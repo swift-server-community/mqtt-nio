@@ -62,12 +62,6 @@ public struct MQTTTracingConfiguration: Sendable {
     /// Tracing context propagator
     public var contextPropagator: any MQTTContextPropagator
 
-    /// Controls how publish and subscribe spans are linked. By default the subscribe
-    /// span is linked to the publish context and is a child of current span.
-    /// If this is set to true the subscribe span is set to be a child of the publish
-    /// context and a link to the current span is stored.
-    public var createChildConsumerSpans: Bool
-
     /// The attribute names used in spans created by MQTTNIO. Defaults to OpenTelemetry semantics.
     public var attributeNames: AttributeNames = .init()
 
@@ -97,12 +91,10 @@ public struct MQTTTracingConfiguration: Sendable {
     ///   - createChildConsumerSpans: Controls how publish and subscribe spans are linked
     public init(
         tracer: (any Tracer)? = InstrumentationSystem.tracer,
-        contextPropagator: any MQTTContextPropagator = .userProperties,
-        createChildConsumerSpans: Bool = false
+        contextPropagator: any MQTTContextPropagator = .userProperties
     ) {
         self.tracer = tracer
         self.contextPropagator = contextPropagator
-        self.createChildConsumerSpans = createChildConsumerSpans
     }
 }
 
@@ -110,18 +102,24 @@ extension MQTTConnection {
     /// Start a new span with trace ID from publish info and end the span when the
     /// operation completes.
     ///
+    /// By default the subscribe span is linked to the publish context and is a child of
+    /// current span. If `createChildSpans` is set to true the subscribe span is set to be
+    /// a child of the publish context and a link to the current span is stored.
+    ///
     /// - Parameters:
-    ///   - publishInfo:
-    ///   - operation:
+    ///   - publishInfo: PublishInfo to create span for
+    ///   - createChildSpan: Should span be linked to publish context or set as a child
+    ///   - operation: Operation to perform with generated span
     public nonisolated func withMessageSpan<Value>(
         _ publishInfo: MQTTPublishInfo,
+        createChildSpan: Bool = false,
         _ operation: ((any Span)?) async throws -> Value
     ) async throws -> Value {
         if let tracer = self.configuration.tracing.tracer {
             var spanContext: ServiceContext
             var linkContext: ServiceContext?
             let spanKind: SpanKind
-            if self.configuration.tracing.createChildConsumerSpans {
+            if createChildSpan {
                 spanContext = ServiceContext.topLevel
                 tracer.extract(publishInfo, into: &spanContext, using: self.configuration.tracing.contextPropagator.extractor)
                 linkContext = ServiceContext.current
