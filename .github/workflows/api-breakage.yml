@@ -18,4 +18,4 @@ jobs:
       run: git config --global --add safe.directory ${GITHUB_WORKSPACE}
     - name: API breaking changes
       run: |
-        swift package diagnose-api-breaking-changes origin/${GITHUB_BASE_REF}
+        SWIFT_CERTIFICATES_ALLOW_SWIFT_CRYPTO_BETA=1 swift package diagnose-api-breaking-changes origin/${GITHUB_BASE_REF}

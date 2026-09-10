@@ -57,7 +57,7 @@ public final actor MQTTConnection: Sendable {
     var connectionParameters = ConnectionParameters()
 
     /// Initialize connection
-    private init(
+    init(
         channel: any Channel,
         channelHandler: MQTTChannelHandler,
         configuration: MQTTConnectionConfiguration,
@@ -358,17 +358,11 @@ public final actor MQTTConnection: Sendable {
         logger: Logger
     ) async throws -> (MQTTConnection, Bool) {
         let _session = session ?? MQTTSessionStorage(clientID: identifier, logger: logger)
-        let future =
-            if eventLoop.inEventLoop {
-                self._makeConnection(
-                    address: address,
-                    configuration: configuration,
-                    session: _session,
-                    eventLoop: eventLoop,
-                    logger: logger
-                )
-            } else {
-                eventLoop.flatSubmit {
+        let connection: MQTTConnection
+        switch configuration.transport.base {
+        case .tcp, .webSocket:
+            let future =
+                if eventLoop.inEventLoop {
                     self._makeConnection(
                         address: address,
                         configuration: configuration,
@@ -376,9 +370,33 @@ public final actor MQTTConnection: Sendable {
                         eventLoop: eventLoop,
                         logger: logger
                     )
+                } else {
+                    eventLoop.flatSubmit {
+                        self._makeConnection(
+                            address: address,
+                            configuration: configuration,
+                            session: _session,
+                            eventLoop: eventLoop,
+                            logger: logger
+                        )
+                    }
                 }
+            connection = try await future.get()
+        #if QUIC
+        case .quic:
+            guard #available(iOS 26, macOS 26, tvOS 26, watchOS 26, visionOS 26, *) else {
+                // TODO: handle gracefully
+                preconditionFailure("QUIC is available only on Apple OS 26+")
             }
-        let connection = try await future.get()
+            connection = try await _makeQUICConnection(
+                address: address,
+                configuration: configuration,
+                session: _session,
+                eventLoop: eventLoop,
+                logger: logger
+            )
+        #endif
+        }
         try await connection.waitOnInitialized()
 
         // cleanSession means different things for v3.1.1 and v5.0. If you set cleanSession in v3.1.1 it will
@@ -677,7 +695,7 @@ public final actor MQTTConnection: Sendable {
     }
 
     @discardableResult
-    private static func _setupChannel(
+    static func _setupChannel(
         _ channel: any Channel,
         configuration: MQTTConnectionConfiguration,
         session: MQTTSessionStorage,

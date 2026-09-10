@@ -1,4 +1,4 @@
-// swift-tools-version:6.2.3
+// swift-tools-version:6.3
 
 import PackageDescription
 
@@ -30,6 +30,10 @@ let package = Package(
         .library(name: "MQTTNIO", targets: ["MQTTNIO"])
     ],
     traits: [
+        .trait(
+            name: "QUIC",
+            description: "Enables support for QUIC transport"
+        ),
         .trait(name: "DistributedTracing"),
         .default(enabledTraits: ["DistributedTracing"]),
     ],
@@ -42,6 +46,7 @@ let package = Package(
         .package(url: "https://github.com/apple/swift-http-types.git", from: "1.0.0"),
         .package(url: "https://github.com/apple/swift-nio-extras.git", from: "1.22.0"),
         .package(url: "https://github.com/apple/swift-configuration.git", from: "1.1.0", traits: []),
+        .package(url: "https://github.com/apple/swift-nio-quic.git", .upToNextMinor(from: "0.3.0")),
     ],
     targets: [
         .target(
@@ -57,6 +62,7 @@ let package = Package(
                 .product(name: "HTTPTypes", package: "swift-http-types"),
                 .product(name: "NIOHTTPTypesHTTP1", package: "swift-nio-extras"),
                 .product(name: "Configuration", package: "swift-configuration"),
+                .product(name: "NIOQUIC", package: "swift-nio-quic", condition: .when(traits: ["QUIC"])),
             ],
             swiftSettings: defaultSwiftSettings
         ),
