@@ -88,7 +88,6 @@ public struct MQTTTracingConfiguration: Sendable {
     /// - Parameters:
     ///   - tracer: Tracer to use
     ///   - contextPropagator: Defines how trace context is propagated
-    ///   - createChildConsumerSpans: Controls how publish and subscribe spans are linked
     public init(
         tracer: (any Tracer)? = InstrumentationSystem.tracer,
         contextPropagator: any MQTTContextPropagator = .userProperties

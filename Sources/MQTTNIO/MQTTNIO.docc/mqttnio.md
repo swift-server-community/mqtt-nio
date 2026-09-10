@@ -67,6 +67,7 @@ try await connection.publish(
 - <doc:mqttnio-v5>
 - <doc:mqttnio-connections>
 - <doc:mqttnio-sessions>
+- <doc:mqttnio-tracing>
 - <doc:mqttnio-aws>
 
 ### Connection
