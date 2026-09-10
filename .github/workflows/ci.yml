@@ -140,3 +140,13 @@ jobs:
       contents: read
     with:
       swift_image: swift:6.3-noble
+
+  package-traits:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    container: swift:6.3
+    steps:
+    - name: Check out code
+      uses: actions/checkout@v7.0.1
+    - name: Build with traits disabled
+      run: swift build --disable-default-traits --build-tests

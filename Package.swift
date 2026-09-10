@@ -34,9 +34,11 @@ let package = Package(
             name: "QUIC",
             description: "Enables support for QUIC transport"
         ),
-        .default(enabledTraits: []),
+        .trait(name: "DistributedTracing"),
+        .default(enabledTraits: ["DistributedTracing"]),
     ],
     dependencies: [
+        .package(url: "https://github.com/apple/swift-distributed-tracing.git", from: "1.4.0"),
         .package(url: "https://github.com/apple/swift-log.git", from: "1.14.0"),
         .package(url: "https://github.com/apple/swift-nio.git", from: "2.100.0"),
         .package(url: "https://github.com/apple/swift-nio-ssl.git", from: "2.36.0"),
@@ -51,6 +53,7 @@ let package = Package(
             name: "MQTTNIO",
             dependencies: [
                 .product(name: "Logging", package: "swift-log"),
+                .product(name: "Tracing", package: "swift-distributed-tracing", condition: .when(traits: ["DistributedTracing"])),
                 .product(name: "NIO", package: "swift-nio"),
                 .product(name: "NIOHTTP1", package: "swift-nio"),
                 .product(name: "NIOWebSocket", package: "swift-nio"),
@@ -75,6 +78,7 @@ let package = Package(
             dependencies: [
                 .target(name: "MQTTNIO"),
                 .product(name: "InMemoryLogging", package: "swift-log"),
+                .product(name: "InMemoryTracing", package: "swift-distributed-tracing", condition: .when(traits: ["DistributedTracing"])),
                 .product(name: "NIOFoundationCompat", package: "swift-nio"),
             ],
             swiftSettings: defaultSwiftSettings
