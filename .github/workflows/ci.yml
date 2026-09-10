@@ -113,7 +113,7 @@ jobs:
         EMQX_SERVER: emqx
         SWIFT_CERTIFICATES_ALLOW_SWIFT_CRYPTO_BETA: 1 # TODO: Remove everywhere once swift-crypto is no longer in beta
       run: |
-        swift test --enable-code-coverage --traits QUIC
+        swift test --enable-code-coverage --enable-all-traits
     - name: Upload coverage data
       uses: vapor/swift-codecov-action@v0.3.5
       with:

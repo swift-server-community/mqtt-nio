@@ -16,7 +16,7 @@ services:
       - EMQX_SERVER=emqx
       - CI=true
       - SWIFT_CERTIFICATES_ALLOW_SWIFT_CRYPTO_BETA=1 # TODO: Remove everywhere once swift-crypto is no longer in beta
-    command: /bin/bash -xcl "swift test"
+    command: /bin/bash -xcl "swift test --enable-all-traits"
 
   mosquitto:
     image: eclipse-mosquitto

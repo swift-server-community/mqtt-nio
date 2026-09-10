@@ -30,7 +30,7 @@ extension MQTTConnection {
         let bootstrap = DatagramBootstrap(group: eventLoop).channelOption(ChannelOptions.socketOption(.so_reuseaddr), value: 1)
 
         @Sendable func _channelInitializer(_ channel: any Channel) -> EventLoopFuture<(any Channel, QUICHandler.ConnectionMultiplexer<Never>)> {
-            channel.eventLoop.makeCompletedFuture {
+            channel.eventLoop.makeCompletedFuture(withResultOf: {
                 let quicConfiguration = QUICConfiguration.client(
                     verificationConfiguration: quicConfiguration.verificationConfiguration,
                     keyExchangeGroup: quicConfiguration.keyExchangeGroup,
@@ -40,14 +40,13 @@ extension MQTTConnection {
                     channel: channel,
                     quicConfiguration: quicConfiguration,
                     logger: logger,
-                    metrics: nil,
                     inboundStreamChannelInitializer: { channel -> EventLoopFuture<Never> in
                         channel.eventLoop.makeCompletedFuture { fatalError() }
                     }
                 )
                 try channel.pipeline.syncOperations.addHandler(quicHandler)
                 return (channel, connectionMultiplexer)
-            }
+            })
         }
 
         let (channel, clientConnectionMultiplexer) =
