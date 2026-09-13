@@ -37,3 +37,7 @@ Whoever subscribes to the "JSONTest" topic with a v5.0 client will also receive 
 When subscribing to a topic with the ``MQTTConnection/V5/subscribe(to:subscribeProperties:unsubscribeProperties:process:)`` method, the `AsyncSequence` of incoming messages will receive only messages that match the subscription ID that was automatically generated for that subscription.
 
 There's also a ``MQTTConnection/V5/auth(properties:authWorkflow:)`` function available to perform MQTT v5 authentication workflows.
+
+## Topics
+
+- ``MQTTConnection/V5``

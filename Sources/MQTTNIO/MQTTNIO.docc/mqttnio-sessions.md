@@ -124,3 +124,7 @@ await withThrowingTaskGroup { group in
 
 > Note: In the previous example, it's highly likely that the session subscription will not be active by the time `waitUntilNoActiveSubscriptions()` is called, since the connection task will likely finish before the subscription task.
 This is just an example of how to use the method, but in a real application you would likely want to wait for the subscription to be active before calling `waitUntilNoActiveSubscriptions()`, otherwise it will just return immediately.
+
+## Topics
+
+- ``MQTTSession``
