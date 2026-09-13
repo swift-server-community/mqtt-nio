@@ -20,7 +20,7 @@ Once tracing is setup it will automatically create a tracing span for every publ
 
 ## Subscription spans
 
-If you want to create span for processing a publish packet received from a subscription you need to use ``MQTTConnection/withMessageSpan(_:createChildSpan:_:)`` from ``MQTTConnection``.
+If you want to create a span for processing a publish packet received from a subscription you need to use ``MQTTConnection/withMessageSpan(_:createChildSpan:_:)`` from ``MQTTConnection``.
 
 ```swift
 try await connection.subscribe(to: [.init(topicFilter: "myTopic", qos: .atLeastOnce)]) { subscription in
