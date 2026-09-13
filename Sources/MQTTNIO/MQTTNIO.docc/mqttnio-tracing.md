@@ -32,7 +32,7 @@ try await connection.subscribe(to: [.init(topicFilter: "myTopic", qos: .atLeastO
 }
 ```
 
-By default `withMessageSpan` creates a span that is the child of the current span and then adds a span link to the propagated publish tracing context. Alternatively you can call `withMessageSpan` with `createChildSpan` to create a span that is a child of the propagated publish tracing span.
+By default `withMessageSpan` creates a span that is the child of the current span and then adds a span link to the propagated publish tracing context. Alternatively you can call `withMessageSpan` with `createChildSpan` set to `true` to create a span that is a child of the propagated publish tracing span.
 
 ## Configuration
 
