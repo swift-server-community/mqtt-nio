@@ -146,3 +146,8 @@ This can be enabled by adding a `listener` option to the mosquitto config.
 ```
 listener 0 /path/to/broker.socket
 ```
+
+## Topics
+
+- ``MQTTConnection``
+- ``MQTTConnectionConfiguration``

@@ -55,4 +55,10 @@ configuration.tracing = tracingConfig
 
 The tracing configuration includes a member value ``MQTTTracingConfiguration/contextPropagator`` which is used to define how the tracing context is propagated from publisher to subscribers via MQTT. This is an existential type of a protocol ``MQTTContextPropagator`` that defines how the trace context can be injected into a `PUBLISH` packet and how the context can be extracted from a `PUBLISH` packet.
 
-There is no defined industry standard on how the trace context is propagated but a number of key MQTT server implementations use the user properties of the `PUBLISH` packet and this is the default setup in `MQTTTracingConfiguration`.
+There is no defined industry standard on how the trace context is propagated but a number of key MQTT server implementations use the user properties of the `PUBLISH` packet and this is the default setup in `MQTTTracingConfiguration`. As the user properties are used you need to connect as a MQTT v5 client for the tacing configuration to be propagated.
+
+## Topics
+
+- ``MQTTTracingConfiguration``
+- ``MQTTContextPropagator``
+- ``UserPropertiesPropagator``
