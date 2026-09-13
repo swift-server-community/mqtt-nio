@@ -10,7 +10,7 @@ MQTTNIO has support for creating tracing spans when publishing data or when subs
 
 ## Enabling distributed tracing
 
-Distributed tracing is enabled by the Swift package trait "DistributedTracing". This trait is enabled by default.
+Distributed tracing is enabled by the Swift package trait `"DistributedTracing"`. This trait is enabled by default.
 
 By default when you create a ``MQTTConnectionConfiguration`` it will setup tracing to use the tracer that is currently bootstrapped. 
 
