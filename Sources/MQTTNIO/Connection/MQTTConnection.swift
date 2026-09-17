@@ -383,7 +383,7 @@ public final actor MQTTConnection: Sendable {
                 }
             connection = try await future.get()
         #if QUIC
-        case .quic:
+        case .quic(let quicConfiguration, let serverName):
             guard #available(iOS 26, macOS 26, tvOS 26, watchOS 26, visionOS 26, *) else {
                 // TODO: handle gracefully
                 preconditionFailure("QUIC is available only on Apple OS 26+")
@@ -391,6 +391,8 @@ public final actor MQTTConnection: Sendable {
             connection = try await _makeQUICConnection(
                 address: address,
                 configuration: configuration,
+                quicConfiguration: quicConfiguration,
+                serverName: serverName,
                 session: _session,
                 eventLoop: eventLoop,
                 logger: logger

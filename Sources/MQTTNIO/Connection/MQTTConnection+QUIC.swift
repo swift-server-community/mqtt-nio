@@ -19,14 +19,12 @@ extension MQTTConnection {
     static func _makeQUICConnection(
         address: MQTTServerAddress,
         configuration: MQTTConnectionConfiguration,
+        quicConfiguration: QUICConfiguration,
+        serverName: String,
         session: MQTTSessionStorage,
         eventLoop: any EventLoop,
         logger: Logger
     ) async throws -> MQTTConnection {
-        guard case .quic(let quicConfiguration, let serverName) = configuration.transport.base else {
-            fatalError("Invalid configuration for QUIC connection")  // TODO: handle gracefully
-        }
-
         let bootstrap = DatagramBootstrap(group: eventLoop).channelOption(ChannelOptions.socketOption(.so_reuseaddr), value: 1)
 
         @Sendable func _channelInitializer(_ channel: any Channel) -> EventLoopFuture<(any Channel, QUICHandler.ConnectionMultiplexer<Never>)> {
