@@ -326,41 +326,9 @@ public struct MQTTConnectionConfiguration: Sendable {
         self.transport = transport
     }
 
-    var tls: Transport.TLS.Base {
-        switch self.transport.base {
-        case .tcp(let tls):
-            tls.base
-        case .webSocket(_, let tls):
-            tls.base
-        #if QUIC
-        case .quic:
-            // TODO: handle gracefully
-            preconditionFailure("QUIC transport doesn't use the Transport.TLS.Base object")
-        #endif
-        }
-    }
-
     /// Whether is using WebSockets for connection.
     var useWebSockets: Bool {
         if case .webSocket = self.transport.base { true } else { false }
-    }
-
-    /// URL Path for WebSocket. Defaults to "/mqtt".
-    var webSocketURLPath: String? {
-        if case .webSocket(let configuration, _) = self.transport.base {
-            configuration.urlPath
-        } else {
-            nil
-        }
-    }
-
-    /// Maximum frame size for a WebSocket connection.
-    var webSocketMaxFrameSize: Int {
-        if case .webSocket(let configuration, _) = self.transport.base {
-            configuration.maxFrameSize
-        } else {
-            1 << 14
-        }
     }
 
     /// Version of MQTT server client is connecting to.

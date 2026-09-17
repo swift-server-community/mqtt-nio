@@ -360,12 +360,13 @@ public final actor MQTTConnection: Sendable {
         let _session = session ?? MQTTSessionStorage(clientID: identifier, logger: logger)
         let connection: MQTTConnection
         switch configuration.transport.base {
-        case .tcp, .webSocket:
+        case .tcp(let tlsConfiguration), .webSocket(_, let tlsConfiguration):
             let future =
                 if eventLoop.inEventLoop {
                     self._makeConnection(
                         address: address,
                         configuration: configuration,
+                        tlsConfiguration: tlsConfiguration.base,
                         session: _session,
                         eventLoop: eventLoop,
                         logger: logger
@@ -375,6 +376,7 @@ public final actor MQTTConnection: Sendable {
                         self._makeConnection(
                             address: address,
                             configuration: configuration,
+                            tlsConfiguration: tlsConfiguration.base,
                             session: _session,
                             eventLoop: eventLoop,
                             logger: logger
@@ -560,6 +562,7 @@ public final actor MQTTConnection: Sendable {
     private static func _makeConnection(
         address: MQTTServerAddress,
         configuration: MQTTConnectionConfiguration,
+        tlsConfiguration: MQTTConnectionConfiguration.Transport.TLS.Base,
         session: MQTTSessionStorage,
         eventLoop: any EventLoop,
         logger: Logger
@@ -576,7 +579,7 @@ public final actor MQTTConnection: Sendable {
 
         let channelPromise = eventLoop.makePromise(of: (any Channel).self)
         do {
-            let connect = try Self._getBootstrap(configuration: configuration, eventLoopGroup: eventLoop, host: host, logger: logger)
+            let connect = try Self._getBootstrap(tlsConfiguration: tlsConfiguration, eventLoopGroup: eventLoop, host: host, logger: logger)
                 .connectTimeout(.init(configuration.connectTimeout))
                 .channelInitializer { channel in
                     do {
@@ -590,7 +593,7 @@ public final actor MQTTConnection: Sendable {
                             return Self._setupChannelForWebSockets(
                                 channel,
                                 address: address,
-                                configuration: configuration,
+                                tlsConfiguration: tlsConfiguration,
                                 webSocketConfiguration: webSocketConfiguration,
                                 upgradePromise: promise
                             ) {
@@ -715,13 +718,13 @@ public final actor MQTTConnection: Sendable {
     }
 
     private static func _getBootstrap(
-        configuration: MQTTConnectionConfiguration,
+        tlsConfiguration: MQTTConnectionConfiguration.Transport.TLS.Base,
         eventLoopGroup: any EventLoopGroup,
         host: String,
         logger: Logger
     ) throws -> NIOClientTCPBootstrap {
         var serverName: String {
-            if case .enable(_, let sniServerName) = configuration.tls, let sniServerName {
+            if case .enable(_, let sniServerName) = tlsConfiguration, let sniServerName {
                 sniServerName
             } else {
                 host
@@ -734,7 +737,7 @@ public final actor MQTTConnection: Sendable {
         if let tsBootstrap = NIOTSConnectionBootstrap(validatingGroup: eventLoopGroup) {
             // create NIOClientTCPBootstrap with NIOTS TLS provider
             let options: NWProtocolTLS.Options
-            if case .enable(let tlsConfigType, _) = configuration.tls {
+            if case .enable(let tlsConfigType, _) = tlsConfiguration {
                 switch tlsConfigType {
                 case .ts(let tsConfig):
                     options = try tsConfig.getNWProtocolTLSOptions(logger: logger)
@@ -749,7 +752,7 @@ public final actor MQTTConnection: Sendable {
             sec_protocol_options_set_tls_server_name(options.securityProtocolOptions, serverName)
             let tlsProvider = NIOTSClientTLSProvider(tlsOptions: options)
             bootstrap = NIOClientTCPBootstrap(tsBootstrap, tls: tlsProvider)
-            if case .enable = configuration.tls {
+            if case .enable = tlsConfiguration {
                 return bootstrap.enableTLS()
             }
             return bootstrap
@@ -758,7 +761,7 @@ public final actor MQTTConnection: Sendable {
 
         #if os(macOS) || os(Linux) || os(Android)
         if let clientBootstrap = ClientBootstrap(validatingGroup: eventLoopGroup) {
-            if case .enable(let tlsConfig, _) = configuration.tls {
+            if case .enable(let tlsConfig, _) = tlsConfiguration {
                 let tlsConfiguration: TLSConfiguration
                 switch tlsConfig {
                 case .niossl(let config):
@@ -784,16 +787,16 @@ public final actor MQTTConnection: Sendable {
     private static func _setupChannelForWebSockets(
         _ channel: any Channel,
         address: MQTTServerAddress,
-        configuration: MQTTConnectionConfiguration,
+        tlsConfiguration: MQTTConnectionConfiguration.Transport.TLS.Base,
         webSocketConfiguration: MQTTConnectionConfiguration.Transport.WebSocketConfiguration,
         upgradePromise promise: EventLoopPromise<Void>,
         afterHandlerAdded: @Sendable @escaping () throws -> Void
     ) -> EventLoopFuture<Void> {
         var hostHeader: String {
-            if case .enable(_, let sniServerName) = configuration.tls, let sniServerName {
+            if case .enable(_, let sniServerName) = tlsConfiguration, let sniServerName {
                 return sniServerName
             }
-            switch (configuration.tls, address.value) {
+            switch (tlsConfiguration, address.value) {
             case (.enable, .hostname(let host, let port)) where port != 443:
                 return "\(host):\(port)"
             case (.disable, .hostname(let host, let port)) where port != 80:
@@ -817,7 +820,7 @@ public final actor MQTTConnection: Sendable {
         let requestKey = (0..<16).map { _ in UInt8.random(in: .min ..< .max) }
         let websocketUpgrader = NIOWebSocketClientUpgrader(
             requestKey: Data(requestKey).base64EncodedString(),
-            maxFrameSize: configuration.webSocketMaxFrameSize
+            maxFrameSize: webSocketConfiguration.maxFrameSize
         ) { channel, _ in
             let future = channel.eventLoop.makeCompletedFuture {
                 try channel.pipeline.syncOperations.addHandler(WebSocketHandler())
