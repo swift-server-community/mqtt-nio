@@ -127,7 +127,7 @@ public struct MQTTConnectionConfiguration: Sendable {
             case tcp(tls: TLS)
             case webSocket(WebSocketConfiguration, tls: TLS)
             #if QUIC
-            case quic(QUICConfiguration, serverName: String)
+            case quic(MQTTConnectionConfiguration.Transport.QUICConfiguration, serverName: String)
             #endif
         }
         let base: Base
@@ -152,7 +152,7 @@ public struct MQTTConnectionConfiguration: Sendable {
 
         #if QUIC
         @available(iOS 26, macOS 26, tvOS 26, watchOS 26, visionOS 26, *)
-        public static func quic(_ configuration: QUICConfiguration, serverName: String) -> Self {
+        public static func quic(_ configuration: MQTTConnectionConfiguration.Transport.QUICConfiguration, serverName: String) -> Self {
             .init(base: .quic(configuration, serverName: serverName))
         }
         #endif

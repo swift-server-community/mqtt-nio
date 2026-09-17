@@ -69,7 +69,8 @@ let package = Package(
         .testTarget(
             name: "MQTTNIOTests",
             dependencies: [
-                .target(name: "MQTTNIO")
+                .target(name: "MQTTNIO"),
+                .product(name: "InMemoryTracing", package: "swift-distributed-tracing", condition: .when(traits: ["DistributedTracing"])),
             ],
             swiftSettings: defaultSwiftSettings
         ),

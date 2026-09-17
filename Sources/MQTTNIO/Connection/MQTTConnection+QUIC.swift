@@ -19,7 +19,7 @@ extension MQTTConnection {
     static func _makeQUICConnection(
         address: MQTTServerAddress,
         configuration: MQTTConnectionConfiguration,
-        quicConfiguration: QUICConfiguration,
+        quicConfiguration: MQTTConnectionConfiguration.Transport.QUICConfiguration,
         serverName: String,
         session: MQTTSessionStorage,
         eventLoop: any EventLoop,
@@ -29,14 +29,14 @@ extension MQTTConnection {
 
         @Sendable func _channelInitializer(_ channel: any Channel) -> EventLoopFuture<(any Channel, QUICHandler.ConnectionMultiplexer<Never>)> {
             channel.eventLoop.makeCompletedFuture(withResultOf: {
-                let quicConfiguration = QUICConfiguration.client(
+                let quicConfig = QUICConfiguration.client(
                     verificationConfiguration: quicConfiguration.verificationConfiguration,
                     keyExchangeGroup: quicConfiguration.keyExchangeGroup,
                     applicationProtocols: ["mqtt"]
                 )
                 let (quicHandler, connectionMultiplexer) = try QUICHandler.makeHandlerAndConnectionMultiplexer(
                     channel: channel,
-                    quicConfiguration: quicConfiguration,
+                    quicConfiguration: quicConfig,
                     logger: logger,
                     inboundStreamChannelInitializer: { channel -> EventLoopFuture<Never> in
                         channel.eventLoop.makeCompletedFuture { fatalError() }
