@@ -3,14 +3,16 @@ version: "3.3"
 
 services:
   app:
-    image: swift:6.2.3
+    image: swift:6.3
     volumes:
       - ..:/workspace
       - mosquitto-socket:/workspace/mosquitto/socket
     depends_on:
       - mosquitto
+      - emqx
     environment:
       - MOSQUITTO_SERVER=mosquitto
+      - EMQX_SERVER=emqx
       - CI=true
     command: sleep infinity
 
@@ -25,6 +27,17 @@ services:
       - "8883:8883"
       - "8080:8080"
       - "8081:8081"
+
+  emqx:
+    image: emqx/emqx:latest
+    volumes:
+      - ./EMQX/certs:/opt/emqx/etc/certs
+    environment:
+      - EMQX_NODE__COOKIE=mqtt-nio-local-cookie
+      - EMQX_LISTENERS__QUIC__DEFAULT__ENABLED=true
+      - EMQX_LISTENERS__QUIC__DEFAULT__BIND=0.0.0.0:14567
+    ports:
+      - "14567:14567/udp"
 
 volumes:
   mosquitto-socket:
