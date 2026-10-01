@@ -27,7 +27,9 @@ extension MQTTConnection {
     ) async throws -> MQTTConnection {
         let bootstrap = DatagramBootstrap(group: eventLoop).channelOption(ChannelOptions.socketOption(.so_reuseaddr), value: 1)
 
-        @Sendable func _channelInitializer(_ channel: any Channel) -> EventLoopFuture<(any Channel, QUICHandler.ConnectionMultiplexer<Never>)> {
+        @Sendable func _channelInitializer(
+            _ channel: any Channel
+        ) -> EventLoopFuture<(any Channel, QUICHandler<QUICStreamChannels>.ConnectionMultiplexer<Never>)> {
             channel.eventLoop.makeCompletedFuture(withResultOf: {
                 let quicConfig = QUICConfiguration.client(
                     verificationConfiguration: quicConfiguration.verificationConfiguration,
