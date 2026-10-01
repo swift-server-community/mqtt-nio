@@ -25,6 +25,10 @@ import NIOTransportServices
 import NIOSSL
 #endif
 
+#if QUIC
+import NIOQUIC
+#endif
+
 @Suite("Integration Tests", .defaultLogger(logLevel: .trace))
 struct IntegrationTests {
     static let hostname = ProcessInfo.processInfo.environment["MOSQUITTO_SERVER"] ?? "localhost"
@@ -132,6 +136,48 @@ struct IntegrationTests {
             try await connection.ping()
         }
     }
+
+    #if QUIC
+    @available(iOS 26, macOS 26, tvOS 26, watchOS 26, visionOS 26, *)
+    @Test("Connect with QUIC")
+    func quicConnect() async throws {
+        let emqxHost = ProcessInfo.processInfo.environment["EMQX_SERVER"] ?? "localhost"
+
+        try await MQTTConnection.withConnection(
+            address: .hostname(emqxHost, port: 14567),
+            configuration: .init(
+                transport: .quic(
+                    .init(verificationConfiguration: .x509Certificates(trustRootsFilePath: TLS.rootPath + "/EMQX/certs/ca.pem")),
+                    serverName: "soto.codes"
+                )
+            ),
+            identifier: "quicConnect"
+        ) { connection in
+            try await connection.ping()
+
+            try await withThrowingTaskGroup { group in
+                let (stream, continuation) = AsyncStream.makeStream(of: Void.self)
+
+                group.addTask {
+                    try await connection.subscribe(to: [.init(topicFilter: "test/quic", qos: .exactlyOnce)]) { subscription in
+                        continuation.yield()
+                        for try await message in subscription {
+                            #expect(String(buffer: message.payload) == "Hello, MQTT over QUIC!")
+                            break
+                        }
+                    }
+                }
+
+                group.addTask {
+                    await stream.first { _ in true }
+                    try await connection.publish(to: "test/quic", payload: ByteBuffer(string: "Hello, MQTT over QUIC!"), qos: .atLeastOnce)
+                }
+
+                try await group.waitForAll()
+            }
+        }
+    }
+    #endif
 
     @Suite(.serialized)
     struct TLS {
