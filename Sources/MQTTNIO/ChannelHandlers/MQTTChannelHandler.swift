@@ -143,6 +143,12 @@ final class MQTTChannelHandler: ChannelDuplexHandler {
         let buffer = self.unwrapInboundIn(data)
         do {
             try self.decoder.process(buffer: buffer) { message in
+                // A packet earlier in this read, or an error, may have closed the connection already. Ignore the
+                // rest of the packets.
+                guard !self.stateMachine.isClosed() else {
+                    self.logger.trace("Ignoring packet received after close", metadata: ["mqtt_message": .stringConvertible(message)])
+                    return
+                }
                 self.logger.trace(
                     "MQTT In",
                     metadata: ["mqtt_message": .stringConvertible(message), "mqtt_packet_id": .stringConvertible(message.packetId)]

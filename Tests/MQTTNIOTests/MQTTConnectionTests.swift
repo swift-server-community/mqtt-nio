@@ -361,6 +361,44 @@ struct MQTTConnectionTests {
         }
     }
 
+    /// Packets that arrive in the same read as a packet that closes the connection are not processed.
+    @Test
+    func testPacketsAfterCloseInSameReadAreIgnored() async throws {
+        let channel = NIOAsyncTestingChannel()
+        let connection = try await MQTTConnection.setupChannelAndConnect(
+            channel,
+            configuration: .init(versionConfiguration: .v5_0()),
+            session: MQTTSessionStorage(clientID: "", logger: Logger.current)
+        )
+        try await withThrowingTaskGroup { group in
+            group.addTask {
+                _ = try await connection.sendConnect(clientID: "", cleanSession: true)
+            }
+            group.addTask {
+                // wait for connect
+                let packet = try await channel.waitForOutboundPacket()
+                #expect(packet.type == .CONNECT)
+                // send connack
+                let connack = MQTTConnAckPacket(returnCode: 0, acknowledgeFlags: 0, properties: .init())
+                try await channel.writeInboundPacket(connack, version: .v5_0)
+            }
+            try await group.waitForAll()
+        }
+        // send DISCONNECT and PUBLISH in one read
+        var buffer = ByteBuffer()
+        try MQTTDisconnectPacket(reason: .serverShuttingDown).write(version: .v5_0, to: &buffer)
+        let publish = MQTTPublishPacket(
+            publish: .init(qos: .atMostOnce, retain: false, topicName: "testTopic", payload: ByteBuffer(string: "TestPayload"), properties: .init()),
+            packetId: 0
+        )
+        try publish.write(version: .v5_0, to: &buffer)
+        // the DISCONNECT closes the connection, the PUBLISH after it is ignored
+        await #expect(throws: MQTTError.serverDisconnection(MQTTAckV5(reason: .serverShuttingDown, properties: .init()))) {
+            try await channel.writeInbound(buffer)
+        }
+        try await channel.closeFuture.get()
+    }
+
     @Test
     func testAuthWorkflow() async throws {
         let channel = NIOAsyncTestingChannel()
