@@ -28,6 +28,36 @@ struct MQTTConnectionTests {
         }
     }
 
+    @Test("A refused CONNACK carries its reason code and properties")
+    func testConnectionRefusedCarriesConnackProperties() async throws {
+        let clientID = "connectionRefusedV5"
+        let channel = NIOAsyncTestingChannel()
+        let connection = try await MQTTConnection.setupChannelAndConnect(
+            channel,
+            configuration: .init(versionConfiguration: .v5_0()),
+            session: .init(clientID: clientID, logger: Logger.current)
+        )
+        async let connect: Bool = connection.sendConnect(clientID: clientID, cleanSession: true)
+
+        _ = try await channel.waitForOutboundPacket()
+        let connack = MQTTConnAckPacket(
+            returnCode: MQTTReasonCode.notAuthorized.rawValue,
+            acknowledgeFlags: 0,
+            properties: [.reasonString("device not registered"), .userProperty("error-code", "DEVICE_UNKNOWN")]
+        )
+        try await channel.writeInboundPacket(connack, version: .v5_0)
+
+        do {
+            _ = try await connect
+            Issue.record("Expected the broker to refuse the connection")
+        } catch let MQTTError.connectionRefused(ack) {
+            #expect(ack.reason == .notAuthorized)
+            #expect(ack.properties.contains(.reasonString("device not registered")))
+            #expect(ack.properties.contains(.userProperty("error-code", "DEVICE_UNKNOWN")))
+        }
+        _ = await connection.closeAndCleanup(sendDisconnect: false)
+    }
+
     @Test
     func testPublishQoS0ClientToServer() async throws {
         try await withTestMQTTServer { connection in

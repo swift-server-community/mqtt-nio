@@ -920,7 +920,7 @@ public final actor MQTTConnection: Sendable {
         case .v5_0:
             if connack.returnCode > 0x7F {
                 let returnCode = MQTTReasonCode(rawValue: connack.returnCode) ?? .unrecognisedReason
-                throw MQTTError.reasonError(returnCode)
+                throw MQTTError.connectionRefused(.init(reason: returnCode, properties: connack.properties))
             }
         }
 
