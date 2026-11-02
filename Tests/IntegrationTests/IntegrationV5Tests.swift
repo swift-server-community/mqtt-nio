@@ -334,7 +334,7 @@ struct IntegrationV5Tests {
 
     @Test("Bad Authentication Method")
     func badAuthenticationMethod() async throws {
-        await #expect(throws: MQTTError.connectionRefused(.init(reason: .badAuthenticationMethod))) {
+        await #expect(throws: MQTTError.reasonError(.init(reason: .badAuthenticationMethod))) {
             try await MQTTConnection.withConnection(
                 address: .hostname(Self.hostname),
                 configuration: .init(versionConfiguration: .v5_0(connectProperties: [.authenticationMethod("test")])),
