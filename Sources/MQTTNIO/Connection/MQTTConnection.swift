@@ -920,7 +920,7 @@ public final actor MQTTConnection: Sendable {
         case .v5_0:
             if connack.returnCode > 0x7F {
                 let returnCode = MQTTReasonCode(rawValue: connack.returnCode) ?? .unrecognisedReason
-                throw MQTTError.reasonError(returnCode)
+                throw MQTTError.reasonError(.init(reason: returnCode, properties: connack.properties))
             }
         }
 
@@ -1075,7 +1075,7 @@ public final actor MQTTConnection: Sendable {
                 }
                 if let pubAckPacket = message as? MQTTPubAckPacket {
                     if pubAckPacket.reason.rawValue > 0x7F {
-                        throw MQTTError.reasonError(pubAckPacket.reason)
+                        throw MQTTError.reasonError(.init(reason: pubAckPacket.reason, properties: pubAckPacket.properties))
                     }
                 }
                 return true
@@ -1109,7 +1109,7 @@ public final actor MQTTConnection: Sendable {
             }
             if let pubAckPacket = message as? MQTTPubAckPacket {
                 if pubAckPacket.reason.rawValue > 0x7F {
-                    throw MQTTError.reasonError(pubAckPacket.reason)
+                    throw MQTTError.reasonError(.init(reason: pubAckPacket.reason, properties: pubAckPacket.properties))
                 }
             }
             return true

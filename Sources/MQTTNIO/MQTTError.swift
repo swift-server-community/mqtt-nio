@@ -31,8 +31,10 @@ public enum MQTTError: Error, Sendable {
     case failedToConnect
     /// We received an unsuccessful connection return value
     case connectionError(ConnectionReturnValue)
-    /// We received an unsuccessful return value from either a connect or publish
-    case reasonError(MQTTReasonCode)
+    /// We received an unsuccessful return value from either a connect or publish. Carries the
+    /// reason code and the properties of the packet it came from, which servers use to describe
+    /// why the request was refused.
+    case reasonError(MQTTAckV5)
     /// client is closed
     case connectionClosed
     /// the server disconnected with a DISCONNECT packet
