@@ -476,6 +476,31 @@ struct MQTTConnectionTests {
         }
     }
 
+    @Test
+    func testUnexpectedMessageAfterDisconnect() async throws {
+        try await withTestMQTTServer { connection in
+            let error = await #expect(throws: MQTTError.self) {
+                try await connection.publish(to: "testTopic", payload: ByteBuffer(string: "TestPayload"), qos: .atLeastOnce, retain: false)
+            }
+            if case .serverDisconnection = error {
+            } else {
+                Issue.record()
+            }
+        } server: { channel in
+            let packet = try await channel.waitForOutboundPacket()
+            let publishPacket = try MQTTPublishPacket.read(version: .v3_1_1, from: packet)
+            #expect(publishPacket.packetId != 0)
+            #expect(publishPacket.publish.topicName == "testTopic")
+            #expect(publishPacket.publish.retain == false)
+            #expect(publishPacket.publish.payload == ByteBuffer(string: "TestPayload"))
+            var buffer = ByteBuffer()
+            try MQTTDisconnectPacket(reason: .banned, properties: .init()).write(version: .v3_1_1, to: &buffer)
+            try MQTTPubAckPacket(type: .PUBACK, packetId: publishPacket.packetId).write(version: .v3_1_1, to: &buffer)
+            _ = try? await channel.writeInbound(buffer)
+            _ = try? await channel.waitForOutboundPacket()
+        }
+    }
+
     @Test("Timed-out Task is removed before closing Connection")
     func timeoutClosingConnection() async throws {
         try await withTestMQTTServer(

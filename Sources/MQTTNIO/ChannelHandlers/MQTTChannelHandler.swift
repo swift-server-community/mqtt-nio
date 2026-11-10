@@ -170,20 +170,14 @@ final class MQTTChannelHandler: ChannelDuplexHandler {
                 case .unhandledTask:
                     self.processUnhandledPacket(message, context: context)
                 case .closeConnection(let error):
-                    self.failTasksAndCloseSubscriptions(with: error)
-                    context.fireErrorCaught(error)
-                    context.close(promise: nil)
-                    if case MQTTError.unexpectedPacket = error {
-                        self.logger.error("Unexpected MQTT Packet", metadata: ["mqtt_message": .string("\(message)")])
-                        return
-                    }
+                    throw error
                 }
             }
         } catch {
+            self.logger.error("Error processing MQTT message", metadata: ["mqtt_error": .string("\(error)")])
             self.failTasksAndCloseSubscriptions(with: error)
             context.fireErrorCaught(error)
             context.close(promise: nil)
-            self.logger.error("Error processing MQTT message", metadata: ["mqtt_error": .string("\(error)")])
         }
     }
 
