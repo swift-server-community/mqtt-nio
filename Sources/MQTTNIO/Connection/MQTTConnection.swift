@@ -488,8 +488,9 @@ public final actor MQTTConnection: Sendable {
                 )
                 do {
                     _ = try await promise.futureResult.get()
+                    queuedSubscription.subscribeContinuation.yield(.init())
                 } catch {
-                    queuedSubscription.continuation.finish(throwing: error)
+                    queuedSubscription.subscribeContinuation.finish(throwing: error)
                 }
             case .unsubscribe(let queuedUnsubscription):
                 do {
