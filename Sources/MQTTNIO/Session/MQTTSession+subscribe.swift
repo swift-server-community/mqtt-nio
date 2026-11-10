@@ -27,8 +27,11 @@ extension MQTTSession {
         process: (MQTTSubscription) async throws -> Value
     ) async throws -> Value {
         let (id, subscribeStream, stream) = try self.subscribe(to: subscriptions, properties: subscribeProperties)
+        let status = try await subscribeStream.first { _ in true }
+        // don't defer unsubscribe until we are sure we have actually subscribed
         defer { self.subscriptionsQueueContinuation.yield(.unsubscribe(.init(id: id, properties: unsubscribeProperties))) }
-        _ = try await subscribeStream.first { _ in true }
+        // if stream returns nil task must have been cancelled
+        guard status != nil else { throw CancellationError() }
         return try await process(stream)
     }
 
