@@ -489,6 +489,7 @@ public final actor MQTTConnection: Sendable {
                 do {
                     _ = try await promise.futureResult.get()
                     queuedSubscription.subscribeContinuation.yield(.init())
+                    queuedSubscription.subscribeContinuation.finish()
                 } catch {
                     queuedSubscription.subscribeContinuation.finish(throwing: error)
                 }
