@@ -492,6 +492,7 @@ public final actor MQTTConnection: Sendable {
                     queuedSubscription.subscribeContinuation.finish()
                 } catch {
                     queuedSubscription.subscribeContinuation.finish(throwing: error)
+                    queuedSubscription.continuation.finish()
                 }
             case .unsubscribe(let queuedUnsubscription):
                 do {
