@@ -391,6 +391,106 @@ struct MQTTConnectionTests {
         }
     }
 
+    @Test(
+        "Subscription Identifier Available",
+        .timeLimit(.minutes(1)),
+        arguments: [
+            (available: 0 as UInt8, expectIdentifier: false),
+            (available: 1 as UInt8, expectIdentifier: true),
+        ]
+    )
+    func subscriptionIdentifierAvailable(available: UInt8, expectIdentifier: Bool) async throws {
+        try await withTestMQTTServer(
+            configuration: .init(versionConfiguration: .v5_0()),
+            connackProperties: .init([.subscriptionIdentifierAvailable(available)])
+        ) { connection in
+            try await connection.subscribe(to: [.init(topicFilter: "test/+/topic", qos: .atMostOnce)]) { subscription in
+                var iterator = subscription.makeAsyncIterator()
+                let message = try #require(try await iterator.next())
+                #expect(message.topicName == "test/a/topic")
+                #expect(String(buffer: message.payload) == "TestPayload")
+            }
+        } server: { channel in
+            // receive SUBSCRIBE
+            let packet = try await channel.waitForOutboundPacket()
+            let subscribePacket = try MQTTSubscribePacket.read(version: .v5_0, from: packet)
+            let subscriptionIdentifiers = (subscribePacket.properties ?? .init()).compactMap { property -> UInt32? in
+                if case .subscriptionIdentifier(let id) = property { id } else { nil }
+            }
+            #expect(subscriptionIdentifiers.isEmpty == !expectIdentifier)
+            // send SUBACK
+            let suback = MQTTSubAckPacket(type: .SUBACK, packetId: subscribePacket.packetId, reasons: [.success])
+            try await channel.writeInboundPacket(suback, version: .v5_0)
+
+            // send PUBLISH. Only include a Subscription Identifier if the client sent one
+            let publish = MQTTPublishPacket(
+                publish: .init(
+                    qos: .atMostOnce,
+                    retain: false,
+                    topicName: "test/a/topic",
+                    payload: ByteBuffer(string: "TestPayload"),
+                    properties: .init(subscriptionIdentifiers.map { .subscriptionIdentifier($0) })
+                ),
+                packetId: 32769
+            )
+            try await channel.writeInboundPacket(publish, version: .v5_0)
+
+            // receive UNSUBSCRIBE
+            let unsubscribePacket = try MQTTUnsubscribePacket.read(version: .v5_0, from: try await channel.waitForOutboundPacket())
+            #expect(unsubscribePacket.subscriptions == ["test/+/topic"])
+            // send UNSUBACK
+            let unsuback = MQTTSubAckPacket(type: .UNSUBACK, packetId: unsubscribePacket.packetId, reasons: [.success])
+            try await channel.writeInboundPacket(unsuback, version: .v5_0)
+        }
+    }
+
+    @Test("Overlapping subscriptions are matched by topic when Subscription Identifiers are not available", .timeLimit(.minutes(1)))
+    func overlappingSubscriptionsWithoutSubscriptionIdentifiers() async throws {
+        try await withTestMQTTServer(
+            configuration: .init(versionConfiguration: .v5_0()),
+            connackProperties: .init([.subscriptionIdentifierAvailable(0)])
+        ) { connection in
+            try await connection.subscribe(to: [.init(topicFilter: "test/topic/1", qos: .atMostOnce)]) { first in
+                try await connection.subscribe(to: [.init(topicFilter: "test/topic/2", qos: .atMostOnce)]) { second in
+                    var firstIterator = first.makeAsyncIterator()
+                    var secondIterator = second.makeAsyncIterator()
+                    let firstMessage = try #require(try await firstIterator.next())
+                    let secondMessage = try #require(try await secondIterator.next())
+                    #expect(firstMessage.topicName == "test/topic/1")
+                    #expect(secondMessage.topicName == "test/topic/2")
+                }
+            }
+        } server: { channel in
+            for _ in 0..<2 {
+                let packet = try await channel.waitForOutboundPacket()
+                let subscribePacket = try MQTTSubscribePacket.read(version: .v5_0, from: packet)
+                for property in subscribePacket.properties ?? .init() {
+                    if case .subscriptionIdentifier = property { Issue.record("Unexpected Subscription Identifier") }
+                }
+                let suback = MQTTSubAckPacket(type: .SUBACK, packetId: subscribePacket.packetId, reasons: [.success])
+                try await channel.writeInboundPacket(suback, version: .v5_0)
+            }
+            for (index, topic) in ["test/topic/1", "test/topic/2"].enumerated() {
+                let publish = MQTTPublishPacket(
+                    publish: .init(
+                        qos: .atMostOnce,
+                        retain: false,
+                        topicName: topic,
+                        payload: ByteBuffer(string: "TestPayload"),
+                        properties: .init()
+                    ),
+                    packetId: 32769 + UInt16(index)
+                )
+                try await channel.writeInboundPacket(publish, version: .v5_0)
+            }
+            for _ in 0..<2 {
+                let unsubscribePacket = try MQTTUnsubscribePacket.read(version: .v5_0, from: try await channel.waitForOutboundPacket())
+                let unsuback = MQTTSubAckPacket(type: .UNSUBACK, packetId: unsubscribePacket.packetId, reasons: [.success])
+                try await channel.writeInboundPacket(unsuback, version: .v5_0)
+            }
+        }
+    }
+
     @Test
     func testAuthWorkflow() async throws {
         let channel = NIOAsyncTestingChannel()
