@@ -36,3 +36,7 @@ docker-compose run test
 ### Formatting
 
 We use `swift-format` for formatting code. PRs will not be accepted if they haven't be formatted.
+
+### Usage of AI Tools
+
+We have a separate [AI_POLICY.md](AI_POLICY.md) document. If you are using AI assistance you should read this. 
