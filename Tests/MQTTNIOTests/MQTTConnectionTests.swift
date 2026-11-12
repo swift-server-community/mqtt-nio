@@ -28,6 +28,36 @@ struct MQTTConnectionTests {
         }
     }
 
+    @Test("A refused CONNACK carries its reason code and properties")
+    func testConnectionRefusedCarriesConnackProperties() async throws {
+        let clientID = "reasonErrorV5"
+        let channel = NIOAsyncTestingChannel()
+        let connection = try await MQTTConnection.setupChannelAndConnect(
+            channel,
+            configuration: .init(versionConfiguration: .v5_0()),
+            session: .init(clientID: clientID, logger: Logger.current)
+        )
+        async let connect: Bool = connection.sendConnect(clientID: clientID, cleanSession: true)
+
+        _ = try await channel.waitForOutboundPacket()
+        let connack = MQTTConnAckPacket(
+            returnCode: MQTTReasonCode.notAuthorized.rawValue,
+            acknowledgeFlags: 0,
+            properties: [.reasonString("device not registered"), .userProperty("error-code", "DEVICE_UNKNOWN")]
+        )
+        try await channel.writeInboundPacket(connack, version: .v5_0)
+
+        do {
+            _ = try await connect
+            Issue.record("Expected the broker to refuse the connection")
+        } catch let MQTTError.reasonError(ack) {
+            #expect(ack.reason == .notAuthorized)
+            #expect(ack.properties.contains(.reasonString("device not registered")))
+            #expect(ack.properties.contains(.userProperty("error-code", "DEVICE_UNKNOWN")))
+        }
+        _ = await connection.closeAndCleanup(sendDisconnect: false)
+    }
+
     @Test
     func testPublishQoS0ClientToServer() async throws {
         try await withTestMQTTServer { connection in
@@ -443,6 +473,31 @@ struct MQTTConnectionTests {
         } server: { channel in
             _ = try await channel.waitForOutboundWrite(as: ByteBuffer.self)
             cont.yield()
+        }
+    }
+
+    @Test
+    func testUnexpectedMessageAfterDisconnect() async throws {
+        try await withTestMQTTServer { connection in
+            let error = await #expect(throws: MQTTError.self) {
+                try await connection.publish(to: "testTopic", payload: ByteBuffer(string: "TestPayload"), qos: .atLeastOnce, retain: false)
+            }
+            if case .serverDisconnection = error {
+            } else {
+                Issue.record()
+            }
+        } server: { channel in
+            let packet = try await channel.waitForOutboundPacket()
+            let publishPacket = try MQTTPublishPacket.read(version: .v3_1_1, from: packet)
+            #expect(publishPacket.packetId != 0)
+            #expect(publishPacket.publish.topicName == "testTopic")
+            #expect(publishPacket.publish.retain == false)
+            #expect(publishPacket.publish.payload == ByteBuffer(string: "TestPayload"))
+            var buffer = ByteBuffer()
+            try MQTTDisconnectPacket(reason: .banned, properties: .init()).write(version: .v3_1_1, to: &buffer)
+            try MQTTPubAckPacket(type: .PUBACK, packetId: publishPacket.packetId).write(version: .v3_1_1, to: &buffer)
+            _ = try? await channel.writeInbound(buffer)
+            _ = try? await channel.waitForOutboundPacket()
         }
     }
 

@@ -90,9 +90,10 @@ func withTestMQTTServer(
                     try await serverOperation(channel)
 
                     // wait for disconnect
-                    let disconnectPacket = try await channel.waitForOutboundPacket()
-                    #expect(disconnectPacket.type == .DISCONNECT)
-                    #expect(disconnectPacket.packetId == 0)
+                    if let disconnectPacket = try? await channel.waitForOutboundPacket() {
+                        #expect(disconnectPacket.type == .DISCONNECT)
+                        #expect(disconnectPacket.packetId == 0)
+                    }
                 } catch {
                     return (sessionStorage, .failure(error))
                 }

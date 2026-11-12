@@ -29,9 +29,8 @@ extension MQTTError: Equatable {
             true
         case (.connectionError(let lhsValue), .connectionError(let rhsValue)):
             lhsValue == rhsValue
-        case (.reasonError(let lhsValue), .reasonError(let rhsValue)):
-            lhsValue == rhsValue
-        case (.serverDisconnection(let lhsValue), .serverDisconnection(let rhsValue)):
+        case (.reasonError(let lhsValue), .reasonError(let rhsValue)),
+            (.serverDisconnection(let lhsValue), .serverDisconnection(let rhsValue)):
             lhsValue.reason == rhsValue.reason && lhsValue.properties == rhsValue.properties
         case (.versionMismatch(let expectedLHS, let actualLHS), .versionMismatch(let expectedRHS, let actualRHS)):
             expectedLHS == expectedRHS && actualLHS == actualRHS

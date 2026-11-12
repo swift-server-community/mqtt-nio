@@ -115,17 +115,17 @@ extension MQTTConnection {
         _ operation: ((any Span)?) async throws -> Value
     ) async throws -> Value {
         if let tracer = self.configuration.tracing.tracer {
-            var spanContext: ServiceContext
-            var linkContext: ServiceContext?
+            var spanContext: InstrumentationContext
+            var linkContext: InstrumentationContext?
             let spanKind: SpanKind
             if createChildSpan {
-                spanContext = ServiceContext.topLevel
+                spanContext = InstrumentationContext.topLevel
                 tracer.extract(publishInfo, into: &spanContext, using: self.configuration.tracing.contextPropagator.extractor)
-                linkContext = ServiceContext.current
+                linkContext = InstrumentationContext.current
                 spanKind = .consumer
             } else {
-                spanContext = ServiceContext.current ?? ServiceContext.topLevel
-                var topLevel = ServiceContext.topLevel
+                spanContext = InstrumentationContext.current ?? InstrumentationContext.topLevel
+                var topLevel = InstrumentationContext.topLevel
                 tracer.extract(publishInfo, into: &topLevel, using: self.configuration.tracing.contextPropagator.extractor)
                 linkContext = topLevel
                 spanKind = .client

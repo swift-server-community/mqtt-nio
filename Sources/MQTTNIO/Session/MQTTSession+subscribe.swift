@@ -26,8 +26,12 @@ extension MQTTSession {
         unsubscribeProperties: MQTTProperties = .init(),
         process: (MQTTSubscription) async throws -> Value
     ) async throws -> Value {
-        let (id, stream) = try self.subscribe(to: subscriptions, properties: subscribeProperties)
+        let (id, subscribeStream, stream) = try self.subscribe(to: subscriptions, properties: subscribeProperties)
+        let status = try await subscribeStream.first { _ in true }
+        // don't defer unsubscribe until we are sure we have actually subscribed
         defer { self.subscriptionsQueueContinuation.yield(.unsubscribe(.init(id: id, properties: unsubscribeProperties))) }
+        // if stream returns nil task must have been cancelled
+        guard status != nil else { throw CancellationError() }
         return try await process(stream)
     }
 
@@ -35,7 +39,8 @@ extension MQTTSession {
     func subscribe(
         to subscriptions: [MQTTSubscribeInfoV5],
         properties: MQTTProperties = .init()
-    ) throws -> (UInt32, MQTTSubscription) {
+    ) throws -> (UInt32, AsyncThrowingStream<SubscriptionStatus, any Error>, MQTTSubscription) {
+        let (subscribeStream, subscribeContinuation) = AsyncThrowingStream.makeStream(of: SubscriptionStatus.self)
         let (stream, streamContinuation) = MQTTSubscription.makeStream()
         if Task.isCancelled {
             throw MQTTError.cancelled
@@ -43,11 +48,12 @@ extension MQTTSession {
         let subscriptionID = MQTTSubscriptions.getSubscriptionID()
         let subscription = QueuedSubscription(
             id: subscriptionID,
+            subscribeContinuation: subscribeContinuation,
             continuation: streamContinuation,
             subscriptions: subscriptions,
             properties: properties
         )
         subscriptionsQueueContinuation.yield(.subscribe(subscription))
-        return (subscriptionID, stream)
+        return (subscriptionID, subscribeStream, stream)
     }
 }
