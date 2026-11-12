@@ -42,11 +42,17 @@ public final class MQTTSession: Sendable {
 // MARK: - Subscriptions
 
 extension MQTTSession {
+    @usableFromInline
+    struct SubscriptionStatus: Sendable {
+    }
+
     /// Information about a queued subscription opened via a ``MQTTSession``.
     @usableFromInline
     struct QueuedSubscription: Sendable {
         /// The unique identifier for this subscription, used in ``MQTTSubscriptions``.
         let id: UInt32
+        /// The continuation used to send subscription status opened via a ``MQTTSession``.
+        let subscribeContinuation: AsyncThrowingStream<SubscriptionStatus, any Error>.Continuation
         /// The continuation used to send messages to the subscription stream opened via a ``MQTTSession``.
         let continuation: MQTTSubscription.Continuation
         /// The subscription information for this subscription, used to create the SUBSCRIBE packet.
