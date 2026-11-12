@@ -350,6 +350,7 @@ struct IntegrationTests {
             #"{"from":1000000,"to":1234567,"type":1,"content":"I am a beginner in swift and I am studying hard!!测试\n\n test, message","timestamp":1607243024,"nonce":"pAx2EsUuXrVuiIU3GGOGHNbUjzRRdT5b","sign":"ff902e31a6a5f5343d70a3a93ac9f946adf1caccab539c6f3a6"}"#
         let payload = ByteBufferAllocator().buffer(string: payloadString)
 
+        let barrier = AsyncStream.makeStream(of: Void.self)
         try await withThrowingTaskGroup { group in
             group.addTask {
                 try await MQTTConnection.withConnection(
@@ -363,6 +364,7 @@ struct IntegrationTests {
                             .init(topicFilter: "testExactlyOnce", qos: .exactlyOnce),
                         ]
                     ) { subscription in
+                        barrier.continuation.yield()
                         try await confirmation("publishToClient", expectedCount: 2) { receivedMessage in
                             var count = 0
                             for try await message in subscription {
@@ -388,7 +390,8 @@ struct IntegrationTests {
                     configuration: .init(transport: .webSocket(.init())),
                     identifier: "publishToClient_publisher"
                 ) { connection in
-                    try await Task.sleep(for: .seconds(1))
+                    // wait for subscription to be established before publishing
+                    await barrier.stream.first { _ in true }
                     try await connection.publish(to: "testAtLeastOnce", payload: payload, qos: .atLeastOnce)
                     try await connection.publish(to: "testExactlyOnce", payload: payload, qos: .exactlyOnce)
                 }
@@ -404,6 +407,7 @@ struct IntegrationTests {
         let payloadData = Data(count: payloadSize)
         let payload = ByteBufferAllocator().buffer(data: payloadData)
 
+        let barrier = AsyncStream.makeStream(of: Void.self)
         try await withThrowingTaskGroup { group in
             group.addTask {
                 try await MQTTConnection.withConnection(
@@ -411,6 +415,7 @@ struct IntegrationTests {
                     identifier: "publishLargePayloadToClient_subscriber"
                 ) { connection in
                     try await connection.subscribe(to: [.init(topicFilter: "testLargeAtLeastOnce", qos: .atLeastOnce)]) { subscription in
+                        barrier.continuation.finish()
                         try await confirmation("publishLargePayloadToClient") { receivedMessage in
                             for try await message in subscription {
                                 var buffer = message.payload
@@ -429,7 +434,8 @@ struct IntegrationTests {
                     address: .hostname(Self.hostname),
                     identifier: "publishLargePayloadToClient_publisher"
                 ) { connection in
-                    try await Task.sleep(for: .seconds(1))
+                    // wait for subscription to be established before publishing
+                    await barrier.stream.first { _ in true }
                     try await connection.publish(to: "testLargeAtLeastOnce", payload: payload, qos: .atLeastOnce)
                 }
             }
@@ -522,6 +528,7 @@ struct IntegrationTests {
 
     @Test("Subscribe to Multi-level Wildcard")
     func multiLevelWildcard() async throws {
+        let barrier = AsyncStream.makeStream(of: Void.self)
         try await MQTTConnection.withConnection(
             address: .hostname(Self.hostname),
             identifier: "multiLevelWildcard"
@@ -530,6 +537,7 @@ struct IntegrationTests {
                 group.addTask {
                     try await confirmation("multiLevelWildcard", expectedCount: 2) { receivedMessage in
                         try await connection.subscribe(to: [.init(topicFilter: "multiLevel/home/kitchen/#", qos: .atLeastOnce)]) { subscription in
+                            barrier.continuation.finish()
                             var count = 0
                             for try await message in subscription {
                                 var buffer = message.payload
@@ -544,7 +552,9 @@ struct IntegrationTests {
                 }
 
                 group.addTask {
-                    try await Task.sleep(for: .seconds(1))
+                    // Wait for the subscription to be established before publishing
+                    await barrier.stream.first { _ in true }
+
                     try await connection.publish(to: "multiLevel/home/kitchen/temperature", payload: ByteBuffer(string: "test"), qos: .atLeastOnce)
                     try await connection.publish(
                         to: "multiLevel/home/livingroom/temperature",
@@ -561,6 +571,7 @@ struct IntegrationTests {
 
     @Test("Subscribe to Single Level Wildcard")
     func singleLevelWildcard() async throws {
+        let barrier = AsyncStream.makeStream(of: Void.self)
         try await MQTTConnection.withConnection(
             address: .hostname(Self.hostname),
             identifier: "singleLevelWildcard"
@@ -570,6 +581,7 @@ struct IntegrationTests {
                     try await confirmation("singleLevelWildcard", expectedCount: 2) { receivedMessage in
                         try await connection.subscribe(to: [.init(topicFilter: "singleLevel/home/+/temperature", qos: .atLeastOnce)]) {
                             subscription in
+                            barrier.continuation.finish()
                             var count = 0
                             for try await message in subscription {
                                 var buffer = message.payload
@@ -584,7 +596,9 @@ struct IntegrationTests {
                 }
 
                 group.addTask {
-                    try await Task.sleep(for: .seconds(1))
+                    // Wait for the subscription to be established before publishing
+                    await barrier.stream.first { _ in true }
+
                     try await connection.publish(
                         to: "singleLevel/home/livingroom/temperature",
                         payload: ByteBuffer(string: "test"),
@@ -603,6 +617,7 @@ struct IntegrationTests {
     /// the subscription receives as many copies of the message as there are matching topic filters.
     @Test("Overlapping Subscriptions")
     func overlappingSubscriptions() async throws {
+        let barrier = AsyncStream.makeStream(of: Void.self)
         try await MQTTConnection.withConnection(
             address: .hostname(Self.hostname),
             identifier: "overlappingSubscriptions"
@@ -614,6 +629,7 @@ struct IntegrationTests {
                             .init(topicFilter: "overlapping/home/+/temperature", qos: .atLeastOnce),
                             .init(topicFilter: "overlapping/home/kitchen/#", qos: .atLeastOnce),
                         ]) { subscription in
+                            barrier.continuation.finish()
                             var count = 0
                             for try await message in subscription {
                                 var buffer = message.payload
@@ -628,7 +644,9 @@ struct IntegrationTests {
                 }
 
                 group.addTask {
-                    try await Task.sleep(for: .seconds(1))
+                    // Wait for the subscription to be established before publishing
+                    await barrier.stream.first { _ in true }
+
                     try await connection.publish(to: "overlapping/home/kitchen/temperature", payload: ByteBuffer(string: "test"), qos: .atLeastOnce)
                 }
 
@@ -681,6 +699,7 @@ struct IntegrationTests {
 
     @Test("Inflight")
     func inflight() async throws {
+        let barrier = AsyncStream.makeStream(of: Void.self)
         try await withThrowingTaskGroup { group in
             group.addTask {
                 try await MQTTConnection.withConnection(
@@ -688,6 +707,7 @@ struct IntegrationTests {
                     identifier: "inflight_subscriber"
                 ) { connection in
                     try await connection.subscribe(to: [.init(topicFilter: "testInflight", qos: .exactlyOnce)]) { subscription in
+                        barrier.continuation.finish()
                         for try await message in subscription {
                             #expect(message.payload.readableBytes == 4)
                             return
@@ -697,7 +717,9 @@ struct IntegrationTests {
             }
 
             group.addTask {
-                try await Task.sleep(for: .milliseconds(500))
+                // Wait for the subscription to be established before publishing
+                await barrier.stream.first { _ in true }
+
                 let session = MQTTSession(clientID: "inflight_publisher")
 
                 try await MQTTConnection.withConnection(
@@ -768,10 +790,12 @@ struct IntegrationTests {
         }
 
         let session = MQTTSession(clientID: "subscribeWithSessionBeforeConnection")
+        let barrier = AsyncStream.makeStream(of: Void.self)
 
         await withThrowingTaskGroup { group in
             group.addTask {
                 try await session.subscribe(to: [.init(topicFilter: "subscribeWithSessionBeforeConnection", qos: .atLeastOnce)]) { subscription in
+                    barrier.continuation.finish()
                     var iterator = subscription.makeAsyncIterator()
                     try #expect(await (iterator.next()?.payload).map { String(buffer: $0) } == "test")
                     try #expect(await (iterator.next()?.payload).map { String(buffer: $0) } == "test2")
@@ -784,7 +808,7 @@ struct IntegrationTests {
                     session: session
                 ) { connection, sessionPresent in
                     // Wait for the subscription to be established before publishing
-                    try await Task.sleep(for: .milliseconds(100))
+                    await barrier.stream.first { _ in true }
 
                     #expect(!sessionPresent)
                     try await connection.publish(to: "subscribeWithSessionBeforeConnection", payload: ByteBuffer(string: "test"), qos: .atLeastOnce)
@@ -813,14 +837,16 @@ struct IntegrationTests {
 
         let session = MQTTSession(clientID: "subscribeWithSessionAfterConnection")
 
-        let (stream, continuation) = AsyncStream<Void>.makeStream()
+        let subscribeBarrier = AsyncStream.makeStream(of: Void.self)
+        let connectionBarrier = AsyncStream.makeStream(of: Void.self)
 
         await withThrowingTaskGroup { group in
             group.addTask {
                 // Wait for the connection task to signal that the connection has been established before subscribing
-                await stream.first { _ in true }
+                await connectionBarrier.stream.first { _ in true }
 
                 try await session.subscribe(to: [.init(topicFilter: "subscribeWithSessionAfterConnection", qos: .atLeastOnce)]) { subscription in
+                    subscribeBarrier.continuation.finish()
                     var iterator = subscription.makeAsyncIterator()
                     try #expect(await (iterator.next()?.payload).map { String(buffer: $0) } == "test")
                     try #expect(await (iterator.next()?.payload).map { String(buffer: $0) } == "test2")
@@ -835,9 +861,8 @@ struct IntegrationTests {
                     #expect(!sessionPresent)
 
                     // Signal to the subscription task that the connection has been established and it can subscribe
-                    continuation.yield()
-                    // Wait for the subscription to be established before publishing
-                    try await Task.sleep(for: .milliseconds(100))
+                    connectionBarrier.continuation.yield()
+                    await subscribeBarrier.stream.first { _ in true }
 
                     try await connection.publish(to: "subscribeWithSessionAfterConnection", payload: ByteBuffer(string: "test"), qos: .atLeastOnce)
                 }
@@ -864,11 +889,13 @@ struct IntegrationTests {
         }
 
         let session = MQTTSession(clientID: "closeSubscriptionsNoSessionPresent")
+        let subscribeBarrier = AsyncStream.makeStream(of: Void.self)
 
         await withThrowingTaskGroup { group in
             group.addTask {
                 _ = await #expect(throws: MQTTError.noSessionPresent) {
                     try await session.subscribe(to: [.init(topicFilter: "closeSubscriptionsNoSessionPresent", qos: .atLeastOnce)]) { subscription in
+                        subscribeBarrier.continuation.finish()
                         for try await _ in subscription {}
                     }
                 }
@@ -879,8 +906,7 @@ struct IntegrationTests {
                     address: .hostname(Self.hostname),
                     session: session
                 ) { connection, sessionPresent in
-                    // Wait for the subscription to be established before publishing
-                    try await Task.sleep(for: .milliseconds(100))
+                    await subscribeBarrier.stream.first { _ in true }
 
                     // First connection with the session
                     #expect(!sessionPresent)
@@ -920,7 +946,7 @@ struct IntegrationTests {
         }
 
         let session = MQTTSession(clientID: "closeSubscriptions")
-
+        let subscribeBarrier = AsyncStream.makeStream(of: Void.self)
         await withThrowingTaskGroup { group in
             let (stream, continuation) = AsyncStream<Void>.makeStream()
 
@@ -928,6 +954,7 @@ struct IntegrationTests {
                 _ = await #expect(throws: Never.self) {
                     // Open a subscription with the session that won't throw an error when the connection is closed
                     try await session.subscribe(to: [.init(topicFilter: "sessionSub", qos: .atLeastOnce)]) { subscription in
+                        subscribeBarrier.continuation.finish()
                         await stream.first { _ in true }
                     }
                 }
@@ -938,7 +965,7 @@ struct IntegrationTests {
                     address: .hostname(Self.hostname),
                     session: session
                 ) { connection, sessionPresent in
-                    try await withThrowingTaskGroup { group in
+                    await withThrowingTaskGroup { group in
                         group.addTask {
                             _ = await #expect(throws: MQTTError.self) {
                                 // Open a subscription with the connection that will throw an error when the connection is closed
@@ -949,7 +976,7 @@ struct IntegrationTests {
                         }
 
                         // Wait for the session subscription to be setup
-                        try await Task.sleep(for: .seconds(1))
+                        await subscribeBarrier.stream.first { _ in true }
                         connection.close()
                     }
                 }
@@ -1066,6 +1093,7 @@ struct IntegrationTests {
                 await connectionStream.first { _ in true }
 
                 try await session.subscribe(to: [.init(topicFilter: "wait/session", qos: .atLeastOnce)]) { subscription in
+                    sessionContinuation.finish()
                     var iterator = subscription.makeAsyncIterator()
                     try #expect(await (iterator.next()?.payload).map { String(buffer: $0) } == "test")
                 }
@@ -1081,9 +1109,7 @@ struct IntegrationTests {
                     // Signal to the subscription task that the connection has been established and it can subscribe
                     connectionContinuation.yield()
                     // Wait for the subscription to be established before publishing
-                    try await Task.sleep(for: .milliseconds(100))
-                    // Signal that the session subscription is active
-                    sessionContinuation.yield()
+                    await sessionStream.first { _ in true }
 
                     try await withThrowingTaskGroup { connectionGroup in
                         let (publishStream, publishContinuation) = AsyncStream.makeStream(of: Void.self)
@@ -1106,9 +1132,6 @@ struct IntegrationTests {
                         }
 
                         connectionGroup.addTask {
-                            // Wait until the session subscription is active
-                            await sessionStream.first { _ in true }
-
                             try await connection.waitUntilNoActiveSubscriptions()
                         }
 
@@ -1134,6 +1157,7 @@ struct IntegrationTests {
         let (stream, cont) = AsyncStream.makeStream(of: Void.self)
         let session = MQTTSession(clientID: "cancelActiveSubscriptionsWait")
         async let _ = session.subscribe(to: [.init(topicFilter: "test", qos: .atLeastOnce)]) { sub in
+            cont.yield()
             for try await _ in sub {
                 cont.yield()
             }
@@ -1146,7 +1170,7 @@ struct IntegrationTests {
                 session: session
             ) { connection, sessionPresent in
                 // make sure the subscriptions have been sent before sending a publish
-                try await Task.sleep(for: .milliseconds(50))
+                await stream.first { _ in true }
                 try await connection.publish(to: "test", payload: .init(), qos: .atLeastOnce)
                 await stream.first { _ in true }
                 connection.close()
