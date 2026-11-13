@@ -98,24 +98,24 @@ struct MQTTSubscriptions: Sendable {
     ///         If `nil`, a new subscription ID will automatically be generated.
     ///   - continuation: The subscription stream continuation to send messages to.
     ///   - subscriptions: The list of topic filters and QoS levels to subscribe to.
-    ///   - version: The MQTT version of the subscription.
+    ///   - usesSubscriptionIdentifiers: Whether PUBLISH packets are matched to this subscription by Subscription Identifier.
+    ///         If `false` they are matched by topic name.
     mutating func addSubscription(
         id: UInt32?,
         continuation: MQTTSubscription.Continuation,
         subscriptions: [MQTTSubscribeInfoV5],
-        version: MQTTConnectionConfiguration.Version
+        usesSubscriptionIdentifiers: Bool
     ) throws -> SubscribeAction {
         let subID = id ?? Self.getSubscriptionID()
         let subscription = SubscriptionRef(
             id: subID,
-            version: version,
+            usesSubscriptionIdentifiers: usesSubscriptionIdentifiers,
             continuation: continuation,
             topicFilters: try subscriptions.map { try TopicFilter($0.topicFilter) },
             openedBySession: id != nil
         )
         defer { subscriptionIDMap[subID] = subscription }
-        switch version {
-        case .v3_1_1:
+        if !usesSubscriptionIdentifiers {
             var action = SubscribeAction.doNothing(subID)
             for topicFilter in subscription.topicFilters {
                 switch subscriptionMap[topicFilter, default: .init()].add(subscription: subscription) {
@@ -126,7 +126,7 @@ struct MQTTSubscriptions: Sendable {
                 }
             }
             return action
-        case .v5_0:
+        } else {
             switch self.subscriptionIDMap[subID] {
             case .none:
                 return .subscribe(subscription)
@@ -153,8 +153,7 @@ struct MQTTSubscriptions: Sendable {
                 self.resumeWaitForEmptySubscriptions(.success(()))
             }
         }
-        switch subscription.version {
-        case .v3_1_1:
+        if !subscription.usesSubscriptionIdentifiers {
             var action: UnsubscribeAction = .doNothing
             for topicFilter in subscription.topicFilters {
                 switch self.subscriptionMap[topicFilter]?.close(subscription: subscription) {
@@ -171,7 +170,7 @@ struct MQTTSubscriptions: Sendable {
                 }
             }
             return action
-        case .v5_0:
+        } else {
             return .unsubscribe(subscription.topicFilters.map { $0.string })
         }
     }
@@ -179,8 +178,7 @@ struct MQTTSubscriptions: Sendable {
     /// Remove subscription
     mutating func removeSubscription(id: UInt32) {
         guard let subscription = subscriptionIDMap[id] else { return }
-        switch subscription.version {
-        case .v3_1_1:
+        if !subscription.usesSubscriptionIdentifiers {
             for topicFilter in subscription.topicFilters {
                 switch self.subscriptionMap[topicFilter]?.close(subscription: subscription) {
                 case .doNothing, .none:
@@ -189,8 +187,6 @@ struct MQTTSubscriptions: Sendable {
                     self.subscriptionMap[topicFilter] = nil
                 }
             }
-        case .v5_0:
-            break
         }
         subscriptionIDMap[id] = nil
     }
@@ -216,20 +212,20 @@ struct MQTTSubscriptions: Sendable {
 /// Individual subscription associated with one subscribe
 final class SubscriptionRef: Identifiable, Sendable {
     let id: UInt32
-    let version: MQTTConnectionConfiguration.Version
+    let usesSubscriptionIdentifiers: Bool
     let topicFilters: [TopicFilter]
     let continuation: MQTTSubscription.Continuation
     let openedBySession: Bool
 
     fileprivate init(
         id: UInt32,
-        version: MQTTConnectionConfiguration.Version,
+        usesSubscriptionIdentifiers: Bool,
         continuation: MQTTSubscription.Continuation,
         topicFilters: [TopicFilter],
         openedBySession: Bool
     ) {
         self.id = id
-        self.version = version
+        self.usesSubscriptionIdentifiers = usesSubscriptionIdentifiers
         self.topicFilters = topicFilters
         self.continuation = continuation
         self.openedBySession = openedBySession

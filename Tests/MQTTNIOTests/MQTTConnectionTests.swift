@@ -391,6 +391,40 @@ struct MQTTConnectionTests {
         }
     }
 
+    @Test(
+        "Subscription Identifier Available",
+        .timeLimit(.minutes(1)),
+        arguments: [
+            (available: 0 as UInt8, expectIdentifier: false),
+            (available: 1 as UInt8, expectIdentifier: true),
+        ]
+    )
+    func subscriptionIdentifierAvailable(available: UInt8, expectIdentifier: Bool) async throws {
+        try await withTestMQTTServer(
+            configuration: .init(versionConfiguration: .v5_0()),
+            connackProperties: .init([.subscriptionIdentifierAvailable(available)])
+        ) { connection in
+            try await connection.subscribe(to: [.init(topicFilter: "test/topic", qos: .atMostOnce)]) { _ in }
+        } server: { channel in
+            // receive SUBSCRIBE
+            let packet = try await channel.waitForOutboundPacket()
+            let subscribePacket = try MQTTSubscribePacket.read(version: .v5_0, from: packet)
+            let hasSubscriptionIdentifier = (subscribePacket.properties ?? .init()).contains { property in
+                if case .subscriptionIdentifier = property { true } else { false }
+            }
+            #expect(hasSubscriptionIdentifier == expectIdentifier)
+            // send SUBACK
+            let suback = MQTTSubAckPacket(type: .SUBACK, packetId: subscribePacket.packetId, reasons: [.success])
+            try await channel.writeInboundPacket(suback, version: .v5_0)
+
+            // receive UNSUBSCRIBE
+            let unsubscribePacket = try MQTTUnsubscribePacket.read(version: .v5_0, from: try await channel.waitForOutboundPacket())
+            // send UNSUBACK
+            let unsuback = MQTTSubAckPacket(type: .UNSUBACK, packetId: unsubscribePacket.packetId, reasons: [.success])
+            try await channel.writeInboundPacket(unsuback, version: .v5_0)
+        }
+    }
+
     @Test
     func testAuthWorkflow() async throws {
         let channel = NIOAsyncTestingChannel()

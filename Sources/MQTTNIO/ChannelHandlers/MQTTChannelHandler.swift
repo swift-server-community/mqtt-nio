@@ -60,6 +60,10 @@ final class MQTTChannelHandler: ChannelDuplexHandler {
     /// The Maximum Packet Size for this Server.
     var maxPacketSize: UInt32 = .max
 
+    /// Whether this Server supports Subscription Identifiers. Always false for v3.1.1. For v5.0 it is true
+    /// unless the CONNACK Subscription Identifier Available property is 0.
+    var subscriptionIdentifiersAvailable: Bool
+
     init(
         configuration: Configuration,
         eventLoop: any EventLoop,
@@ -70,6 +74,7 @@ final class MQTTChannelHandler: ChannelDuplexHandler {
         self.eventLoop = eventLoop
         self.session = session
         self.decoder = .init(.init(version: configuration.version))
+        self.subscriptionIdentifiersAvailable = configuration.version == .v5_0
         self.stateMachine = .init()
         self.logger = logger
 
@@ -290,7 +295,7 @@ final class MQTTChannelHandler: ChannelDuplexHandler {
                 id: id,
                 continuation: streamContinuation,
                 subscriptions: packet.subscriptions,
-                version: self.configuration.version
+                usesSubscriptionIdentifiers: self.subscriptionIdentifiersAvailable
             )
 
         } catch {
@@ -305,7 +310,7 @@ final class MQTTChannelHandler: ChannelDuplexHandler {
                 return
             }
             var packet = packet
-            if self.configuration.version == .v5_0 {
+            if self.subscriptionIdentifiersAvailable {
                 var properties = packet.properties ?? []
                 properties.append(.subscriptionIdentifier(subscriptionID))
                 packet = MQTTSubscribePacket(

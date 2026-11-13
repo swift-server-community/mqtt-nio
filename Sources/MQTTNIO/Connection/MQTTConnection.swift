@@ -953,6 +953,10 @@ public final actor MQTTConnection: Sendable {
             if case .topicAliasMaximum(let max) = property {
                 self.connectionParameters.maxTopicAlias = max
             }
+            // supports subscription identifiers
+            if case .subscriptionIdentifierAvailable(let value) = property {
+                self.channelHandler.subscriptionIdentifiersAvailable = value != 0
+            }
         }
         return connack
     }
