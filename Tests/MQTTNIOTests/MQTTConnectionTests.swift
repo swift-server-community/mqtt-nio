@@ -251,6 +251,27 @@ struct MQTTConnectionTests {
         }
     }
 
+    @Test("Server Refuses Subscription")
+    func serverRefusesSubscription() async throws {
+        try await withTestMQTTServer { connection in
+            try await connection.subscribe(to: [.init(topicFilter: "forbidden/#", qos: .atLeastOnce)]) { _, suback in
+                let s = try #require(suback)
+                #expect(s.returnCodes == [.failure])
+            }
+        } server: { channel in
+            // Receive SUBSCRIBE, refuse it
+            let subscribe = try MQTTSubscribePacket.read(version: .v3_1_1, from: try await channel.waitForOutboundPacket())
+            let suback = MQTTSubAckPacket(type: .SUBACK, packetId: subscribe.packetId, reasons: [.unspecifiedError])
+            try await channel.writeInboundPacket(suback, version: .v3_1_1)
+
+            let packet = try await channel.waitForOutboundPacket()
+            #expect(packet.type == .UNSUBSCRIBE)
+            let unsubscribe = try MQTTUnsubscribePacket.read(version: .v3_1_1, from: packet)
+            let unsuback = MQTTSubAckPacket(type: .UNSUBACK, packetId: unsubscribe.packetId, reasons: [.success])
+            try await channel.writeInboundPacket(unsuback, version: .v3_1_1)
+        }
+    }
+
     @Test
     func testTopicFilter() async throws {
         try await withTestSubscription(subscribeInfos: [.init(topicFilter: "testTopic/+", qos: .atMostOnce)]) { sub in

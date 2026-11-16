@@ -527,11 +527,15 @@ struct MQTTPubAckPacket: MQTTPacket {
     }
 }
 
+@usableFromInline
 struct MQTTSubAckPacket: MQTTPacket {
+    @usableFromInline
     var description: String { "ACK \(self.type)" }
     let type: MQTTPacketType
     let packetId: UInt16
+    @usableFromInline
     let reasons: [MQTTReasonCode]
+    @usableFromInline
     let properties: MQTTProperties
 
     init(type: MQTTPacketType, packetId: UInt16, reasons: [MQTTReasonCode], properties: MQTTProperties = .init()) {

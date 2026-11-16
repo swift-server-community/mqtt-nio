@@ -284,7 +284,7 @@ final class MQTTChannelHandler: ChannelDuplexHandler {
         id: UInt32? = nil,
         streamContinuation: MQTTSubscription.Continuation,
         packet: MQTTSubscribePacket,
-        promise: MQTTPromise<UInt32>,
+        promise: MQTTPromise<(UInt32, MQTTSubAckPacket?)>,
         requestID: Int
     ) {
         self.eventLoop.assertInEventLoop()
@@ -325,15 +325,25 @@ final class MQTTChannelHandler: ChannelDuplexHandler {
                 return true
             }.assumeIsolated().whenComplete { result in
                 switch result {
-                case .success:
-                    promise.succeed(subscriptionID)
+                case .success(let receivedPacket):
+                    guard let subAckPacket = receivedPacket as? MQTTSubAckPacket else {
+                        promise.fail(MQTTError.unexpectedPacket)
+                        self.session.subscriptions.removeSubscription(id: subscriptionID)
+                        return
+                    }
+                    guard subAckPacket.reasons.count == packet.subscriptions.count else {
+                        self.session.subscriptions.removeSubscription(id: subscriptionID)
+                        promise.fail(MQTTError.badResponse)
+                        return
+                    }
+                    promise.succeed((subscriptionID, subAckPacket))
                 case .failure(let error):
                     self.session.subscriptions.removeSubscription(id: subscriptionID)
                     promise.fail(error)
                 }
             }
         case .doNothing(let subscriptionID):
-            promise.succeed(subscriptionID)
+            promise.succeed((subscriptionID, nil))
         }
     }
 

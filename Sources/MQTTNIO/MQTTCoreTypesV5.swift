@@ -74,12 +74,13 @@ public struct MQTTSubscribeInfoV5: Sendable {
 /// MQTT v5 Sub ACK packet
 ///
 /// Contains data returned in subscribe/unsubscribe ack packets
-struct MQTTSubackV5: Sendable {
+public struct MQTTSubackV5: Sendable {
     /// MQTT v5 subscription reason code
     public var reasons: [MQTTReasonCode]
     /// MQTT v5 properties
     public var properties: MQTTProperties
 
+    @usableFromInline
     init(reasons: [MQTTReasonCode], properties: MQTTProperties = .init()) {
         self.reasons = reasons
         self.properties = properties

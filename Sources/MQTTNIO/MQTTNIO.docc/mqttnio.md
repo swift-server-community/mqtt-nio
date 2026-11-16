@@ -83,6 +83,7 @@ try await connection.publish(
 - ``MQTTSubscribeInfo``
 - ``MQTTPublishInfo``
 - ``MQTTQoS``
+- ``MQTTSuback``
 
 ### Errors
 
@@ -95,6 +96,7 @@ try await connection.publish(
 - ``MQTTProperties``
 - ``MQTTReasonCode``
 - ``MQTTAckV5``
+- ``MQTTSubackV5``
 
 ### V5 Authentication
 
