@@ -31,9 +31,8 @@ extension MQTTConnection {
             _ channel: any Channel
         ) -> EventLoopFuture<(any Channel, QUICHandler<QUICStreamChannels>.ConnectionMultiplexer<Never>)> {
             channel.eventLoop.makeCompletedFuture(withResultOf: {
-                let quicConfig = QUICConfiguration.client(
+                let quicConfig = QUICConfiguration.forClient(
                     verificationConfiguration: quicConfiguration.verificationConfiguration,
-                    keyExchangeGroup: quicConfiguration.keyExchangeGroup,
                     applicationProtocols: ["mqtt"]
                 )
                 let (quicHandler, connectionMultiplexer) = try QUICHandler.makeHandlerAndConnectionMultiplexer(

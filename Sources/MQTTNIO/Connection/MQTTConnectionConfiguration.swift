@@ -230,14 +230,9 @@ public struct MQTTConnectionConfiguration: Sendable {
         /// Configuration for QUIC connection.
         public struct QUICConfiguration: Sendable {
             public var verificationConfiguration: VerificationConfiguration
-            public var keyExchangeGroup: KeyExchangeGroup
 
-            public init(
-                verificationConfiguration: VerificationConfiguration,
-                keyExchangeGroup: KeyExchangeGroup = .x25519
-            ) {
+            public init(verificationConfiguration: VerificationConfiguration) {
                 self.verificationConfiguration = verificationConfiguration
-                self.keyExchangeGroup = keyExchangeGroup
             }
         }
         #endif
