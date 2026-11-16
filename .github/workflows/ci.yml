@@ -22,7 +22,6 @@ jobs:
     strategy:
       matrix:
         macos-version:
-          - macos-15
           - macos-26
           - xcode-27
     runs-on: ${{ matrix.macos-version }}
