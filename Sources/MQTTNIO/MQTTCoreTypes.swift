@@ -19,7 +19,7 @@ public enum MQTTQoS: UInt8, Sendable, CaseIterable {
 }
 
 /// MQTT Packet type enumeration
-public enum MQTTPacketType: UInt8, Sendable {
+enum MQTTPacketType: UInt8, Sendable {
     case CONNECT = 0x10
     case CONNACK = 0x20
     case PUBLISH = 0x30

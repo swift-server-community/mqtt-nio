@@ -83,7 +83,6 @@ try await connection.publish(
 - ``MQTTSubscribeInfo``
 - ``MQTTPublishInfo``
 - ``MQTTQoS``
-- ``MQTTPacketType``
 
 ### Errors
 
