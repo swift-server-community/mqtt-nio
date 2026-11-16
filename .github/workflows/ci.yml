@@ -24,6 +24,7 @@ jobs:
         macos-version:
           - macos-15
           - macos-26
+          - xcode-27
     runs-on: ${{ matrix.macos-version }}
     timeout-minutes: 15
     steps:
@@ -68,6 +69,7 @@ jobs:
         tag:
           - swift:6.2.3
           - swift:6.3
+          - swift:6.4
     container:
       image: ${{ matrix.tag }}
     services:
