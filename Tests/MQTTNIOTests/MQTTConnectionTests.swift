@@ -251,6 +251,53 @@ struct MQTTConnectionTests {
         }
     }
 
+    @Test("Server Refuses Subscription")
+    func serverRefusesSubscription() async throws {
+        try await withTestMQTTServer { connection in
+            try await connection.subscribe(to: [.init(topicFilter: "forbidden/#", qos: .atLeastOnce)]) { _, suback in
+                let s = try #require(suback)
+                #expect(s.returnCodes == [.failure])
+            }
+        } server: { channel in
+            // Receive SUBSCRIBE, refuse it
+            let subscribe = try MQTTSubscribePacket.read(version: .v3_1_1, from: try await channel.waitForOutboundPacket())
+            let suback = MQTTSubAckPacket(type: .SUBACK, packetId: subscribe.packetId, reasons: [.unspecifiedError])
+            try await channel.writeInboundPacket(suback, version: .v3_1_1)
+
+            let packet = try await channel.waitForOutboundPacket()
+            #expect(packet.type == .UNSUBSCRIBE)
+            let unsubscribe = try MQTTUnsubscribePacket.read(version: .v3_1_1, from: packet)
+            let unsuback = MQTTSubAckPacket(type: .UNSUBACK, packetId: unsubscribe.packetId, reasons: [.success])
+            try await channel.writeInboundPacket(unsuback, version: .v3_1_1)
+        }
+    }
+
+    @Test("Incorrect Number of Subscription Return Codes")
+    func incorrectNumberOfSubscriptionReturnCodes() async throws {
+        try await withTestMQTTServer { connection in
+            await #expect(throws: MQTTError.badResponse) {
+                try await connection.subscribe(to: [.init(topicFilter: "testTopic/+", qos: .atMostOnce)]) { _, _ in }
+            }
+
+            // Verify that session storage is left in a good state
+            try await connection.subscribe(to: [.init(topicFilter: "testTopic/+", qos: .atMostOnce)]) { _, suback in
+                let s = try #require(suback)
+                #expect(s.returnCodes == [.grantedQoS0])
+            }
+        } server: { channel in
+            let firstSubscribe = try MQTTSubscribePacket.read(version: .v3_1_1, from: try await channel.waitForOutboundPacket())
+            let firstSuback = MQTTSubAckPacket(type: .SUBACK, packetId: firstSubscribe.packetId, reasons: [.success, .success])
+            try await channel.writeInboundPacket(firstSuback, version: .v3_1_1)
+
+            let secondSubscribe = try MQTTSubscribePacket.read(version: .v3_1_1, from: try await channel.waitForOutboundPacket())
+            let secondSuback = MQTTSubAckPacket(type: .SUBACK, packetId: secondSubscribe.packetId, reasons: [.success])
+            try await channel.writeInboundPacket(secondSuback, version: .v3_1_1)
+            let unsubscribe = try MQTTUnsubscribePacket.read(version: .v3_1_1, from: try await channel.waitForOutboundPacket())
+            let unsuback = MQTTSubAckPacket(type: .UNSUBACK, packetId: unsubscribe.packetId, reasons: [.success])
+            try await channel.writeInboundPacket(unsuback, version: .v3_1_1)
+        }
+    }
+
     @Test
     func testTopicFilter() async throws {
         try await withTestSubscription(subscribeInfos: [.init(topicFilter: "testTopic/+", qos: .atMostOnce)]) { sub in

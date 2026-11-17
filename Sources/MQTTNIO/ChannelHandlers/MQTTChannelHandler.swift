@@ -284,7 +284,7 @@ final class MQTTChannelHandler: ChannelDuplexHandler {
         id: UInt32? = nil,
         streamContinuation: MQTTSubscription.Continuation,
         packet: MQTTSubscribePacket,
-        promise: MQTTPromise<UInt32>,
+        promise: MQTTPromise<SubscriptionInfo>,
         requestID: Int
     ) {
         self.eventLoop.assertInEventLoop()
@@ -325,15 +325,25 @@ final class MQTTChannelHandler: ChannelDuplexHandler {
                 return true
             }.assumeIsolated().whenComplete { result in
                 switch result {
-                case .success:
-                    promise.succeed(subscriptionID)
+                case .success(let receivedPacket):
+                    guard let subAckPacket = receivedPacket as? MQTTSubAckPacket else {
+                        promise.fail(MQTTError.unexpectedPacket)
+                        self.session.subscriptions.removeSubscription(id: subscriptionID)
+                        return
+                    }
+                    guard subAckPacket.reasons.count == packet.subscriptions.count else {
+                        self.session.subscriptions.removeSubscription(id: subscriptionID)
+                        promise.fail(MQTTError.badResponse)
+                        return
+                    }
+                    promise.succeed(.init(id: subscriptionID, subAckPacket: subAckPacket))
                 case .failure(let error):
                     self.session.subscriptions.removeSubscription(id: subscriptionID)
                     promise.fail(error)
                 }
             }
         case .doNothing(let subscriptionID):
-            promise.succeed(subscriptionID)
+            promise.succeed(.init(id: subscriptionID, subAckPacket: nil))
         }
     }
 
@@ -555,4 +565,12 @@ extension MQTTChannelHandler.Configuration {
         self.timeout = .init(other.timeout)
         self.version = other.version
     }
+}
+
+@usableFromInline
+struct SubscriptionInfo: Sendable {
+    @usableFromInline
+    let id: UInt32
+    @usableFromInline
+    let subAckPacket: MQTTSubAckPacket?
 }

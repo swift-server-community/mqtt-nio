@@ -105,3 +105,10 @@ public enum MQTTReasonCode: UInt8, Sendable {
     /// Reason code was unrecognised
     case unrecognisedReason = 255
 }
+
+extension MQTTReasonCode {
+    /// Whether the reason code represents an error or failure condition.
+    public var isFailure: Bool {
+        self.rawValue >= 128
+    }
+}

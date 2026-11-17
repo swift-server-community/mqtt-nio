@@ -478,7 +478,7 @@ public final actor MQTTConnection: Sendable {
                     properties: queuedSubscription.properties,
                     packetId: self.updatePacketId()
                 )
-                let promise = self.channel.eventLoop.makePromise(of: UInt32.self)
+                let promise = self.channel.eventLoop.makePromise(of: SubscriptionInfo.self)
                 self.channelHandler.subscribe(
                     id: queuedSubscription.id,
                     streamContinuation: queuedSubscription.continuation,
@@ -487,8 +487,8 @@ public final actor MQTTConnection: Sendable {
                     requestID: Self.requestIDGenerator.next()
                 )
                 do {
-                    _ = try await promise.futureResult.get()
-                    queuedSubscription.subscribeContinuation.yield(.init())
+                    let subscriptionInfo = try await promise.futureResult.get()
+                    queuedSubscription.subscribeContinuation.yield(.init(subAckPacket: subscriptionInfo.subAckPacket))
                     queuedSubscription.subscribeContinuation.finish()
                 } catch {
                     queuedSubscription.subscribeContinuation.finish(throwing: error)

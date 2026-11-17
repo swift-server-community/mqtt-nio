@@ -44,6 +44,8 @@ public final class MQTTSession: Sendable {
 extension MQTTSession {
     @usableFromInline
     struct SubscriptionStatus: Sendable {
+        @usableFromInline
+        let subAckPacket: MQTTSubAckPacket?
     }
 
     /// Information about a queued subscription opened via a ``MQTTSession``.

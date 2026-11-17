@@ -267,7 +267,7 @@ func withTestSessionSubscriptions(
             let suback = MQTTSubAckPacket(
                 type: .SUBACK,
                 packetId: subscribePacket.packetId,
-                reasons: subscribeInfos.map { _ in .success },
+                reasons: subscribePacket.subscriptions.map { _ in .success },
                 properties: .init()
             )
             try await channel.writeInboundPacket(suback, version: .v3_1_1)
@@ -283,7 +283,7 @@ func withTestSessionSubscriptions(
             let unsuback = MQTTSubAckPacket(
                 type: .UNSUBACK,
                 packetId: unsubscribePacket.packetId,
-                reasons: subscribeInfos.map { _ in .success },
+                reasons: unsubscribePacket.subscriptions.map { _ in .success },
                 properties: .init()
             )
             try await channel.writeInboundPacket(unsuback, version: .v3_1_1)
