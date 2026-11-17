@@ -284,7 +284,7 @@ final class MQTTChannelHandler: ChannelDuplexHandler {
         id: UInt32? = nil,
         streamContinuation: MQTTSubscription.Continuation,
         packet: MQTTSubscribePacket,
-        promise: MQTTPromise<(UInt32, MQTTSubAckPacket?)>,
+        promise: MQTTPromise<SubscriptionInfo>,
         requestID: Int
     ) {
         self.eventLoop.assertInEventLoop()
@@ -336,14 +336,14 @@ final class MQTTChannelHandler: ChannelDuplexHandler {
                         promise.fail(MQTTError.badResponse)
                         return
                     }
-                    promise.succeed((subscriptionID, subAckPacket))
+                    promise.succeed(.init(id: subscriptionID, subAckPacket: subAckPacket))
                 case .failure(let error):
                     self.session.subscriptions.removeSubscription(id: subscriptionID)
                     promise.fail(error)
                 }
             }
         case .doNothing(let subscriptionID):
-            promise.succeed((subscriptionID, nil))
+            promise.succeed(.init(id: subscriptionID, subAckPacket: nil))
         }
     }
 
@@ -565,4 +565,12 @@ extension MQTTChannelHandler.Configuration {
         self.timeout = .init(other.timeout)
         self.version = other.version
     }
+}
+
+@usableFromInline
+struct SubscriptionInfo: Sendable {
+    @usableFromInline
+    let id: UInt32
+    @usableFromInline
+    let subAckPacket: MQTTSubAckPacket?
 }

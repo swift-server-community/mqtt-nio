@@ -41,21 +41,24 @@ extension MQTTConnection {
         to subscriptions: [MQTTSubscribeInfo],
         process: (MQTTSubscription, MQTTSuback?) async throws -> Value
     ) async throws -> Value {
-        let (id, subAckPacket, stream) = try await self.subscribe(to: subscriptions.map { .init(topicFilter: $0.topicFilter, qos: $0.qos) })
+        let (subscriptionInfo, stream) = try await self.subscribe(to: subscriptions.map { .init(topicFilter: $0.topicFilter, qos: $0.qos) })
         let value: Value
         do {
-            value = try await process(stream, subAckPacket.map { .init(returnCodes: $0.reasons.compactMap { .init(rawValue: $0.rawValue) }) })
+            value = try await process(
+                stream,
+                subscriptionInfo.subAckPacket.map { .init(returnCodes: $0.reasons.compactMap { .init(rawValue: $0.rawValue) }) }
+            )
             try Task.checkCancellation()
         } catch {
             // call unsubscribe in unstructured Task to avoid it being cancelled
             _ = await Task {
-                try await self.unsubscribe(id: id)
+                try await self.unsubscribe(id: subscriptionInfo.id)
             }.result
             throw error
         }
         // call unsubscribe in unstructured Task to avoid it being cancelled
         _ = try await Task {
-            try await self.unsubscribe(id: id)
+            try await self.unsubscribe(id: subscriptionInfo.id)
         }.value
         return value
     }
@@ -64,13 +67,13 @@ extension MQTTConnection {
     func subscribe(
         to subscriptions: [MQTTSubscribeInfoV5],
         properties: MQTTProperties = .init()
-    ) async throws -> (UInt32, MQTTSubAckPacket?, MQTTSubscription) {
+    ) async throws -> (SubscriptionInfo, MQTTSubscription) {
         let (stream, streamContinuation) = MQTTSubscription.makeStream()
         if Task.isCancelled {
             throw MQTTError.cancelled
         }
         let packet = MQTTSubscribePacket(subscriptions: subscriptions, properties: properties, packetId: self.updatePacketId())
-        let (subscriptionID, subAckPacket): (UInt32, MQTTSubAckPacket?) = try await withCheckedThrowingContinuation { continuation in
+        let subscriptionInfo = try await withCheckedThrowingContinuation { continuation in
             self.channelHandler.subscribe(
                 streamContinuation: streamContinuation,
                 packet: packet,
@@ -78,7 +81,7 @@ extension MQTTConnection {
                 requestID: Self.requestIDGenerator.next()
             )
         }
-        return (subscriptionID, subAckPacket, stream)
+        return (subscriptionInfo, stream)
     }
 
     @usableFromInline
@@ -142,21 +145,21 @@ extension MQTTConnection.V5 {
         unsubscribeProperties: MQTTProperties = .init(),
         process: (MQTTSubscription, MQTTSubackV5?) async throws -> Value
     ) async throws -> Value {
-        let (id, subAckPacket, stream) = try await self.connection.subscribe(to: subscriptions, properties: subscribeProperties)
+        let (subscriptionInfo, stream) = try await self.connection.subscribe(to: subscriptions, properties: subscribeProperties)
         let value: Value
         do {
-            value = try await process(stream, subAckPacket.map { .init(reasons: $0.reasons, properties: $0.properties) })
+            value = try await process(stream, subscriptionInfo.subAckPacket.map { .init(reasons: $0.reasons, properties: $0.properties) })
             try Task.checkCancellation()
         } catch {
             // call unsubscribe in unstructured Task to avoid it being cancelled
             _ = await Task {
-                try await self.connection.unsubscribe(id: id, properties: unsubscribeProperties)
+                try await self.connection.unsubscribe(id: subscriptionInfo.id, properties: unsubscribeProperties)
             }.result
             throw error
         }
         // call unsubscribe in unstructured Task to avoid it being cancelled
         _ = try await Task {
-            try await self.connection.unsubscribe(id: id, properties: unsubscribeProperties)
+            try await self.connection.unsubscribe(id: subscriptionInfo.id, properties: unsubscribeProperties)
         }.value
         return value
     }
