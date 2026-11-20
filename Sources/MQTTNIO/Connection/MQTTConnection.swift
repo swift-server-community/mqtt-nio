@@ -54,6 +54,12 @@ public final actor MQTTConnection: Sendable {
     let commonSubscribeSpanAttributes: SpanAttributes
     #endif
 
+    /// Properties the server returned in a successful CONNACK.
+    ///
+    /// These are the server's negotiated values, such as Receive Maximum, Maximum Packet Size
+    /// or Server Keep Alive. They are empty for MQTT 3.1.1, which has no CONNACK properties.
+    public private(set) var connackProperties: MQTTProperties = .init()
+
     var connectionParameters = ConnectionParameters()
 
     /// Initialize connection
@@ -958,6 +964,7 @@ public final actor MQTTConnection: Sendable {
                 self.channelHandler.subscriptionIdentifiersAvailable = value != 0
             }
         }
+        self.connackProperties = connack.properties
         return connack
     }
 
