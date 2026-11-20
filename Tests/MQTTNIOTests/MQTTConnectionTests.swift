@@ -28,6 +28,19 @@ struct MQTTConnectionTests {
         }
     }
 
+    @Test(arguments: [UInt16(0), 1, 2, 3, 4, 5, 30, 60, UInt16.max])
+    func serverKeepAliveDoesNotUnderflow(seconds: UInt16) async throws {
+        try await withTestMQTTServer(
+            configuration: .init(versionConfiguration: .v5_0()),
+            connackProperties: [.serverKeepAlive(seconds)]
+        ) { connection in
+            try await connection.ping()
+        } server: { channel in
+            #expect(try await channel.waitForOutboundPacket().type == .PINGREQ)
+            try await channel.writeInboundPacket(MQTTPingrespPacket(), version: .v5_0)
+        }
+    }
+
     @Test("A refused CONNACK carries its reason code and properties")
     func testConnectionRefusedCarriesConnackProperties() async throws {
         let clientID = "reasonErrorV5"
